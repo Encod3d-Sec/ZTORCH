@@ -1,0 +1,22 @@
+# ZTORCH line endings: one rule, everywhere.
+# The harness is maintained by bash+python tooling (agent edits, hooks, Obsidian,
+# Windows + WSL seats). Mixed CRLF/LF silently breaks exact-match tooling (patch
+# scripts, sed anchors, hash stamps). LF everywhere; git auto-detects binary.
+* text=auto eol=lf
+
+# Explicit text pins for the files tooling touches most
+*.sh   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Binary assets
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.pcap binary
+*.gz   binary
