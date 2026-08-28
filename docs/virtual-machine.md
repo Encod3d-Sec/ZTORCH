@@ -1,12 +1,32 @@
 # The Kali attack VM and `vm.sh`
 
-ZCode runs in WSL (or natively), which has **no VPN route** to targets and no offensive
+The agent seat (ZCode on Windows) has **no VPN route** to targets and no offensive
 tooling. A separate **Kali VM** holds the VPN, the tools (nmap/ffuf/nuclei/nxc,
 linpeas, chromium), and is reached over SSH by a one-line driver, `vm.sh`.
 
 ```
-Agent (WSL) --ssh (vm.sh)--> Kali VM --VPN--> targets
+ZCode (Windows seat) --wsl.exe--> WSL kali (root: /root/vm.sh) --ssh--> Kali VM --VPN--> targets
 ```
+
+## This machine's seat: Windows + WSL bridge
+
+The vault lives on Windows (`C:\...\ZTorch\ZTorch` = `/mnt/c/...` in WSL); `/root/vm.sh`
+lives in the WSL `kali-linux` distro. Two wrappers make the seat transparent:
+
+- **`bash scripts/win-vm.sh '<cmd>'`** - execs `/root/vm.sh` inside WSL (root), which SSHes
+  to the VM. This is the VM_SH implementation on Windows: `VM_SH="$(pwd)/scripts/win-vm.sh"`
+  makes `win-rsh.sh`, `capture.sh`, `autocard.sh` and every other driver work unchanged.
+- **`bash scripts/win-qmd.sh <args>`** - execs the WSL qmd against the vault (`/mnt/c` mapped)
+  for wiki search / reindex; the `wiki-search` MCP (registered by `setup/win-seat.sh`) rides
+  the same path: ZCode -> wsl.exe -> `qmd mcp`.
+
+One-time seat setup: `bash setup/win-seat.sh` (checks the bridge, links skills into
+`.zcode/skills/`, registers the MCP; `--index` also builds the search index).
+
+Gotchas on this seat: Git Bash rewrites leading-slash arguments into Windows paths before
+native binaries - the wrappers set `MSYS_NO_PATHCONV=1` internally, but a HAND-TYPED
+`wsl.exe ... ls /root/x` needs it prefixed too. `/root/vm.sh` only exists inside WSL: never
+run it from Git Bash directly.
 
 ## Configure it: one file, `/root/creds.txt`
 

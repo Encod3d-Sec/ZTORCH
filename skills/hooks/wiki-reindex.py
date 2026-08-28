@@ -70,14 +70,23 @@ def main():
     # returns immediately. `sleep` lets a burst's trailing edits land before qmd rescans.
     # Skip when qmd is not installed (nothing to run; keeps tests from spawning anything).
     if shutil.which("qmd"):
-        try:
-            subprocess.Popen(
-                ["sh", "-c", "sleep %d; qmd update" % DEBOUNCE_SECONDS],
-                cwd=vault, env=dict(os.environ, QMD_VAULT=vault),
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL, start_new_session=True)
-        except Exception:
-            pass
+        reindex_cmd = "qmd update"
+    else:
+        # Windows seat (marker written by setup/win-seat.sh): qmd lives in WSL kali.
+        # The marker keeps tests hermetic -- fixture vaults never carry it.
+        bridge = os.path.join(vault, "scripts", "win-qmd.sh")
+        if not (os.path.isfile(os.path.join(vault, ".zcode", "win-seat"))
+                and os.path.isfile(bridge)):
+            return
+        reindex_cmd = 'bash "%s" update' % bridge
+    try:
+        subprocess.Popen(
+            ["sh", "-c", "sleep %d; %s" % (DEBOUNCE_SECONDS, reindex_cmd)],
+            cwd=vault, env=dict(os.environ, QMD_VAULT=vault),
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True)
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

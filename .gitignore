@@ -55,3 +55,4 @@ __pycache__/
 # --- OS cruft ---------------------------------------------------------------
 .DS_Store
 Thumbs.db
+.zcode/win-seat

@@ -18,9 +18,14 @@ export QMD_VAULT="${QMD_VAULT:-$VAULT}"
 export HF_HUB_DISABLE_PROGRESS_BARS=1     # silence the model-load progress noise
 
 if ! command -v qmd >/dev/null 2>&1; then
-  echo "wiki-query: qmd not installed (setup/bootstrap.sh installs it)." >&2
-  echo "  fallback: grep -rin '<term>' wiki/   (then Read the matching page)" >&2
-  exit 1
+  # Windows seat: ride the WSL kali root's qmd (setup/win-seat.sh sets this up).
+  if [ -f "$VAULT/scripts/win-qmd.sh" ]; then
+    qmd() { bash "$VAULT/scripts/win-qmd.sh" "$@"; }
+  else
+    echo "wiki-query: qmd not installed (setup/bootstrap.sh installs it; Windows seat: setup/win-seat.sh)." >&2
+    echo "  fallback: grep -rin '<term>' wiki/   (then Read the matching page)" >&2
+    exit 1
+  fi
 fi
 
 N=5; KEYWORD=0; ARGS=()
