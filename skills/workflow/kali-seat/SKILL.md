@@ -79,8 +79,13 @@ The vault is ONE working copy seen under three paths:
 
 ## Setup / repair
 
+- **ONE verdict, either seat:** `bash setup/doctor.sh` (hooks + skills + seat wiring + VM
+  reachability + campaign driver, in one run).
 - Windows seat: `bash setup/win-seat.sh` (bridge checks, skills, wiki-search MCP, `--index`).
 - Direct-VM key: `bash setup/vm-key.sh` (generates `~/.ssh/id_ed25519_ztorch`, installs it on the
   VM through the WSL bridge once; re-run if the VM is rebuilt and key auth starts failing).
 - WSL side: `bash /opt/ztorch/setup/wsl-seat.sh` (re-creates the `/opt/ztorch` symlink, git
   safe.directory, verifies `/root/vm.sh` + creds + sshpass + qmd).
+- Note: `scripts/fleet-lane.sh` (headless parallel lanes) targets a ZCode CLI that does not ship
+  with the desktop app; it is override-ready (`FLEET_ZCODE`/`FLEET_ARGS`) but dormant until Z.AI
+  publishes a headless CLI. Use Agent-tool sub-agents for parallel work meanwhile.

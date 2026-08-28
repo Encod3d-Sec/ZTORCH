@@ -11,7 +11,9 @@ TORCH mixes shareable methodology with private client data. The split is enforce
 
 `targets/`, `session/`, `raw/` are git-ignored (see `.gitignore`). They never enter the repo.
 
-\* `wiki/` is also git-ignored (Obsidian owns the markdown corpus). If you want to publish the wiki too, track it deliberately, but run the leak check first.
+`targets/` is client data: engagement narrative lives ONLY in `targets/<eng>/` (see AGENTS.md).
+
+**Backup assumption (verify on YOUR setup):** `targets/`, `session/`, `raw/` are git-ignored by design, so engagement data survives machine loss only through your own sync (this vault: Obsidian Sync). If that is NOT configured, snapshot before risky work: `tar czf raw/eng-backup-$(date +%F).tgz targets/<eng>/` (raw/ is also git-ignored). The wiki corpus IS tracked and ships with the repo (522+ pages, client-free by the leak gate).
 
 ## How to share
 

@@ -51,11 +51,20 @@ else
   fail "python3 not on PATH -- ZCode hooks need it"
 fi
 
-echo "2. VM reachability (Windows -> WSL -> SSH -> VMware VM)"
-if bash "$SCRIPT_DIR/../scripts/win-vm.sh" 'true' 2>/dev/null; then
-  ok "VM bridge answers (try: bash scripts/win-vm.sh 'id; hostname')"
+echo "2. VM reachability (direct tier first, then WSL bridge)"
+if bash "$SCRIPT_DIR/../scripts/vm-ssh.sh" 'true' 2>/dev/null; then
+  ok "direct ssh tier answers (bash scripts/vm-ssh.sh 'id; hostname')"
+  if bash "$SCRIPT_DIR/../scripts/win-vm.sh" 'true' 2>/dev/null; then
+    ok "WSL bridge tier answers too (fallback healthy)"
+  else
+    echo "  [warn] WSL bridge tier failed (password in /root/creds.txt rejected?) -- direct tier covers engagement work; re-arm with: bash setup/vm-key.sh needs a working bridge, so fix creds.txt first if you want the fallback"
+  fi
 else
-  fail "VM unreachable through the bridge -- boot the VMware VM or check /root/creds.txt"
+  if bash "$SCRIPT_DIR/../scripts/win-vm.sh" 'true' 2>/dev/null; then
+    ok "WSL bridge tier answers (direct tier down -- re-arm the key: bash setup/vm-key.sh)"
+  else
+    fail "VM unreachable on BOTH tiers -- boot the VMware VM / check /root/creds.txt / re-run setup/vm-key.sh"
+  fi
 fi
 
 echo "3. Skills -> .zcode/skills (junctions)"
