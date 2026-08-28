@@ -5,19 +5,30 @@
       "SessionStart": [
         {
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/engagement-init.py\"", "timeout": 40 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/engagement-init.py\"",
+              "timeout": 40
+            }
           ]
         },
         {
           "hooks": [
-            { "type": "command", "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/session-start.sh\"" }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/session-start.py\""
+            }
           ]
         }
       ],
       "UserPromptSubmit": [
         {
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/hunt-trigger.py\"", "timeout": 10 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/hunt-trigger.py\"",
+              "timeout": 10
+            }
           ]
         }
       ],
@@ -25,14 +36,26 @@
         {
           "matcher": "Bash",
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/scope-guard.py\"", "timeout": 10 },
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/drift-guard.py\"", "timeout": 10 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/scope-guard.py\"",
+              "timeout": 10
+            },
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/drift-guard.py\"",
+              "timeout": 10
+            }
           ]
         },
         {
           "matcher": "Write|Edit",
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/session-guard.py\"", "timeout": 10 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/session-guard.py\"",
+              "timeout": 10
+            }
           ]
         }
       ],
@@ -40,26 +63,46 @@
         {
           "matcher": "Bash",
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/recon-capture.py\"", "timeout": 30 },
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/capture-poc.py\"", "timeout": 15 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/recon-capture.py\"",
+              "timeout": 30
+            },
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/capture-poc.py\"",
+              "timeout": 15
+            }
           ]
         },
         {
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/tool-telemetry.py\"", "timeout": 10 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/tool-telemetry.py\"",
+              "timeout": 10
+            }
           ]
         },
         {
           "matcher": "Write|Edit",
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/wiki-reindex.py\"", "timeout": 10 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/wiki-reindex.py\"",
+              "timeout": 10
+            }
           ]
         }
       ],
       "Stop": [
         {
           "hooks": [
-            { "type": "command", "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/close-out.py\"", "timeout": 10 }
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/close-out.py\"",
+              "timeout": 10
+            }
           ]
         }
       ]

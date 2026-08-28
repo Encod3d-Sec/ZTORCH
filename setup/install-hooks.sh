@@ -23,7 +23,8 @@ echo "Hooks:  $HOOKS_SRC"
 
 # Interpreters must exist: every hook command invokes python3 or bash.
 command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 not on PATH (ZCode hook commands need it)"; exit 1; }
-command -v bash >/dev/null 2>&1 || { echo "ERROR: bash not on PATH (session-start.sh needs it)"; exit 1; }
+# bash is optional on this seat: only setup/install-skills.sh (called by session-start.py,
+# fail-open) and win-vm.sh need it; hooks themselves are python3.
 
 python3 - "$CONFIG" "$HOOKS_SRC" <<'PY'
 import json, os, re, sys
@@ -35,7 +36,7 @@ ZCODE_EVENTS = {"SessionStart", "UserPromptSubmit", "PreToolUse",
 # Canonical expected set: (event, script basename). Must match scripts/check-hooks.py.
 EXPECTED = [
     ("SessionStart", "engagement-init.py"),
-    ("SessionStart", "session-start.sh"),
+    ("SessionStart", "session-start.py"),
     ("UserPromptSubmit", "hunt-trigger.py"),
     ("PostToolUse", "recon-capture.py"),
     ("PostToolUse", "capture-poc.py"),
@@ -79,7 +80,7 @@ for event, groups in events.items():
             cmd = hk.get("command", "") if isinstance(hk, dict) else ""
             for token in cmd.split():
                 if "skills/hooks/" in token:
-                    name = token.replace("${ZCODE_PROJECT_DIR}", "").rsplit("/", 1)[-1]
+                    name = token.replace("${ZCODE_PROJECT_DIR}", "").strip("\"'").rsplit("/", 1)[-1]
                     if name not in present:
                         bad.append("%s registered but skills/hooks/%s is missing" % (name, name))
                     registered.setdefault(name, event)

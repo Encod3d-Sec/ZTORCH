@@ -31,7 +31,7 @@ import sys
 # ZCode supports exactly seven events; the old PreCompact slot (pre-compact.sh)
 # has no ZCode equivalent and stays unregistered.
 EXPECTED_HOOKS = [
-    ("SessionStart", "session-start.sh"),
+    ("SessionStart", "session-start.py"),
     ("SessionStart", "engagement-init.py"),
     ("UserPromptSubmit", "hunt-trigger.py"),
     ("PostToolUse", "recon-capture.py"),

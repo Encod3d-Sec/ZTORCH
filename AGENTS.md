@@ -147,7 +147,7 @@ Engagement-state hooks (workspace-scoped, registered in the committed `.zcode/co
 | Hook | Event | Effect |
 |------|-------|--------|
 | `engagement-init.py` | SessionStart | Self-heals the engagement file set; injects state summary + top next-moves + session cache + OOB HITs + drift warnings. |
-| `session-start.sh` | SessionStart | Registers missing vault skills into `.zcode/skills/` and loads session state. |
+| `session-start.py` | SessionStart | Registers missing vault skills into `.zcode/skills/` and loads session state. |
 | `hunt-trigger.py` | UserPromptSubmit | Routes to hunt skills from `triggers.json` (surfaces the relevant Skill; the skill carries the mandate); leak-safe telemetry to `.trigger-fire.jsonl`. Skips injected/non-prompt content. |
 | `recon-capture.py` | PostToolUse/Bash | Routes detected tech -> the hunt Skill (`playbook.json`), auto-correlates OOB callbacks (waiting -> HIT), and fires a once-per-engagement GATE-1 wiki-first nudge when an exploit-shaped command runs while `Approach.md` Weaponize is undone. Framework-meta guard suppresses false fires. Advisory. |
 | `scope-guard.py` | PreToolUse/Bash | ENFORCES (denies the command) on out-of-scope host/IP (CIDR-aware) or RoE-forbidden tooling. Fail-open; `.enforce-off` marker downgrades to advisory. |
