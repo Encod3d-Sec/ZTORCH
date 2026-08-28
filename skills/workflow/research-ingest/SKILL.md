@@ -23,7 +23,7 @@ Turn an external source (URL or `raw/research/` file) into durable wiki knowledg
 
 6. **Record the source.** Add the slug to the page's `sources:` list; bump `date_updated`. Register URL/path + slug in `raw/manifest.md`.
 
-7. **Re-index + log.** `python3 scripts/gen_index.py` (catalog) and, after a bulk session, `qmd update` (search index). Append a one-line entry to `session/log.md`. Run `python3 scripts/lint-wiki.py -q` - must be clean.
+7. **Re-index + log.** `python3 scripts/gen_index.py` (catalog) and, after a bulk session, `qmd update && qmd embed` (search index; embed keeps new pages semantically findable). Append a one-line entry to `session/log.md`. Run `python3 scripts/lint-wiki.py -q` - must be clean.
 
 ## Guardrails
 - **Generic only.** Wiki holds reusable methodology; client/engagement specifics stay in `targets/<eng>/`. Reusable default creds -> `wiki/cheatsheets/default-credentials.md`; reusable request patterns -> `api-request-findings.md`.

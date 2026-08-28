@@ -68,7 +68,7 @@ Output format: `[score] path/relative/to/wiki/` followed by a chunk of the match
 **Re-index after adding or editing pages** (run once after a bulk write, not per file):
 
 ```bash
-qmd update
+qmd update && qmd embed   # update indexes text; embed refreshes the semantic vectors
 ```
 
 Expected output: `Indexing wiki... Done. N chunks indexed.`
@@ -112,7 +112,7 @@ python3 scripts/wiki-promote.py --promote <slug>   # or: --promote all
 `--promote` runs `scripts/check-leaks.sh --file` on the candidate BODY. If a client
 marker is present it refuses and writes nothing; if clean it merges into
 `wiki/<target_page>` (dedup by slug), sets `status: promoted`, archives the file to
-`wiki-candidates/_promoted/`, and re-indexes (`gen_index.py` + `qmd update`). Stage a
+`wiki-candidates/_promoted/`, and re-indexes (`gen_index.py` + `qmd update && qmd embed`). Stage a
 new candidate with `scripts/wiki-stage.py --kind <default-cred|api-pattern|technique>
 --slug <slug>`. This is the only path that writes engagement-derived knowledge into
 `wiki/`, so the client-data boundary is enforced by code, not prose.
@@ -125,7 +125,7 @@ If `qmd` fails:
 
 1. Confirm the `qmd` binary is on `PATH` (`command -v qmd`); it installs to `~/.bun/bin/qmd` via `bun install -g @qmd/cli`.
 2. Check `QMD_VAULT` is set and points to the current vault path (no trailing slash, no spaces encoded).
-3. The index lives under `~/.qmd/` - if the collection is missing, run `qmd update` to rebuild from scratch.
+3. The index lives under `~/.qmd/` - if the collection is missing, run `qmd update && qmd embed` to rebuild from scratch.
 
 ---
 

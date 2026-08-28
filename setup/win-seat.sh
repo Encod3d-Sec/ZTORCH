@@ -11,7 +11,7 @@
 #   2. links the vault skills into .zcode/skills/ (junctions)
 #   3. writes the .zcode/win-seat marker (gates the qmd-in-WSL fallbacks)
 #   4. registers the wiki-search MCP at user scope: ZCode (Windows) -> wsl.exe -> qmd mcp
-#   5. with --index: builds/refreshes the search index now (qmd update through WSL)
+#   5. with --index: builds/refreshes the search index now (qmd update + embed through WSL)
 set -uo pipefail
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"   # keep /root/... args native for wsl.exe
 
@@ -91,8 +91,8 @@ PY
 
 echo "5. Index"
 if [ "${1:-}" = "--index" ]; then
-  echo "  building/updating the search index (qmd update through WSL; can take minutes)..."
-  bash "$SCRIPT_DIR/../scripts/win-qmd.sh" update && ok "qmd update" || fail "qmd update"
+  echo "  building/updating the search index (qmd update + embed through WSL; can take minutes)..."
+  bash "$SCRIPT_DIR/../scripts/win-qmd.sh" update && bash "$SCRIPT_DIR/../scripts/win-qmd.sh" embed && ok "qmd update+embed" || fail "qmd update+embed"
 else
   echo "  skipped. Build it once now with:  bash setup/win-seat.sh --index"
   echo "  (or later: bash scripts/win-qmd.sh update)"

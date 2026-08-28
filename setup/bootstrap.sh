@@ -114,4 +114,4 @@ else
 fi
 
 echo ""
-echo "Done. Restart ZCode, then run: qmd update"
+echo "Done. Restart ZCode, then run: qmd update && qmd embed"

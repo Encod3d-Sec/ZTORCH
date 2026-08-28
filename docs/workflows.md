@@ -51,7 +51,7 @@ assembled.
    substance still arrives through the gate.
 5. **Promote** through the leak gate (`scripts/wiki-promote.py --promote all`, runs
    `check-leaks.sh`, fails closed, re-indexes), then `lint-wiki.py -q` and, for a new
-   page, `gen_index.py` + `build_moc.py` + `qmd update`.
+   page, `gen_index.py` + `build_moc.py` + `qmd update && qmd embed`.
 6. **Self-clear + log**: `touch targets/<eng>/.learn-done`; one generic line to
    `session/log.md`. Never write client specifics into `session/*` or `wiki/`.
 
@@ -109,7 +109,7 @@ If the `wiki-search` MCP is unavailable, fall back to reading `wiki/index.md` to
 
 ## Re-indexing after ingest
 
-After writing new or updated wiki pages, run `qmd update` via the `Bash` tool to keep the search index current. Do this once at the end of an ingest session, not after every file.
+After writing new or updated wiki pages, run `qmd update && qmd embed` via the `Bash` tool to keep the search index current (`update` = text index, `embed` = semantic vectors; skipping `embed` leaves new pages invisible to `qmd query`). Do this once at the end of an ingest session, not after every file.
 
 ## Hot cache
 
@@ -133,9 +133,9 @@ Health check is script-driven. The SessionStart hook surfaces a one-line summary
 3. **`python3 scripts/build_moc.py`** - regenerate graph hubs after adding pages so every page stays reachable (replaces the manual orphan scan).
 4. **`python3 scripts/wiki-gaps.py -v`** - technique pages referenced by hunt skills / FIND files but missing.
 5. Pick the next build-out target from the leanest-areas note in step 1; append a one-line lint entry to `session/log.md`.
-6. Re-index search after page changes with `qmd update` (see `### Re-index search`).
+6. Re-index search after page changes with `qmd update && qmd embed` (see `### Re-index search`).
 
 ### Re-index search
 
-After touching many wiki pages, run **`qmd update`** on the host where the `wiki-search` collection is registered (often WSL Kali for this vault).
+After touching many wiki pages, run **`qmd update && qmd embed`** on the host where the `wiki-search` collection is registered (often WSL Kali for this vault).
 

@@ -27,7 +27,7 @@ per-machine table, it lives in the git-ignored `AGENTS.local.md`.
 Config location: `~/.zcode/cli/config.json` -> `mcp.servers` (user scope; `setup/bootstrap.sh`
 writes it for you). Workspace config lives at `<vault>/.zcode/config.json` (committed, hooks only).
 Manage/inspect via Settings -> MCP in ZCode.
-Rebuild index: `qmd update` (run from vault root after bulk wiki changes)
+Rebuild index: `qmd update && qmd embed` (run from vault root after bulk wiki changes; embed refreshes semantic vectors)
 
 ### obsidian-vault (removed)
 

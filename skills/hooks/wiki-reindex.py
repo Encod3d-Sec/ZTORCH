@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """PostToolUse(Write|Edit) hook: auto-reindex the qmd search index after a wiki edit.
 
-When a Write/Edit lands on a wiki/**/*.md page, fire a debounced background `qmd update`
+When a Write/Edit lands on a wiki/**/*.md page, fire a debounced background `qmd update && qmd embed`
 so the change is searchable without the manual reindex step. Anything else returns
 immediately -- a non-wiki write costs one endswith + substring check, no latency.
 
 Debounce: a burst of edits collapses to one reindex (a stamp file gates re-firing inside
-the window; the reindex runs `sleep <window>; qmd update` detached so trailing edits land
+the window; the reindex runs `sleep <window>; qmd update && qmd embed` detached so trailing edits land
 before qmd rescans disk). Off the blocking path: the reindex is a detached background
 process, so the hook returns at once. Fail-open: any error exits 0.
 
@@ -70,7 +70,7 @@ def main():
     # returns immediately. `sleep` lets a burst's trailing edits land before qmd rescans.
     # Skip when qmd is not installed (nothing to run; keeps tests from spawning anything).
     if shutil.which("qmd"):
-        reindex_cmd = "qmd update"
+        reindex_cmd = "qmd update && qmd embed"   # update indexes text; embed makes it SEMANTICALLY searchable
     else:
         # Windows seat (marker written by setup/win-seat.sh): qmd lives in WSL kali.
         # The marker keeps tests hermetic -- fixture vaults never carry it.
@@ -78,7 +78,7 @@ def main():
         if not (os.path.isfile(os.path.join(vault, ".zcode", "win-seat"))
                 and os.path.isfile(bridge)):
             return
-        reindex_cmd = 'bash "%s" update' % bridge
+        reindex_cmd = 'bash "%s" update && bash "%s" embed' % (bridge, bridge)
     try:
         subprocess.Popen(
             ["sh", "-c", "sleep %d; %s" % (DEBOUNCE_SECONDS, reindex_cmd)],

@@ -208,7 +208,7 @@ already saturated for this box).
 ```bash
 python3 scripts/lint-wiki.py -q        # must be clean (broken links, stale index)
 # only if a NEW page was created:
-python3 scripts/gen_index.py && python3 scripts/build_moc.py && qmd update
+python3 scripts/gen_index.py && python3 scripts/build_moc.py && qmd update && qmd embed
 # GATE: do NOT self-clear with eval.md's judgement half blank (Phase 0d). This exits 1 and
 # refuses the marker until Drift moments / What went right / Score are filled -- learn self-cleared
 # with the human half empty on a real box, so this is enforced, not advisory.
