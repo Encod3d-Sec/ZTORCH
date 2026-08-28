@@ -31,14 +31,29 @@ The vault is ONE working copy seen under three paths:
   (`scripts/win-vm.sh`, `scripts/win-qmd.sh`); inside WSL everything is direct
   (`bash /root/vm.sh '<cmd>'`, `qmd`).
 
-## Invocation forms (same effect, pick by seat)
+## Invocation forms (pick by need)
 
-```
-Agent (Windows seat):   bash scripts/win-vm.sh '<remote command>'
-WSL interactive (root): sudo -s && cd ~ && ./vm.sh '<remote command>'     # /root IS ~
-WSL (any dir):          bash /root/vm.sh '<remote command>'
-Driver environment:     VM_SH="$(pwd)/scripts/win-vm.sh" bash scripts/win-rsh.sh <session> '<ps cmd>'
-```
+1. **One-shot, default.** The agent reaches WSL as root directly - no sudo needed, run vm.sh straight:
+   ```
+   bash scripts/win-vm.sh '<remote command>'                                  # Windows seat bridge
+   wsl.exe -d kali-linux -u root -- bash -lc 'cd /opt/ztorch && <cmd>'       # native WSL one-shot
+   wsl.exe -d kali-linux -u root -- /root/vm.sh '<remote command>'           # VM, direct
+   ```
+2. **Persistent seat session (stateful, ALIVE across passes).** A root bash in /opt/ztorch inside
+   a WSL tmux session named `seat`; env, cd, functions and background jobs persist between calls:
+   ```
+   bash scripts/seat.sh ensure           # create if missing (idempotent)
+   bash scripts/seat.sh run '<cmd>'      # ONE command, clean output back, state kept
+   bash scripts/seat.sh send '<cmd>'     # raw type (no wait) - long-running starts
+   bash scripts/seat.sh capture [n]      # raw pane read
+   bash scripts/seat.sh kill
+   ```
+   The operator attaches to the SAME live session:
+   `powershell.exe` -> `wsl.exe` (login kali:kali) -> `sudo -s` -> `tmux attach -t seat`
+   (fresh seats for the operator: after `sudo -s`, `cd /opt/ztorch` and /root/vm.sh is `~`).
+3. **On the VM.** vm.sh always runs ONE command (docs/shell-interaction.md). Long/live work goes
+   in a tmux window ON THE VM (`vm.sh 'tmux new-session -d -s <name>'`), driven with send-keys /
+   capture-pane; PowerShell reverse shells via `scripts/win-rsh.sh`.
 
 ## Rules
 
