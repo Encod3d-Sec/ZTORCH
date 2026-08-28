@@ -11,6 +11,7 @@
 | Re-index / wiki status | `wiki` skill |
 | Git clone | Windows seat: clone normally; into WSL: `wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>` (MSYS: prefix MSYS_NO_PATHCONV=1) |
 | Run tooling against a target | Kali VM over SSH through the bridge: `bash scripts/win-vm.sh '<cmd>'` (this seat: execs /root/vm.sh in WSL kali -> the VMware VM; VPN route + tools + chromium live on the VM) -> `docs/virtual-machine.md` |
+| WSL seat (manual/native) | PowerShell -> `wsl.exe` -> `sudo -s` -> `cd ~` (`/root/vm.sh`); harness at `/opt/ztorch` (symlink to this vault) -> `Skill(kali-seat)` |
 
 ---
 
@@ -42,6 +43,7 @@
 | Vuln/CVE research on a target (binary/repo/app/firmware) | `research` skill (scaffolds `raw/research/<project>/`)                       |
 | Hand a fiddly, fully-specified exploit-compile/escalation run to a sub-agent | `delegate` skill (autonomous sub-agent exploit-run; false-root/hostname guardrail mandatory) |
 | Drive msfconsole (recon, exploit search/run, reverse shells, post-ex) | `metasploit` skill (msfconsole framework-driver; cheatsheet [[metasploit]]) |
+| Working the VM / WSL seat (vm.sh, tmux-on-VM, seat map) | `kali-seat` skill (Windows seat -> WSL kali -> VMware VM; `/opt/ztorch` in WSL) |
 
 Vault-local skills live under `skills/`: `skills/hunt/` (the `hunt-*` vuln-class skills + the shared `hunt-core` spine every hunt assumes), `skills/workflow/` (engagement PROCESS skills: `arsenal`/`wiki-arsenal`, `triage`, `evidence`, `coverage`, `ingest`, `next-move`, `wiki-recon`, `nday`, `research-ingest`, `delegate`, `metasploit`, `ctf-box`, `ctf-category`, `screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`), `skills/burp/` (`hunt-burp` + `screenshot-burp`, the Burp MCP driver + Repeater-PoC capture; driver scripts in `scripts/burp/`, host setup in `setup/burp/`), and the standalone `wiki/`, `research/`, `disclosure/`, `code-review/`. They load on demand via the Skill tool (descriptions in the `/` skill picker), discovered by basename so directory placement is organizational only. `agents-md-improver/` is the offline instruction-file reviewer (the ZCode counterpart of the old `claude-md-improver`). MCP/hook/plugin troubleshooting: `skills/skills-setup.md`.
 
