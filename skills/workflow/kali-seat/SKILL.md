@@ -33,7 +33,13 @@ The vault is ONE working copy seen under three paths:
 
 ## Invocation forms (pick by need)
 
-1. **One-shot, default.** The agent reaches WSL as root directly - no sudo needed, run vm.sh straight:
+0. **Fastest: direct ssh, Windows -> VM.** Key-based (`setup/vm-key.sh` arms it once), no WSL hop, fails fast:
+   ```
+   bash scripts/vm-ssh.sh '<remote command>'          # root@VM, VPN + tools + chromium live here
+   VM_SH="$(pwd)/scripts/vm-ssh.sh" bash scripts/win-rsh.sh <session> '<ps cmd>'
+   ```
+   Use this for quick tool calls and driver runs. Fallbacks below cover WSL state and key loss.
+1. **One-shot via WSL.** The agent reaches WSL as root directly - no sudo needed, run vm.sh straight:
    ```
    bash scripts/win-vm.sh '<remote command>'                                  # Windows seat bridge
    wsl.exe -d kali-linux -u root -- bash -lc 'cd /opt/ztorch && <cmd>'       # native WSL one-shot
@@ -74,5 +80,7 @@ The vault is ONE working copy seen under three paths:
 ## Setup / repair
 
 - Windows seat: `bash setup/win-seat.sh` (bridge checks, skills, wiki-search MCP, `--index`).
+- Direct-VM key: `bash setup/vm-key.sh` (generates `~/.ssh/id_ed25519_ztorch`, installs it on the
+  VM through the WSL bridge once; re-run if the VM is rebuilt and key auth starts failing).
 - WSL side: `bash /opt/ztorch/setup/wsl-seat.sh` (re-creates the `/opt/ztorch` symlink, git
   safe.directory, verifies `/root/vm.sh` + creds + sshpass + qmd).
