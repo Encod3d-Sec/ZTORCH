@@ -887,6 +887,11 @@ def test_foothold_records_window_and_next_routes_post_ex_through_vm_rsh(eng):
     # a shell lands for asset-1 in tmux window 'shell'
     r = run(eng, "foothold", "asset-1", "--win", "shell", expect=0)
     assert "tmux attach" in r.stdout
+    # the foothold print carries the three reflexes that drift without it (2026-08-30 audit):
+    # work-from-shell, the board re-run that seeds 4b, and the delegate hand-off.
+    assert "WORK FROM" in r.stdout
+    assert "campaign.py board" in r.stdout
+    assert "Skill(delegate)" in r.stdout
     # state.md row flips to access=foothold and notes the window
     srow = next(x for x in E._parse_table(os.path.join(eng, "state.md")) if x["asset"] == "asset-1")
     assert srow["access"] == "foothold"
@@ -899,6 +904,8 @@ def test_foothold_records_window_and_next_routes_post_ex_through_vm_rsh(eng):
     assert "FOOTHOLD" in r.stdout and "tmux attach" in r.stdout
     assert "vm-rsh.sh --win shell" in r.stdout
     assert "trufflehog" in r.stdout
+    # post-foothold wait posture: condition-poll, never a blind sleep
+    assert "never a blind `sleep N`" in r.stdout
 
 
 def test_next_without_foothold_emits_bare_tool(eng):

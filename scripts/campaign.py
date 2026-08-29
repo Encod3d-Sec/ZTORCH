@@ -1251,6 +1251,8 @@ def cmd_next(a):
     if win:
         print("FOOTHOLD  session live in tmux window '%s' -> operator can: tmux attach -t %s"
               % (win, eng))
+        print("WAIT      poll on a CONDITION (`until <cmd>; do sleep 2; done` watching the output "
+              "file/prompt), never a blind `sleep N`")
     notes = _approach_notes().get((row.get("vuln class") or "").strip().lower())
     if notes:
         if notes.get("do"):
@@ -1583,6 +1585,10 @@ def cmd_foothold(a):
           % (asset, a.win, "" if matched else " (no state.md row matched; recorded anyway)"))
     print("  post-ex for %s now routes through: bash scripts/vm-rsh.sh --win %s %s '<cmd>'"
           % (asset, a.win, eng))
+    print("  WORK FROM the landed shell (sessions -i / vm-rsh); relay jobs only RE-ARM a broken channel")
+    print("  then: campaign.py board            (seeds the 4b privesc rows for %s)" % asset)
+    print("  delegate the escalation/exploit run to a cheap-tier sub-agent: Skill(delegate)"
+          "  [main agent stays on the board]")
     print("  operator can: tmux attach -t %s" % eng)
     return 0
 
