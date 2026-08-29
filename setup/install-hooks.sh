@@ -43,6 +43,7 @@ EXPECTED = [
     ("PostToolUse", "tool-telemetry.py"),
     ("PostToolUse", "wiki-reindex.py"),
     ("PreToolUse", "scope-guard.py"),
+    ("PreToolUse", "sleep-guard.py"),
     ("PreToolUse", "session-guard.py"),
     ("PreToolUse", "drift-guard.py"),
     ("Stop", "close-out.py"),

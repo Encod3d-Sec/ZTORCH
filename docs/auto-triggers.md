@@ -21,9 +21,11 @@ This page is a snapshot; regenerate the tables from those files if they change.
 
 | Event | Hook(s) | What happens |
 |---|---|---|
-| **SessionStart** | `session-start.py`, `engagement-init.py` | Loads `session/hot.md`; injects the active-engagement summary + top next-moves + recent log + wiki-health line (only if broken) + active research status (`research_status.py`); regenerates `index.md` if stale; self-heals the engagement file set. |
+| **SessionStart** | `session-start.py`, `engagement-init.py` | Loads `session/hot.md` (after rotating it to its ~3 newest entries, older ones archived verbatim to `hot-archive.md`); injects the active-engagement summary + top next-moves + recent log + wiki-health line (only if broken) + active research status (`research_status.py`); regenerates `index.md` if stale; self-heals the engagement file set. |
 | **UserPromptSubmit** | `hunt-trigger.py` | Keyword-matches the prompt against `triggers.json` (code-stripped, intent-gated): a hard hit surfaces the relevant **Skill(x)** to load (routing; the skill carries the mandate), a surface hit a softer "consider Skill(x)". Leak-safe telemetry to `.trigger-fire.jsonl`. |
 | **PreToolUse (Bash)** | `scope-guard.py` | ENFORCES: denies an out-of-scope host/IP (CIDR-aware) or RoE-forbidden tooling; fail-open, `.enforce-off` downgrades to advisory (deterministic safety guard). |
+| **PreToolUse (Bash)** | `sleep-guard.py` | ENFORCES: denies a blind wait (`sleep N`, N >= 10, no `while`/`until` poll watching output). Reason carries the fix (`until <check>; do sleep 2; done`). Settling sleeps < 10s and poll loops pass; heredoc bodies exempt (payload, not a wait). Deterministic safety guard, `.enforce-off` downgrades to advisory. |
+| **PreToolUse (Bash)** | `drift-guard.py` | Advisory: nudges when shell work drifts off the `Approach.md` plan board (off-board commands; backs off after acknowledgement; silent post-foothold/post-SOLVED). |
 | **PreToolUse (Write)** | `session-guard.py` | Warns when a write would put a client marker into a generic `session/*` file OR a git-tracked framework tree (`wiki/`, `scripts/`, `skills/`, `docs/`, `tests/`, `setup/`); `targets/` and `docs/superpowers/` are exempt. Catches the codename-in-a-tracked-file leak at write-time. |
 | **PostToolUse (Bash)** | `recon-capture.py` | Fingerprint auto-route (to the hunt Skill) + OOB callback correlation + a once-per-engagement GATE-1 wiki-first nudge (exploit-shaped command while `Approach.md` Weaponize is undone). A framework-meta guard suppresses false fires. Advisory. |
 | **PostToolUse (all)** | `tool-telemetry.py` | Per-box telemetry: appends every tool/skill call to `targets/<eng>/.events.jsonl`, stamps `started_at`, records the transcript path; feeds `eval_metrics.py`. Silent, fail-open. |
@@ -31,7 +33,7 @@ This page is a snapshot; regenerate the tables from those files if they change.
 | **PostToolUse (Write/Edit)** | `wiki-reindex.py` | Auto-reindex: a Write/Edit to `wiki/**/*.md` fires a debounced background `qmd update && qmd embed`, so the change is searchable (text AND semantic) without a manual reindex. Off the blocking path, fail-open. |
 | **Stop** | `close-out.py` | Close-out reflex: when the engagement is SOLVED but its walkthrough is unassembled (or the learn harvest is due), nudges Skill(walkthrough) then Skill(learn). Advisory, self-clearing. |
 
-All 11 hooks (across 5 events) inject context, route to a skill, capture telemetry, or fire a deterministic safety guard; none prescribes methodology, none launches a scan, and all fail open. `scope-guard` denies an out-of-scope/RoE-forbidden command and `drift-guard` denies an off-board exploit call after repeated ignores (escalating from a warning); the rest only inject context. Canonical set: `scripts/check-hooks.py` `EXPECTED_HOOKS`. (Removed 2026-08-04: `web-recon.py`, which auto-launched `recon-web.sh` + a chromium page render on every newly-seen in-scope surface. It fired on tool OUTPUT, so merely PRINTING a hostname re-launched scans and a render against hosts already retired, and the render leg was producing empty `poc/` dirs rather than evidence. Run `scripts/recon-web.sh <eng> <url>` by hand instead.)
+All 12 hooks (across 5 events) inject context, route to a skill, capture telemetry, or fire a deterministic safety guard; none prescribes methodology, none launches a scan, and all fail open. `scope-guard` denies an out-of-scope/RoE-forbidden command, `sleep-guard` denies a blind long wait, and `drift-guard` denies an off-board exploit call after repeated ignores (escalating from a warning); the rest only inject context. Canonical set: `scripts/check-hooks.py` `EXPECTED_HOOKS`. (Removed 2026-08-04: `web-recon.py`, which auto-launched `recon-web.sh` + a chromium page render on every newly-seen in-scope surface. It fired on tool OUTPUT, so merely PRINTING a hostname re-launched scans and a render against hosts already retired, and the render leg was producing empty `poc/` dirs rather than evidence. Run `scripts/recon-web.sh <eng> <url>` by hand instead.)
 
 ---
 
@@ -83,6 +85,9 @@ Prompt contains the keyword (case-insensitive) -> that skill is suggested. Multi
 - uses RoE-forbidden tooling given `scope.md` flags: `no_bruteforce` (hydra/medusa/kerbrute/...), `no_dos` (slowloris/--min-rate huge/nmap -T5/...), `passive_only` (any active scanner).
 
 Fails open: a missing scope entry = no denial. No active engagement = silent.
+
+### Before the command: blind-wait enforcement (`sleep-guard.py`, PreToolUse)
+**ENFORCES: denies the command** (same `.enforce-off` downgrade) when it contains a timed `sleep N` (N >= 10) with no `while`/`until` structure. The recurring cost: a blind `sleep 120; <check>` burns wall-clock twice (the guess is usually wrong in both directions) and the operator loses the tmux window to a dead wait. The deny reason carries the fix: poll on a CONDITION, `until <check>; do sleep 2; done`. Settling sleeps under 10s (`sleep 2` after a restart) and any poll loop pass; heredoc bodies are exempt (payload content, not a wait in this shell). Telemetry via `_telemetry.drift("sleep-guard", ...)`.
 
 ### After a bash command: fingerprint router + OOB correlation + GATE-1 nudge (`recon-capture.py`, PostToolUse)
 

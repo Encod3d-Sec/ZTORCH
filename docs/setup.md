@@ -19,7 +19,7 @@ ZCode needs no per-device hook symlink: registration ships in the committed
 `<vault>/.zcode/config.json` and resolves scripts via ${ZCODE_PROJECT_DIR}.
 ```
 
-Then verify the hook registration in `.zcode/config.json` (`bash setup/install-hooks.sh` checks it; the canonical set is 11 hook commands across 5 ZCode events -- see below). On a new machine, re-running `bash setup/bootstrap.sh` handles all steps automatically.
+Then verify the hook registration in `.zcode/config.json` (`bash setup/install-hooks.sh` checks it; the canonical set is 12 hook commands across 5 ZCode events -- see below). On a new machine, re-running `bash setup/bootstrap.sh` handles all steps automatically.
 
 ## Engagement-state automation (both machines)
 
@@ -37,7 +37,7 @@ bash setup/install-hooks.sh    # verifies .zcode/config.json registration + inte
 # 3. restart ZCode
 ```
 
-`install-hooks.sh` is self-locating (works on any user/path/spelling) and idempotent. It registers the canonical set (mirrored in `scripts/check-hooks.py` `EXPECTED_HOOKS`; `engagement-init` warns at SessionStart if any is unregistered) -- 11 hook commands across 5 ZCode events:
+`install-hooks.sh` is self-locating (works on any user/path/spelling) and idempotent. It registers the canonical set (mirrored in `scripts/check-hooks.py` `EXPECTED_HOOKS`; `engagement-init` warns at SessionStart if any is unregistered) -- 12 hook commands across 5 ZCode events:
 - **SessionStart** -- `session-start.py` (skill auto-register + hot.md cache), `engagement-init.py` (self-heals the per-type core set: ctf gets `state/loot/Approach/...`, pentest/bugbounty add `Killchain`; injects the state summary + plan board status + top next-moves + one compact `harness:` maintenance line).
 - **UserPromptSubmit** -- `hunt-trigger.py` (fires hunt skills from `skills/hunt/triggers.json`).
 - **PreToolUse (Bash)** -- `scope-guard.py` (ENFORCES: denies out-of-scope host/IP (IPv4+IPv6, CIDR-aware; query-param/fragment values exempt) or RoE-forbidden tooling; fail-open + `skills/hooks/.enforce-off` escape hatch; also logs each block as a drift signal).

@@ -43,6 +43,11 @@
             },
             {
               "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/sleep-guard.py\"",
+              "timeout": 10
+            },
+            {
+              "type": "command",
               "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/drift-guard.py\"",
               "timeout": 10
             }
