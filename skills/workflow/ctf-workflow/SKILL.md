@@ -103,6 +103,8 @@ set `## STATUS: SOLVED` in state.md, then the driver prints the close-out chain.
   blind background pipe -- you must WATCH a scanner that can trip a target's rate-limiter/ban.
 - Capture the flag/root state to `poc/` AS IT LANDS (`scripts/capture.sh`), even on a curl/ssh-only
   box -- a transient exploited state cannot be re-shot after the turn.
+- Poll on a CONDITION (until-loop / output-file-appears check), never a blind `sleep N` -- timed
+  waits either waste minutes or fire early; the condition is the actual signal.
 
 ## Close-out
 

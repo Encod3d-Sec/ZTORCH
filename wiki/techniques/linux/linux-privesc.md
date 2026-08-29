@@ -1958,3 +1958,34 @@ A root cron that copies specific files **by name** (not a wildcard) from a user-
 Gotcha: a by-name copy ignores extra symlinks with new names - you must replace one of the exact filenames the cron references. Confirm the interval by diffing the destination file mtimes against the box clock.
 
 <!-- promoted-slug: cron-cp-byname-symlink-deref -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## GTFOBins pager escapes need a real pty
+
+`sudo less <file>` through a pipe (msf command shell, `ssh host cmd`, captured output) sees a
+non-tty: less CATS the file and exits, so the `!sh` line never reaches a pager prompt and lands in
+the outer shell as command-not-found. Stabilize first (`script -qc /bin/bash /dev/null`), then run
+the pager and its `!` escape interactively.
+
+<!-- promoted-slug: gtfobins-pager-pty-trap -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## systemd Environment=PATH hijack + the exec-bit ownership trap
+
+A unit resolves bare commands through an attacker-writable dir with no sudo/SUID involved:
+`Environment=PATH=/opt/app/bin:...` + `User=<victim>` + ExecStart calling a bare binary (`ps`).
+Plant `<dir>/<bin>` and the timer hands you that user every cycle.
+
+The exec-bit trap: a group-writable dir lets you overwrite a file, but `chmod` needs ownership
+(or CAP_FOWNER). If the planted file arrives mode 664 through a different tier's writer, the tier
+that can write the dir often CANNOT make it executable, and the hijack silently never fires
+(tell: the payload's marker file never appears). Route the `chmod 755` through the payload that
+runs AS THE FILE'S OWNER.
+
+<!-- promoted-slug: systemd-env-path-owner-chmod -->

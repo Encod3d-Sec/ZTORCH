@@ -187,3 +187,21 @@ set PROXIES HTTP:127.0.0.1:8080
 ```
 
 See [[metasploit]] for full tool page.
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## Handler console gotchas
+
+- Launch with `set ExitOnSession false; run -j`. Under `msfconsole -x`, a bare `run` BLOCKS the
+  console input loop: keystrokes echo, event spam prints, but no prompt ever renders and every
+  `sessions` command is a no-op. Health check: the `msf6 >` prompt must be visible in the pane.
+- `sessions -c <cmd>` is a silent no-op on plain command shells; identify with `sessions -i <id>`
+  then `id`.
+- The Ctrl-Z background confirm (`Background session N? [y/N]`) consumes the next typed line;
+  `exit` disposable shells instead.
+- Command shells are pty-less pipes; stabilize with `script -qc /bin/bash /dev/null` before any
+  interactive tool (GTFOBins pagers, sudo prompts).
+
+<!-- promoted-slug: msf-handler-console-gotchas -->

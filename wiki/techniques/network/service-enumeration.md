@@ -733,3 +733,23 @@ prips 93.184.216.0/24 | hakoriginfinder -h https://example.com:443/foo
 - [[ad-enumeration]] — LDAP-focused domain footprinting
 - [[ad-cheatsheet|Active Directory cheatsheet]] — LDAP, SMB, WinRM, and RDP one-liners in AD context
 - [[wiki/cheatsheets/recon]] — passive recon techniques that precede service enumeration
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## Drop-box write-exec: planted file executed by the server-side processor
+
+Anon-FTP write access matters only when something server-side PROCESSES the drop dir. A
+cron/pipeline that bash-executes uploads gives code exec as the PROCESSING user (not the FTP user):
+
+- Confirm exec with `{ id; hostname; } > <outbox>/id.txt 2>&1` and read the outbox back over the
+  same anon FTP; the readable output dir doubles as the exfil channel, no shell needed.
+- The processor usually accepts plain `*.sh` and ignores unknown formats; a loop with the `rm`
+  commented out re-fires the file every cycle, so guard one-shot actions with
+  `[ -f /tmp/.tag ] || { ...; touch /tmp/.tag; }`.
+- Client gotchas: passive mode (active-mode bounce dies on `500 Illegal PORT` when
+  `port_promiscuous=NO`); `curl -T file ftp://host/dir/ --user anonymous:x` uploads without a
+  password prompt.
+
+<!-- promoted-slug: ftp-dropbox-exec -->

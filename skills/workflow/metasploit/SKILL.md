@@ -42,6 +42,20 @@ on every fresh session, then targeted `post/*` modules, `getsystem`, and
 `post/multi/manage/shell_to_meterpreter` to upgrade a plain shell. Cheatsheet: Sessions and Jobs
 + Post-Exploitation Modules.
 
+### Driving the handler console from tmux (hard-won pitfalls)
+- **Console health check first**: after launch the pane must render the `msf6 >` prompt. A pane
+  showing only `[*] ... session N opened` event spam with no prompt means the console input loop
+  is blocked (e.g. a blocking `run` under `-x`): keystrokes ECHO but nothing executes. Relaunch
+  with `run -j` before driving.
+- **`sessions -c <cmd>` is a silent no-op on plain `cmd/unix` command shells** (no output, no
+  execution). Identify sessions one at a time: `sessions -i <id>` then `id`.
+- **Never C-z to background a session** you plan to leave: the `Background session N? [y/N]`
+  confirm consumes the next typed line (the remainder leaks into the shell as a typo command).
+  `exit` a disposable shell instead, or answer the prompt first.
+- **Command shells are pty-less pipes**: interactive sudo/GTFOBins tools (`sudo less`, `vi`) see a
+  non-tty and exit instantly (less cats the file and quits, so `!sh` hits bash). Stabilize in-shell
+  first: `script -qc /bin/bash /dev/null`, THEN `sudo less <file>` + `!sh` = root.
+
 ## Pivoting
 `autoroute`/`portfwd`/`socks` through a session to reach internal-only ports before hand-rolling
 SSH `-L`. Full syntax and proxychains setup: `[[pivoting]]`.
@@ -55,7 +69,10 @@ the attacker box. Same guardrail `Skill(delegate)` enforces on manual exploit ru
 The fiddly msfvenom-compile -> handler-catch -> escalation-run sequence is a prime
 `Skill(delegate)` hand-off: fully specified, mechanical, cheap-model-shaped. DRIVE msf for every
 load-bearing exploit/shell request so the operator watches sessions land; don't abandon msf for
-raw scripts once a foothold lands.
+raw scripts once a foothold lands. And once sessions are landed, WORK FROM THE SHELLS
+(`sessions -i` / `vm-rsh --win msf`): relay-job uploads are for RE-ARMING a broken channel, not
+for driving post-ex you could run interactively -- post-ex via repeated file-drop jobs is slower,
+noisier, and the operator cannot watch it.
 
 ## Client-data boundary
 Sessions, loot, and creds stay in the msf DB workspace + `targets/<eng>/`; never paste a real
