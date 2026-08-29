@@ -12,14 +12,63 @@ Fail open: any error -> empty output, exit 0.
 """
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import _emit  # noqa: E402
 
 VAULT = os.path.dirname(os.path.dirname(HERE))
+
+
+def _rotate_hot(hot_path, archive_path, keep=3):
+    """Enforce hot.md's own 'Keep ~3 newest entries' header: archive older entries to
+    hot-archive.md VERBATIM (nothing is deleted). Ranked by the YYYY-MM-DD in each '## '
+    heading; undated headings are always kept (nothing to rank them by). No-op -- no
+    writes at all -- while the file is within budget, so sessions that add nothing
+    touch nothing."""
+    try:
+        with open(hot_path, encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines(keepends=True)
+    except OSError:
+        return
+    head, entries, cur = [], [], None
+    for ln in lines:
+        if ln.startswith("## "):
+            if cur:
+                entries.append(cur)
+            cur = [ln]
+        elif cur is not None:
+            cur.append(ln)
+        else:
+            head.append(ln)
+    if cur:
+        entries.append(cur)
+    dated = []
+    for i, e in enumerate(entries):
+        m = re.match(r"## (\d{4}-\d{2}-\d{2})", e[0])
+        dated.append((m.group(1) if m else None, i, e))
+    keep_idx = {i for d, i, _e in dated if d is None}
+    ranked = sorted((x for x in dated if x[0]), key=lambda x: x[0], reverse=True)
+    keep_idx |= {i for _d, i, _e in ranked[:keep]}
+    drop = [e for d, i, e in dated if i not in keep_idx]
+    if not drop:
+        return
+    try:
+        with open(archive_path, "a", encoding="utf-8") as f:
+            f.write("\n<!-- archived from hot.md %s (hot.md keeps ~%d newest entries) -->\n"
+                    % (time.strftime("%Y-%m-%d"), keep))
+            for e in drop:
+                f.write("".join(e).rstrip("\n") + "\n")
+        with open(hot_path, "w", encoding="utf-8") as f:
+            f.write("".join(head)
+                    + "".join("".join(e).rstrip("\n") + "\n\n"
+                              for d, i, e in dated if i in keep_idx))
+    except OSError:
+        return
 
 
 def main():
@@ -32,6 +81,14 @@ def main():
             cwd=VAULT, timeout=90,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+    # Enforce the hot.md entry budget BEFORE injecting, so the session sees the trimmed
+    # cache (and the file can never regrow to an unbounded per-turn context cost).
+    try:
+        _rotate_hot(os.path.join(VAULT, "session", "hot.md"),
+                    os.path.join(VAULT, "session", "hot-archive.md"))
     except Exception:
         pass
 
