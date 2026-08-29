@@ -6,8 +6,9 @@
 # index the MCP uses (qmd query = semantic, qmd keyword = substring), so a wiki-first lookup
 # always has a working path from the Bash tool:
 #
-#   bash scripts/wiki-query.sh "jenkins rce exploit"       # semantic
+#   bash scripts/wiki-query.sh "jenkins rce exploit"       # semantic (fast, RRF)
 #   bash scripts/wiki-query.sh -k "CVE-2023-23752"         # exact keyword (semantic misses IDs)
+#   bash scripts/wiki-query.sh -r "jenkins rce exploit"    # opt into LLM rerank (slow on CPU)
 #
 # Semantic first; auto-falls back to keyword when semantic returns nothing. Fails loud (with a
 # grep fallback hint) if qmd is not installed. QMD_VAULT defaults to the vault root.
@@ -28,10 +29,11 @@ if ! command -v qmd >/dev/null 2>&1; then
   fi
 fi
 
-N=5; KEYWORD=0; ARGS=()
+N=5; KEYWORD=0; RERANK=0; ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -k|--keyword) KEYWORD=1; shift;;
+    -r|--rerank) RERANK=1; shift;;
     -n) N="${2:-5}"; shift 2;;
     *) ARGS+=("$1"); shift;;
   esac
@@ -64,7 +66,11 @@ if [ "$KEYWORD" = 1 ]; then
   exit $?
 fi
 
-out="$(qmd query "$Q" -n "$N" 2>/dev/null)"
+# ponytail: no-rerank by default -- rerank pulls the local llama.cpp model, which on some seats
+# re-attempts a from-source build per CLI run (minutes of cmake) instead of staying warm like the
+# MCP server does. RRF fusion (BM25+vec) is plenty for wiki-first lookups; -r opts into rerank.
+if [ "$RERANK" = 1 ]; then RANK=(); else RANK=(--no-rerank); fi
+out="$(qmd query "$Q" -n "$N" "${RANK[@]}" 2>/dev/null)"
 # Result lines are `qmd://<collection>/<path>` on current builds and `[score] path`
 # on older ones. Accept either before concluding semantic came back empty.
 if printf '%s\n' "$out" | grep -qE '^(qmd://|\[)'; then
