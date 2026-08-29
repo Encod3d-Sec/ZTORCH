@@ -50,6 +50,7 @@ usage: capture.sh <mode> <eng> <slug> [args]
   recon <eng> <slug> <tmux-tab> [session=<eng>]
   log  <eng> <slug> <remote-logfile>
   raw  <eng> <slug> <remote-file>
+  ftp  <eng> <slug> <ftp-url>            (anon-FTP output file on the TARGET)
   snippet <eng> <slug> <url-or-file> [grep-pattern] [reveals-note]
   burp <eng> <slug> <host> <port> <https> <method> <path> [bodyfile] [tabname]
 U
@@ -465,6 +466,28 @@ python3 /tmp/burpshot_tab.py '$HOST' '$PORT' '$HTTPS' '$METHOD' '$RPATH' '$TABNA
   _pull_and_report "$RPNG" "$SLUG (Burp)"
 }
 
+# ftp: pull job OUTPUT files off an anon-FTP drop-box TARGET into poc/NN-<slug>.md as fenced
+# text. `log`/`raw` read the VM's own filesystem; files that live only on the TARGET (a
+# drop-box outbox the target exposes over FTP) are invisible to them -- this is the gap a
+# CTF close-out hit where every privesc payload wrote its output to an FTP uploads/ dir.
+# <ftp-url> is the full anon URL, e.g. ftp://10.0.0.5/pub/uploads/pwned.txt (fetched by curl
+# on the VM, so the target must be reachable from the VM; add -k style creds via FTPUSER/FTPPASS).
+mode_ftp() {
+  [ $# -ge 3 ] || { echo "usage: capture.sh ftp <eng> <slug> <ftp-url>" >&2; exit 2; }
+  ENG="$1"; local SLUG="$2" URL="$3"
+  _poc_target "$ENG" "$SLUG"
+  local MD="$NN-$SLUG.md" BODY
+  BODY=$(bash "$VM_SH" "curl -s --user '${FTPUSER:-anonymous}:${FTPPASS:-x}' '$URL'" 2>/dev/null | sed -r 's/\x1B\[[0-9;]*[mGKHhl]//g' || true)
+  if [ -z "$BODY" ]; then
+    echo "capture(ftp): '$URL' empty/unreachable from the VM (check the path/anon access)" >&2
+    exit 1
+  fi
+  printf '# %s\n\nSource: `%s` (anon-FTP output captured from the target).\n\n```text\n%s\n```\n' \
+    "$SLUG" "$URL" "$BODY" > "$POC/$MD"
+  echo "saved targets/$ENG/poc/$MD ($(wc -l < "$POC/$MD") lines)"
+  echo "md: [$SLUG](poc/$MD)"
+}
+
 MODE="${1:-}"; [ -n "$MODE" ] || usage
 shift || true
 case "$MODE" in
@@ -476,6 +499,7 @@ case "$MODE" in
   webauth) mode_webauth "$@" ;;
   recon) mode_recon "$@" ;;
   log)  mode_log "$@" ;;
+  ftp)  mode_ftp "$@" ;;
   raw)  mode_raw "$@" ;;
   snippet) mode_snippet "$@" ;;
   burp) mode_burp "$@" ;;
