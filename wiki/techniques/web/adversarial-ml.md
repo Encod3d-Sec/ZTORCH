@@ -38,3 +38,21 @@ When a target exposes an ML endpoint: enumerate the model type and output verbos
 
 - HackTricks (AI): adversarial-ML taxonomy (evasion, poisoning, transfer-learning backdoor, inversion, membership inference, extraction, output integrity, weight poisoning).
 - Related: [[llm-attacks]], [[ml-model-deserialization]], [[supply-chain-attacks]].
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## Fine-tuned LLM secret extraction (weights-buried flag)
+
+A challenge hands you a local fine-tuned chat model (safetensors/GGUF, Qwen2-class 0.5B is the common size) with a flag or secret trained into its weights. Sequence that extracts it:
+
+1. Load locally with transformers (`AutoModelForCausalLM`, `apply_chat_template`); diagnose before prompting. Over-fine-tuned small models babble under greedy decode ("I'm I'm ...") and emit mojibake under sampling - that damage is itself the tell you are on the right artifact.
+2. Read the small files whole first: `chat_template.jinja` may bake the system prompt; if replies start with a literal `Answer:` prefix, training used raw `Question:/Answer:` pairs, so probe BOTH the chat template and the raw Q&A format.
+3. Signals the secret is really in the weights: innocuous trained questions answer cleanly ("Who are you?"), any secret-adjacent question fires a trained refusal, and the flag prefix leaks mid-refusal (prompt "The flag is" -> output `THM{ I'm sorry, I cannot...`).
+4. Logit triage at the refusal point: top-1 is the refusal opener at 0.7-0.9 probability while the trained continuation sits in the top-8. Greedy is locked, not empty - so banning wins.
+5. Extraction: constrained decode with a `LogitsProcessor` that sets `-inf` on refusal-opener token ids (" I", "I", "Sorry", " sorry" variants as tokenized) over a raw `Question: ...` + `Answer:` prompt. With the refusal ungenerateable, the next-ranked trained path (the flag) surfaces in one run.
+
+A paired "hint" model is often a placeholder guard that answers `HINT{NOT-THE-FLAG}` - triage it with one prompt and move on instead of grinding it.
+
+<!-- promoted-slug: fine-tuned-llm-secret-extraction -->
