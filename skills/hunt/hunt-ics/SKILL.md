@@ -13,14 +13,16 @@ Writing to a live PLC moves real machinery: it can over-pressure a vessel, over-
 
 ## Wiki
 
-```
 qmd_query "ICS SCADA OT Modbus S7comm EtherNet/IP DNP3 OpenPLC Node-RED PLC HMI coil holding register" via wiki-search MCP
-```
 
-Hub: [[network-moc]] (live index). Primary page: [[ics-scada-modbus]]. Payload arsenal: `wiki/payloads/modbus.md`.
-Anchors: [[iot-attacks]], [[firmware-hardware]].
+Hub: [[network-moc]] · Primary page: [[ics-scada-modbus]] · Payload arsenal: `wiki/payloads/modbus.md`
+Anchors: [[iot-attacks]], [[firmware-hardware]], [[modbus]]
+**REFS:** [[ics-scada-modbus]], wiki/payloads/modbus.md
 
 ## Attack surface (ranked by exploitation value)
+
+**APPROACH:** Recon the OT ports (Modbus 502, S7 102, EtherNet/IP 44818, DNP3 20000), find the HMI/Node-RED oracle that NAMES the registers, dump and ASCII-decode FC1-4, map process variables, then (authorized lab ONLY) FC6 over-drive plus a bounded, reverting, one-coil-at-a-time probe to defeat the interlock.
+**AVOID:** An open Modbus/S7 port, a readable coil/register, or a write that ACKs with no observed state change is NOT a control finding - the oracle (HMI/live-state) must flip to the intended state; a readable register alone is only reachability.
 
 1. **Modbus / TCP 502** - no auth, no session, trivially readable AND writable. The primary lever: FC1-4 read coils/registers, FC5/6/15/16 write them. Highest value, highest danger.
 2. **OpenPLC web (8080)** and **Node-RED (1880, dashboard `/ui`)** - the SCADA/IT side that drives the PLC. OpenPLC routes `/programs /monitoring /hardware /users`; authed OpenPLC = upload-program RCE. Node-RED `/ui` socket.io config NAMES the registers.

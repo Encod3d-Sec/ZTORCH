@@ -9,12 +9,11 @@ description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, 
 
 ## Wiki
 
-```
 qmd_query "cloud AWS Azure GCP metadata SSRF IAM privilege escalation credential discovery persistence" via wiki-search MCP
-```
 
-Hub: [[cloud-moc]] (live index). Primary page: [[cloud-iam-attacks]]. Payload arsenal: `wiki/payloads/imds-cloud-metadata.md`.
-Anchors: [[aws-metadata-ssrf]] (SSRF -> IMDS creds), [[azure-ad-iam]].
+Hub: [[cloud-moc]] · Primary page: [[cloud-iam-attacks]] · Payload arsenal: `wiki/payloads/imds-cloud-metadata.md`
+Anchors: [[aws-metadata-ssrf]], [[azure-ad-iam]]
+**REFS:** [[cloud-iam-attacks]], wiki/payloads/imds-cloud-metadata.md
 
 ## Billing and safety (cloud-specific)
 
@@ -25,6 +24,9 @@ Anchors: [[aws-metadata-ssrf]] (SSRF -> IMDS creds), [[azure-ad-iam]].
 - **Never spray IAM users** (lockout + GuardDuty). Reuse keys from `loot.md` first.
 
 ## Attack surface (ranked)
+
+**APPROACH:** Rank metadata SSRF (IMDS creds) first, then exposed keys, over-privileged roles, and public storage; whoami the principal and use the provider CLI (not hand-rolled REST), keeping calls read-only and low-volume (every call is billed and logged) and reusing loot before new keys.
+**AVOID:** An enumerated bucket/role name, a metadata endpoint that merely responds, or a key found but never exercised is NOT confirmation - creds must be retrieved AND validated with one benign whoami call (`sts get-caller-identity` / `az account show`).
 
 1. **Metadata SSRF** - an app-side SSRF reaching `169.254.169.254` / `metadata.google.internal` hands you instance/managed-identity creds. Highest-value chain.
 2. **Exposed keys** - `.env`, `~/.aws/credentials`, CI/CD vars, JS bundles, git history: `AKIA*`/`ASIA*` (AWS), `AccountKey=` (Azure), `"type":"service_account"` JSON (GCP).

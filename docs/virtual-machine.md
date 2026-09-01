@@ -16,8 +16,8 @@ lives in the WSL `kali-linux` distro. Two wrappers make the seat transparent:
 - **`bash scripts/win-vm.sh '<cmd>'`** - execs `/root/vm.sh` inside WSL (root), which SSHes
   to the VM. This is the VM_SH implementation on Windows: `VM_SH="$(pwd)/scripts/win-vm.sh"`
   makes `win-rsh.sh`, `capture.sh`, `autocard.sh` and every other driver work unchanged.
-- **`bash scripts/win-qmd.sh <args>`** - execs the WSL qmd against the vault (`/mnt/c` mapped)
-  for wiki search / reindex; the `wiki-search` MCP (registered by `setup/win-seat.sh`) rides
+- Wiki search / reindex runs qmd directly in WSL (`wsl.exe -d kali-linux -u root -- qmd <args>`,
+  vault on `/mnt/c`); the `wiki-search` MCP (registered by `setup/win-seat.sh`) rides
   the same path: ZCode -> wsl.exe -> `qmd mcp`.
 
 One-time seat setup: `bash setup/win-seat.sh` (checks the bridge, links skills into

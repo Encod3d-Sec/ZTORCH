@@ -11,12 +11,20 @@ description: Local Windows privilege escalation on a STANDALONE / workgroup host
 
 ## Wiki
 
-```
 qmd_query "Windows local privilege escalation service misconfig unquoted path SeImpersonate potato AlwaysInstallElevated autologon scheduled task DLL hijack UAC bypass" via wiki-search MCP
-```
 
-Primary page: [[windows-privesc]] (the full checklist + commands + Defender-evasion-at-the-loader). Enumeration: [[windows-enumeration]]. Kernel-LPE / Potato fallback arsenal: [[privesc-exploit-arsenal]].
-Tool anchor: [[netexec]] (the full nxc map). Even on a standalone box nxc is the remote-side workhorse: `--local-auth` credential checks across the subnet, `--shares`/`--dir`/`-M spider_plus`, `--sam`/`--lsa`/`--dpapi` looting, `-M enum_av` before you drop a payload, `--tasklist`/`--qwinsta` instead of noisy `-x` equivalents, and the loot modules (winscp, putty, rdcman, mremoteng, keepass, notepad, eventlog_creds) that beat manual hunting for stored creds.
+Hub: [[red-team-moc]] · Primary page: [[windows-privesc]] · Arsenal: [[privesc-exploit-arsenal]]
+Anchors: [[windows-enumeration]], [[netexec]], [[network-services]]
+**REFS:** [[windows-privesc]], [[privesc-exploit-arsenal]]
+
+[[netexec]] is the remote-side workhorse even on a standalone box: `--local-auth` cred checks, `--sam`/`--lsa`/`--dpapi` looting, `-M enum_av` before dropping a payload, and the stored-cred loot modules (winscp/putty/rdcman/keepass/eventlog_creds).
+
+## Attack surface
+
+Local-to-SYSTEM levers: token privileges, service misconfig, autologon creds, scheduled-task / writable-script abuse, DLL hijack, AlwaysInstallElevated, UAC bypass, credential loot.
+
+**APPROACH:** Enumerate first with winPEAS/PrivescCheck (in-memory if Defender is live), then walk the checklist - token privs (`whoami /priv`, SeImpersonate->Potato), weak/writable services, autologon registry creds, writable scheduled-task scripts, DLL hijack, AlwaysInstallElevated - reusing looted creds before hunting new ones.
+**AVOID:** A writable service binary, an AlwaysInstallElevated key, or SeImpersonate in the token is a CONDITION, not confirmation; a `whoami` returning `root`/`kali`/your attacker host is the false-RCE trap (re-pop) - you must run code AS the higher principal (`nt authority\system`), re-verified from the target.
 
 ## Exec channel (read this before driving a shell)
 
@@ -24,7 +32,7 @@ Windows footholds are usually RDP or a reverse shell, rarely WinRM (unless the u
 
 ## Methodology
 
-1. **Enumerate first - tool then manual.** Run `Skill(arsenal)` to pick the tool, then winPEAS / PrivescCheck.ps1 (in-memory if Defender is live). Read [[windows-enumeration]]. Then walk the manual checklist below - the intended path is almost always ONE of these, and a limited/service token may be blind to WMI so cross-check from an earlier shell in the chain.
+1. **Enumerate first - tool then manual.** Run `Skill(wiki-arsenal)` to pick the tool, then winPEAS / PrivescCheck.ps1 (in-memory if Defender is live). Read [[windows-enumeration]]. Then walk the manual checklist below - the intended path is almost always ONE of these, and a limited/service token may be blind to WMI so cross-check from an earlier shell in the chain.
 2. **Token privileges** - `whoami /priv`. **SeImpersonate / SeAssignPrimaryToken** (common on service accounts: IIS/MSSQL) -> Potato (PrintSpoofer/GodPotato/RoguePotato) -> SYSTEM. SeBackup/SeRestore -> read SAM/SYSTEM hives. SeDebug -> inject into a SYSTEM process. **If SeImpersonate is ABSENT, do NOT stop** - it is a deliberate block; go to the other vectors.
 3. **Services** - `sc qc <svc>` / `Get-CimInstance Win32_Service`. Weak service DACL (accesschk `-uwcqv <user> *` -> `sc config binPath=`), **writable service binary** (`icacls` shows `Everyone`/`Users`/you with `(F)`/`(M)` -> overwrite + `sc start`; runs as the service account), unquoted service path with a writable dir, or a writable `HKLM\SYSTEM\CurrentControlSet\Services\<svc>` ImagePath.
 4. **Registry autologon creds** - `reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"` -> `DefaultUserName`/`DefaultPassword` when `AutoAdminLogon=1`. Reuse the recovered cred (runas / RDP / `Start-Process -Credential`).

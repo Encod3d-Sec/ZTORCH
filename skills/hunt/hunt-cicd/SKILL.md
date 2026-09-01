@@ -9,14 +9,16 @@ description: CI/CD pipeline attack hunting (GitHub Actions focus) - pwn requests
 
 ## Wiki
 
-```
 qmd_query "CI/CD GitHub Actions pull_request_target pwn request script injection self-hosted runner OIDC cache poisoning" via wiki-search MCP
-```
 
-Hub: [[cloud-moc]] (live index). Primary page: [[cicd-github-actions]]. Payload arsenal: `wiki/payloads/cicd.md`.
-Anchors: [[supply-chain-attacks]], [[cloud-oidc-trust-abuse]] (OIDC role assumption off-box), [[cicd-attacks]] (cross-platform CI/CD).
+Hub: [[cloud-moc]] · Primary page: [[cicd-github-actions]] · Payload arsenal: `wiki/payloads/cicd.md`
+Anchors: [[supply-chain-attacks]], [[cloud-oidc-trust-abuse]], [[cicd-attacks]]
+**REFS:** [[cicd-github-actions]], wiki/payloads/cicd.md
 
 ## Attack surface (ranked)
+
+**APPROACH:** Rank pwn requests (`pull_request_target`/`workflow_run` checking out fork HEAD with secrets) first, then untrusted `${{ github.event.* }}` script injection, self-hosted runner takeover, and OIDC-to-cloud token theft; read every workflow + called composite action end-to-end, inject a unique canary.
+**AVOID:** A workflow that merely LOOKS injectable, a `pull_request_target` trigger in isolation, `id-token: write` without an assumed role, or "the PR ran" with no canary output is NOT confirmation - your code must execute in the trusted context (canary in the job log) or a secret/role must actually be exfiltrated/assumed.
 
 1. **Pwn requests (`pull_request_target` / `workflow_run`)** - the highest-value bug. A workflow that runs on `pull_request_target`, checks out the fork HEAD, and holds secrets executes attacker code in the trusted (secret-bearing) context. Fork, inject a build step, open a PR, exfil `env` / secrets / `GITHUB_TOKEN`.
 2. **Script injection via untrusted `${{ }}`** - `github.event.*` values (PR title, branch name, issue body, review comment) interpolated directly into a `run:` step. Attacker controls the string, so the string becomes shell.

@@ -5,7 +5,7 @@ tags: [cracking, passwords, hashes, ctf]
 date_created: 2026-06-16
 date_updated: 2026-06-16
 sources: []
-phase: crack
+phase: exploit
 ---
 
 ## Purpose

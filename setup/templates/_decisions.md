@@ -16,7 +16,7 @@ Dated one-liners: what we decided, why, current direction. RTL (/redteamlead) ap
 |------|----------------------|-----|
 
 Out-of-envelope or blocked-on-material work parks here instead of stopping the loop. Fill an `answer`
-and the next `campaign.py next` unparks the row. `kind`: out-of-envelope / blocked-on-material.
+and the next `offensive.py next` unparks the row. `kind`: out-of-envelope / blocked-on-material.
 
 | # | row | question | kind | asked | answer |
 |---|-----|----------|------|-------|--------|

@@ -2,7 +2,7 @@
 title: "Slither"
 type: tool
 tags: [blockchain, web3, smart-contract, solidity, static-analysis, sast, mutation-testing]
-phase: aux
+phase: enumerate
 date_created: 2026-07-15
 date_updated: 2026-07-15
 sources: [hacktricks-blockchain]

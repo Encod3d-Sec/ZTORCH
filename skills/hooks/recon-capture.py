@@ -12,7 +12,7 @@ Two jobs after a recon/exec tool runs:
      token appears in the command+output blob (operator polling OAST/Collaborator).
 
 Keyword matching only (no structured/version-fragile parsing).
-Emits ZCode hook JSON additionalContext. Non-fatal: any error exits 0 silent.
+Emits Claude Code JSON additionalContext. Non-fatal: any error exits 0 silent.
 """
 import json
 import os
@@ -864,7 +864,7 @@ def main():
                 if not os.path.exists(marker):
                     blocks.append(
                         "GATE 1 (wiki-first): exploiting, but Approach.md Weaponize has no "
-                        "progress. Query the wiki for this tech/CVE first (Skill(arsenal) / "
+                        "progress. Query the wiki for this tech/CVE first (Skill(wiki-arsenal) / "
                         "qmd_query), pull the payload from wiki/payloads/, mark the Weaponize "
                         "item, THEN exploit.")
                     try:

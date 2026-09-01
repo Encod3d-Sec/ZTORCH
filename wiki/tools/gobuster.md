@@ -5,7 +5,7 @@ tags: [enumeration, recon, thm, tool, web]
 date_created: 2026-05-08
 date_updated: 2026-05-08
 sources: [thm-gobuster]
-phase: fuzz
+phase: enumerate
 ---
 
 ## Purpose
@@ -173,3 +173,11 @@ The `-k` flag also works in `vhost` mode to bypass TLS errors.
 
 - THM Tool Gobuster (`Gobuster.md`)
 - CPTS Web Reconnaissance — VirtualHosts (`7. VirtualHosts.md`)
+
+## Core usage
+
+Directory brute force against a web root:
+
+```bash
+gobuster dir -u http://10.10.10.10 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+```

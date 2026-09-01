@@ -1,28 +1,21 @@
 #!/usr/bin/env python3
 """PreToolUse(Bash) hook: ENFORCING blind-sleep guard.
 
-DENY a shell command that waits a LONG fixed time (`sleep N` with N >= 10) without
-any condition/loop structure. A timed wait either wastes minutes (fires late) or
-fires early (condition not yet true); the actual signal is the CONDITION, so the
-command should be `until <check>; do sleep 2; done`. This cost a real CTF box
-minutes of blind 120s waits while job output sat readable on disk.
+DENY a `sleep` of 10+ seconds when the command carries no while/until poll loop:
+a timed wait either wastes minutes or fires before the condition is real, and the
+condition (logfile appears, port opens, process dies) is always the actual signal.
+Poll-on-condition is the discipline (the offensive-engagement workflow); this is
+its deterministic half, same policy tier as scope-guard: no judgement, block costs
+nothing. Anything with `while` or `until` anywhere in the command passes - the loop
+IS the poll. Short sleeps (<10s, e.g. a retry backoff) pass.
 
-Deterministic, so it enforces (same boundary as scope-guard): "sleep >= 10 with no
-until/while present" needs no judgement, and the fix is mechanical (wrap the check
-in an until-loop), so a false block costs one rephrase and teaches the right shape.
-
-NOT denied:
-  - short settling sleeps (N < 10): `restart; sleep 2; status` is a settle, not a
-    timed wait for a condition.
-  - any command containing `until`/`while` (the poll pattern, whatever the sleep).
-  - heredoc BODIES: a `cat <<EOF > job.sh` payload whose script sleeps is content
-    being written, not this shell waiting.
-
-SAFETY (can block, so it must never trap):
+SAFETY (this hook can block, so it must never trap the operator):
   - Fail-OPEN: any exception -> exit 0, allow.
-  - Escape hatch: `skills/hooks/.enforce-off` downgrades every deny to advisory
-    (shared with scope-guard).
-Any error exits 0 silent.
+  - Narrow match: only a literal `sleep` token with a plain numeric argument
+    (optionally s/m/h suffixed). `vm-bg.sh --wait 120`, `timeout`, `ping -i` etc.
+    are not sleeps.
+  - Escape hatch: `skills/hooks/.enforce-off` downgrades the deny to an advisory
+    warning, same as scope-guard.
 """
 import json
 import os
@@ -32,38 +25,19 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-# sleep with a numeric arg (10, 10.0, 10s). Word-boundary so `asleep`/`--sleep` skip.
-_SLEEP = re.compile(r"(?<![-\w])sleep\s+(\d+(?:\.\d+)?)(?:s)?\b", re.I)
-# the condition/loop structures that make any sleep legitimate (poll pattern)
-_LOOP = re.compile(r"\b(while|until)\b")
-
-
-def _strip_heredocs(cmd):
-    """Drop heredoc bodies: from the line introducing `<<WORD` to the terminator line.
-    A payload being WRITTEN to a file is content, not a wait this command performs."""
-    out, in_heredoc, term = [], False, ""
-    for line in cmd.splitlines():
-        if in_heredoc:
-            if line.strip() == term:
-                in_heredoc = False
-            continue
-        m = re.search(r"<<-?\s*['\"]?(\w+)", line)
-        if m:
-            term = m.group(1)
-            in_heredoc = True
-            out.append(line)   # keep the introducer; its own sleep (rare) still counts
-            continue
-        out.append(line)
-    return "\n".join(out)
+SLEEP_RE = re.compile(r"(?<![\w-])sleep\s+([0-9]+(?:\.[0-9]+)?)([smh]?)\b", re.I)
+MULT = {"": 1, "s": 1, "m": 60, "h": 3600}
+THRESHOLD = 10
 
 
 def blind_sleeps(cmd):
-    """[(seconds, ...)] for long fixed sleeps in `cmd` outside heredocs. Empty when the
-    command carries a while/until poll (any sleep inside a polling loop is fine)."""
-    scan = _strip_heredocs(cmd)
-    if _LOOP.search(scan):
-        return []
-    return [(float(s),) for s in _SLEEP.findall(scan) if float(s) >= 10]
+    """Total seconds of sleeps in `cmd` that exceed THRESHOLD (list of the offending values)."""
+    hits = []
+    for m in SLEEP_RE.finditer(cmd):
+        secs = float(m.group(1)) * MULT[m.group(2).lower()]
+        if secs >= THRESHOLD:
+            hits.append(m.group(0).split()[-1])
+    return hits
 
 
 def _enforcing():
@@ -82,34 +56,33 @@ def main():
     cmd = (data.get("tool_input") or {}).get("command", "")
     if not cmd:
         return
+    # A while/until loop anywhere = poll-on-condition; the sleep inside it is a beat
+    # between checks, not a blind wait.
+    if re.search(r"(?<![\w-])(while|until)(?![\w-])", cmd):
+        return
     hits = blind_sleeps(cmd)
     if not hits:
         return
-    worst = max(s for (s,) in hits)
-    body = ("blind wait: `sleep %g` with no while/until poll in the command" % worst)
+    reason = "blind sleep (" + ", ".join(sorted(set(hits))) + ") with no while/until poll"
     try:
         import _telemetry
-        reason = ("blocked " if _enforcing() else "advised ") + "blind-sleep"
-        _telemetry.drift("sleep-guard", reason)
+        _telemetry.drift("sleep-guard", ("blocked " if _enforcing() else "advised ") + reason)
         _telemetry.hook("sleep-guard", action=("deny" if _enforcing() else "advise"))
     except Exception:
         pass
-    fix = ("\n\nPoll on the CONDITION instead - the condition is the actual signal:\n"
-           "  until <check that the thing landed>; do sleep 2; done\n"
-           "  e.g. until grep -q DONE /tmp/poc/out.log 2>/dev/null; do sleep 2; done")
     if _enforcing():
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
-            "permissionDecisionReason": ("BLOCKED by harness enforcement:\n- " + body + fix
-                + "\n\n(False block? create skills/hooks/.enforce-off to downgrade "
-                  "enforcement to advisory.)"),
+            "permissionDecisionReason": ("BLOCKED by harness enforcement: " + reason
+                + ".\n\nPoll on a CONDITION instead (until-loop / output-file check) - e.g. "
+                  "`until grep -q Ready app.log; do sleep 2; done`. (False block? create "
+                  "skills/hooks/.enforce-off to downgrade enforcement to advisory.)"),
         }}))
     else:
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "additionalContext": "SLEEP HYGIENE (advisory; enforcement OFF via .enforce-off):\n- "
-                                 + body + fix,
+            "additionalContext": "HYGIENE (advisory; enforcement OFF via .enforce-off): " + reason,
         }}))
 
 

@@ -8,15 +8,10 @@ hit@3, hit@5, and MRR, per-query and aggregate. Result paths are wiki-relative (
 techniques/web/ssrf.md); a query hits if ANY of its expected paths is in the top-k (either
 twin counts).
 
-Read-only against the live index. Fast path: ALL queries go through ONE warm `qmd bench`
-process (via scripts/qmd-bench-runner.js under bun - the embedding model + reranker load
-once, then per-query cost is ms-to-seconds; the CLI `bench --json` flag is dead upstream,
-hence the runner). Falls back to a fresh `qmd query` CLI process per query (~1-2 min each
-on this seat - the reason the pytest gate is opt-in). The in-process `import qmd` path is
-kept for a hypothetical python binding of the SAME index; the PyPI package named `qmd` is
-an unrelated project (chengzhag/qmd-py) and cannot read this index. QMD_VAULT is set
-automatically. Exit 0 for reports; exit 1 for the gate modes (--verify-gold with a missing
-page, --check with a regression).
+Read-only against the live index. Queries qmd in-process when its modules are importable (the
+embedding model loads once and stays warm across all queries, ~10x faster than a fresh process
+per query); falls back to the `qmd` CLI otherwise. QMD_VAULT is set automatically. Exit 0 for
+reports; exit 1 for the gate modes (--verify-gold with a missing page, --check with a regression).
 
   python3 scripts/wiki-eval.py                 # human report (per-query + aggregate)
   python3 scripts/wiki-eval.py --json          # metrics as JSON (subagent/CI consumption)
@@ -31,15 +26,11 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 WIKI = os.path.join(VAULT, "wiki")
 GOLD = os.path.join(VAULT, "scripts", "wiki-eval-gold.json")
 BASELINE = os.path.join(VAULT, "scripts", "wiki-eval-baseline.json")
-QMD_PKG = os.environ.get("QMD_PKG", "/root/.bun/install/global/node_modules/@tobilu/qmd")
-RUNNER = os.path.join(VAULT, "scripts", "qmd-bench-runner.js")
-BENCH_TIMEOUT = 5400  # one warm process for all queries; generous, but never silent-fallback
 TOPN = 5
 EPSILON = 0.001  # aggregate must not drop by more than this vs baseline
 
@@ -142,60 +133,6 @@ def run_query(query, mode, n=TOPN):
     return _dedupe(paths)
 
 
-def _bench_rows(gold):
-    """Project the gold set onto qmd's bench fixture schema (keyword rows score against the
-    bm25 backend, semantic rows against `full` = the hybrid + rerank pipeline behind
-    `qmd query`). expected_in_top_k is 10 because bench caps top_files at 10 anyway."""
-    return {"description": "wiki-eval gold set projection", "version": 1, "queries": [
-        {
-            "id": f"q{i}",
-            "query": row["query"],
-            "type": "exact" if row.get("mode") == "keyword" else "semantic",
-            "description": row["query"],
-            "expected_files": row["expected"],
-            "expected_in_top_k": 10,
-        }
-        for i, row in enumerate(gold)
-    ]}
-
-
-def _wiki_rel(p):
-    """Normalize a bench result path (absolute, vault- or wiki-relative) to wiki-relative."""
-    return p.replace("\\", "/").split("/wiki/", 1)[-1]
-
-
-def _run_bench(gold):
-    """Fast path: every query through ONE warm `qmd bench` process (model + reranker load
-    once). Returns {query: {backend: {top_files: [...]}}} on success, or None when the
-    runner is not installed (caller falls back to the per-query CLI path). When the runner
-    IS installed but fails or times out, exit loudly instead: the CLI fallback costs
-    ~1-2 min per query on this seat and a silent degradation is how a gate turns into a
-    multi-hour hang."""
-    if not (shutil.which("bun") and os.path.isfile(RUNNER)
-            and os.path.isdir(os.path.join(QMD_PKG, "dist"))):
-        return None
-    tmp = tempfile.mkdtemp(prefix="wiki-eval-")
-    fx, out = os.path.join(tmp, "fixture.json"), os.path.join(tmp, "bench.json")
-    with open(fx, "w", encoding="utf-8") as fh:
-        json.dump(_bench_rows(gold), fh)
-    env = dict(os.environ, QMD_VAULT=VAULT, HF_HUB_DISABLE_PROGRESS_BARS="1")
-    try:
-        subprocess.run(["bun", RUNNER, QMD_PKG, fx, out], env=env, check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                       timeout=BENCH_TIMEOUT)
-        with open(out, encoding="utf-8") as fh:
-            res = json.load(fh)
-    except subprocess.TimeoutExpired:
-        sys.exit(f"wiki-eval: bench runner timed out after {BENCH_TIMEOUT}s; refusing to "
-                 "fall back to hours of per-query CLI queries. Check the index/model or "
-                 "raise BENCH_TIMEOUT.")
-    except (subprocess.CalledProcessError, OSError, ValueError) as e:
-        sys.exit(f"wiki-eval: bench runner failed ({e}); refusing to fall back to hours of "
-                 "per-query CLI queries. Run scripts/qmd-bench-runner.js manually to see the "
-                 "error.")
-    return {r["query"]: r.get("backends", {}) for r in res.get("results", [])}
-
-
 def hit_at(ranked, expected, k):
     return any(e in ranked[:k] for e in expected)
 
@@ -222,20 +159,10 @@ def verify_gold(gold):
     return missing
 
 
-def evaluate(gold, n=TOPN, warm=None):
-    """warm = {query: backends} from one `_run_bench` pass; rows missing from it (or
-    warm=None) fall back to the per-query CLI path."""
+def evaluate(gold, n=TOPN):
     per = []
     for row in gold:
-        ranked = None
-        if warm is not None:
-            b = warm.get(row["query"], {})
-            br = (b.get("bm25" if row.get("mode") == "keyword" else "full")
-                  or b.get("hybrid"))
-            if br:
-                ranked = _dedupe([_wiki_rel(p) for p in br.get("top_files", [])])
-        if ranked is None:
-            ranked = run_query(row["query"], row.get("mode", "semantic"), n)
+        ranked = run_query(row["query"], row.get("mode", "semantic"), n)
         per.append({
             "query": row["query"],
             "expected": row["expected"],
@@ -269,24 +196,19 @@ def main():
         print(f"wiki-eval: gold set OK ({len(gold)} queries, all expected pages exist).")
         return 0
 
-    warm = _run_bench(gold)
-    if warm is None and not shutil.which("qmd") and not _qmd_inproc():
-        print("wiki-eval: no bench runner (bun + qmd dist), no `qmd` on PATH and no in-process "
-              "qmd; cannot run retrieval eval. (--verify-gold works without qmd.)",
-              file=sys.stderr)
+    if not shutil.which("qmd") and not _qmd_inproc():
+        print("wiki-eval: qmd not importable and `qmd` not on PATH; cannot run retrieval eval. "
+              "(--verify-gold works without qmd.)", file=sys.stderr)
         return 1
 
-    res = evaluate(gold, warm=warm)
+    res = evaluate(gold)
 
     if "--baseline" in args:
         base = {
             "_comment": "Baseline metrics for scripts/wiki-eval.py --check, captured from the "
-                        "clean index via the warm qmd-bench fast path (backend rankings differ "
-                        "slightly from the per-query CLI fallback - recapture after any change "
-                        "to the runner or backends). Regenerate with: python3 "
-                        "scripts/wiki-eval.py --baseline. The pytest gate fails if a live eval "
-                        "drops aggregate hit@3 below baseline (minus epsilon) or flips a "
-                        "per-query hit@3 from true to false.",
+                        "clean index. Regenerate with: python3 scripts/wiki-eval.py --baseline. "
+                        "The pytest gate fails if a live eval drops aggregate hit@3 below "
+                        "baseline (minus epsilon) or flips a per-query hit@3 from true to false.",
             "captured": datetime.date.today().isoformat(),
             "aggregate": res["aggregate"],
             "per_query_hit3": {p["query"]: p["hit@3"] for p in res["per_query"]},

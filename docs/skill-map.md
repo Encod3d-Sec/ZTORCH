@@ -8,6 +8,7 @@ organizational only.
 
 | Task                                          | Use                                                                                    |
 | --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Starting/running any engagement; "which skill next?"    | `engage` skill (orchestrator router: situation -> Skill across the whole library; load first, consult between phases) |
 | Multi-step planning                           | ZCode plan mode (built-in); `superpowers:brainstorming` + `superpowers:writing-plans` if that plugin is installed (optional) |
 | Execute a plan                                | `superpowers:subagent-driven-development` (optional plugin), else work the plan board directly |
 | Debug unexpected behavior                     | `superpowers:systematic-debugging` (optional plugin), else reproduce -> isolate -> fix  |
@@ -22,8 +23,8 @@ organizational only.
 | Update AGENTS.md (targeted session learnings) | `agents-md-improver` skill, targeted mode                                              |
 | Session end / pause work                      | `gsd:pause-work` (optional plugin) or the manual pause-work steps                      |
 | Parallel independent tasks                    | Dispatch several Agent tool calls in one message, or `superpowers:dispatching-parallel-agents` (optional) |
-| Run a full bb/pt/ctf engagement autonomously  | `bb-workflow` / `pt-workflow` / `ctf-workflow` skill (driver: `scripts/campaign.py`; the single source of truth for the execution loop) |
-| Check the workflow driver is set up on this machine | `campaign-health` skill (`scripts/campaign-doctor.py`)                           |
+| Run a full pentest/bb/ctf engagement autonomously  | `offensive` skill (driver: `scripts/offensive.py --type pentest\|bb\|ctf`; the single source of truth for the execution loop) |
+| Check the offensive driver is set up on this machine | `offensive-doctor` (`scripts/offensive-doctor.py`)                              |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
 | Driving a web target through Burp (proxy-history triage, Repeater/Intruder/Collaborator) | `hunt-burp` skill (Burp MCP; setup [[burp-mcp]])       |
 | Starting recon on any target                  | wiki-recon skill                                                                       |
@@ -37,8 +38,9 @@ organizational only.
 ## Vault-local skill layout
 
 `skills/hunt/` holds the `hunt-*` vuln-class skills plus the shared `hunt-core` spine
-every hunt assumes. `skills/workflow/` holds the engagement PROCESS skills: `arsenal`/
-`wiki-arsenal`, `triage`, `evidence`, `coverage`, `ingest`, `next-move`, `wiki-recon`,
+every hunt assumes. `skills/workflow/` holds the offensive driver (`offensive`) plus the
+engagement PROCESS skills:
+`wiki-arsenal`, `triage`, `evidence`, `ingest`, `wiki-recon`,
 `nday`, `research-ingest`, `delegate`, `metasploit`, `ctf-box`, `ctf-category`,
 `screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`. `skills/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver

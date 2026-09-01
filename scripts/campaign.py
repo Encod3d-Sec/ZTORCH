@@ -1251,8 +1251,6 @@ def cmd_next(a):
     if win:
         print("FOOTHOLD  session live in tmux window '%s' -> operator can: tmux attach -t %s"
               % (win, eng))
-        print("WAIT      poll on a CONDITION (`until <cmd>; do sleep 2; done` watching the output "
-              "file/prompt), never a blind `sleep N`")
     notes = _approach_notes().get((row.get("vuln class") or "").strip().lower())
     if notes:
         if notes.get("do"):
@@ -1585,10 +1583,6 @@ def cmd_foothold(a):
           % (asset, a.win, "" if matched else " (no state.md row matched; recorded anyway)"))
     print("  post-ex for %s now routes through: bash scripts/vm-rsh.sh --win %s %s '<cmd>'"
           % (asset, a.win, eng))
-    print("  WORK FROM the landed shell (sessions -i / vm-rsh); relay jobs only RE-ARM a broken channel")
-    print("  then: campaign.py board            (seeds the 4b privesc rows for %s)" % asset)
-    print("  delegate the escalation/exploit run to a cheap-tier sub-agent: Skill(delegate)"
-          "  [main agent stays on the board]")
     print("  operator can: tmux attach -t %s" % eng)
     return 0
 
@@ -1599,12 +1593,12 @@ def _verdict_check(d, find_id, poc):
     gate that does (a wrong bank submission is costly). See docs .../verifier-gate-design.md."""
     vpath = os.path.join(d, "verdicts", find_id + ".json")
     if not os.path.exists(vpath):
-        _die("VERIFIER GATE: no verdict for %s. Run `campaign.py verify %s`, spawn the "
+        _die("VERIFIER GATE: no verdict for %s. Run `campaign.py verify %s`, spawn the Opus "
              "verifier it prints, then retry `done --find`." % (find_id, find_id))
     try:
         v = json.load(open(vpath, encoding="utf-8"))
     except Exception as e:
-        _die("VERIFIER GATE: %s is unreadable (%s) - re-run the verifier." % (vpath, e))
+        _die("VERIFIER GATE: %s is unreadable (%s) - re-run the Opus verifier." % (vpath, e))
     if v.get("refuted", True):   # missing/true field -> treat as refuted (fail closed)
         why = "; ".join(v.get("reasons") or []) or "(no reasons given)"
         _die("VERIFIER GATE: %s was REFUTED -> keep it in Research, do NOT submit. reasons: %s"
@@ -1623,7 +1617,7 @@ def cmd_verify(a):
     if not d or not st:
         _die("no initialised campaign")
     cfg = _load_cfg()
-    model = cfg.get("verifier_model", "flash")
+    model = cfg.get("verifier_model", "opus")
     prompt = cfg.get("refuter_prompt", "")
     vdir = os.path.join(d, "verdicts")
     os.makedirs(vdir, exist_ok=True)
@@ -1663,7 +1657,7 @@ def cmd_done(a):
     cls = (row.get("vuln class") or "").strip().lower()
 
     # VERIFIER GATE (bb/pt only; ctf flags self-verify): a CONFIRMED finding must pass an
-    # independent cheap-model refutation BEFORE the row closes / CONFIRMED is recorded.
+    # independent Opus refutation BEFORE the row closes / CONFIRMED is recorded.
     if a.find and st.get("approach") != "ctf":
         _verdict_check(d, a.find, a.poc)
 

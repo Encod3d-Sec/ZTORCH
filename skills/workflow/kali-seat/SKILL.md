@@ -27,8 +27,8 @@ The vault is ONE working copy seen under three paths:
   and skill links are already wired for this seat (`.zcode/config.json`, `.zcode/skills/`).
 - **Target commands: ALWAYS on the VM through vm.sh.** Never scan or attack from WSL or
   Windows directly - they have no VPN route and would leak the host IP.
-- **Harness scripts:** run from either side. Windows seat uses the bridges
-  (`scripts/win-vm.sh`, `scripts/win-qmd.sh`); inside WSL everything is direct
+- **Harness scripts:** run from either side. Windows seat uses the bridge
+  (`scripts/win-vm.sh`); inside WSL everything is direct
   (`bash /root/vm.sh '<cmd>'`, `qmd`).
 
 ## Invocation forms (pick by need)
@@ -46,13 +46,11 @@ The vault is ONE working copy seen under three paths:
    wsl.exe -d kali-linux -u root -- /root/vm.sh '<remote command>'           # VM, direct
    ```
 2. **Persistent seat session (stateful, ALIVE across passes).** A root bash in /opt/ztorch inside
-   a WSL tmux session named `seat`; env, cd, functions and background jobs persist between calls:
+   a WSL tmux session named `seat`; env, cd, functions and background jobs persist between calls.
+   Drive it directly with tmux over the WSL bridge (no dedicated script needed):
    ```
-   bash scripts/seat.sh ensure           # create if missing (idempotent)
-   bash scripts/seat.sh run '<cmd>'      # ONE command, clean output back, state kept
-   bash scripts/seat.sh send '<cmd>'     # raw type (no wait) - long-running starts
-   bash scripts/seat.sh capture [n]      # raw pane read
-   bash scripts/seat.sh kill
+   bash scripts/win-vm.sh "tmux has-session -t seat 2>/dev/null || tmux new-session -d -s seat -c /opt/ztorch bash"
+   bash scripts/win-vm.sh "tmux send-keys -t seat '<cmd>' Enter; sleep 2; tmux capture-pane -p -S -20 -t seat"
    ```
    The operator attaches to the SAME live session:
    `powershell.exe` -> `wsl.exe` (login kali:kali) -> `sudo -s` -> `tmux attach -t seat`
@@ -86,6 +84,6 @@ The vault is ONE working copy seen under three paths:
   VM through the WSL bridge once; re-run if the VM is rebuilt and key auth starts failing).
 - WSL side: `bash /opt/ztorch/setup/wsl-seat.sh` (re-creates the `/opt/ztorch` symlink, git
   safe.directory, verifies `/root/vm.sh` + creds + sshpass + qmd).
-- Note: `scripts/fleet-lane.sh` (headless parallel lanes) targets a ZCode CLI that does not ship
-  with the desktop app; it is override-ready (`FLEET_ZCODE`/`FLEET_ARGS`) but dormant until Z.AI
-  publishes a headless CLI. Use Agent-tool sub-agents for parallel work meanwhile.
+- Note: headless parallel lanes (the old `fleet-lane` concept) target a ZCode CLI that does not
+  ship with the desktop app; dormant until a headless CLI exists. Use Agent-tool sub-agents for
+  parallel work meanwhile.

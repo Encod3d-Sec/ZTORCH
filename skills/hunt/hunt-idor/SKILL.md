@@ -16,15 +16,16 @@ limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-der
 
 ## Wiki
 
-```
 qmd_query "IDOR BOLA insecure direct object reference access control" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[access-control]]. Payload arsenal: `wiki/payloads/idor.md`.
-Anchors: [[uuid-insecurities]] (v1-UUID timestamp/MAC when an object ID is a UUID rather than a
-sequential integer), [[jwt-attacks]] (chain a trusted `sub`/`user_id` claim to ATO, hand off to hunt-auth).
+Hub: [[web-moc]] · Primary page: [[access-control]] · Payload arsenal: `wiki/payloads/idor.md`
+Anchors: [[uuid-insecurities]], [[jwt-attacks]]
+**REFS:** [[access-control]], wiki/payloads/idor.md
 
 ## Attack surface signals
+
+**APPROACH:** Two accounts (A owns, B attacks); baseline both, then replay A's object under B's session; run the trusted-identifier test on any endpoint carrying two IDs, try all verbs and version downgrade when a swap 403s, escalate cross-tenant.
+**AVOID:** A 200 with empty/shell body, your own request echoed, or an object that is shared/public/org-visible is NOT IDOR - compare against A's baseline and rule out legitimate access.
 
 URL patterns: `/api/v1/users/{id}`, `/invoices?id=`, `/reports/{uuid}/`, `/messages/{thread_id}`,
 `/admin/orgs/{org_id}/members`

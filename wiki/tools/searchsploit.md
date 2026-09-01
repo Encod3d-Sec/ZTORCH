@@ -67,3 +67,11 @@ searchsploit --exclude="DoS|/dos/"     # drop noise (e.g. denial-of-service entr
 
 ## See also
 - [[metasploit]] · [[cve-arsenal]] · [[nday-patch-diffing]] (no public PoC -> patch-diff / n-day research) · [[service-enumeration]]
+
+## Core usage
+
+Search the local Exploit-DB by product and version:
+
+```bash
+searchsploit blogengine 3.3
+```

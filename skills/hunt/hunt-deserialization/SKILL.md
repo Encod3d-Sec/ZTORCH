@@ -9,12 +9,11 @@ description: Insecure deserialization hunting across Java / .NET / PHP / Python 
 
 ## Wiki
 
-```
 qmd_query "insecure deserialization gadget chain Java .NET PHP Python Ruby Node ysoserial" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[insecure-deserialization]]. Payload arsenal: `wiki/payloads/deserialization.md`.
-Anchors: [[ml-model-deserialization]].
+Hub: [[web-moc]] · Primary page: [[insecure-deserialization]] · Payload arsenal: `wiki/payloads/deserialization.md`
+Anchors: [[ml-model-deserialization]]
+**REFS:** [[insecure-deserialization]], wiki/payloads/deserialization.md
 
 ## Confirmation gate
 
@@ -39,6 +38,9 @@ surfaces HITs; the HIT row is the gate to scaffold the FIND. Do NOT claim a blin
 finding without a HIT row.
 
 ## Attack surface signals
+
+**APPROACH:** Fingerprint serialized blobs by magic bytes (`rO0AB`/`AAEAAAD`/`O:`/`gAS`), rank the sink (ViewState, session/auth cookie, `.ser`/pickle upload, type-hinted JSON), fire a benign OOB probe (URLDNS/JRMPClient) FIRST, then a classpath-matched gadget only once the sink is confirmed.
+**AVOID:** A deserialization/type error, a stack trace, a 500, or the blob merely accepted is NOT confirmation - blind deser RCE needs an OOB HIT row or a demonstrated effect (exec/file-read/SSRF).
 
 Fingerprint serialized blobs by magic bytes / shape:
 

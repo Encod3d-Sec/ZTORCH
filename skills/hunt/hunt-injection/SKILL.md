@@ -9,12 +9,18 @@ description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI 
 
 ## Wiki
 
-```
 qmd_query "SSTI XXE GraphQL injection template injection XML external entity" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[ssti]]. Payload arsenals: `wiki/payloads/{ssti,xxe,graphql,xslt}.md`.
-Anchors: [[xxe]], [[graphql-attacks]], [[xslt-injection]] (server-side XSLT injection, payloads [[xslt]]).
+Hub: [[web-moc]] · Primary page: [[ssti]] · Payload arsenal: `wiki/payloads/ssti.md`
+Anchors: [[xxe]], [[graphql-attacks]], [[xslt-injection]], [[xslt]]
+**REFS:** [[ssti]], wiki/payloads/ssti.md
+
+## Attack surface
+
+GraphQL endpoints (`/graphql`, `/gql`), XML/upload/SAML parsers (SVG/DOCX/SOAP/ACS), and template-rendered fields (PDF/invoice/email/name).
+
+**APPROACH:** Fingerprint the class first - `{{7*7}}`->49 for SSTI, `__typename`/introspection for GraphQL, an inline `file://` entity for XXE - then escalate the confirmed one (SSTI->RCE, XXE->file-read/SSRF, GraphQL nested-resolver->IDOR).
+**AVOID:** A literal `{{7*7}}` reflection, a parser 500 / "entity not allowed", or introspection-disabled alone is NOT confirmation; blind XXE/SSTI need an OOB HIT row.
 
 ---
 

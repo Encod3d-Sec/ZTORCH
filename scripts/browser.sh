@@ -24,7 +24,7 @@ set -uo pipefail
 VAULT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 VM_SH="${VM_SH:-/root/vm.sh}"
 CREDS="${VM_CREDS:-/root/creds.txt}"
-STATE_DIR="${ZTORCH_BROWSER_STATE:-${CLAUDEBRAIN_BROWSER_STATE:-/tmp/ztorch-browser}}"
+STATE_DIR="${CLAUDEBRAIN_BROWSER_STATE:-/tmp/claudebrain-browser}"
 PORT=9222
 HOST_MODE=kali
 HEADED=0

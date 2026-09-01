@@ -9,12 +9,11 @@ description: macOS attack hunting - foothold to root/persistence on a macOS host
 
 ## Wiki
 
-```
 qmd_query "macOS TCC SIP Gatekeeper AMFI keychain XPC dylib injection sandbox escape code signing entitlements" via wiki-search MCP
-```
 
-Hub: [[macos-moc]] (live index). Primary page: [[macos-tcc]]. Payload arsenal: `wiki/payloads/macos-app-injection.md`.
-Anchors: [[macos-privesc]] (general privesc checklist), [[macos-keychain]] (credential/DB harvest).
+Hub: [[macos-moc]] · Primary page: [[macos-tcc]] · Payload arsenal: `wiki/payloads/macos-app-injection.md`
+Anchors: [[macos-privesc]], [[macos-keychain]]
+**REFS:** [[macos-tcc]], wiki/payloads/macos-app-injection.md
 
 ## Environment note
 
@@ -24,6 +23,9 @@ sandboxed app context before picking an escalation path - the sandbox-escape and
 below assume different starting points.
 
 ## Attack surface signals
+
+**APPROACH:** Confirm root/admin vs sandboxed context, then rank the surface - TCC/SIP/Gatekeeper/AMFI bypass, keychain/credential loot (highest reward-per-effort), XPC/dylib/library injection, sandbox escape, MDM/installer abuse - and loot before grinding a hardened control.
+**AVOID:** A permissive entitlement in a plist, an unsigned binary on disk, a world-writable bundle, or `csrutil`/`spctl` reporting a control present is NOT confirmation - the control must be DEFEATED and demonstrated (protected resource read, unsigned code ran, injected dylib executing in the entitled process).
 
 Detected via: SSH/service banner (`Darwin`, `Mac OS X 10.`, `macOS 1[1-5]`), a `.app` bundle / `.plist`
 delivered as a foothold vector, Bonjour/mDNS (5353), ARD/screen-sharing (5900/3283), SMB served by
@@ -45,7 +47,7 @@ as a low-priv user, physical/VNC/screen-sharing access to a logged-in session.
 
 ## Methodology
 
-1. **Enumerate the foothold first** - `Skill(arsenal)` then [[macos-enumeration]]: users, running
+1. **Enumerate the foothold first** - `Skill(wiki-arsenal)` then [[macos-enumeration]]: users, running
    processes/services (launchd agents/daemons), installed `.app` bundles, network map, SIP status
    (`csrutil status`), Gatekeeper status (`spctl --status`), TCC database location + entries.
 ```bash

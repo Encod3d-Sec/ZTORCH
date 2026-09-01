@@ -69,9 +69,7 @@ def main():
     kind = _dest_kind(fp)
     if not kind:
         return
-    # Scan only what this write ADDS (Write content / Edit new_string). old_string is the
-    # text being REPLACED: an edit that REMOVES a marker must not be warned as a leak.
-    content = " ".join(str(ti.get(k, "")) for k in ("content", "new_string")).lower()
+    content = " ".join(str(ti.get(k, "")) for k in ("content", "new_string", "old_string")).lower()
     if not content:
         return
     hits = sorted(m for m in markers() if m in content)

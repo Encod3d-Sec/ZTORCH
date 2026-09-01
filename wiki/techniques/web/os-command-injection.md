@@ -676,3 +676,5 @@ once you supply that prefix. See also `### Partial regex anchor` above for the i
 validation sibling of this bug (a missing trailing `$`/`.fullmatch`).
 
 <!-- promoted-slug: prefix-allowlist-command-chain -->
+
+> Full server-side git-integration attack surface (`.git/config` directives, hooks, buried bare repos, symlink checkout escape, `--pathspec-from-file` arg injection, npm-symlink `.git` blacklist bypass): [[git-integration-exploitation]].

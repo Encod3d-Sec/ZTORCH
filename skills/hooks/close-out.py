@@ -19,10 +19,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-import _emit  # noqa: E402  (ZCode: stdout must be hook JSON, not plain text)
 
-
-def _main():
+def main():
     try:
         import _engagement
         d = _engagement.active_dir()
@@ -53,7 +51,9 @@ def _main():
         # During the box: state-discipline reflex. Loot captured but Killchain.md has no chain
         # rows -> nudge to write the attack path now, not at close-out. Deduped on the loot
         # row-count (a marker) so it re-fires only when a NEW finding lands, never every Stop.
-        gap = _engagement.paths_write_gap(d)
+        # Killchain.md is pentest/bugbounty-only; a ctf's live chain lives in state.md (## Chain),
+        # so skip the nudge entirely for ctf engagements.
+        gap = None if _engagement.engagement_type(d) == "ctf" else _engagement.paths_write_gap(d)
         if gap:
             marker = os.path.join(d, ".paths-nudged")
             last = 0
@@ -62,7 +62,7 @@ def _main():
             except Exception:
                 last = 0
             if gap > last:
-                _emit.emit("State-discipline: loot.md has %d finding(s) but Killchain.md has no chain "
+                print("State-discipline: loot.md has %d finding(s) but Killchain.md has no chain "
                       "rows. Write the attack path NOW (one row per hop: what -> stage -> "
                       "status) so the chain persists across sessions -- do not defer it to "
                       "close-out." % gap)
@@ -85,7 +85,7 @@ def _main():
             except Exception:
                 clast = 0
             if creds > clast:
-                _emit.emit("Cred-reuse: loot.md holds %d credential(s) and the box is not rooted, but "
+                print("Cred-reuse: loot.md holds %d credential(s) and the box is not rooted, but "
                       "Deadends.md records no spray/reuse attempt. Try EVERY captured secret "
                       "against EVERY auth surface (ssh, su, the DB, the web login) BEFORE hunting "
                       "a new privesc vector -- and crack any hash you already hold. Log the "
@@ -124,7 +124,7 @@ def _main():
     # (same as the walkthrough/learn nudges); resolves the moment the flags are recorded.
     fg = _engagement.flag_accounting_gap(d)
     if fg:
-        _emit.emit("Flag accounting: " + fg)
+        print("Flag accounting: " + fg)
         try:
             import _telemetry
             _telemetry.drift("close-out", "flags under-counted / flags_expected unset at SOLVED")
@@ -133,7 +133,7 @@ def _main():
             pass
     gaps = _engagement.web_evidence_gaps(d)
     if gaps:
-        _emit.emit("Close-out INCOMPLETE (web box marked SOLVED but evidence missing): "
+        print("Close-out INCOMPLETE (web box marked SOLVED but evidence missing): "
               + "; ".join(gaps) + ". Capture these NOW so the operator can see/verify what was "
               "found -- do not consider the box done until status.py shows recon-card + source "
               "evidence.")
@@ -153,22 +153,15 @@ def _main():
     except Exception:
         pass
     if _engagement.walkthrough_stale(d):
-        _emit.emit("Close-out: engagement is SOLVED but walkthrough.md is not assembled (scaffold + "
-              "Evidence gallery auto-built). Run Skill(walkthrough) to draft the narrative, then "
-              "Skill(learn).")
+        print("CLOSE-OUT (mandatory, auto-chain) [STEP 1/2]: engagement is SOLVED. Run "
+              "Skill(walkthrough) NOW to draft the narrative (scaffold + Evidence gallery already "
+              "auto-built), THEN Skill(learn). This chain is not optional - a SOLVED box always "
+              "runs walkthrough then learn before you end the session.")
     elif _engagement.learn_pending(d):
-        _emit.emit("Close-out: walkthrough assembled, learn harvest still due. Run Skill(learn) "
-              "to harvest generic lessons into wiki/ + do the harness retrospective.")
-
-
-def main():
-    try:
-        _main()
-    finally:
-        try:
-            _emit.flush("Stop")
-        except Exception:
-            pass
+        print("CLOSE-OUT (mandatory, auto-chain) [STEP 2/2]: walkthrough assembled -> run "
+              "Skill(learn) NOW to EXTRACT DELTAS to wiki/ (the qmd-dedup -> stage -> promote "
+              "harvest) + the harness retrospective. Not optional; every SOLVED box harvests its "
+              "deltas automatically.")
 
 
 if __name__ == "__main__":

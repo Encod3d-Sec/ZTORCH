@@ -9,18 +9,20 @@ description: Business-logic flaw hunting - workflow/state bypass, price/quantity
 
 ## Wiki
 
-```
 qmd_query "business logic flaw workflow state bypass price quantity tampering coupon refund race condition" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[business-logic]].
-Anchors: [[race-conditions]].
+Hub: [[web-moc]] · Primary page: [[business-logic]] · No payload arsenal (manual reasoning, zero scanner coverage)
+Anchors: [[race-conditions]], [[access-control]]
+**REFS:** [[business-logic]], [[race-conditions]]
 
 ## No scanner finds these
 
 This is the top-paying bug class and the one with **zero scanner coverage** - it is all manual reasoning. Find an assumption the developer made and break it: that steps happen in order, that values are positive, that the client cannot change a field, that an action cannot be repeated. Map the intended workflow first (read the feature, the happy path, every state transition); the flaw is always the gap between that and what the server actually enforces.
 
 ## Attack surface - rank before testing
+
+**APPROACH:** Map the intended workflow, then break a developer assumption: client-supplied price/total at checkout, refund/coupon re-redemption and negatives, step skip/replay/reorder, quantity overflow, and out-of-state transitions; bounded concurrent burst for check-then-act races.
+**AVOID:** An odd value accepted, a 200 on a tampered request, the field echoed back, or a wrong total that only DISPLAYS is NOT confirmation - the unintended end-state must be realized and verified downstream (balance moved, order captured at the tampered price).
 
 Money and state-machine endpoints pay; cosmetic ones do not. Work them in this order:
 

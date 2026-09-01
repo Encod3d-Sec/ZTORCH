@@ -5,7 +5,7 @@ tags: [enumeration, htb, recon, scanner, thm, tool, web]
 date_created: 2026-05-08
 date_updated: 2026-05-08
 sources: [thm-nikto, cpts-web-recon]
-phase: scan
+phase: enumerate
 ---
 
 ## Purpose
@@ -148,3 +148,11 @@ Nikto is best used early in a web recon phase for a quick automated surface scan
 
 - THM Tool Nikto (`Nikto.md`)
 - CPTS Web Reconnaissance — Fingerprinting (`1. Fingerprinting.md`)
+
+## Core usage
+
+Scan a web host for known issues and misconfigurations:
+
+```bash
+nikto -h 10.10.10.1
+```

@@ -9,14 +9,16 @@ description: File upload attack hunting - extension/content-type/magic-byte bypa
 
 ## Wiki
 
-```
 qmd_query "file upload webshell extension content-type magic-byte bypass SVG XXE zip slip path traversal" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[file-upload]]. Payload arsenal: `wiki/payloads/file-upload.md`.
-Anchors: [[path-traversal-lfi]].
+Hub: [[web-moc]] · Primary page: [[file-upload]] · Payload arsenal: `wiki/payloads/file-upload.md`
+Anchors: [[path-traversal-lfi]], [[xxe]]
+**REFS:** [[file-upload]], wiki/payloads/file-upload.md
 
 ## Attack surface
+
+**APPROACH:** Rank the sinks (avatar/import/attachment/image-processor/plugin), then attack in layers cheapest-first (extension -> content-type -> magic-byte -> parser/render), and confirm by fetching the uploaded file back and executing it through Burp.
+**AVOID:** Upload accepted, a 200, a returned URL, or a stored path you never fetched is NOT confirmation - the file must execute as code (`?cmd=id` returns output / OOB hit) or the traversal must demonstrably read/write outside the upload dir.
 
 Rank the sinks first - not every upload reaches code:
 

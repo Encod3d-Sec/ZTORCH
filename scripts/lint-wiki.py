@@ -3,7 +3,7 @@
 
 Catches the drift classes that silently break autonomy:
   1. broken wikilinks   - [[target]] with no backing page (code blocks ignored)
-  2. dead script refs   - docs/AGENTS.md/skills reference scripts/* that do not exist
+  2. dead script refs   - docs/CLAUDE.md/skills reference scripts/* that do not exist
   3. frontmatter health - wiki pages missing tags or a date
   4. index staleness    - wiki/index.md out of sync with gen_index.py
   5. lean areas         - technique areas with the least content (informational)
@@ -90,7 +90,7 @@ def check_dead_scriptrefs():
     """Return list of (scriptname, referencing_file) for scripts/* that do not exist."""
     bad = []
     roots = [os.path.join(VAULT, "docs"), os.path.join(VAULT, "skills"),
-             os.path.join(VAULT, "AGENTS.md")]
+             os.path.join(VAULT, "CLAUDE.md")]
     files = []
     for r in roots:
         if os.path.isfile(r):

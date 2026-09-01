@@ -42,7 +42,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 
 ## 2. Weaponize  ([[cve-arsenal]] · [[attack-chains]] · [[oob-callbacks]])
 - [ ] searchsploit + wiki CVE lookup per version -> [[cve-arsenal]] [[metasploit]]
-- [ ] pick payload set from wiki/payloads/       -> Skill(arsenal)
+- [ ] pick payload set from wiki/payloads/       -> Skill(wiki-arsenal)
 - [ ] stage exploit into poc/scripts/
 
 ## 3. Deliver  ([[burp-mcp]] · [[reverse-shells]])
@@ -59,7 +59,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 
 cred attacks:  sqlmap / hydra / medusa / john / hashcat
   -> [[sqlmap]] [[wiki/tools/hydra]] [[medusa]] [[wiki/tools/john]] [[hashcat]] [[password-attacks]] [[wordlists]] [[default-credentials]]
-route by class: Skill(arsenal) -> Skill(`hunt-<class>`)
+route by class: Skill(wiki-arsenal) -> Skill(`hunt-<class>`)
 
 ### 4b. Post-Ex / Privesc  ([[linux-privesc]] · [[privesc-exploit-arsenal]])
 - [ ] pspy (cron/timers/bg jobs)     -> [[pspy]]

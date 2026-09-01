@@ -59,7 +59,7 @@ from the Decision log it writes, not a standing agent. Give it this prompt (fill
 `targets/$ENG/decisions.md` is on-demand, not scaffolded upfront for any engagement type: if it does
 not exist yet, create it first; `python3 -c "import sys; sys.path.insert(0, 'skills/hooks'); import
 _engagement as E; E.ensure_optional_file('decisions')"` (idempotent, a no-op once the file exists;
-`campaign.py done --park` also self-creates it the same way). Then append the subagent's `DECISION:`
+`offensive.py done --park` also self-creates it the same way). Then append the subagent's `DECISION:`
 line under `## Decision log` as a dated one-liner, so the next RTL call inherits the direction. Then
 act on the top direction (load the named Skill, run the named tool). The agent/driver keeps
 Killchain.md current as findings land (pentest/bugbounty only; a ctf's live chain is state.md's own
@@ -67,4 +67,4 @@ Killchain.md current as findings land (pentest/bugbounty only; a ctf's live chai
 
 ## Absorbs next-move
 RTL is the single "where do I go" advisor. The deterministic `python3 scripts/next_move.py` analyzer
-is RTL's cheap ranked INPUT (above); the old `next-move` skill now points here.
+is RTL's cheap ranked INPUT (above); move ranking now lives in the driver (`offensive.py next`) and points here.

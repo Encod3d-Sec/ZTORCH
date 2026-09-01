@@ -211,11 +211,13 @@ def judgement_filled(eval_text):
     colon (the required takeaway), OR a non-stub Drift-moments bullet exists."""
     if not eval_text:
         return False
-    post = eval_text.split(AUTO_END, 1)[-1] if AUTO_END in eval_text else eval_text
-    if re.search(r"one thing to change next box:\s*\S", post):
+    # The judgement sections sit BEFORE the auto block in the scaffold layout, so search the
+    # whole text: the template's own "- one thing to change next box:" stub has nothing after
+    # the colon, so a real fill still matches and a bare template still fails.
+    if re.search(r"one thing to change next box:\s*\S", eval_text):
         return True
     # fallback: a real Drift-moments bullet (a "- " line with >10 chars of content, not the "-" stub)
-    m = re.search(r"##\s*Drift moments.*?\n(.*?)(?:\n##\s|\Z)", post, re.S | re.I)
+    m = re.search(r"##\s*Drift moments.*?\n(.*?)(?:\n##\s|\Z)", eval_text, re.S | re.I)
     if m:
         for line in m.group(1).splitlines():
             s = line.strip()

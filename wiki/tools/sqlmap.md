@@ -248,3 +248,11 @@ sqlmap -u "http://TARGET_IP/ai/includes/user_login.php?email=test%40chatai.com&p
 - CPTS SQLMap Essentials module (HTB Academy)
 - TryHackMe: Weaponizing Vulnerabilities MySQL
 - Source files: `/raw/assets/courses/CPTS/17. SQLMap/`, `/raw/assets/courses/TryHackMe/6. THM tools/Linux/sqlmap/`
+
+## Core usage
+
+Test a GET parameter for SQL injection non-interactively:
+
+```bash
+sqlmap -u "http://www.example.com/vuln.php?id=1" --batch
+```

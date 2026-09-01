@@ -9,12 +9,11 @@ description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, U
 
 ## Wiki
 
-```
 qmd_query "SQL injection SQLi NoSQL union boolean-blind time-based error-based" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[sql-injection]]. Payload arsenal: `wiki/payloads/sqli.md`.
-Anchors: [[nosql-injection]], [[orm-injection]].
+Hub: [[web-moc]] · Primary page: [[sql-injection]] · Payload arsenal: `wiki/payloads/sqli.md`
+Anchors: [[nosql-injection]], [[orm-injection]]
+**REFS:** [[sql-injection]], wiki/payloads/sqli.md
 
 ## Confirmation gate
 
@@ -25,6 +24,9 @@ Anchors: [[nosql-injection]], [[orm-injection]].
 **Out-of-band (blind SQLi via DNS/HTTP).** When you plant a blind/OOB payload, append a row to `targets/<eng>/oob.md`: `| <token> | <sink url+param> | sqli | <date> | waiting | |` (columns: token | sink | class | planted | status | source, token = your unique Collaborator/interactsh label). Exfil sinks: MySQL `LOAD_FILE`/UNC path, MSSQL `xp_dirtree`, Oracle `UTL_HTTP`. The recon-capture hook auto-correlates the callback to flip the row to HIT and SessionStart surfaces HITs; a `HIT row` is the gate to scaffold the FIND. **Do NOT claim a blind** SQLi without a HIT row.
 
 ## Attack surface
+
+**APPROACH:** Hit login/search/sort/report params first; probe every quote context, take in-band (error/UNION) before blind (boolean/time), confirm in 1-2 manual requests then hand the dump to sqlmap (scoped, gentle, resume).
+**AVOID:** A generic 500, a WAF "SQL injection detected" string, an un-reproduced time delta, or a single-session login oracle is NOT confirmation - re-verify in a clean session, clear the cookie on a login oracle.
 
 Highest-value injection points first:
 
@@ -52,6 +54,12 @@ test the SQLi on a different page that does.
 
 1. Enumerate all input vectors (GET, POST, JSON body, headers, cookies, path segments).
 2. Baseline the response (length, status, time).
+   **Opaque constant-format token -> DECODE-INSPECT it first** (base58 for short alphanumeric
+   IDs, then base64, hex). A parameter whose value is an ENCODING of the real SQL input
+   (`field:value`) silently defeats every plaintext/sqlmap probe - each returns a clean
+   "bad request" that reads exactly like a server-side format gate. Decode, inject INSIDE the
+   decoded string, re-encode the whole value. sqlmap cannot find these (it fuzzes the raw
+   parameter). Worked pattern: [[sql-injection]] (encoded-parameter wrapper).
 3. Error probes in **every quote context** - `'` `"` `` ` `` `')` `"))` and numeric/no-quote.
    A `'` doing nothing does NOT mean safe: the sink may be double-quoted (`WHERE x="$v"`). Watch
    for a reflected DB error or any length change. **On a numeric-looking id param, test the

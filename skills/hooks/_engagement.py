@@ -11,13 +11,15 @@ import re
 import time
 from datetime import date
 
-# Self-locate: ZCode invokes hooks as ${ZCODE_PROJECT_DIR}/skills/hooks/<name>, so
-# realpath lands in the real skills/hooks dir. skills/hooks -> skills -> root.
+# Self-locate: realpath resolves the ~/.claude/vault-hooks symlink to the real
+# skills/hooks dir inside whichever machine's vault. skills/hooks -> skills -> root.
 # Machine-independent: works regardless of user/path/spelling on each device.
 HERE = os.path.dirname(os.path.realpath(__file__))
-# ZTORCH_VAULT (or legacy CLAUDEBRAIN_VAULT) overrides the self-located vault root
-# (used by tests to point at a fixture vault). Unset in normal use -> self-locate.
-VAULT = (os.environ.get("ZTORCH_VAULT") or os.environ.get("CLAUDEBRAIN_VAULT")
+# ZTORCH_VAULT / OBSIDIAN_VAULT override the self-located vault root (used by
+# tests to point at a fixture vault). CLAUDEBRAIN_VAULT kept as a legacy alias.
+# Unset in normal use -> self-locate via the symlinked path.
+VAULT = (os.environ.get("ZTORCH_VAULT") or os.environ.get("OBSIDIAN_VAULT")
+         or os.environ.get("CLAUDEBRAIN_VAULT")
          or os.path.dirname(os.path.dirname(HERE)))
 TARGETS = os.path.join(VAULT, "targets")
 # Templates live OUTSIDE targets/ (which is git-ignored) so they ship with the
@@ -589,7 +591,9 @@ def summary_text():
 
 def engagement_type(d=None):
     """Read engagement_type from any existing state/loot/killchain frontmatter.
-    Defaults to 'pentest' when unknown."""
+    Falls back to the driver cache (.offensive.json "type"), which offensive.py
+    writes even when the scaffold's frontmatter omits the line. Defaults to
+    'pentest' when unknown."""
     d = d or active_dir()
     if not d:
         return "pentest"
@@ -602,6 +606,13 @@ def engagement_type(d=None):
                 val = line.split(":", 1)[1].strip().lower()
                 if val in TYPES:
                     return val
+    try:
+        cache = json.load(open(os.path.join(d, ".offensive.json"), encoding="utf-8"))
+        val = str(cache.get("type", "")).strip().lower()
+        if val in TYPES:
+            return val
+    except Exception:
+        pass
     return "pentest"
 
 
@@ -895,10 +906,7 @@ def learn_pending(d):
         return False
 
 
-# A web box = a web SERVICE. Bare port numbers without a service context false-positive on
-# things like a reverse-shell LPORT ("set LPORT 80"), so a bare port only counts in
-# host:port or port/tcp form; the explicit http(s) forms always count.
-_WEB_PORT_RE = re.compile(r"(?::)(80|443|8080|8443|8000)\b|\b(?:80|443|8080|8443|8000)/tcp\b|https?://|\bhttps?\b", re.I)
+_WEB_PORT_RE = re.compile(r"(?:\b|:)(80|443|8080|8443|8000)\b|https?://|\bhttps?\b", re.I)
 
 
 def web_evidence_gaps(d):
@@ -1033,14 +1041,6 @@ def captured_flags(d):
                 out.add(m.group(0))
     except Exception:
         pass
-    # state.md is an equally valid record (the close-out convention writes the flag list under
-    # `## STATUS:`); union it so a box that recorded flags there does not look under-counted.
-    try:
-        st = open(os.path.join(d, "state.md"), encoding="utf-8", errors="ignore").read()
-        for m in _FLAG_STR_RE.finditer(st):
-            out.add(m.group(0))
-    except Exception:
-        pass
     return out
 
 
@@ -1064,10 +1064,7 @@ def flag_accounting_gap(d):
         flags = captured_flags(d)
         n = len(flags)
         fmt = next((f.split("{", 1)[0] for f in flags), "flag")   # infer sweep prefix
-        # Sweep the ENGAGEMENT RECORD from this seat (grepping / here only scans the WSL/Windows
-        # filesystem, not the box); sweep the BOX itself over the live shell while it is up.
-        sweep = ("`grep -RIn '%s{' targets/<eng>/` (the captured record; the same grep on the "
-                 "box over your live shell while it is still up)" % fmt)
+        sweep = ("`grep -RIn '%s{' / --exclude-dir={proc,sys,dev,run}`" % fmt)
         try:
             expected = int(raw)
         except (TypeError, ValueError):

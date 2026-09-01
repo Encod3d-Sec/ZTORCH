@@ -45,17 +45,16 @@ execution loop) and check each mandated step against what actually happened on d
 | A hook nudge fired -> was it acted on? | grep the transcript for a nudge (e.g. "switch to ffuf") whose action never followed | nudge ignored under momentum |
 | State-first / capture-as-you-go | `state.md`/`loot.md` updated mid-box vs all-at-end | prose-in-chat lost |
 
-**If the engagement ran under the campaign driver** (`bb/pt/ctf-workflow`), pull its own numbers -
-they say precisely where the driver fought the operator, no guessing:
+**If the engagement ran under the offensive driver** (`Skill(offensive)`, `scripts/offensive.py`), read the
+state files it wrote - they say precisely where the driver fought the operator, no guessing:
 
-```
-python3 scripts/campaign.py --eng <ENG> ledger --json
-```
+- `Approach.md`'s 4a board: `[x]` closed vs `[!]` dead rows = the exhaustion-to-finding ratio; a board
+  thick with `[!]` before a single `[x]` is the retro's starting point.
+- `Deadends.md`: every `asset x class` vector the driver killed (and why).
+- `decisions.md`: the parked / out-of-envelope rows (`offensive.py done --park`), i.e. where the loop
+  had to defer instead of push.
 
-`drift` = network calls the driver never emitted (improvisation off the board); `dry_rounds` /
-`reframe_lenses_used` = how hard the campaign had to reframe to find anything; `paused_hosts` = hosts
-that banned us; `board.dead` vs `board.closed` = the exhaustion-to-finding ratio. A high drift or a
-long lens list is the retro's starting point.
+Cross-check those against `log.md` for any move made OFF the board (improvisation the driver never sequenced).
 
 For each drift, name the **root cause** honestly: a *skill* that under-specified, a *hook* that
 should have fired a reflex but did not (or fired and was ignorable), or a *me* failure the harness

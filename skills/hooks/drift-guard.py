@@ -132,7 +132,7 @@ def _scanner_cap(d, st, cmd):
 # reverse shell or session and kills it (a recurring shell-loss drift across several boxes). Advisory only
 # (never deny - the operator may genuinely want it), fires on a shell/reverse-shell process name in a
 # pkill/killall. The sibling footgun (Ctrl-C on an unstabilized shell) is a terminal signal no hook
-# sees, so it stays AGENTS.md prose. Word-list kept to actual shell/relay binaries -> low false-fire.
+# sees, so it stays CLAUDE.md prose. Word-list kept to actual shell/relay binaries -> low false-fire.
 _SELFKILL_RE = re.compile(
     r"\b(pkill|killall)\b[^|;&\n]*\b(ba?sh|nc|ncat|netcat|socat|python\d?|perl|php|rlwrap|/dev/tcp)\b",
     re.IGNORECASE)

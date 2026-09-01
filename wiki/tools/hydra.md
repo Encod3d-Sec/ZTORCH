@@ -5,7 +5,7 @@ tags: [brute-force, htb, linux, network, tool, web, windows]
 date_created: 2026-05-08
 date_updated: 2026-05-08
 sources: [cpts-brute-forcing]
-phase: crack
+phase: exploit
 ---
 
 ## Purpose
@@ -197,3 +197,11 @@ grep -E '^.{6,}$' jane.txt | grep -E '[A-Z]' | grep -E '[a-z]' | \
 - CPTS Login Brute Forcing — Hydra (`1. Hydra.md`, `2. Login Forms.md`)
 - CPTS Login Brute Forcing — Custom Wordlists (`1. Custom WordLists.md`)
 - CPTS Login Brute Forcing — Brute Force Attacks (`1. Intaractive Brute Force attacks.md`)
+
+## Core usage
+
+Password spray a single user over SSH:
+
+```bash
+hydra -l root -P passwords.txt ssh://192.168.1.100
+```

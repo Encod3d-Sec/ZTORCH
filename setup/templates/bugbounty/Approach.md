@@ -31,7 +31,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 - [ ] wiki-query EACH fingerprinted tech/version   <-- GATE 1 source
 
 ## 2. Weaponize  ([[owasp-top-10]] · [[oob-callbacks]] · [[cve-arsenal]])
-- [ ] pick payload class from wiki/payloads/ -> Skill(arsenal)
+- [ ] pick payload class from wiki/payloads/ -> Skill(wiki-arsenal)
 - [ ] CVE lookup for named tech/version      -> [[cve-arsenal]]
 - [ ] stage PoC into poc/scripts/
 
@@ -46,7 +46,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 | id | asset | vuln class | arsenal | skill | tool | status | poc | poc_kind |
 |----|-------|-----------|---------|-------|------|--------|-----|----------|
 
-route by class: Skill(arsenal) -> Skill(`hunt-<class>`)
+route by class: Skill(wiki-arsenal) -> Skill(`hunt-<class>`)
 chains to impact: e.g. ssrf -> imds -> creds -> ato  -> [[imds-cloud-metadata]] [[account-takeover]]
 
 ### 4c. Impact

@@ -9,14 +9,16 @@ description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, Share
 
 ## Wiki
 
-```
 qmd_query "authentication bypass account takeover password reset poisoning session fixation legacy protocol" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[authentication-attacks]]. Payload arsenal: `wiki/payloads/{auth-bypass,jwt,oauth-saml,session,mfa-bypass,crypto}.md`.
-Anchors: [[session-management-attacks]], [[mfa-bypass]].
+Hub: [[web-moc]] · Primary page: [[authentication-attacks]] · Payload arsenal: `wiki/payloads/auth-bypass.md`
+Anchors: [[session-management-attacks]], [[mfa-bypass]], [[jwt-attacks]], [[cryptography-attacks]]
+**REFS:** [[authentication-attacks]], wiki/payloads/auth-bypass.md
 
 ## Attack surface (ranked)
+
+**APPROACH:** Probe the legacy-protocol endpoints (xmlrpc/EWS/_vti_bin/etc.) first - a second door to the same credential store with no rate limit/MFA; then reset-flow poisoning (host-header, Referer token), session/MFA/JWT manipulation, and read the form (username-only = instant ATO).
+**AVOID:** A 200 on the login/reset form, a friendlier error, a reset email merely received, or an edited JWT the server did not reject is NOT confirmation - you must obtain an authenticated session as a DIFFERENT user in a clean profile.
 
 Probe in this order; a higher entry is more often unguarded than a cleverer payload on the main form is likely to land.
 

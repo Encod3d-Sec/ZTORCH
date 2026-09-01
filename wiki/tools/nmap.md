@@ -5,7 +5,7 @@ tags: [enumeration, htb, network, nmap, recon, scanner, tool]
 date_created: 2026-05-08
 date_updated: 2026-05-08
 sources: [cpts-nmap]
-phase: scan
+phase: enumerate
 ---
 
 ## Purpose
@@ -191,3 +191,11 @@ sudo nmap --max-retries 1 target             # Reduce retransmissions
 
 - CPTS Nmap Module (`NMAP.md`)
 - CPTS Web Reconnaissance — Introduction (`1. Introduction.md`)
+
+## Core usage
+
+Service/version + default-script scan of a host:
+
+```bash
+sudo nmap -sS -sV -sC 10.10.10.1
+```

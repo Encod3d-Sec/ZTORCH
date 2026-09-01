@@ -16,7 +16,7 @@ import os
 import sys
 from collections import Counter
 
-VAULT = os.environ.get("ZTORCH_VAULT") or os.environ.get("CLAUDEBRAIN_VAULT") or os.path.dirname(
+VAULT = os.environ.get("CLAUDEBRAIN_VAULT") or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
 )
 LOG = os.path.join(VAULT, ".trigger-fire.jsonl")

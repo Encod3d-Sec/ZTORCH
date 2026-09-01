@@ -91,3 +91,11 @@ C:\Windows\Temp\lync.exe
 ## See also
 - [[windows-privesc]] · [[privesc-exploit-arsenal]] · [[windows-amsi-bypass]] · [[endpoint-detection-and-response]]
 - [[metasploit]] (multi/handler, getsystem, kiwi) · [[peass]] (winPEAS has its own Defender-safe variants)
+
+## Core usage
+
+Wrap raw shellcode into an EDR-evading signed loader:
+
+```bash
+./ScareCrow -I beacon.bin -domain Microsoft.com
+```

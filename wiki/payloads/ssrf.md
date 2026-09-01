@@ -201,3 +201,31 @@ response that a scanner never parses semantically. Read every manifest/header/re
 (same read-whole discipline as source/JS) rather than grepping for `url=`/`callback=` params only.
 
 <!-- promoted-slug: diagnostics-ingest-endpoint-ssrf-surface -->
+
+## Reading the fetch/LFI result when it is NOT in the response body (Flask flash cookie)
+
+A Flask SSRF/LFI sink often does `flash(content); return redirect(...)` instead of returning the
+fetched file in the body. The POST then 302-redirects and the content rides in the signed **session
+cookie** under `_flashes` — readable client-side (signed != encrypted). Two gotchas:
+
+- Do NOT follow the 302. The next render consumes (clears) the flash, so `curl -L` loses it. Grab the
+  `Set-Cookie: session=...` from the 302 response itself.
+- The cookie is `[.]<payload>.<ts>.<sig>`; a leading `.` means the payload is zlib-compressed
+  (small payloads are NOT compressed — handle both).
+
+```python
+import base64, zlib, json
+ck = "<session cookie value from the 302>"
+comp = ck.startswith(".")
+p = (ck[1:] if comp else ck).split(".")[0]
+d = base64.urlsafe_b64decode(p + "=" * (-len(p) % 4))
+if comp: d = zlib.decompress(d)
+for f in json.loads(d).get("_flashes", []):
+    # flash may be [category, msg] OR {" t":[category, msg]}
+    print(list(f.values())[0][1] if isinstance(f, dict) else f[1])
+```
+
+Same idea for any framework that echoes a sink's result into a client-readable session/flash store
+rather than the HTTP body: the channel is the cookie, not the page.
+
+<!-- promoted-slug: flask-flash-cookie-exfil -->

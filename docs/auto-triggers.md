@@ -4,7 +4,7 @@ What the framework fires on its own, so you know what activates for a given task
 
 **Core principle:** auto-triggers **inject context** (a suggestion the model reads and acts on, or a warning). They do **not** silently run commands. Every fire is a visible injected line. Nothing executes a tool by itself.
 
-> **During a campaign, the driver supersedes these advisory triggers.** Running an engagement under `Skill(bb-workflow|pt-workflow|ctf-workflow)` puts `scripts/campaign.py` in charge: it prints the next required action (wiki-first, tool-first, skill-first, typed evidence) as tool output every turn, which is *enforced* rather than suggested. The hooks below still fire and remain the routing layer for **ad-hoc, non-campaign** work; inside a campaign, follow the driver's `next` block over any hook nudge. Retiring the now-redundant hooks is deliberately deferred: they are harmless and still serve non-campaign work.
+> **During an engagement, the driver supersedes these advisory triggers.** Running an engagement under `Skill(offensive)` (`scripts/offensive.py`) puts the driver in charge: it prints the next required action (wiki-first, tool-first, skill-first, typed evidence) as tool output every turn, which is *enforced* rather than suggested. The hooks below still fire and remain the routing layer for **ad-hoc, non-campaign** work; inside a campaign, follow the driver's `next` block over any hook nudge. Retiring the now-redundant hooks is deliberately deferred: they are harmless and still serve non-campaign work.
 
 **Source of truth** (edit these, not this doc, to change behaviour):
 - keyword -> skill: `skills/hunt/triggers.json`
@@ -69,9 +69,9 @@ Prompt contains the keyword (case-insensitive) -> that skill is suggested. Multi
 | api security/testing, bola, bfla, swagger/openapi, grpc | hunt-api |
 | n-day, patch diff, bindiff, silent patch, 1-day | nday |
 | disclose, request a cve, report to vendor, coordinated disclosure, security.txt | disclosure (finding -> CVE) |
-| what next, next move, where to focus, prioritize, what should I attack/test | next-move |
+| what next, next move, where to focus, prioritize, what should I attack/test | offensive.py next |
 | ingest, synthesize findings/recon/output, process recon | ingest |
-| coverage, what haven't we tested, test gaps, are we thorough, untested | coverage |
+| coverage, what haven't we tested, test gaps, are we thorough, untested | offensive.py coverage |
 
 52 triggers total (42 vuln-type + 10 attack-surface). xxe/ssti/graphql route to hunt-injection (no separate skills). azure ad -> hunt-m365 (not hunt-cloud) by design. (Counts drift as `triggers.json` grows; recount with `python3 -c "import json;d=json.load(open('skills/hunt/triggers.json'));print(len(d['triggers']),len(d['surface_triggers']))"`.)
 
@@ -122,7 +122,7 @@ Tools whose output is fingerprinted (matched at command position, including insi
 | run `hydra ...` with `no_bruteforce: true` in scope | scope-guard denies the command (before run) |
 | run `nmap 10.0.3.9` where `10.0.3.0/24` is out of scope | scope-guard denies the command |
 | type "solve this crackme" | ctf-category -> reverse-engineering page + radare2/pwntools |
-| type "what next" | next-move (ranked moves) |
+| type "what next" | offensive.py next (ranked moves) |
 | start a session on an engagement | engagement-init: state + top-3 next moves + wiki health |
 
 ---

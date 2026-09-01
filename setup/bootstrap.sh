@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ZTORCH vault bootstrap for ZCode (Z.AI) -- run once per machine from the vault root.
+# TORCH vault bootstrap -- run once per machine from the vault root.
 # Usage: bash setup/bootstrap.sh
 set -e
 
@@ -14,16 +14,24 @@ fi
 echo "Vault: $VAULT"
 echo "Machine: $(hostname)"
 
-# 1. Instructions + hooks need no user-dir writes on ZCode:
-#    - AGENTS.md at the repo root is loaded automatically (workspace instruction file).
-#    - Hook registration ships in the committed .zcode/config.json; install-hooks.sh
-#      below verifies it and checks python3/bash are callable.
-echo "[..] hooks + instructions: verified by install-hooks.sh below"
+# 1. Create ~/.claude/CLAUDE.md include
+CLAUDE_DIR="$HOME/.claude"
+mkdir -p "$CLAUDE_DIR"
+echo "@$VAULT/CLAUDE.md" > "$CLAUDE_DIR/CLAUDE.md"
+echo "[ok] Created $CLAUDE_DIR/CLAUDE.md -> $VAULT/CLAUDE.md"
+
+# 2. Symlink vault hooks into ~/.claude/vault-hooks
+# Owned by install-hooks.sh (step 3b): it clears a stale REAL directory at the
+# link path first. A bare `ln -sf` here would nest the link inside such a
+# directory instead of replacing it, leaving every hook command dead.
+echo "[..] vault-hooks symlink: handled by install-hooks.sh below"
+
+# 3b. Register hooks in settings.json + expose vault skills to /skills
 bash "$SCRIPT_DIR/install-hooks.sh"  || echo "[warn] install-hooks.sh failed (run it manually)"
 bash "$SCRIPT_DIR/install-skills.sh" || echo "[warn] install-skills.sh failed (run it manually)"
-echo "[ok] Hook registration verified (.zcode/config.json) + vault skills linked into .zcode/skills"
+echo "[ok] Hooks registered in settings.json + vault skills linked into ~/.claude/skills"
 
-# 2. Install qmd if missing
+# 3. Install qmd if missing
 if ! command -v qmd >/dev/null 2>&1; then
   echo "Installing bun + qmd..."
   curl -fsSL https://bun.sh/install | bash
@@ -34,76 +42,72 @@ else
   echo "[ok] qmd already installed: $(qmd --version 2>/dev/null || echo 'version unknown')"
 fi
 
-# 3. Register MCP servers at USER scope (~/.zcode/cli/config.json -> mcp.servers).
-#    User scope keeps machine-specific absolute paths out of the tracked workspace
-#    config, and every scope auto-connects at session start.
-if command -v python3 >/dev/null 2>&1; then
-  echo "Registering MCP servers (user scope)..."
-  ZCODE_CONFIG="$HOME/.zcode/cli/config.json"
-  mkdir -p "$(dirname "$ZCODE_CONFIG")"
-  [ -f "$ZCODE_CONFIG" ] || echo '{}' > "$ZCODE_CONFIG"
-  cp "$ZCODE_CONFIG" "$ZCODE_CONFIG.bak-$(date +%s)"
-
-  python3 - "$ZCODE_CONFIG" "$VAULT" <<'PY'
-import json, os, sys
-p, vault = sys.argv[1], sys.argv[2]
-d = json.load(open(p))
-servers = d.setdefault("mcp", {}).setdefault("servers", {})
-changed = False
-
-def upsert(name, spec):
-    global changed
-    if servers.get(name) != spec:
-        servers[name] = spec
-        changed = True
-        print("  [ok] %s registered (QMD_VAULT=%s)" % (name, vault))
-    else:
-        print("  [ok] %s already registered" % name)
-
-upsert("wiki-search", {
-    "type": "stdio",
-    "command": "qmd",
-    "args": ["mcp"],
-    "env": {"QMD_VAULT": vault},
-})
-upsert("caveman-shrink", {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "caveman-shrink", "qmd", "mcp"],
-    "env": {"QMD_VAULT": vault},
-})
-# Prune stale absolute paths from a previous vault location.
-for name, spec in list(servers.items()):
-    if isinstance(spec, dict):
-        env = spec.get("env") or {}
-        old = env.get("QMD_VAULT")
-        if old and old != vault and os.path.isdir(old) is False:
-            del servers[name]
-            changed = True
-            print("  [prune] %s (old vault path gone: %s)" % (name, old))
-
-json.dump(d, open(p, "w"), indent=2)
-json.load(open(p))
-print("  [ok] %s valid" % p)
-PY
+# 4. Install official Claude plugins
+if command -v claude >/dev/null 2>&1; then
+  echo "Installing official plugins..."
+  for plugin in code-review frontend-design skill-creator claude-md-management; do
+    claude plugins install "${plugin}@claude-plugins-official" 2>/dev/null && \
+      echo "  [ok] ${plugin}" || echo "  [ok] ${plugin} (already installed)"
+  done
 else
-  echo "[warn] python3 not found -- register MCPs manually (Settings -> MCP, or edit ~/.zcode/cli/config.json):"
-  echo '  mcp.servers["wiki-search"] = {"type":"stdio","command":"qmd","args":["mcp"],"env":{"QMD_VAULT":"'"$VAULT"'"}}'
-  echo '  mcp.servers["caveman-shrink"] = {"type":"stdio","command":"npx","args":["-y","caveman-shrink","qmd","mcp"],"env":{"QMD_VAULT":"'"$VAULT"'"}}'
+  echo "[warn] claude CLI not found -- install plugins manually after Claude Code is set up:"
+  echo "  claude plugins install code-review@claude-plugins-official"
+  echo "  claude plugins install frontend-design@claude-plugins-official"
+  echo "  claude plugins install skill-creator@claude-plugins-official"
+  echo "  claude plugins install claude-md-management@claude-plugins-official"
 fi
 
-# 4. Optional plugins (Settings -> Plugin Management in ZCode).
-#    ZCode ships with official plugins (skill-creator, document-skills, browser-use,
-#    computer-use, zcode-guide) already available. The extras below are optional
-#    quality-of-life plugins; ZCode recognizes .claude-plugin manifests, so a
-#    Claude marketplace repo can be added on the Discover tab if you want it.
-cat <<'EOF'
-[note] Optional plugins (add via Settings -> Plugin Management -> Discover):
-  - superpowers   (github: obra/superpowers)   planning/execution workflow skills
-  - ponytail      (github: DietrichGebert/ponytail) lazy-code discipline
-  - caveman       (github: JuliusBrussee/caveman)   prose compression (/caveman)
-None are required: AGENTS.md routes around them when absent.
-EOF
+# 5b. Install ponytail (lazy-code discipline plugin -- separate marketplace)
+if command -v claude >/dev/null 2>&1; then
+  echo "Installing ponytail..."
+  claude plugins marketplace add DietrichGebert/ponytail 2>/dev/null || true
+  claude plugins install ponytail@ponytail 2>/dev/null && \
+    echo "  [ok] ponytail" || echo "  [ok] ponytail (already installed)"
+else
+  echo "[warn] claude CLI not found -- install ponytail manually:"
+  echo "  claude plugins marketplace add DietrichGebert/ponytail"
+  echo "  claude plugins install ponytail@ponytail"
+fi
+
+# 5. Install caveman (output compression skill -- required on all machines)
+NODE_MAJOR=$(node -e "process.stdout.write(process.version.split('.')[0].replace('v',''))" 2>/dev/null || echo "0")
+if [ "$NODE_MAJOR" -ge 18 ]; then
+  echo "Installing caveman..."
+  curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
+  echo "[ok] caveman installed"
+else
+  echo "[warn] Node >=18 required for caveman -- install Node first, then run:"
+  echo "  curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash"
+fi
+
+# 6. Register MCP servers (wiki-search + caveman-shrink wrapper)
+if command -v claude >/dev/null 2>&1; then
+  echo "Registering MCP servers..."
+
+  # wiki-search: semantic + keyword search over the vault wiki
+  if claude mcp get wiki-search >/dev/null 2>&1; then
+    echo "  [ok] wiki-search already registered"
+  else
+    claude mcp add wiki-search -s user \
+      -e "QMD_VAULT=$VAULT" \
+      -- qmd mcp
+    echo "  [ok] wiki-search registered (QMD_VAULT=$VAULT)"
+  fi
+
+  # caveman-shrink: same wiki-search upstream, tool descriptions compressed
+  if claude mcp get caveman-shrink >/dev/null 2>&1; then
+    echo "  [ok] caveman-shrink already registered"
+  else
+    claude mcp add caveman-shrink -s user \
+      -e "QMD_VAULT=$VAULT" \
+      -- npx -y caveman-shrink qmd mcp
+    echo "  [ok] caveman-shrink registered (QMD_VAULT=$VAULT)"
+  fi
+else
+  echo "[warn] claude CLI not found -- register MCPs manually after Claude Code is set up:"
+  echo "  claude mcp add wiki-search -s user -e QMD_VAULT=$VAULT -- qmd mcp"
+  echo "  claude mcp add caveman-shrink -s user -e QMD_VAULT=$VAULT -- npx -y caveman-shrink qmd mcp"
+fi
 
 # Kali VM capture deps (screenshot + tmux scan-runner). Best-effort; needs the VM configured.
 if [ -f /root/vm.sh ] && [ -f /root/creds.txt ]; then
@@ -114,4 +118,4 @@ else
 fi
 
 echo ""
-echo "Done. Restart ZCode, then run: qmd update && qmd embed"
+echo "Done. Restart Claude Code, then run: qmd update"

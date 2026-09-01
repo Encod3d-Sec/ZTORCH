@@ -9,15 +9,19 @@ description: Active Directory attack hunting - enumeration to domain dominance. 
 
 ## Wiki
 
-```
 qmd_query "Active Directory kerberoast AS-REP ADCS ESC delegation DCSync lateral movement BloodHound" via wiki-search MCP
-```
 
-Hub: [[active-directory-moc]] (live index). Primary page: [[active-directory]].
-Anchors: [[adcs]] (ESC1-16 matrix, the highest-value escalation edge), [[kerberos-attacks]] (AS-REP/Kerberoast plus the delegation paths).
-Tool anchor: [[netexec]] (the full nxc map: every protocol, flag, and module, with the spray/lockout, Kerberos, exec-method, and dumping gotchas). Read the LDAP + SMB sections before hand-rolling any AD enumeration; most steps below are one nxc flag.
+Hub: [[active-directory-moc]] · Primary page: [[active-directory]] · Tooling: [[netexec]]
+Anchors: [[adcs]], [[kerberos-attacks]], [[ad-lateral-movement]], [[default-credentials]]
+**REFS:** [[active-directory]], [[adcs]], [[kerberos-attacks]]
+
+Read [[netexec]]'s LDAP + SMB sections before hand-rolling any AD enumeration; most steps below are one nxc flag.
 
 ## Attack surface signals
+
+**APPROACH:** Fire the unauth-enum wave at once (null/guest shares + RID-brute, anon LDAP users + description fields, AS-REP roast, person-object SPN Kerberoast, lockout policy, `certipy find -vulnerable`), then walk enum -> roast -> ACL/ADCS ESC1-16 -> delegation -> DCSync -> lateral, reusing captured creds inside the lockout gate.
+**AVOID:** A captured-but-uncracked hash, a dumped ticket, a theoretical BloodHound/ESC edge never executed, or an unvalidated spray hit is NOT confirmation - creds must authenticate to the DC (`[+]`/`Pwn3d!`) or the ticket/ACL abuse must be exercised end to end.
+
 Ports: SMB 445, LDAP 389/636, Kerberos 88, ADWS 9389, WinRM 5985/5986, RPC 135, MSSQL 1433, ADCS web enroll 80/443 (`/certsrv`).
 Footholds: null/guest SMB, anonymous LDAP bind, AS-REP-roastable users (no preauth), SMB signing OFF (relay), `ms-DS-MachineAccountQuota > 0`, pre-Win2000 computers, LAPS readable.
 

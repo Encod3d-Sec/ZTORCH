@@ -9,14 +9,16 @@ description: Microsoft 365 / Entra ID attack - tenant discovery, user enumeratio
 
 ## Wiki
 
-```
 qmd_query "Microsoft 365 Entra ID Azure AD tenant discovery user enumeration OneDrive AADSTS smart lockout conditional access ROPC" via wiki-search MCP
-```
 
-Hub: [[cloud-moc]] (live index). Primary page: [[azure-ad-enumerate]].
-Anchors: [[azure-ad-conditional-access-policy]] (the CA gap you must prove bypassed), [[azure-ad-access-and-tokens]] (ROPC / token issuance).
+Hub: [[cloud-moc]] · Primary page: [[azure-ad-enumerate]] · Arsenal: [[azure-ad-access-and-tokens]]
+Anchors: [[azure-ad-conditional-access-policy]], [[azure-ad-iam]]
+**REFS:** [[azure-ad-enumerate]], [[azure-ad-conditional-access-policy]]
 
 ## Attack surface (ranked - spend the zero-auth signal before any auth attempt)
+
+**APPROACH:** Spend the zero-auth signal first - tenant discovery, then exhaustive OneDrive-differential user enum (both zero-lockout) - and only then ROPC, hard-capped at 1-2 attempts/user; read the AADSTS code to separate a valid password (53003/50076/...) from a non-existent user (50034).
+**AVOID:** A valid username from OneDrive alone, an AADSTS error in isolation, or a "CA bypass" inferred from a 53003 block code is NOT confirmation - you need an issued `access_token` (or a strictly-post-validation code), and a CA bypass needs a token through an uncovered client/flow.
 
 **Fingerprint (target is M365/Entra) when you see:** `*.onmicrosoft.com`, `*-my.sharepoint.com`, `login.microsoftonline.com` redirects, `enterpriseregistration.*` records, or "Microsoft 365" in tech-stack notes.
 

@@ -1,5 +1,5 @@
 {
-  "verifier_model": "flash",
+  "verifier_model": "opus",
   "_comment": "Per-type campaign configuration for scripts/campaign.py (bb/pt/ctf workflow driver). Data, not code: change behaviour by editing here. `approach` must appear in playbook.json's fingerprint `approach` lists. `osint:false` for ctf skips pass 0 unless the skill is invoked with an osint arg. `phase_default_tools`, `visual_evidence_classes`, `reframe_lenses` and `refuter_prompt` are shared across all three types.",
 
   "bb":  { "approach": "bugbounty", "osint": true,  "verifier": "required", "closeout": ["triage", "evidence", "report", "learn"],

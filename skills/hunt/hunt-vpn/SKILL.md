@@ -9,17 +9,19 @@ description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisc
 
 ## Wiki
 
-```
 qmd_query "SSL VPN Fortinet Citrix Cisco Palo Alto Pulse Ivanti CVE default credentials pre-auth exploit" via wiki-search MCP
-```
 
-Hub: [[network-moc]] (live index). Primary page: [[network-service-attacks]] (VPN-protocol section: IKE aggressive-mode PSK capture, PPTP handshake capture). CVE arsenal: `wiki/cheatsheets/cve-arsenal.md` (Perimeter / VPN / edge - Fortinet/Citrix/Ivanti/PAN-OS/Cisco pre-auth CVEs with PoC). Default creds: `wiki/cheatsheets/default-credentials.md`.
-Anchors: [[network-discovery]] (locating and banner-fingerprinting the exposed appliance).
+Hub: [[network-moc]] · Primary page: [[network-service-attacks]] · CVE arsenal: `wiki/cheatsheets/cve-arsenal.md` · Default creds: `wiki/cheatsheets/default-credentials.md`
+Anchors: [[network-discovery]], [[cve-arsenal]], [[default-credentials]]
+**REFS:** [[network-service-attacks]], [[cve-arsenal]], [[default-credentials]]
 
 ## When to Use
 Recon surfaces: `+CSCOE+` paths (Cisco ASA), `Set-Cookie: SVPNCOOKIE=` (Fortinet), `NSC_AAA=` (Citrix), `DSAuthSession=` (Pulse), `BIGipServer*` (F5), ports 443/8443/10443 with VPN login pages.
 
 ## Attack surface (ranked)
+
+**APPROACH:** Work top-down - vendor fingerprint (cookie/header/login path), version fingerprint, a short default-cred check, then the pre-auth CVE for the fingerprinted vendor+version; exploit the first rung that lands, do not jump to CVEs before fingerprinting.
+**AVOID:** A version banner matching a CVE, a portal 200, a nuclei `detected` hit, or a large Citrix-Bleed response without token material is NOT confirmation - you need the primitive exercised (real file contents, a replayable session token, admin login, or observed RCE output).
 
 Work top-down; exploit the first rung that lands, do not jump to CVEs before fingerprinting.
 1. **Vendor fingerprint** (cookie / header / login-page path) - which appliance, then which page below.

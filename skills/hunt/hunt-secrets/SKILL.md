@@ -9,14 +9,16 @@ description: Exposed-secrets hunting - .git/ dir + history mining, exposed .env/
 
 ## Wiki
 
-```
 qmd_query "exposed secrets git directory .env config hardcoded API keys JS bundle source maps S3 CI leakage" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[secret-hunting]].
-Anchors: [[javascript-source-map-exploitation]], [[supply-chain-attacks]], [[git-exposure]], [[hardcoded-secrets-enumeration]], [[source-code-analysis]], [[aws-service-s3-buckets]], [[aws-access-token-secrets]]. Dorks: [[recon-dorks]].
+Hub: [[web-moc]] · Primary page: [[secret-hunting]] · Arsenal: [[hardcoded-secrets-enumeration]], [[recon-dorks]]
+Anchors: [[javascript-source-map-exploitation]], [[git-exposure]], [[source-code-analysis]], [[supply-chain-attacks]], [[aws-service-s3-buckets]], [[aws-access-token-secrets]]
+**REFS:** [[secret-hunting]], [[hardcoded-secrets-enumeration]]
 
 ## Attack surface signals
+
+**APPROACH:** Rank highest-yield first - exposed `.git/` (dump + mine history) > `.env`/config files > JS bundles + source maps (rebuilt source) > public org/employee repos > CI logs > S3/blob listings; collect each candidate with its type tag, then LIVE-validate.
+**AVOID:** A high-entropy string, an `API_KEY` variable, a trufflehog/gitleaks regex hit, or a key from old history you never tested is NOT confirmation - the secret must validate against its own service with ONE benign read-only call.
 
 **Rank before probing** - highest yield first: exposed `.git/` (full source + history) > exposed `.env`/config files > JS bundles + source maps (rebuilt original source) > public repos (org + employee) > CI/CD build logs > S3/blob listings.
 

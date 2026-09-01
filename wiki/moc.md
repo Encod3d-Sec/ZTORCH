@@ -1,5 +1,5 @@
 ---
-title: "ZTORCH Wiki - Map of Content"
+title: "TORCH Wiki - Map of Content"
 type: moc
 tags: [moc, index]
 sources: []
@@ -24,7 +24,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[network-moc|Network]] (19)
 - [[osint-moc|Osint]] (8)
 - [[red-team-moc|Red Team]] (15)
-- [[web-moc|Web]] (83)
+- [[web-moc|Web]] (84)
 
 ## Reference
 

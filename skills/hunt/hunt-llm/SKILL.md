@@ -9,14 +9,16 @@ description: LLM / AI application attack hunting - prompt injection (direct + in
 
 ## Wiki
 
-```
 qmd_query "LLM prompt injection direct indirect excessive agency insecure output system prompt leak OWASP LLM Top 10" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[llm-attacks]]. Payload arsenal: [[llm-prompt-injection]].
-Anchors: [[adversarial-ml]] (classical ML, not just LLMs: evasion, poisoning, model inversion, model theft).
+Hub: [[web-moc]] · Primary page: [[llm-attacks]] · Payload arsenal: [[llm-prompt-injection]]
+Anchors: [[adversarial-ml]], [[mcp-server-attacks]]
+**REFS:** [[llm-attacks]], [[llm-prompt-injection]]
 
 ## Attack surface signals
+
+**APPROACH:** Rank the three high-impact surfaces - tool-calling agents (enumerate the tools, chain excessive agency), RAG/document ingestion (indirect injection in ingested content), output rendered as HTML/markdown - then run direct + indirect injection and read the agent's action log, not the reply text.
+**AVOID:** Odd/edgy model text, a refusal (that is the guardrail working), or the model CLAIMING it ran a tool is NOT confirmation - a real boundary must be crossed (data exfiltrated, an unauthorized tool actually invoked with an observable side effect, or a verified system-prompt leak).
 
 Any feature that: chats/answers, summarises user or external content, calls tools/APIs on request, or renders model output back into the page/email/another system. Tells: "AI assistant", "powered by GPT/Claude", a chat widget, content auto-summaries.
 

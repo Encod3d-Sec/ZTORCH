@@ -1115,3 +1115,56 @@ When `sleep()`, `or 1=1`, and named SQL functions are all WAF-blocked, send pure
 Confirm the WAF gap explicitly: send both the arithmetic payload and a `sleep()`/`or 1=1` payload side by side and diff which one gets edge-blocked versus reaches the database.
 
 <!-- promoted-slug: a-pure-arithmetic-payload-with-no-function-name-or-boolean-k -->
+
+## SQLi hidden inside an opaque application token (decode it first)
+
+When an id/reference arrives as an opaque token (a random-looking cookie/param, a Hashids/Sqids
+string, base58/base62), do NOT trust that strict format validation makes it safe. Decode it first,
+the injectable field is often a plaintext value INSIDE it.
+
+Tell that a token is a reversible encoding, not a random handle: a fixed prefix shared across all
+issued tokens (that prefix is the encoding of a constant structural part). E.g. every token began
+with the same 16 chars because it was `base58("booking_id:")` + the encoded id.
+
+- Decode across charsets: base64/base62/**base58** (bitcoin alphabet: no `0OIl`), hex, Sqids/Hashids.
+  A structured plaintext like `booking_id:1048291` or `type:value` confirms it.
+- The raw-token endpoint can look bulletproof - strict 400 "bad request" on any tampered char, 404
+  on a valid-but-unknown id - because the app decodes, checks the structure, THEN uses the inner
+  value in SQL unsanitised. Re-encode a payload in the inner field and the validator passes it:
+
+```
+# app: SELECT room_num,days FROM bookings WHERE id='<decoded value>'
+token = base58("booking_id:" + "0' UNION SELECT username,password FROM email_access-- -")
+GET /api/booking-info?booking_key=<token>     # -> creds land in the JSON fields
+```
+
+Same idea for any wrapper that decodes then queries: JWT claim used in SQL, a signed-but-not-encrypted
+cookie field, an encoded GraphQL node id. sqlmap won't find it (it fuzzes the raw token, which 400s);
+you must wrap each payload in the encoding first (custom `--eval` / a tamper script, or by hand).
+
+<!-- promoted-slug: sqli-via-encoded-token -->
+
+## Encoded parameter wrapper: decode, inject, re-encode
+
+An opaque API token whose value is an ENCODING of the real SQL input (base58/base64/hex of
+`field:value`) is an injection wrapper, not a format gate. Every plaintext probe on the raw
+parameter returns a clean "bad request"/404 because the server decodes first and the decode
+fails or misses the quoted context - this reads exactly like a server-side format gate and
+gets deadended wrongly.
+
+Check: decode the token (try base58 for short alphanumeric ID tokens; base64; hex), inspect
+the plaintext structure (`booking_id:1`), then build the payload INSIDE the decoded string and
+re-encode the whole thing before sending. sqlmap will NOT find this: it fuzzes the raw
+parameter. Generic exploit loop (python):
+
+```python
+import base58, urllib.parse, urllib.request
+sql = "field:1' UNION SELECT group_concat(col1||':'||col2),2 FROM table-- -"
+url = "http://TARGET/api/endpoint?param=" + urllib.parse.quote(base58.b58encode(sql.encode()).decode())
+print(urllib.request.urlopen(url).read().decode())
+```
+
+Rule: decode-inspect ANY encoded/constant-format token BEFORE declaring its parameter
+non-injectable (encode a marker like `1'` and see whether the error text changes shape).
+
+<!-- promoted-slug: encoded-param-sqli -->

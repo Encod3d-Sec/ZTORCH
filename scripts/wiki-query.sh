@@ -6,9 +6,8 @@
 # index the MCP uses (qmd query = semantic, qmd keyword = substring), so a wiki-first lookup
 # always has a working path from the Bash tool:
 #
-#   bash scripts/wiki-query.sh "jenkins rce exploit"       # semantic (fast, RRF)
+#   bash scripts/wiki-query.sh "jenkins rce exploit"       # semantic
 #   bash scripts/wiki-query.sh -k "CVE-2023-23752"         # exact keyword (semantic misses IDs)
-#   bash scripts/wiki-query.sh -r "jenkins rce exploit"    # opt into LLM rerank (slow on CPU)
 #
 # Semantic first; auto-falls back to keyword when semantic returns nothing. Fails loud (with a
 # grep fallback hint) if qmd is not installed. QMD_VAULT defaults to the vault root.
@@ -19,21 +18,15 @@ export QMD_VAULT="${QMD_VAULT:-$VAULT}"
 export HF_HUB_DISABLE_PROGRESS_BARS=1     # silence the model-load progress noise
 
 if ! command -v qmd >/dev/null 2>&1; then
-  # Windows seat: ride the WSL kali root's qmd (setup/win-seat.sh sets this up).
-  if [ -f "$VAULT/scripts/win-qmd.sh" ]; then
-    qmd() { bash "$VAULT/scripts/win-qmd.sh" "$@"; }
-  else
-    echo "wiki-query: qmd not installed (setup/bootstrap.sh installs it; Windows seat: setup/win-seat.sh)." >&2
-    echo "  fallback: grep -rin '<term>' wiki/   (then Read the matching page)" >&2
-    exit 1
-  fi
+  echo "wiki-query: qmd not installed (setup/bootstrap.sh installs it)." >&2
+  echo "  fallback: grep -rin '<term>' wiki/   (then Read the matching page)" >&2
+  exit 1
 fi
 
-N=5; KEYWORD=0; RERANK=0; ARGS=()
+N=5; KEYWORD=0; ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -k|--keyword) KEYWORD=1; shift;;
-    -r|--rerank) RERANK=1; shift;;
     -n) N="${2:-5}"; shift 2;;
     *) ARGS+=("$1"); shift;;
   esac
@@ -66,11 +59,7 @@ if [ "$KEYWORD" = 1 ]; then
   exit $?
 fi
 
-# ponytail: no-rerank by default -- rerank pulls the local llama.cpp model, which on some seats
-# re-attempts a from-source build per CLI run (minutes of cmake) instead of staying warm like the
-# MCP server does. RRF fusion (BM25+vec) is plenty for wiki-first lookups; -r opts into rerank.
-if [ "$RERANK" = 1 ]; then RANK=(); else RANK=(--no-rerank); fi
-out="$(qmd query "$Q" -n "$N" "${RANK[@]}" 2>/dev/null)"
+out="$(qmd query "$Q" -n "$N" 2>/dev/null)"
 # Result lines are `qmd://<collection>/<path>` on current builds and `[score] path`
 # on older ones. Accept either before concluding semantic came back empty.
 if printf '%s\n' "$out" | grep -qE '^(qmd://|\[)'; then

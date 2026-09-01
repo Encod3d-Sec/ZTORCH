@@ -9,17 +9,18 @@ description: API attack hunting (REST / GraphQL / gRPC) - BOLA/IDOR, BFLA, mass 
 
 ## Wiki
 
-```
 qmd_query "API REST GraphQL gRPC BOLA BFLA mass assignment excessive data exposure OWASP API Top 10" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[api-security]]. Payload arsenal: `wiki/payloads/api.md`.
-Anchors: [[api-testing]], [[graphql-attacks]].
-Variants: [[grpc-web-attacks]] (gRPC-Web / protobuf transcoder abuse), [[rsql-injection]] with the [[rsql]] payload (RSQL/FIQL filter-query injection, e.g. Spring Data REST), [[rate-limit-bypass]] (header/race/distributed-source throttle bypass), [[redos]] payload (catastrophic-backtracking regex DoS in an input validator), [[jwt-attacks]] (token flaws).
+Hub: [[web-moc]] · Primary page: [[api-security]] · Payload arsenal: `wiki/payloads/api.md`
+Anchors: [[api-testing]], [[graphql-attacks]], [[grpc-web-attacks]], [[rsql-injection]], [[rsql]], [[rate-limit-bypass]], [[redos]], [[jwt-attacks]]
+**REFS:** [[api-security]], wiki/payloads/api.md
 
 For object-level authorization (BOLA/IDOR) see `hunt-idor`.
 
 ## Attack surface signals
+
+**APPROACH:** Get the spec (Swagger/introspection/.proto), then rank undocumented/undialed endpoints, batching/alias ops, bulk/export routes and non-GET verbs; run BOLA (cross-account ID swap), BFLA (privileged call as low-priv), and mass assignment (`role`/`isAdmin`), driving load-bearing requests through Burp.
+**AVOID:** A 200 echoing your own request, an object that is shared/public/org-visible, a BFLA 200 without the action performed, or a mass-assign field merely accepted is NOT confirmation - verify B pulls A's data / the privileged action executes / the field takes effect on a fresh read.
 
 `/api/`, `/v1/`, `/graphql`, `/rest/`, gRPC (`application/grpc`, HTTP/2), Swagger UI (`/swagger`, `/api-docs`, `/openapi.json`), mobile/SPA backends.
 

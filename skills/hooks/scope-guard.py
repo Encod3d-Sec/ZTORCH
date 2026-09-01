@@ -13,7 +13,7 @@ This is the harness's "enforce, don't nudge" boundary: these two are DETERMINIST
 outright. Semantic workflow steps (wiki-first, tools-not-manual, capture, intended-path)
 stay advisory elsewhere -- hard-blocking a judgement call would false-fire and make us
 MORE stuck, the opposite of the goal. (The anti-narration `echo "=== ... ==="` norm is
-AGENTS.md guidance, not a deny: it was evadable and only added a re-run tax.)
+CLAUDE.md guidance, not a deny: it was evadable and only added a re-run tax.)
 
 SAFETY (this hook can block, so it must never trap the operator):
   - Fail-OPEN: any exception -> exit 0, allow. A hook bug never blocks a command.

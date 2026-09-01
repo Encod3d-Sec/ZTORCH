@@ -199,9 +199,126 @@ output; this table is the manual reference when it does not fire or you are reas
 | Modbus / S7 / EtherNet-IP / PLC / HMI | `Skill(hunt-ics)` |
 
 Process skills (not vuln classes): `Skill(ctf-box)` boot-to-root, `Skill(wiki-recon)` external recon,
-`Skill(arsenal)` / `Skill(wiki-arsenal)` tool+payload lookup, `Skill(triage)` -> `Skill(evidence)`
-finding validation, `Skill(coverage)` untested-class gaps, `Skill(next-move)` prioritize,
-`Skill(hunt-burp)` drive Burp.
+`Skill(wiki-arsenal)` tool+payload lookup, `Skill(triage)` -> `Skill(evidence)`
+finding validation, `Skill(hunt-burp)` drive Burp. Coverage gaps and move ranking come from the
+driver itself (`scripts/offensive.py coverage` / `offensive.py next`).
+
+## Routing table (machine-readable)
+
+The prose table above is for a human reasoning about approach; this table is the parse contract
+`offensive.py index` reads (fixed columns, one row per hunt class plus one row per tech-fingerprint
+token). Seeded from the 24 `hunt-*` classes above and the fingerprint keys in ClaudeBrain's
+`scripts/playbook.json` that route to a hunt skill (kernel-CVE/metasploit-only fingerprints are out
+of scope here - they carry no hunt skill). `primary wiki` and `arsenal slug` come from each class's
+own `## Wiki` block. Extend this table, not `playbook.json`, when a driver-side signal is added.
+
+| fingerprint | class | hunt-skill | primary wiki | arsenal slug |
+|---|---|---|---|---|
+| ad | ad | hunt-ad | active-directory | netexec |
+| api | api | hunt-api | api-security | payloads/api |
+| auth | auth | hunt-auth | authentication-attacks | payloads/auth-bypass |
+| bizlogic | bizlogic | hunt-bizlogic | business-logic | race-conditions |
+| cache | cache | hunt-cache | web-cache-poisoning | payloads/web-cache |
+| cicd | cicd | hunt-cicd | cicd-github-actions | payloads/cicd |
+| cloud | cloud | hunt-cloud | cloud-iam-attacks | payloads/imds-cloud-metadata |
+| deserialization | deserialization | hunt-deserialization | insecure-deserialization | payloads/deserialization |
+| federation | federation | hunt-federation | oauth-attacks | payloads/oauth-saml |
+| ics | ics | hunt-ics | ics-scada-modbus | payloads/modbus |
+| idor | idor | hunt-idor | access-control | payloads/idor |
+| injection | injection | hunt-injection | ssti | payloads/ssti |
+| llm | llm | hunt-llm | llm-attacks | payloads/llm-prompt-injection |
+| m365 | m365 | hunt-m365 | azure-ad-enumerate | azure-ad-conditional-access-policy |
+| macos | macos | hunt-macos | macos-tcc | payloads/macos-app-injection |
+| mcp | mcp | hunt-mcp | mcp-server-attacks | payloads/llm-prompt-injection |
+| rce | rce | hunt-rce | os-command-injection | payloads/command-injection |
+| secrets | secrets | hunt-secrets | secret-hunting | recon-dorks |
+| smuggling | smuggling | hunt-smuggling | http-request-smuggling | payloads/smuggling |
+| sqli | sqli | hunt-sqli | sql-injection | payloads/sqli |
+| ssrf | ssrf | hunt-ssrf | ssrf | payloads/ssrf |
+| upload | upload | hunt-upload | file-upload | payloads/file-upload |
+| vpn | vpn | hunt-vpn | network-service-attacks | cheatsheets/cve-arsenal |
+| windows | windows | hunt-windows | windows-privesc | privesc-exploit-arsenal |
+| xss | xss | hunt-xss | xss | payloads/xss |
+| dom-xss | xss | hunt-xss | xss | payloads/xss |
+| graphql | injection | hunt-injection | ssti | payloads/graphql |
+| minio | secrets | hunt-secrets | secret-hunting | default-credentials |
+| login-form | sqli | hunt-sqli | sql-injection | payloads/sqli |
+| sqlstate | sqli | hunt-sqli | sql-injection | payloads/sqli |
+| ssti | injection | hunt-injection | ssti | payloads/ssti |
+| xxe | injection | hunt-injection | ssti | payloads/xxe |
+| lfi | rce | hunt-rce | os-command-injection | payloads/lfi-path-traversal |
+| phpipam | sqli | hunt-sqli | sql-injection | payloads/sqli |
+| spring | injection | hunt-injection | ssti | api-request-findings |
+| supabase | auth | hunt-auth | authentication-attacks | supabase-attacks |
+| wordpress | rce | hunt-rce | os-command-injection | cms-exploitation |
+| laravel | rce | hunt-rce | os-command-injection | payloads/deserialization |
+| nextjs | auth | hunt-auth | authentication-attacks | nextjs-middleware-bypass |
+| firebase | idor | hunt-idor | access-control | payloads/idor |
+| magento | rce | hunt-rce | os-command-injection | cms-exploitation |
+| jenkins | rce | hunt-rce | os-command-injection | default-credentials |
+| tomcat | rce | hunt-rce | os-command-injection | attack-chains |
+| aria2 | rce | hunt-rce | os-command-injection | attack-chains |
+| gitlab | rce | hunt-rce | os-command-injection | cve-arsenal |
+| elasticsearch | injection | hunt-injection | ssti | api-request-findings |
+| influxdb | injection | hunt-injection | ssti | api-request-findings |
+| redis | rce | hunt-rce | os-command-injection | attack-chains |
+| mssql | sqli | hunt-sqli | sql-injection | mssql-command-execution |
+| jwt | auth | hunt-auth | authentication-attacks | payloads/jwt |
+| oauth | federation | hunt-federation | oauth-attacks | payloads/oauth-saml |
+| s3 | cloud | hunt-cloud | cloud-iam-attacks | aws-service-s3-buckets |
+| m365-tenant | m365 | hunt-m365 | azure-ad-enumerate | identity-fabric |
+| azure-imds | cloud | hunt-cloud | cloud-iam-attacks | azure-managed-identity-abuse |
+| vpn-appliance | vpn | hunt-vpn | network-service-attacks | cheatsheets/cve-arsenal |
+| kubernetes | ssrf | hunt-ssrf | ssrf | kubernetes-attacks |
+| docker | rce | hunt-rce | os-command-injection | docker-attacks |
+| api-docs | api | hunt-api | api-security | api-testing |
+| ldap | ad | hunt-ad | active-directory | ad-enumeration |
+| winrm | windows | hunt-windows | windows-privesc | windows-using-credentials |
+| rdp | windows | hunt-windows | windows-privesc | rdp-persistence |
+| smb | windows | hunt-windows | windows-privesc | internal-shares |
+| ad-domain | ad | hunt-ad | active-directory | ad-enumeration |
+| windows-version | windows | hunt-windows | windows-privesc | windows-enumeration |
+| cache-headers | cache | hunt-cache | web-cache-poisoning | payloads/web-cache |
+| nosql | injection | hunt-injection | ssti | payloads/nosql |
+| confluence | rce | hunt-rce | os-command-injection | cve-arsenal |
+| drupal | rce | hunt-rce | os-command-injection | cms-exploitation |
+| joomla | rce | hunt-rce | os-command-injection | cms-exploitation |
+| grafana | idor | hunt-idor | access-control | default-credentials |
+| phpmyadmin | rce | hunt-rce | os-command-injection | default-credentials |
+| weblogic | deserialization | hunt-deserialization | insecure-deserialization | payloads/deserialization |
+| aspnet | deserialization | hunt-deserialization | insecure-deserialization | payloads/deserialization |
+| struts | rce | hunt-rce | os-command-injection | payloads/command-injection |
+| jira | ssrf | hunt-ssrf | ssrf | api-request-findings |
+| github-actions | cicd | hunt-cicd | cicd-github-actions | payloads/cicd |
+| grpc | api | hunt-api | api-security | api-testing |
+| exchange | rce | hunt-rce | os-command-injection | cve-arsenal |
+| ivanti | vpn | hunt-vpn | network-service-attacks | cheatsheets/cve-arsenal |
+| moveit | sqli | hunt-sqli | sql-injection | cve-arsenal |
+| crushftp | auth | hunt-auth | authentication-attacks | authentication-attacks |
+| geoserver | rce | hunt-rce | os-command-injection | cve-arsenal |
+| sharepoint | rce | hunt-rce | os-command-injection | cve-arsenal |
+| activemq | deserialization | hunt-deserialization | insecure-deserialization | payloads/deserialization |
+| coldfusion | deserialization | hunt-deserialization | insecure-deserialization | cve-arsenal |
+| php-cgi | rce | hunt-rce | os-command-injection | payloads/command-injection |
+| vcenter | rce | hunt-rce | os-command-injection | cve-arsenal |
+| screenconnect | auth | hunt-auth | authentication-attacks | cve-arsenal |
+| papercut | rce | hunt-rce | os-command-injection | cve-arsenal |
+| ofbiz | rce | hunt-rce | os-command-injection | cve-arsenal |
+| aws-keys | cloud | hunt-cloud | cloud-iam-attacks | aws-access-token-secrets |
+| cognito | cloud | hunt-cloud | cloud-iam-attacks | aws-service-cognito |
+| dynamodb | cloud | hunt-cloud | cloud-iam-attacks | aws-service-dynamodb |
+| ec2 | cloud | hunt-cloud | cloud-iam-attacks | aws-service-ec2 |
+| lambda | cloud | hunt-cloud | cloud-iam-attacks | aws-service-lambda-api-gateway |
+| ssm | cloud | hunt-cloud | cloud-iam-attacks | aws-service-ssm |
+| azure-devops | cicd | hunt-cicd | cicd-github-actions | cicd-azure-devops |
+| buildkite | cicd | hunt-cicd | cicd-github-actions | cicd-buildkite |
+| circleci | cicd | hunt-cicd | cicd-github-actions | cicd-circleci |
+| drone-ci | cicd | hunt-cicd | cicd-github-actions | cicd-drone-ci |
+| gitlab-ci | cicd | hunt-cicd | cicd-github-actions | cicd-gitlab-ci |
+| as400 | auth | hunt-auth | authentication-attacks | as400 |
+| telnet | auth | hunt-auth | authentication-attacks | telnet |
+| liferay | rce | hunt-rce | os-command-injection | cve-arsenal |
+| macos-host | macos | hunt-macos | macos-tcc | macos-loot-locations |
 
 ## FIND output
 

@@ -113,34 +113,19 @@ def scan_evidence(eng_dir):
     return rows
 
 
-def _gallery_lines(eng_dir, captions=None):
+def _gallery_lines(eng_dir):
     """The '## Evidence' section body as a list of lines (no trailing blank line):
     heading, blank, then either the table (header + separator + one row per image)
-    or the no-evidence placeholder. `captions` (relpath -> description) preserves
-    operator-written Description cells across refreshes instead of clobbering them
-    with the slug-derived caption."""
+    or the no-evidence placeholder."""
     rows = scan_evidence(eng_dir)
-    captions = captions or {}
     lines = ["## Evidence", ""]
     if not rows:
         lines.append(NO_EVIDENCE)
     else:
         lines.append("| Evidence | Description |")
         lines.append("| --- | --- |")
-        lines.extend("| ![](%s) | %s |" % (relpath, captions.get(relpath, caption))
-                     for relpath, caption in rows)
+        lines.extend("| ![](%s) | %s |" % (relpath, caption) for relpath, caption in rows)
     return lines
-
-
-def _existing_captions(lines):
-    """relpath -> Description cell parsed from an existing gallery table, so a
-    refresh can keep hand-written descriptions (a re-run must not erase them)."""
-    out = {}
-    for ln in lines:
-        m = re.match(r"\|\s*!\[\]\(([^)]+)\)\s*\|\s*(.+?)\s*\|\s*$", ln)
-        if m:
-            out[m.group(1)] = m.group(2)
-    return out
 
 
 def _is_bare(text):
@@ -213,7 +198,7 @@ def _refresh(existing, eng_dir):
     (but not including) the next line starting with '## ' (or EOF) is replaced.
     Every other byte is preserved."""
     lines = existing.split("\n")
-    gallery = _gallery_lines(eng_dir, captions=_existing_captions(lines))
+    gallery = _gallery_lines(eng_dir)
 
     ev_idx = None
     for i, line in enumerate(lines):

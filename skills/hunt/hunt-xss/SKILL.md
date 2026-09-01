@@ -11,14 +11,11 @@ char canaries, check the baseline first) lives in hunt-core.
 
 ## Wiki
 
-```
 qmd_query "XSS cross-site scripting DOM CSP bypass sanitizer" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[xss]]. Payload arsenals: `wiki/payloads/{xss,prototype-pollution}.md`.
-Related client-side vectors: [[dangling-markup]] (scriptless HTML-injection exfil when script tags
-are blocked), [[xssi]] (JSONP/script-inclusion info leak), [[browser-extension-attacks]]
-(content-script/message-passing injection).
+Hub: [[web-moc]] · Primary page: [[techniques/web/xss]] · Payload arsenal: `wiki/payloads/xss.md`
+Anchors: [[dangling-markup]], [[xssi]], [[browser-extension-attacks]], [[prototype-pollution]]
+**REFS:** [[techniques/web/xss]], wiki/payloads/xss.md
 
 ## Confirmation gate
 NOT confirmation: payload URL-encoded or HTML-encoded in response, `<script>` appears as `&lt;script&gt;`, ASP.NET validator blocked `<`.
@@ -27,6 +24,10 @@ IS confirmation: HTTP/DNS request to your unique Collaborator subdomain with bro
 When you plant a blind/stored XSS beacon, append a row to `targets/<eng>/oob.md`: `| <token> | <sink url+param> | xss | <date> | waiting | |` (columns: token | sink | class | planted | status | source, where token = your unique Burp Collaborator / interactsh label). The recon-capture hook auto-correlates incoming callbacks to flip the row to HIT and SessionStart surfaces HITs; a HIT row is the confirmation gate to scaffold the FIND. Do NOT claim a blind XSS without a HIT row.
 
 ## Attack Surface Signals
+
+**APPROACH:** Map every reflection point, classify reflected/stored/DOM, probe the sanitizer (`aaa"bbb'ccc<ddd`), then fire the context-matched payload; plant a blind beacon in admin/moderation-viewed fields and confirm the session-theft callback.
+**AVOID:** A payload that comes back URL/HTML-encoded (`&lt;script&gt;`) is NOT XSS; a blind/stored beacon is unproven until its `oob.md` row flips to HIT.
+
 High-value: admin panels (`*/admin`, `*/settings`), payment flows, stored wikis/labels/tags, SSO/signin pages, SVG upload endpoints.
 
 **Approval / moderation workflow = the classic stored-XSS-to-privilege-escalation sink. Recognize it.**

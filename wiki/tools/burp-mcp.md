@@ -5,7 +5,7 @@ tags: [tool, web, proxy, mcp, ai, burp, automation]
 date_created: 2026-07-04
 date_updated: 2026-07-04
 sources: [git-portswigger-mcp-server, portswigger-mcp-readme, hacktricks-burp-mcp, humanoid-burp-mcp-kali, git-six2dez-burp-ai-agent]
-phase: scan
+phase: enumerate
 ---
 
 ## Purpose
@@ -251,3 +251,11 @@ fallback on an unlocked seat; it probes for the orange Allow button before click
 blindly). `burp-scope-sync` is the non-brittle primary.
 
 <!-- promoted-slug: burp-mcp-gui-driving -->
+
+## Core usage
+
+List every Burp MCP tool the server exposes (SSE client bridge):
+
+```bash
+bash /root/vm.sh 'python3 ~/burp-mcp-cli.py list'
+```

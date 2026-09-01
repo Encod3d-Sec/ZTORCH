@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """campaign-doctor.py [--verbose] - health check for the bb/pt/ctf workflow subsystem.
 
-The vault syncs across machines; the per-machine wiring (.zcode/skills links, MCP config, deps) does NOT. So
+The vault syncs across machines; ~/.claude (hook registration, skill symlinks, deps) does NOT. So
 "it works here" does not mean "it works there". This verifies BOTH halves so every machine runs the
 same driver:
 
@@ -130,7 +130,7 @@ def _a_tool_index():
 # --------------------------------------------------------------------------- B. machine wiring
 
 def _b_skills():
-    dest = os.path.join(VAULT, ".zcode", "skills")
+    dest = os.path.expanduser("~/.claude/skills")
     for s in ("bb-workflow", "pt-workflow", "ctf-workflow"):
         src = os.path.join(VAULT, "skills", "workflow", s, "SKILL.md")
         check("skill authored: " + s, os.path.isfile(src))

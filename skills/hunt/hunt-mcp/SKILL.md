@@ -9,14 +9,16 @@ description: MCP server attack hunting - tool poisoning, indirect prompt injecti
 
 ## Wiki
 
-```
 qmd_query "MCP server tool poisoning indirect prompt injection rug pull cross-tool shadowing excessive agency lethal trifecta" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[mcp-server-attacks]].
-Anchors: [[llm-attacks]].
+Hub: [[web-moc]] · Primary page: [[mcp-server-attacks]] · Arsenal: [[llm-prompt-injection]]
+Anchors: [[llm-attacks]], [[adversarial-ml]]
+**REFS:** [[mcp-server-attacks]], [[llm-attacks]]
 
 ## Attack surface
+
+**APPROACH:** Enumerate every tool's FULL description/docstring + param schema + permissions, map the lethal trifecta (secret access + untrusted input + outbound channel) across tools, then test poisoning (hidden `<IMPORTANT>` instructions), cross-tool shadowing, indirect injection via tool output, and rug-pull.
+**AVOID:** A description that merely CONTAINS an injection string, an over-broad schema, or the trifecta reachable on paper is NOT confirmation - the injection must execute VIA THE CLIENT (a poisoned/shadowed tool invoked, data exfiltrated) in a clean session.
 
 Rank before testing. Not all surfaces are equally reachable or impactful:
 

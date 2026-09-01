@@ -10,13 +10,11 @@ limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-der
 
 ## Wiki
 
-```
 qmd_query "SSRF server-side request forgery cloud metadata" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[wiki/payloads/ssrf]]. Payload arsenal: `wiki/payloads/ssrf.md`.
-Bypass variants: [[dns-rebinding]] (hostname re-resolution TOCTOU past an allowlist),
-[[open-redirect]] (chain a trusted redirect to an internal target).
+Hub: [[web-moc]] · Primary page: [[ssrf]] · Payload arsenal: `wiki/payloads/ssrf.md`
+Anchors: [[dns-rebinding]], [[open-redirect]], [[werkzeug-debug-console-rce]]
+**REFS:** [[ssrf]], wiki/payloads/ssrf.md
 
 ## Confirmation gate
 **Blind SSRF claims require OOB confirmation. No exceptions.**
@@ -33,6 +31,10 @@ interactsh-client -v   # or use Burp Collaborator
 ```
 
 ## Attack Surface Signals
+
+**APPROACH:** Set up OOB and confirm outbound first, then ENUMERATE INTERNAL - sweep 127.0.0.1 ports through the sink and fingerprint each service through the playbook before grinding cloud metadata; check scheme control early (`file://`->LFI, `gopher://`->internal TCP).
+**AVOID:** A URL echo in an error, a different status code, or a delayed response alone is NOT SSRF - a blind SSRF is unproven until its `oob.md` row flips to HIT.
+
 URL patterns:
 ```
 ?url=  ?uri=  ?src=  ?source=  ?feed=  ?host=  ?target=  ?dest=

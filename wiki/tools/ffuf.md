@@ -5,7 +5,7 @@ tags: [enumeration, htb, recon, thm, tool, web]
 date_created: 2026-05-08
 date_updated: 2026-05-08
 sources: [cpts-ffuf, thm-ffuf]
-phase: fuzz
+phase: enumerate
 ---
 
 ## Purpose
@@ -227,3 +227,11 @@ sudo sh -c 'echo "10.10.10.1  target.htb" >> /etc/hosts'
 
 - CPTS FFuf Module (9 files: Intro, Directory, Page, Recursive, Sub-domain, VHost, Filtering, Parameter fuzzing, Hands-on)
 - THM Tool FFuf (`Ffuf.md`)
+
+## Core usage
+
+Directory/content discovery (`FUZZ` marks the injection point):
+
+```bash
+ffuf -u http://target.com/FUZZ -w /path/to/wordlist.txt
+```

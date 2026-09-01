@@ -5,7 +5,7 @@ tags: [reverse-engineering, decompiler, cve-research, binary, malware]
 date_created: 2026-06-16
 date_updated: 2026-06-16
 sources: []
-phase: aux
+phase: enumerate
 ---
 
 ## Purpose
@@ -20,6 +20,12 @@ unzip ghidra_*.zip && ./ghidra_*/ghidraRun
 ```
 
 ## Core usage
+
+Headless analysis (batch / scripted, no GUI):
+
+```bash
+./support/analyzeHeadless /proj projName -import ./target -postScript MyScript.java -scriptPath ./scripts
+```
 
 GUI workflow:
 1. New Project -> Import the binary -> let auto-analysis run (default analyzers).

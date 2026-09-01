@@ -26,13 +26,13 @@ import re
 import sys
 import time
 
-# realpath (not abspath) so the hook invocation (${ZCODE_PROJECT_DIR}/skills/hooks/...) resolves
+# realpath (not abspath) so the symlinked invocation (~/.claude/vault-hooks/...) resolves
 # to the real skills/hooks dir -- else tfile below points at a nonexistent path and
 # triggers.json never loads, so NO trigger ever fires. Matches _engagement.py.
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, HERE)
 
-# ZCode routes task-notifications (subagent completions) and system reminders
+# Claude Code routes task-notifications (subagent completions) and system reminders
 # through UserPromptSubmit too. They are NOT typed user prompts: their text routinely
 # quotes vuln keywords (a subagent reporting on SSRF/IDOR/etc.), and routing a hunt
 # skill on them misfires. Detect and skip them wholesale -- see the guard at the top of main().
@@ -230,9 +230,7 @@ def main():
             "(scope gate, two-account rule, confirmation gate, enumeration limits, stop "
             "conditions, FIND output, Deadends). Load it alongside the skill(s) above."
         )
-    import _emit
-    _emit.emit("\n".join(out))
-    _emit.flush("UserPromptSubmit")
+    print("\n".join(out))
 
 
 if __name__ == "__main__":

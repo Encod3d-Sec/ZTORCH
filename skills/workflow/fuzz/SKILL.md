@@ -44,7 +44,7 @@ Detect: `wafw00f`/`whatwaf` up front; headers `cf-ray`/`server: cloudflare`/`x-s
 Respond, in order:
 1. **WAF fingerprinted up front** -> stealth posture regardless of profile, and PREFER BYPASS over throttle: find the origin IP (cert SANs, historical DNS) and fuzz origin directly - see [[cdn-waf-bypass]].
 2. **Throttle mid-run** -> auto-backoff: halve rate, add `-p 0.1-2.0` jitter, drop one size-tier.
-3. **Ban / DoS tell** (sustained all-timeout after a burst) -> HARD STOP, do not grind: `python3 scripts/campaign.py pause-host <host>` and call `Skill(redteamlead)` for a re-vector rather than tuning the tooling.
+3. **Ban / DoS tell** (sustained all-timeout after a burst) -> HARD STOP, do not grind: stop fuzzing the host and call `Skill(redteamlead)` for a re-vector rather than tuning the tooling.
 4. **RoE** `no_bruteforce`/`no_dos` -> skip the brute tiers; scope-guard also enforces this at the Bash layer.
 
 ## 7. 403 is not a dead end

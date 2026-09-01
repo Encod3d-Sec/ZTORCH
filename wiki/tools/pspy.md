@@ -220,3 +220,11 @@ ls -la /usr/bin/backup.sh
 
 - 0xdf HTB writeups: awkward, bamboo, book, crossfit, download, epsilon, era, fatty, inject, interface, jupiter, laser
 - pspy GitHub: https://github.com/DominicBreuker/pspy
+
+## Core usage
+
+Watch processes and cron activity live on a compromised host (no root needed):
+
+```bash
+./pspy64
+```

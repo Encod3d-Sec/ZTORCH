@@ -11,7 +11,7 @@ passive_only: false
 # tunnel_safe (true = scanners exhaust the pivot's conntrack and kill the tunnel):
 # AFFIRMS curl+nc as the intended tooling (surfaced as a SessionStart note). Not forbidding.
 tunnel_safe: false
-# Campaign-driver envelope (required by campaign.py init). Defaults suit an autonomous CTF/lab run;
+# Campaign-driver envelope (required by offensive.py init). Defaults suit an autonomous CTF/lab run;
 # TIGHTEN for a real client pentest (autonomy, write_policy, scanners, rate_per_host) before testing.
 autonomy: full
 enum_cap: 50

@@ -9,14 +9,16 @@ description: OAuth and SAML attack hunting - redirect_uri bypass, state CSRF, SA
 
 ## Wiki
 
-```
 qmd_query "OAuth SAML federation redirect_uri bypass XSW signature stripping state CSRF" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live index). Primary page: [[oauth-attacks]]. Payload arsenal: `wiki/payloads/oauth-saml.md`.
-Anchors: [[saml-attacks]].
+Hub: [[web-moc]] · Primary page: [[oauth-attacks]] · Payload arsenal: `wiki/payloads/oauth-saml.md`
+Anchors: [[saml-attacks]], [[jwt-attacks]]
+**REFS:** [[oauth-attacks]], wiki/payloads/oauth-saml.md
 
 ## Attack surface
+
+**APPROACH:** Rank redirect_uri handling first (steal the code/token -> exchange -> ATO), then signature validation (stripping, comment injection), the XSW1-8 wrapper matrix via SAML Raider, missing `state`, and leaked OIDC client secrets.
+**AVOID:** A redirect carrying a code/token, a 200 on a modified SAMLResponse, the assertion "accepted", or the flow completing with `state` removed is NOT confirmation - you must hold an authenticated session for ANOTHER account in a clean profile.
 
 Entry points:
 ```

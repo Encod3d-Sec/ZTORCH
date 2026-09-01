@@ -5,7 +5,7 @@ tags: [htb, proxy, scanner, thm, tool, web]
 date_created: 2026-05-08
 date_updated: 2026-07-04
 sources: [cpts-web-proxies, thm-burpsuite, portswigger-extensions, git-portswigger-all-labs, git-portswigger-mcp-server]
-phase: scan
+phase: enumerate
 ---
 
 ## Purpose
@@ -401,3 +401,11 @@ Payload set 2: passwords.txt
 - TryHackMe: Burpsuite CTFs (AgentSudo, Enum & Brute force)
 - PortSwigger Academy: Extensions / Turbo Intruder
 - Source files: `/raw/assets/courses/CPTS/13. WEB Proxies/`, `/raw/assets/courses/TryHackMe/13. THM WEB/Burpsuite/`
+
+## Core usage
+
+Route a CLI tool through the running proxy (Burp listening on `127.0.0.1:8080`):
+
+```bash
+proxychains -q curl http://TARGET
+```

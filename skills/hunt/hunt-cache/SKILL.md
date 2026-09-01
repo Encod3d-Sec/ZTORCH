@@ -9,14 +9,16 @@ description: Web cache poisoning + cache deception hunting - unkeyed input poiso
 
 ## Wiki
 
-```
 qmd_query "web cache poisoning deception unkeyed input cache-key path confusion" via wiki-search MCP
-```
 
-Hub: [[web-moc]] (live web index). Primary page: [[web-cache-poisoning]]. Payload arsenal: `wiki/payloads/web-cache.md`.
-Anchors: [[web-cache-deception]], [[web-cache-attacks]]. Related: [[http-host-header-attacks]], [[http-request-smuggling]].
+Hub: [[web-moc]] · Primary page: [[web-cache-poisoning]] · Payload arsenal: `wiki/payloads/web-cache.md`
+Anchors: [[web-cache-deception]], [[web-cache-attacks]], [[http-host-header-attacks]], [[http-request-smuggling]]
+**REFS:** [[web-cache-poisoning]], wiki/payloads/web-cache.md
 
 ## Attack surface
+
+**APPROACH:** Identify the cache and its key (`Age`/`X-Cache`), then rank unkeyed reflected headers (`X-Forwarded-Host` etc., discover with Param Miner) for poisoning and static-suffix/delimiter path confusion for deception; always probe with a unique cache-buster.
+**AVOID:** Your own cached response reflected back to you, a single maybe-per-user response, or an `X-Cache: hit` with no cross-session retrieval is NOT confirmation - the poisoned/deceived response must reach a DIFFERENT session (or an OOB HIT).
 
 Needs a cache in front (CDN / Varnish / Cloudflare / Akamai / Fastly, or an app-layer cache). Signals: `Age`, `X-Cache: hit/miss`, `Cache-Control`, `CF-Cache-Status` headers; static-ish responses; responses that reflect a header or param.
 

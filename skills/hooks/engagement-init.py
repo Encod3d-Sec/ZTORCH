@@ -22,7 +22,6 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import _emit  # noqa: E402
 
 
 def _run_script(name, *args, timeout=40):
@@ -353,7 +352,7 @@ def main():
     changed, _ = wiki_changed()
     if changed:
         regen_index()  # keep index.md fresh (idempotent)
-        note = "Wiki changed since last session -> run `qmd update && qmd embed` to refresh the search index (update alone leaves new pages invisible to semantic queries)."
+        note = "Wiki changed since last session -> run `qmd update` to refresh the search index."
         try:
             import freshness
             fr = freshness.stale()
@@ -365,8 +364,8 @@ def main():
         write_stamp(wiki_fingerprint())   # recompute AFTER regen_index bumped index.md, else next session re-fires
 
     if out:
-        _emit.emit("=== Engagement state ===")
-        _emit.emit("\n".join(out))
+        print("=== Engagement state ===")
+        print("\n".join(out))
 
     # client narrative loads from the private per-engagement log.md, NOT session/
     # (session/hot.md stays generic/framework-only). log.md = the per-engagement audit;
@@ -374,27 +373,20 @@ def main():
     try:
         rl = _engagement.recent_log()
         if rl:
-            _emit.emit("=== Recent engagement log ===")
-            _emit.emit(rl)
+            print("=== Recent engagement log ===")
+            print(rl)
     except Exception:
         pass
 
     # active research project (raw/research/active.md) surfaces its loop state
     rs = research_status_text()
     if rs:
-        _emit.emit(rs)
-
-    _emit.flush("SessionStart")
+        print(rs)
 
 
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        pass
-    try:
-        import _emit
-        _emit.flush("SessionStart")
     except Exception:
         pass
     sys.exit(0)
