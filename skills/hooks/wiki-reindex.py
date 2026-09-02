@@ -73,7 +73,7 @@ def main():
     if shutil.which("qmd"):
         try:
             subprocess.Popen(
-                ["sh", "-c", "sleep %d; qmd update" % DEBOUNCE_SECONDS],
+                ["sh", "-c", "sleep %d; qmd update && qmd embed" % DEBOUNCE_SECONDS],
                 cwd=vault, env=dict(os.environ, QMD_VAULT=vault),
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, start_new_session=True)

@@ -352,7 +352,7 @@ def main():
     changed, _ = wiki_changed()
     if changed:
         regen_index()  # keep index.md fresh (idempotent)
-        note = "Wiki changed since last session -> run `qmd update` to refresh the search index."
+        note = "Wiki changed since last session -> run `qmd update && qmd embed` to refresh the search index (embed keeps new pages semantically findable)."
         try:
             import freshness
             fr = freshness.stale()

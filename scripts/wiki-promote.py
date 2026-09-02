@@ -202,7 +202,9 @@ def set_promoted_and_archive(path, inbox, slug):
 
 
 def reindex(vault):
-    """Re-catalog (gen_index.py) + refresh the search index (qmd update, best-effort)."""
+    """Re-catalog (gen_index.py) + refresh the search index (qmd update + qmd embed,
+    best-effort). embed is required too: without it a newly-promoted page is invisible to
+    semantic qmd_query, only reachable via keyword qmd_search."""
     gi = os.path.join(vault, "scripts", "gen_index.py")
     if os.path.isfile(gi):
         try:
@@ -211,6 +213,10 @@ def reindex(vault):
             pass
     try:
         subprocess.run(["qmd", "update"], cwd=vault, capture_output=True, text=True, timeout=90)
+    except Exception:
+        pass
+    try:
+        subprocess.run(["qmd", "embed"], cwd=vault, capture_output=True, text=True, timeout=90)
     except Exception:
         pass
 
