@@ -211,3 +211,17 @@ one read.
 <!-- promoted-slug: automated-recon-scan-hooks-must-trigger-only-on-hosts-actual -->
 
 <!-- promoted-slug: an-endpoint-that-appears-to-disclose-a-server-side-configura -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## An unobservable exfil channel produces false negatives
+
+Before reading "no callback" as "payload failed", verify the observation channel itself: an
+exfil webserver whose output goes to a tmux pane that captures empty (or a log you are not
+reading directly) turns every real hit into an apparent miss, and the vector gets written off as
+dead. Run the listener with file redirection (`> /tmp/hits.log 2>&1`) from the start and read
+the file; treat any zero-hit conclusion drawn from an unobservable channel as unproven.
+
+<!-- promoted-slug: oob-listener-observability -->
