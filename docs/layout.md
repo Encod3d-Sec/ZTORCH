@@ -38,7 +38,7 @@ ZTORCH/
 │                                   status.py (on-demand engagement dashboard: phase/counts/evidence/deadends/moves),
 │                                   wiki-query.sh (qmd CLI wiki-first fallback when the MCP drops),
 │                                   wiki-eval.py (retrieval eval + regression gate over scripts/wiki-eval-gold.json: hit@3/hit@5/MRR; run --check before/after any qmd chunker/index change),
-│                                   find-lint, lint-wiki, lint-md-tables.py (GFM table integrity), gen_index, build_moc, cve_feed, freshness,
+│                                   find-lint, lint-wiki, lint-md-tables.py (GFM table integrity), gen_index, build_moc, freshness,
 │                                   check-hooks, check-leaks.sh, trigger-stats, wordlist-* (+wordlists/),
 │                                   shot.py, capture.sh (one entrypoint, modes: ev=live cmd+url card / req=curl
 │                                   request-response / tmux=real tmux-session card / burp=Burp Repeater PoC), vm-scan.sh, burp/ (burp-mcp-cli.py bridge + burp-transport.sh resolver + burp-scope-sync.py),
