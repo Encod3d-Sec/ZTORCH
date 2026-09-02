@@ -28,12 +28,21 @@ sys.path.insert(0, HERE)
 SLEEP_RE = re.compile(r"(?<![\w-])sleep\s+([0-9]+(?:\.[0-9]+)?)([smh]?)\b", re.I)
 MULT = {"": 1, "s": 1, "m": 60, "h": 3600}
 THRESHOLD = 10
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _blank_quotes(s):
+    """Blank single/double-quoted spans (length-preserving) so a `sleep N` mentioned only
+    INSIDE a quoted string (an echo, a grep pattern) is inert -- it is text, not an invoked
+    command. Same technique as recon-capture.py's/tool-telemetry.py's own quote-blanking."""
+    return _QUOTED.sub(lambda m: " " * len(m.group(0)), s)
 
 
 def blind_sleeps(cmd):
-    """Total seconds of sleeps in `cmd` that exceed THRESHOLD (list of the offending values)."""
+    """Total seconds of sleeps in `cmd` that exceed THRESHOLD (list of the offending values).
+    Quote-blanked first so a merely-mentioned "sleep N" inside a string is never flagged."""
     hits = []
-    for m in SLEEP_RE.finditer(cmd):
+    for m in SLEEP_RE.finditer(_blank_quotes(cmd)):
         secs = float(m.group(1)) * MULT[m.group(2).lower()]
         if secs >= THRESHOLD:
             hits.append(m.group(0).split()[-1])
