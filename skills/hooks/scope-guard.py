@@ -50,12 +50,16 @@ _QUERY_FRAG = re.compile(r"[?#]\S*")
 _DATA_FLAG = re.compile(
     r"(?<!\S)(?:--data(?:-raw|-binary|-urlencode)?|--form|--header|-d|-F|-H)\s+(?:'[^']*'|\"[^\"]*\"|\S+)",
     re.I)
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
 
 
 def _strip_noise(cmd):
-    """Remove URL query/fragment values and data/header-flag payloads so only genuine target
-    host/IP tokens remain for scope matching. Keeps option-assigned targets (`--url=<host>`)."""
-    return _QUERY_FRAG.sub("", _DATA_FLAG.sub(" ", cmd))
+    """Remove URL query/fragment values, data/header-flag payloads, and any REMAINING quoted
+    text (an echo/grep string merely mentioning a tool or host, not invoking/targeting it) so
+    only genuine invoked-tool tokens and target host/IPs remain for scope/RoE matching. Keeps
+    option-assigned targets (`--url=<host>`, unquoted or bare)."""
+    stripped = _QUERY_FRAG.sub("", _DATA_FLAG.sub(" ", cmd))
+    return _QUOTED.sub(lambda m: " " * len(m.group(0)), stripped)
 HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
 # file extensions that HOST_RE would otherwise match as "hosts" (config.yml, app.py...)
 FILE_EXT = {"json", "yml", "yaml", "md", "sh", "py", "txt", "js", "ts", "go", "rs",
@@ -135,12 +139,14 @@ def main():
             if flagged:
                 deny.append("out-of-scope: command targets " + ", ".join(sorted(flagged))
                             + " which match an OUT-OF-SCOPE entry in scope.md")
-            # RoE tooling
-            if sc.get("no_bruteforce") and BRUTEFORCE.search(cmd):
+            # RoE tooling (same noise-stripped text as the scope match above, so a tool name
+            # merely mentioned in a quoted echo/grep string is never flagged)
+            scan_cmd = _strip_noise(cmd)
+            if sc.get("no_bruteforce") and BRUTEFORCE.search(scan_cmd):
                 deny.append("RoE no_bruteforce: command uses brute-force tooling")
-            if sc.get("no_dos") and DOS.search(cmd):
+            if sc.get("no_dos") and DOS.search(scan_cmd):
                 deny.append("RoE no_dos: command looks like high-volume/DoS tooling")
-            if sc.get("passive_only") and ACTIVE.search(cmd):
+            if sc.get("passive_only") and ACTIVE.search(scan_cmd):
                 deny.append("RoE passive_only: command runs an active scanner")
     except Exception:
         pass
