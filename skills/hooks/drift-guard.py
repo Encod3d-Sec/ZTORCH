@@ -94,16 +94,17 @@ def _bins_in(cmd):
     return set(_BIN_RE.findall(cmd or ""))
 
 
-def _scanner_cap(d, st, cmd):
-    """Advise on a 2nd HEAVY scanner within _SCAN_WINDOW on a small box (ctf) - the mistake that DoS'd
-    the box. Records each heavy-scanner launch to .scan-launches.jsonl; if a prior launch is <
-    _SCAN_WINDOW old, returns a reason string (the caller always advises, never denies, on it).
-    Records this launch and returns None (allow) only when there is no prior in-window launch."""
+def _scanner_cap(d, cmd):
+    """Advise on a 2nd HEAVY scanner within _SCAN_WINDOW on ANY engagement type -- a fragile/
+    rate-limited target is not ctf-exclusive (W7-4: the corpus shows the same self-inflicted-ban
+    pattern on pentest/bb targets too, including one where a scope.md-documented throttle note
+    still didn't prevent a recurring ban without a live check). Records each heavy-scanner launch
+    to .scan-launches.jsonl; if a prior launch is < _SCAN_WINDOW old, returns a reason string (the
+    caller always advises, never denies, on it). Records this launch and returns None (allow) only
+    when there is no prior in-window launch."""
     import time
     heavy = set(_HEAVY_RE.findall(cmd or ""))
     if not heavy:
-        return None
-    if (st.get("type") or "").lower() != "ctf":       # small-box policy: ctf only (extend later)
         return None
     p = os.path.join(d, ".scan-launches.jsonl")
     now = time.time()
@@ -243,7 +244,7 @@ def main():
     # Scanner-cap runs on ANY heavy-scanner mention, independent of exploit_shaped/NET_BINS, so a
     # bare `dirb ...` (not in NET_BINS, and not otherwise exploit-shaped) still hits it.
     if _HEAVY_RE.search(cmd):
-        _deny = _scanner_cap(d, st, cmd)
+        _deny = _scanner_cap(d, cmd)
         if _deny:
             try:
                 import _telemetry
