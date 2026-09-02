@@ -78,7 +78,8 @@ The vault is ONE working copy seen under three paths:
 ## Setup / repair
 
 - **ONE verdict, either seat:** `python3 scripts/offensive-doctor.py` (driver routing table + tool index + SKILL.md + hooks + 4b coverage, plus a live init->board->next smoke test).
-- Windows seat: `bash setup/bootstrap.sh` (bridge checks, skills, wiki-search MCP, `--index`).
+- Windows seat: `bash setup/bootstrap.sh` (registers hooks + links skills into `~/.claude/skills/`,
+  installs qmd, registers the wiki-search MCP server).
 - WSL side: `bash setup/install-hooks.sh` (re-links ~/.claude/vault-hooks -> skills/hooks, registers this machine's hooks in settings.json).
 - Note: headless parallel lanes (the old `fleet-lane` concept) target a ZCode CLI that does not
   ship with the desktop app; dormant until a headless CLI exists. Use Agent-tool sub-agents for

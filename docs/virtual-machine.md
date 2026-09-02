@@ -17,11 +17,11 @@ lives in the WSL `kali-linux` distro. Two wrappers make the seat transparent:
   to the VM. This is the VM_SH implementation on Windows: `VM_SH="$(pwd)/scripts/win-vm.sh"`
   makes `win-rsh.sh`, `capture.sh`, `autocard.sh` and every other driver work unchanged.
 - Wiki search / reindex runs qmd directly in WSL (`wsl.exe -d kali-linux -u root -- qmd <args>`,
-  vault on `/mnt/c`); the `wiki-search` MCP (registered by `setup/win-seat.sh`) rides
+  vault on `/mnt/c`); the `wiki-search` MCP (registered by `setup/bootstrap.sh`) rides
   the same path: ZCode -> wsl.exe -> `qmd mcp`.
 
-One-time seat setup: `bash setup/win-seat.sh` (checks the bridge, links skills into
-`.zcode/skills/`, registers the MCP; `--index` also builds the search index).
+One-time seat setup: `bash setup/bootstrap.sh` (registers this machine's hooks and links vault
+skills into `~/.claude/skills/`, installs qmd, registers the `wiki-search` MCP server).
 
 Gotchas on this seat: Git Bash rewrites leading-slash arguments into Windows paths before
 native binaries - the wrappers set `MSYS_NO_PATHCONV=1` internally, but a HAND-TYPED
