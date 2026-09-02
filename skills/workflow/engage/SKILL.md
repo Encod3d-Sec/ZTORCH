@@ -39,7 +39,7 @@ is absent, this map IS the router.
 | msfconsole work (recon DB, exploits, handler, pivots, post-ex) | `Skill(metasploit)` |
 | Fully-specified exploit compile / escalation run to hand off | `Skill(delegate)` (mechanical, cheap tier; false-root guardrail mandatory) |
 | Stalled, wrong-vector tell fired, "should I keep hammering?" | `Skill(redteamlead)` - NEVER grind; ranked directions + explicit STOP |
-| A vuln class never tested on this asset (4a coverage gap) | `python3 scripts/offensive.py coverage` (the driver ranks the gaps) |
+| A vuln class never tested on this asset (4a coverage gap) | `Skill(offensive)` - `offensive.py coverage` ranks the gaps |
 | Vuln/CVE research on a binary/repo/app/firmware | `Skill(research)`; ingest a CVE writeup: `Skill(nday)` / `Skill(research-ingest)` |
 | "Is this valid / should I report it" - validating a finding | `Skill(triage)` |
 | Evidence hygiene before a report or any share | `Skill(evidence)`; screenshots: `Skill(screenshot)` |

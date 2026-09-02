@@ -21,6 +21,30 @@ ZCode needs no per-device hook symlink: registration ships in the committed
 
 Then verify the hook registration in `.zcode/config.json` (`bash setup/install-hooks.sh` checks it; the canonical set is 12 hook commands across 5 ZCode events -- see below). On a new machine, re-running `bash setup/bootstrap.sh` handles all steps automatically.
 
+## Claude Code CLI seat (alternate client)
+
+Some seats run the plain **Claude Code CLI** instead of ZCode. ZCode's native `AGENTS.md`
+loading (above) does not apply here -- a Claude Code CLI seat needs its own launch-directory
+`CLAUDE.md` that imports the vault directly:
+
+```
+@<vault-root>/AGENTS.md
+@<vault-root>/AGENTS.local.md
+```
+
+If the seat talks to a non-Anthropic-hosted backend (a compatible proxy, a different model
+provider) instead of the Anthropic API directly, that is per-seat config too -- a
+`.claude/settings.local.json` next to the launch-directory `CLAUDE.md`, with an `env` block
+(`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and the `ANTHROPIC_DEFAULT_*_MODEL` /
+`ANTHROPIC_SMALL_FAST_MODEL` aliases if the backend uses different model names). This is
+seat-local machine config, same category as `AGENTS.local.md`'s vault path -- never commit
+it, and never put the auth token in `AGENTS.local.md` itself (that file is for vault paths,
+not API credentials).
+
+Hook registration for this seat kind is the WSL-Claude-Code-seat pattern documented in
+`AGENTS.local.md`'s "This seat" section (`~/.claude/settings.json` + a `vault-hooks` symlink
+into this vault's `skills/hooks/`), not the ZCode `.zcode/config.json` path above.
+
 ## Engagement-state automation (both machines)
 
 **Transport is Obsidian Sync** for everything: the markdown knowledge base AND the automation code (`.py`, `.json`, `.sh`). There is no git push; a local git repo may exist per-device as offline history only (Obsidian does not sync `.git`).
