@@ -452,11 +452,14 @@ def derive_rows(eng, index, etype):
     return out
 
 
-def _next_board_id(rows):
-    """Highest existing 4a:N on the board, so appends never collide."""
+def _next_board_id(rows, prefix="4a"):
+    """Highest existing <prefix>:N on the board, so appends never collide. Shared by cmd_board
+    (4a, the default) and seed_4b (4b) -- previously seed_4b re-implemented this same scan
+    inline with a hardcoded "4b:" pattern instead of parameterizing this helper."""
     mx = 0
+    pat = re.compile(re.escape(prefix) + r":(\d+)")
     for r in rows:
-        m = re.match(r"4a:(\d+)", (r.get("id") or "").strip())
+        m = pat.match((r.get("id") or "").strip())
         if m:
             mx = max(mx, int(m.group(1)))
     return mx
@@ -639,11 +642,7 @@ def seed_4b(eng, index, etype, st):
     existing = read_board_4b(eng)
     have = {((r.get("asset") or "").lower(), (r.get("vuln class") or "").lower())
             for r in existing}
-    nid = 0
-    for r in existing:
-        m = re.match(r"4b:(\d+)", (r.get("id") or "").strip())
-        if m:
-            nid = max(nid, int(m.group(1)))
+    nid = _next_board_id(existing, prefix="4b")
     rows, added = list(existing), 0
     for row in derive_privesc_rows(eng, index, etype, st):
         key = (row["asset"].lower(), row["vuln class"].lower())

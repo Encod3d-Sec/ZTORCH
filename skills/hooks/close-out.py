@@ -53,7 +53,7 @@ def main():
         # row-count (a marker) so it re-fires only when a NEW finding lands, never every Stop.
         # Killchain.md is pentest/bugbounty-only; a ctf's live chain lives in state.md (## Chain),
         # so skip the nudge entirely for ctf engagements.
-        gap = None if _engagement.engagement_type(d) == "ctf" else _engagement.paths_write_gap(d)
+        gap = _engagement.paths_write_gap(d)
         if gap:
             marker = os.path.join(d, ".paths-nudged")
             last = 0

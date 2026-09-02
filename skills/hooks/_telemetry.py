@@ -92,19 +92,6 @@ def stamp_once(key, value, d=None):
         return False
 
 
-def stamp(key, value, d=None):
-    """Set key=value (overwrite)."""
-    try:
-        d = _active(d)
-        if not d:
-            return
-        m = _load(d)
-        m[key] = value
-        _save(d, m)
-    except Exception:
-        pass
-
-
 def add_transcript(path, d=None):
     """Record a session transcript path in .metrics.json (for later token attribution).
     A box spanning several sessions accumulates all the transcripts that touched it."""

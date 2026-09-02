@@ -66,15 +66,16 @@ _poc_target() {   # $1=eng $2=slug
 
 # Pull a rendered PNG off the VM into poc/ (base64 through the pipe, not the caller's context)
 # and print the saved path + walkthrough ref. $ENG/$POC/$PNG are set by the caller.
-_pull_and_report() {   # $1=remote-png-path $2=caption
+_pull_and_report() {   # $1=remote-png-path $2=caption $3=target-dir (default: $POC)
+  local DIR="${3:-$POC}"
   # `|| true` so a failed pull (pipefail/set -e) does NOT abort before the empty-file cleanup below,
   # which would leave a 0-byte PNG on disk (a broken image the operator then sees in poc/).
-  { bash "$VM_SH" "base64 -w0 '$1' 2>/dev/null" | base64 -d > "$POC/$PNG"; } 2>/dev/null || true
-  if [ -s "$POC/$PNG" ]; then
-    echo "saved targets/$ENG/poc/$PNG"
-    echo "md: ![$2](poc/$PNG)"
+  { bash "$VM_SH" "base64 -w0 '$1' 2>/dev/null" | base64 -d > "$DIR/$PNG"; } 2>/dev/null || true
+  if [ -s "$DIR/$PNG" ]; then
+    echo "saved targets/$ENG/$(basename "$DIR")/$PNG"
+    echo "md: ![$2]($(basename "$DIR")/$PNG)"
   else
-    rm -f "$POC/$PNG"
+    rm -f "$DIR/$PNG"
     echo "capture($MODE): no PNG produced (VM unreachable? tee the step output first?)" >&2
     exit 1
   fi
@@ -269,16 +270,7 @@ mode_recon() {
   SHOT_B64=$(base64 -w0 "$VAULT/scripts/shot.py")
   bash "$VM_SH" "echo '$SHOT_B64' | base64 -d > /tmp/shot.py; rm -f '$RPNG'
 python3 /tmp/shot.py --tmux '$TGT' --history -o '$RPNG' >/dev/null 2>&1 || true" >&2
-  # `|| true`: don't let a failed pull abort before the empty-file cleanup (avoids 0-byte broken PNGs).
-  { bash "$VM_SH" "base64 -w0 '$RPNG' 2>/dev/null" | base64 -d > "$RECON/$PNG"; } 2>/dev/null || true
-  if [ -s "$RECON/$PNG" ]; then
-    echo "saved targets/$ENG/recon/$PNG"
-    echo "md: ![$SLUG](recon/$PNG)"
-  else
-    rm -f "$RECON/$PNG"
-    echo "capture(recon): no PNG (tab '$TGT' wrong? use the @id or sanitized name vm-scan.sh printed)" >&2
-    exit 1
-  fi
+  _pull_and_report "$RPNG" "$SLUG" "$RECON"
 }
 
 # log: save a long TEXT log (linpeas/pspy/full nmap) from the VM into poc/NN-<slug>.md as fenced
