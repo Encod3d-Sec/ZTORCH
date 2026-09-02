@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
     --port) PORT="${2:?}"; shift 2;;
     --profile) PROFILE="${2:?}"; shift 2;;
     --session) SESSION="${2:?}"; shift 2;;
-    -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
     -*) echo "browser-visible.sh: unknown arg '$1'" >&2; exit 2;;
     *) URL="$1"; shift;;
   esac

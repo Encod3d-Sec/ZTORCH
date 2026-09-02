@@ -19,7 +19,8 @@ EXTRA="${2:-}"
 # ONE curl invocation shared by the baseline and every probe.
 #  -A browser UA + Accept-Language: a stock `curl/8.x` UA draws a blanket edge 403 on a WAF/CDN
 #     -fronted estate, and every probe then comes back 403 -- indistinguishable from "no backups
-#     here" in the old output. Same UA recon-web.sh sends its scanners for the same reason.
+#     here" in the old output. recon-web.sh's own scanners (whatweb/feroxbuster/nuclei) do NOT
+#     send this UA -- if they hit the same WAF/CDN 403 wall, that is a separate, still-open gap.
 #  -k: a self-signed / mismatched origin cert otherwise fails every request as code 000.
 #  --connect-timeout / --max-time: this loop is SERIAL over ~1200 probes, so one hung request used
 #     to stall the whole sweep (the tab never finishes, nothing is ever reported).

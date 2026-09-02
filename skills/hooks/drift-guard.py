@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse(Bash) hook: nudge the campaign driver back into view (anti-drift, advisory-only).
+"""PreToolUse(Bash) hook: nudge the offensive driver back into view (anti-drift, advisory-only).
 
 The proven failure: the deterministic driver (scripts/offensive.py) is advisory BY
 INVOCATION - it only enforces its gates on turns the agent chooses to run it, so under

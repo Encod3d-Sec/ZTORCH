@@ -31,7 +31,7 @@ HEADED=0
 TMUX_SESSION=browser
 TMUX_WINDOW=cdp
 
-usage() { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 CMD="${1:-}"; shift 2>/dev/null || true
 while [ $# -gt 0 ]; do

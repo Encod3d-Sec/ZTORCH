@@ -26,6 +26,7 @@
 #   tmux <eng> <slug> <local-script.sh>                     RETIRED for PoC cards (chrome + wrapper
 #                                                           risk); scan panes only
 #   web  <eng> <slug> <url> [--no-bar] [width height]        render a LIVE page via chromium (address-bar frame)
+#   webauth <eng> <slug> <url> <cookie> [user-agent]          render an AUTHENTICATED page (curl+cookie, not a live browser)
 #   recon <eng> <slug> <tmux-tab> [session=<eng>]            card a scan tmux tab (nmap/ffuf/...) into recon/
 #   log  <eng> <slug> <remote-logfile>                      save a long text log (linpeas/pspy) to poc/NN.md
 #   raw  <eng> <slug> <remote-file>                         pull RAW scan output verbatim -> recon/raw/<slug>
@@ -47,6 +48,7 @@ usage: capture.sh <mode> <eng> <slug> [args]
   cli  <eng> <slug> <cmdfile>            (preferred: clean `$ cmd` transcript, no chrome)
   tmux <eng> <slug> <local-script.sh>
   web  <eng> <slug> <url> [--no-bar] [width height]
+  webauth <eng> <slug> <url> <cookie> [user-agent]
   recon <eng> <slug> <tmux-tab> [session=<eng>]
   log  <eng> <slug> <remote-logfile>
   raw  <eng> <slug> <remote-file>

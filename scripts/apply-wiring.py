@@ -3,15 +3,18 @@
 
 Consumes the proposals produced by the domain subagents (see
 docs/superpowers/specs/2026-07-08-wiki-context-wiring-design.md) and edits:
-  - scripts/playbook.json       (add_ref, new_fingerprint)  -- format preserved: one fingerprint/line
+  - scripts/playbook.json       (add_ref, new_fingerprint, add_tools)  -- format preserved: one fingerprint/line
   - skills/hunt/triggers.json   (trigger)                    -- consolidated new entries per (tier,skill)
   - wiki/<hub>.md               (hub_link)                   -- adds [[child]] under a Wired section
+  - skills/hunt/<skill>/SKILL.md (skill_tools)                -- adds [[tool]] links under a Context tools section
   - scripts/wiring-exempt.txt     (exempt)
 
 Action schema (one of):
   {"action":"add_ref","fingerprint":"<exact playbook key>","slug":"<page>"}
   {"action":"new_fingerprint","key":"<regex>","skills":[...],"tests":[...],"refs":[...],"prio":2,"approach":[...]?}
+  {"action":"add_tools","fingerprint":"<exact playbook key>","tools":["<tool-slug>",...]}
   {"action":"hub_link","hub":"<hub-slug>","slug":"<child-slug>"}
+  {"action":"skill_tools","skill":"hunt-xxx","tools":["<tool-slug>",...]}
   {"action":"trigger","tier":"hard|surface","add":"<regex fragment>","skill":"hunt-xxx"}
   {"action":"exempt","slug":"<page>","reason":"<why>"}
 
