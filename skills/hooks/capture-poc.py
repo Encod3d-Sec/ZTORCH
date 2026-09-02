@@ -34,7 +34,7 @@ sys.path.insert(0, HERE)
 MAX_OUT = 40000        # per-entry output cap (chars); a huge scan is truncated, not dropped
 _META_RE = re.compile(
     r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
-    r"playbook-tools-backfill|\bgit\b|install-hooks|new-engagement|"
+    r"\bgit\b|install-hooks|new-engagement|"
     r"scripts/(?:campaign|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
     r"tests/|skills/hooks|setup/|capture\.sh|\beval_metrics\b", re.IGNORECASE)
 
