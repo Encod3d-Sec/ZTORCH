@@ -13,7 +13,7 @@
     |_|
 ```
 
-**An AI-powered penetration testing and bug-bounty knowledge base and automation harness for [ZCode](https://z.ai), the coding agent powered by GLM.** It turns an Obsidian vault into an opinionated offensive-security workflow: autonomous campaign drivers (`/pt-workflow`, `/bb-workflow`, `/ctf-workflow`) that run a whole engagement end to end, a searchable wiki of 500+ hacking technique pages, per-vulnerability "hunt" skills, deterministic hooks that fire the right skill at the right moment, and a state-first engagement model that stops you (and the model) from repeating work.
+**An AI-powered penetration testing and bug-bounty knowledge base and automation harness for [ZCode](https://z.ai), the coding agent powered by GLM.** It turns an Obsidian vault into an opinionated offensive-security workflow: an autonomous engagement driver (`Skill(engage)` then `Skill(offensive)`) that runs a whole engagement end to end, a searchable wiki of 500+ hacking technique pages, per-vulnerability "hunt" skills, deterministic hooks that fire the right skill at the right moment, and a state-first engagement model that stops you (and the model) from repeating work.
 
 [![Built for ZCode](https://img.shields.io/badge/built%20for-ZCode%20%2F%20Z.AI-blue.svg)](https://z.ai)
 [![Wiki pages](https://img.shields.io/badge/wiki-500%2B%20pages-brightgreen.svg)](wiki/)
@@ -112,10 +112,11 @@ qmd update
 # Start an engagement (pentest | bugbounty | ctf)
 bash setup/new-engagement.sh acme pentest
 
-# Then, inside ZCode, drive the whole engagement autonomously with the matching workflow:
-#   /pt-workflow    pentest (client-report deliverable)
-#   /bb-workflow    bug-bounty program
-#   /ctf-workflow   CTF / boot-to-root box
+# Then, inside ZCode, drive the whole engagement autonomously:
+#   Skill(engage)                          # router: picks the right next skill
+#   Skill(offensive) --type pentest        # client-report deliverable
+#   Skill(offensive) --type bb             # bug-bounty program
+#   Skill(offensive) --type ctf            # CTF / boot-to-root box
 
 # Run the test suite
 python3 -m pytest -q
@@ -158,7 +159,7 @@ AGENTS.md         top-level instructions loaded by ZCode
 .zcode/           config.json (hook registration, committed) · skills/ (per-machine links)
 wiki/             500+ page technique corpus (ships; semantic + keyword indexed)
 skills/           hunt-* skills, workflow/ (campaign drivers, triage / evidence / coverage), research / disclosure / burp, hooks/, meta-skills
-scripts/          campaign (autonomous workflow driver), next_move, find-lint, check-leaks, index / lint tooling
+scripts/          offensive (autonomous workflow driver), next_move, find-lint, check-leaks, index / lint tooling
 setup/            bootstrap, install-hooks, install-skills, new-engagement / research, templates
 docs/             workflows, page-types, setup, sharing (client-data boundary), conventions
 tests/            pytest suite for the automation

@@ -9,7 +9,7 @@ description: Operating procedure for the WSL/Kali attack seat on this machine - 
 
 | Layer | Where | What lives there |
 |---|---|---|
-| ZCode agent | Windows desktop app, shell = Git Bash | AGENTS.md, hooks, wiki edits, campaign driver, scope-guard |
+| ZCode agent | Windows desktop app, shell = Git Bash | AGENTS.md, hooks, wiki edits, offensive driver, scope-guard |
 | WSL distro `kali-linux` | user `kali` (interactive) / `root` (tooling) | `/root/vm.sh` + `/root/creds.txt` (VM ip/user/password), sshpass, qmd |
 | VMware Kali VM (hostname `TZ`) | `192.168.23.128` (from creds.txt) | VPN (tun0), ALL offensive tooling (nmap/ffuf/nuclei/nxc/linpeas), chromium, tmux sessions |
 
@@ -77,12 +77,10 @@ The vault is ONE working copy seen under three paths:
 
 ## Setup / repair
 
-- **ONE verdict, either seat:** `bash setup/doctor.sh` (hooks + skills + seat wiring + VM
-  reachability + campaign driver, in one run).
-- Windows seat: `bash setup/win-seat.sh` (bridge checks, skills, wiki-search MCP, `--index`).
-- Direct-VM key: `bash setup/vm-key.sh` (generates `~/.ssh/id_ed25519_ztorch`, installs it on the
-  VM through the WSL bridge once; re-run if the VM is rebuilt and key auth starts failing).
-- WSL side: `bash /opt/ztorch/setup/wsl-seat.sh` (re-creates the `/opt/ztorch` symlink, git
+- **ONE verdict, either seat:** `python3 scripts/offensive-doctor.py` (hooks + skills + seat wiring
+  + VM reachability + campaign driver, in one run).
+- Windows seat: `bash setup/bootstrap.sh` (bridge checks, skills, wiki-search MCP, `--index`).
+- WSL side: `bash setup/install-hooks.sh` (re-creates the `/opt/ztorch` symlink, git
   safe.directory, verifies `/root/vm.sh` + creds + sshpass + qmd).
 - Note: headless parallel lanes (the old `fleet-lane` concept) target a ZCode CLI that does not
   ship with the desktop app; dormant until a headless CLI exists. Use Agent-tool sub-agents for

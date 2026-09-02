@@ -18,7 +18,7 @@ REPO = Path(__file__).resolve().parent.parent
 # Live doc set: surviving process skills, the scaffold templates, AGENTS.md, the two live docs.
 SKILL_GLOBS = ["skills/**/SKILL.md"]
 TEMPLATE_GLOBS = ["setup/templates/*.md", "setup/templates/*/*.md"]
-DOC_FILES = ["AGENTS.md", "docs/auto-triggers.md", "docs/skill-map.md"]
+DOC_FILES = ["AGENTS.md", "README.md", "docs/auto-triggers.md", "docs/skill-map.md"]
 
 # Unambiguous retired-driver forms. Deliberately NOT matched: `wiki-arsenal`, the driver
 # subcommand `offensive.py coverage`, the `[[crypto-ctf-workflow]]` wikilink, and bare table
@@ -27,8 +27,10 @@ FORBIDDEN = [
     r"Skill\(arsenal\)",
     r"Skill\(coverage\)",
     r"Skill\((?:bb|ctf|pt)-workflow\)",
+    r"/(?:bb|ctf|pt)-workflow\b",    # the slash-command form (README's own Quickstart used this)
     r"\bcampaign-health\b",         # retired doctor skill, as a Skill/health-check ref
     r"campaign\.py",                # prose invocations of the retired driver
+    r"campaign\s*\(autonomous workflow driver\)",   # the Layout-table phrasing, stale as of Wave 2
 ]
 
 
