@@ -16,7 +16,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/session-start.py\""
+              "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/session-start.sh\""
             }
           ]
         }
@@ -107,6 +107,16 @@
               "type": "command",
               "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/close-out.py\"",
               "timeout": 10
+            }
+          ]
+        }
+      ],
+      "PreCompact": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/pre-compact.sh\""
             }
           ]
         }
