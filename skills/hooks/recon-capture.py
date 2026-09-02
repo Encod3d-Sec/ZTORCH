@@ -745,10 +745,12 @@ def _is_serial_enum_loop(cmd):
 
 
 # read-whole-not-grep reflex: post-foothold, a grep/head/tail/awk/sed -n against a high-signal
-# config is the recurring miss -- the interesting line lives OUTSIDE the grepped pattern.
+# config OR privesc-scanner output is the recurring miss -- the interesting line lives OUTSIDE
+# the grepped pattern (W7-3: grepping linpeas output missed the exact pam_ssh_agent_auth line
+# that WAS a box's root, costing the entire engagement).
 _HIGH_SIGNAL_CFG = re.compile(
     r"/etc/pam\.d/|sudoers|wp-config|\.conf(\s|$|'|\")|authorized_keys|\.env(\s|$|'|\")|"
-    r"settings\.php|web\.config|shadow", re.IGNORECASE)
+    r"settings\.php|web\.config|shadow|linpeas|pspy", re.IGNORECASE)
 _GREP_RE = re.compile(r"\b(grep|egrep|zgrep|head|tail|awk|sed\s+-n)\b")
 
 
@@ -768,7 +770,9 @@ def _readwhole_nudge(d, cmd, eng):
         pass
     if not footh:
         return None
-    m = re.search(r"(/etc/pam\.d/\S+|\S*sudoers\S*|\S*wp-config\S*|\S+\.conf|\S*authorized_keys\S*|\S+\.env)", cmd)
+    m = re.search(
+        r"(/etc/pam\.d/\S+|\S*sudoers\S*|\S*wp-config\S*|\S+\.conf|\S*authorized_keys\S*|\S+\.env"
+        r"|\S*linpeas\S*|\S*pspy\S*)", cmd)
     path = (m.group(1).strip("'\"") if m else "the config")
     seen = os.path.join(d, ".readwhole-nudged")
     try:
