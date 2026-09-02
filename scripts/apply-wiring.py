@@ -30,6 +30,9 @@ warn = []
 
 def wiki_path(slug: str) -> str | None:
     hits = glob.glob(os.path.join(ROOT, "wiki", "**", f"{slug}.md"), recursive=True)
+    if len(hits) > 1:
+        warn.append(f"wiki_path: {slug!r} matches {len(hits)} files (using the first; "
+                     f"qualify with a path-form slug to disambiguate): {hits}")
     return hits[0] if hits else None
 
 
@@ -52,7 +55,7 @@ def write_triggers(d):
             out.append("    " + json.dumps(k, ensure_ascii=False) + ": " + json.dumps(v, ensure_ascii=False) + tail)
         out.append("  }" + trailing)
         return out
-    lines = ["{", '  "_comment": ' + json.dumps(d["_comment"], ensure_ascii=False) + ","]
+    lines = ["{", '  "_comment": ' + json.dumps(d.get("_comment", ""), ensure_ascii=False) + ","]
     lines += block("triggers", ",")
     lines.append('  "_surface_comment": ' + json.dumps(d.get("_surface_comment", ""), ensure_ascii=False) + ",")
     lines += block("surface_triggers", "")
@@ -165,8 +168,6 @@ def main():
         tier_key = "triggers" if tier == "hard" else "surface_triggers"
         tr[tier_key][key] = skill
 
-    if hub_children or trig_groups:
-        pass
     write_playbook(pb)
     if trig_groups:
         write_triggers(tr)
