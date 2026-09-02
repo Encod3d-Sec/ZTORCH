@@ -518,6 +518,13 @@ def _is_framework_meta(cmd):
         return bool(_FRAMEWORK_META.search(cmd or ""))
 
 
+def _active_and_not_meta(d, eng, cmd):
+    """True iff there's an active engagement dir AND the _engagement module imported AND cmd is
+    not a framework/dev command -- the common gate every advisory nudge block in main() shares.
+    Extracted after this exact guard was found repeated verbatim 7 times (plus one variant)."""
+    return bool(d and eng and not _is_framework_meta(cmd))
+
+
 def _emit(blocks):
     if not blocks:
         return
@@ -872,7 +879,7 @@ def main():
     # while Approach.md Weaponize shows no progress means jumping to exploitation without the
     # wiki/CVE lookup. Framework-meta commands are exempt. This is the only ENFORCEMENT the
     # board's GATE lines get -- one cheap reminder, not a block.
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         if _is_exploit_cmd(cmd) and _weaponize_undone(d):
             unmet = _gate1_unmet(d)
             if unmet:
@@ -907,7 +914,7 @@ def main():
     # command while Approach.md has NO board content (checklist empty + 4a table empty) means the
     # Approach board was never generated. Skipping `offensive.py board` loses foothold-recording,
     # vm-rsh routing, and the G3 typed-evidence gate. Framework-meta commands are exempt.
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         marker = os.path.join(d, ".board-nudged")
         if not os.path.exists(marker) and _is_exploit_cmd(cmd) and _board_never_built(d):
             blocks.append(
@@ -923,7 +930,7 @@ def main():
     # serial-enumeration nudge (fire-once per engagement, advisory): a for/while/seq + curl loop
     # fetches one URL at a time -- the recurring serial-vs-parallel drift that turns a 10-min box
     # into 40. Nudge to fan out with a threaded ffuf sweep.
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         marker = os.path.join(d, ".serial-enum-nudged")
         if not os.path.exists(marker) and _is_serial_enum_loop(cmd):
             blocks.append(
@@ -939,7 +946,7 @@ def main():
     # connect-back is the moment to remind that a silent connect-back failure is usually a FILTERED
     # egress port, not a broken payload -- diagnosing egress before grinding ports/reverse-shells
     # saved ~30 min on a real box (target-egress-shaped network, "beacons OUT on a schedule").
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         marker = os.path.join(d, ".egress-nudged")
         if not os.path.exists(marker) and _is_revshell_cmd(cmd):
             blocks.append(
@@ -960,7 +967,7 @@ def main():
     # ESCALATING, not fire-once: two boxes ignored a single nudge and reached foothold with
     # ffuf/nuclei never run. Requires BOTH axes because "nuclei launched but never
     # read" and "content ran but nuclei didn't" are the observed gaps. Bounded to _RECON_GAP_CAP.
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         try:
             rec = os.path.join(d, ".recon-tools")
             for axis, pat in (("content", _DISCOVERY_TOOLS), ("nuclei", r"nuclei")):
@@ -996,7 +1003,7 @@ def main():
     # SOURCE saved as it is first explored. Record which axes ran (render / source); while EITHER is
     # missing on an unsolved box with web activity, nudge -- ESCALATING+capped like recon-completeness.
     # Fixes the recurring "recon scan cards but no rendered page and no saved source" evidence gap.
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         try:
             blob_cap = "\n".join([cmd] + inner_cmds(cmd))
             recw = os.path.join(d, ".web-cap")
@@ -1029,7 +1036,7 @@ def main():
     # anti-automation / WAF reflex (advisory): probe output shows a request-limiter/ban/taunt or a
     # WAF/CDN block -> route to manual+serial (no sqlmap/parallel scanners) or filter-bypass. Once
     # per class per engagement. Framework-meta guarded, suppressed post-solve, fail-open.
-    if d and _engagement and not _is_framework_meta(cmd) and _invokes_any(cmd, _WEB_ACTIVITY):
+    if _active_and_not_meta(d, _engagement, cmd) and _invokes_any(cmd, _WEB_ACTIVITY):
         try:
             if not _engagement.is_solved(d):
                 msg = _antiautomation_nudge(d, _response_text(data), _engagement)
@@ -1203,7 +1210,7 @@ def main():
     # a grep/head/tail/awk/sed -n against a high-signal config (pam.d, sudoers, wp-config, .env,
     # web.config, shadow) is the recurring privesc miss -- the vector hides in a line the keyword
     # pattern skips. Nudge to cat the whole file instead.
-    if d and _engagement and not _is_framework_meta(cmd):
+    if _active_and_not_meta(d, _engagement, cmd):
         try:
             _rw = _readwhole_nudge(d, cmd, _engagement)
             if _rw:
