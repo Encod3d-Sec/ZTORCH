@@ -609,6 +609,10 @@ def engagement_type(d=None):
     try:
         cache = json.load(open(os.path.join(d, ".offensive.json"), encoding="utf-8"))
         val = str(cache.get("type", "")).strip().lower()
+        # offensive.py's own CLI/state vocabulary abbreviates bug-bounty as "bb" (--type bb,
+        # BASE_CLASSES["bb"], CLOSEOUT_CHAINS["bb"]); normalize to the canonical full word this
+        # module and every hook that calls engagement_type() actually uses.
+        val = {"bb": "bugbounty"}.get(val, val)
         if val in TYPES:
             return val
     except Exception:
