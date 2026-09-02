@@ -37,6 +37,48 @@ def _run_script(name, *args, timeout=40):
         return None
 
 
+def _board_empty(d):
+    """True iff Approach.md exists but carries no board content -- no checklist item AND no
+    populated 4a table row. Same criteria recon-capture.py's _board_never_built uses."""
+    p = os.path.join(d, "Approach.md")
+    if not os.path.isfile(p):
+        return False
+    try:
+        txt = open(p, encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return False
+    if re.search(r"^\s*-\s*\[[ x~!\-]\]", txt, re.I | re.M):
+        return False
+    try:
+        import _engagement
+        if _engagement._parse_table(p):
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def self_heal_board():
+    """Auto-run `offensive.py board` when Approach.md exists but was never populated (init ran,
+    board never did). Removes the "is this box worth boarding" judgment call entirely (W7-2: a
+    box judged 'too obvious to board' otherwise loses ALL foothold/privesc tracking). Only runs
+    once .offensive.json exists (init already happened) -- a driver-less engagement is a
+    deliberate choice this must not override. Returns True iff it ran the heal."""
+    try:
+        import _engagement
+        d = _engagement.active_dir()
+        if not d:
+            return False
+        if not os.path.isfile(os.path.join(d, ".offensive.json")):
+            return False
+        if not _board_empty(d):
+            return False
+        r = _run_script("offensive.py", "board", "--eng", d, timeout=15)
+        return bool(r and r.returncode == 0)
+    except Exception:
+        return False
+
+
 def regen_index():
     """Keep wiki/index.md current (writes only when stale; no churn when fresh)."""
     _run_script("gen_index.py", timeout=30)
@@ -263,6 +305,13 @@ def main():
     created = _engagement.ensure_state_files()
     if created:
         out.append("Self-heal: created " + ", ".join(created) + " from template.")
+
+    try:
+        if self_heal_board():
+            out.append("Self-heal: Approach.md board was empty - ran `offensive.py board` to "
+                       "populate it.")
+    except Exception:
+        pass
 
     # telemetry: back-fill the box start time on first sight (new-engagement.sh stamps the precise
     # start; this covers pre-existing boxes) and record the session-start hook fire.

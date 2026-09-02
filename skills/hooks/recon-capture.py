@@ -682,6 +682,33 @@ def _board_never_built(d):
     return True
 
 
+_BOARD_NUDGE_CAP = 3   # escalate the board-never-built nudge up to N times, then go silent
+
+
+def _board_nudge(d):
+    """Escalating (not fire-once) version of the board-never-built check: returns the advisory
+    message up to _BOARD_NUDGE_CAP times while Approach.md has no board rows, then goes silent.
+    Caller checks _is_exploit_cmd(cmd) before calling this."""
+    if not _board_never_built(d):
+        return None
+    capf = os.path.join(d, ".board-nudge-fires")
+    n = 0
+    if os.path.exists(capf):
+        try:
+            n = int((open(capf).read().strip() or "0"))
+        except ValueError:
+            n = 0
+    if n >= _BOARD_NUDGE_CAP:
+        return None
+    with open(capf, "w") as fh:
+        fh.write(str(n + 1))
+    sharper = (" [reminder %d/%d]" % (n + 1, _BOARD_NUDGE_CAP)) if n else ""
+    return ("BOARD NOT BUILT: an exploit-shaped command ran but Approach.md has no board rows "
+            "-- the Approach board was never generated. Run `python3 scripts/offensive.py board` "
+            "first: skipping it loses foothold-recording, vm-rsh routing, and the G3 typed-"
+            "evidence gate." + sharper)
+
+
 # anti-automation / WAF reflex: target output showing a request-limiter/ban/taunt (defeats sqlmap
 # by burst rate) OR a WAF/CDN block page. Route the operator to manual+serial / filter-bypass.
 _ANTIAUTO_RE = re.compile(
@@ -937,22 +964,18 @@ def main():
                     except OSError:
                         pass
 
-    # board-never-built nudge (fire-once per engagement, advisory, fail-open): an exploit-shaped
-    # command while Approach.md has NO board content (checklist empty + 4a table empty) means the
-    # Approach board was never generated. Skipping `offensive.py board` loses foothold-recording,
-    # vm-rsh routing, and the G3 typed-evidence gate. Framework-meta commands are exempt.
-    if _active_and_not_meta(d, _engagement, cmd):
-        marker = os.path.join(d, ".board-nudged")
-        if not os.path.exists(marker) and _is_exploit_cmd(cmd) and _board_never_built(d):
-            blocks.append(
-                "BOARD NOT BUILT: an exploit-shaped command ran but Approach.md has no board rows "
-                "-- the Approach board was never generated. Run `python3 scripts/offensive.py board` "
-                "first: skipping it loses foothold-recording, vm-rsh routing, and the G3 typed-"
-                "evidence gate.")
-            try:
-                open(marker, "w").close()
-            except OSError:
-                pass
+    # board-never-built nudge (escalating up to _BOARD_NUDGE_CAP times, advisory, fail-open): an
+    # exploit-shaped command while Approach.md has NO board content means the Approach board was
+    # never generated. Skipping `offensive.py board` loses foothold-recording, vm-rsh routing, and
+    # the G3 typed-evidence gate. Escalating, not fire-once: a box ignored under momentum
+    # previously went silent after one nudge and got zero further tracking. Framework-meta exempt.
+    if _active_and_not_meta(d, _engagement, cmd) and _is_exploit_cmd(cmd):
+        try:
+            _bn = _board_nudge(d)
+            if _bn:
+                blocks.append(_bn)
+        except Exception:
+            pass
 
     # serial-enumeration nudge (fire-once per engagement, advisory): a for/while/seq + curl loop
     # fetches one URL at a time -- the recurring serial-vs-parallel drift that turns a 10-min box
