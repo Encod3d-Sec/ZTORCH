@@ -832,6 +832,33 @@ def _antiautomation_nudge(d, blob, eng):
     return msg
 
 
+# AD pre-flight reflex: the FIRST Kerberos/impacket command of an engagement is the moment to
+# check for a stale /etc/hosts realm line or /etc/krb5.conf entry left by a PRIOR ("sister") box --
+# a silent, recurring root cause of repeated impacket Kerberos timeouts (confirmed: thm_ledger lost
+# ~3 calls to a stale thm.local->old-ip hosts line; thm_jump wasted xfreerdp time on a stale
+# krb5.conf realm). Fire-once per engagement, advisory, fail-open.
+_AD_TOOL_RE = re.compile(
+    r"\b(secretsdump|GetNPUsers|GetUserSPNs|getTGT|kerbrute|klist|kinit)\b|krb5\.conf", re.IGNORECASE)
+
+
+def _ad_preflight_nudge(d, cmd):
+    """Fire once per engagement on the first Kerberos/impacket-flavored command: advise checking
+    the VM's /etc/hosts and /etc/krb5.conf for a stale realm/hostname entry from a prior box."""
+    if not _AD_TOOL_RE.search(cmd or ""):
+        return None
+    marker = os.path.join(d, ".ad-preflight-nudged")
+    if os.path.exists(marker):
+        return None
+    try:
+        open(marker, "a").close()
+    except Exception:
+        pass
+    return ("AD PRE-FLIGHT: first Kerberos/impacket command this engagement. A prior box's realm "
+            "entry in /etc/hosts or /etc/krb5.conf silently breaks Kerberos calls on this one (a "
+            "recurring miss). Check the VM before continuing: `grep -i realm /etc/hosts "
+            "/etc/krb5.conf` over vm.sh -- clear any stale hostname/realm line first.")
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -961,6 +988,16 @@ def main():
                 open(marker, "w").close()
             except OSError:
                 pass
+
+    # AD pre-flight nudge (fire-once per engagement, advisory, fail-open): the first Kerberos/
+    # impacket command is the moment to check for a stale realm entry from a prior box.
+    if _active_and_not_meta(d, _engagement, cmd):
+        try:
+            _ad = _ad_preflight_nudge(d, cmd)
+            if _ad:
+                blocks.append(_ad)
+        except Exception:
+            pass
 
     # recon-completeness reflex (coverage, not methodology): record which discovery axes ran
     # (content-discovery + nuclei), and while EITHER is missing, nudge on each web exploit/probe --
