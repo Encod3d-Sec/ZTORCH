@@ -346,11 +346,41 @@ EXCERPT_MAX_LINES = 28
 _EXCERPT_RANK = (r"bypass", r"payload|example", r"exploit|attack|abuse", r"escalat|technique")
 
 
+def _record_axis_once(path, axis):
+    """Append `axis` to `path` only if not already recorded there. Two call sites (the
+    recon-completeness and web-evidence reflexes) only ever need set-membership ("did this axis
+    run at least once") read back, but previously appended unconditionally on every matching
+    command for the whole engagement -- unbounded, wasteful growth of a file whose answer never
+    changes after the first write."""
+    try:
+        seen = set(open(path, encoding="utf-8", errors="ignore").read().split()) \
+            if os.path.exists(path) else set()
+    except Exception:
+        seen = set()
+    if axis in seen:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(axis + "\n")
+    except Exception:
+        pass
+
+
+_WIKI_IDX_CACHE = None
+
+
 def _wiki_index():
     """slug -> best path, over wiki/**.md. On a duplicate basename (payloads/xss.md vs
     techniques/web/xss.md -- ~13 such pairs exist) keep the LARGEST file: the substantive
     twin. A plain dict assignment here silently dropped one of every pair and was a real bug
-    in wiki-wiring-audit.py, so do not reintroduce it."""
+    in wiki-wiring-audit.py, so do not reintroduce it.
+
+    Memoized per hook-process lifetime (module-level cache): the full recursive os.walk over
+    wiki/ (a large multi-hundred-file tree) could otherwise run twice within one invocation
+    when a single Bash command triggers both a GATE1-unmet check and a fingerprint hit."""
+    global _WIKI_IDX_CACHE
+    if _WIKI_IDX_CACHE is not None:
+        return _WIKI_IDX_CACHE
     idx = {}
     try:
         import _engagement
@@ -370,7 +400,8 @@ def _wiki_index():
                     idx[slug] = (size, full)
     except Exception:
         return {}
-    return {k: v[1] for k, v in idx.items()}
+    _WIKI_IDX_CACHE = {k: v[1] for k, v in idx.items()}
+    return _WIKI_IDX_CACHE
 
 
 def _wiki_excerpt(slugs):
@@ -934,8 +965,7 @@ def main():
             rec = os.path.join(d, ".recon-tools")
             for axis, pat in (("content", _DISCOVERY_TOOLS), ("nuclei", r"nuclei")):
                 if _invokes_any(cmd, pat):
-                    with open(rec, "a", encoding="utf-8") as fh:
-                        fh.write(axis + "\n")
+                    _record_axis_once(rec, axis)
             ran = open(rec, encoding="utf-8", errors="ignore").read() if os.path.exists(rec) else ""
             missing = [a for a in ("content", "nuclei") if a not in ran]
             # gate the NUDGE (not the recording) on an unsolved box: recon completeness is moot
@@ -972,8 +1002,7 @@ def main():
             recw = os.path.join(d, ".web-cap")
             for axis, rx in (("render", _WEB_RENDER_RE), ("source", _WEB_SOURCE_RE)):
                 if rx.search(blob_cap):
-                    with open(recw, "a", encoding="utf-8") as fh:
-                        fh.write(axis + "\n")
+                    _record_axis_once(recw, axis)
             ranw = open(recw, encoding="utf-8", errors="ignore").read() if os.path.exists(recw) else ""
             missing = [a for a in ("render", "source") if a not in ranw]
             if missing and _invokes_any(cmd, _WEB_ACTIVITY) and not _engagement.is_solved(d):
