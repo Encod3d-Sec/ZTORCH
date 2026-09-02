@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """PreToolUse(Bash) hook: nudge the campaign driver back into view (anti-drift, advisory-only).
 
-The proven failure: the deterministic driver (scripts/campaign.py) is advisory BY
+The proven failure: the deterministic driver (scripts/offensive.py) is advisory BY
 INVOCATION - it only enforces its gates on turns the agent chooses to run it, so under
-momentum the agent walked away from `campaign.py next` in 90 seconds and free-handed a whole
+momentum the agent walked away from `offensive.py next` in 90 seconds and free-handed a whole
 box via 85 raw `bash /root/vm.sh` exploit calls. This hook pulls the agent back: on an
 exploit-shaped Bash command during an active campaign, if the agent is OFF-BOARD (running an
 exploit/scan binary the driver never emitted, and the board is NOT empty), it ESCALATES a
 counter and ADVISES the agent back to the driver. It never denies a command - the standing
 operator complaint was that a hard deny throttles legit engagements, so this hook is advisory
-only (the RTL reflex now lives in campaign.py's `_tells_stop` + recon-capture's vector-doubt
+only (the RTL reflex now lives in offensive.py's grind detection + recon-capture's vector-doubt
 nudges).
 
 Policy:
-  - off_board_streak N -> INJECT an advisory warning ("run campaign.py next; N calls since"),
+  - off_board_streak N -> INJECT an advisory warning ("run offensive.py next; N calls since"),
     for every N (the counter is kept and reported, but never escalates to a deny)
-  - `campaign.py next|board|done|pass-done|init` seen in the command -> reset the streak to 0
+  - `offensive.py next|board|done|note|init|foothold` seen in the command -> reset the streak to 0
 
 ON-BOARD (allowed, never counted) when EITHER:
-  - the command's exploit/scan binary is in .campaign.json emitted_bins (the driver told them to
+  - the command's exploit/scan binary is in .offensive.json emitted bins (the driver told them to
     run it), OR
-  - the board is empty/uncounted (generic tech -> playbook+behaviours yield 0 rows -> the driver
+  - the board is empty/uncounted (generic tech -> the index yields 0 rows -> the driver
     has nothing to serve, so there is nothing to hold the agent to). Fail-open by design.
 
 EXPLOIT-SHAPED = handroll.classify() fires (a substitutable hand-rolled request loop) OR the
@@ -29,7 +29,7 @@ WHOLE command string, not just the leading token, so `bash /root/vm.sh 'nmap ...
 wrapper the reference failure used - is caught by the inner binary.
 
 SAFETY (this hook only advises, but stays fail-open anyway - never let a hook bug break a turn):
-  - Fail-OPEN everywhere: no engagement / no .campaign.json / pass < 5 / unparseable / any
+  - Fail-OPEN everywhere: no engagement / no .offensive.json / pass < 5 / unparseable / any
     exception -> exit 0, allow. A hook bug never blocks a command.
   - pass >= 5 gate: only fires once the board is actually driving (passes 0-4 are pre-board recon
     where free exploration is expected).
@@ -44,7 +44,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 
 # Network/scan/exploit binary set = the driver's own NET_BINS (drift pre-filter). Import the shared
-# _netbins module (NOT campaign.py) so this PreToolUse hook never parses the ~90KB driver per call;
+# _netbins module so this PreToolUse hook never parses the driver per call;
 # fall back to a literal mirror if the module can't be imported.
 try:
     from _netbins import NET_BINS
@@ -65,7 +65,7 @@ _SCAN_WINDOW = 180          # seconds: a 2nd heavy scanner launched within this 
 _HEAVY_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, HEAVY_SCANNERS), key=len, reverse=True)) + r")\b")
 
 _BIN_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, NET_BINS), key=len, reverse=True)) + r")\b")
-_DRIVER_RE = re.compile(r"campaign\.py\s+(?:next|board|done|pass-done|init)\b")
+_DRIVER_RE = re.compile(r"offensive\.py\s+(?:next|board|done|note|init|foothold)\b")
 # A HAND-WRITTEN exploit run as a script/interpreter, or an interactive reverse-shell driver:
 # exploit-shaped even though it touches no NET_BIN (the exact gap the post-mortem free-handed
 # through - `bash /root/vm.sh 'python3 exp.py'`). Deliberately does NOT match the `bash /root/vm.sh`
@@ -79,9 +79,9 @@ _INTERP_RE = re.compile(
 # vault's own trees while an engagement happens to be active must never fire the guard (observed:
 # `pytest` misfiring during harness development). Mirrors recon-capture.py's framework-meta guard.
 _META_RE = re.compile(
-    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|campaign\.py|campaign-doctor|check-hooks|"
-    r"tool-phase-backfill|playbook-tools-backfill|\bgit\b|install-hooks|new-engagement|"
-    r"scripts/(?:campaign|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
+    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
+    r"playbook-tools-backfill|\bgit\b|install-hooks|new-engagement|"
+    r"scripts/(?:offensive|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
     r"tests/|skills/hooks|setup/", re.IGNORECASE)
 
 
@@ -208,9 +208,9 @@ def main():
     d = _engagement.active_dir()
     if not d:
         return
-    sp = os.path.join(d, ".campaign.json")
+    sp = os.path.join(d, ".offensive.json")
     if not os.path.isfile(sp):
-        return                                    # no campaign -> nothing to enforce
+        return                                    # no driver state -> nothing to enforce
     try:
         st = json.load(open(sp, encoding="utf-8"))
     except Exception:
@@ -301,8 +301,8 @@ def main():
         "hookEventName": "PreToolUse",
         "additionalContext": (
             "DRIFT (off-board, streak %d): %d exploit-shaped call(s) since the last driver step "
-            "(%s not emitted by the board). The campaign driver is authoritative - run "
-            "`python3 scripts/campaign.py next` to get the required row + tool before "
+            "(%s not emitted by the board). The offensive driver is authoritative - run "
+            "`python3 scripts/offensive.py next` to get the required row + tool before "
             "continuing, and `done` each row as it lands." % (streak, streak, off)),
     }}))
 

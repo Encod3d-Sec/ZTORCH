@@ -12,7 +12,7 @@ measured against that corpus:
 
 Measured on the real corpus this fires on 106/306 network calls (38%) and spares 175 (62%)
 legitimate one-offs. classify() returns (fires, tool, reason); the caller withholds and emits the
-mapped tool. Shared by campaign.py (Task 16) and the grep-as-read detector (Task 19c).
+mapped tool. Shared by skills/hooks/drift-guard.py and the grep-as-read detector (Task 19c).
 """
 import os
 import re

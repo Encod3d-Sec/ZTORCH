@@ -160,7 +160,7 @@ sub "$VAULT/setup/templates/_deadends.md" "$NAME" "$TODAY" "$DEST/Deadends.md"
 # campaign-driver working files: identities/source-ledger/write-ledger are pentest/
 # bugbounty-only (bug-bounty spray-identity + OSINT-provenance + write-budget machinery
 # a ctf box never touches). decisions.md is on-demand for EVERY type: /redteamlead (RTL)
-# creates it from setup/templates/_decisions.md the first time it (or `campaign.py done
+# creates it from setup/templates/_decisions.md the first time it (or `offensive.py done
 # --park`) writes to it; see skills/hooks/_engagement.py's ensure_optional_file().
 if [ "$TYPE" != "ctf" ]; then
   for f in identities source-ledger write-ledger; do

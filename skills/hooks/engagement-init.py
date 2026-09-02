@@ -124,14 +124,14 @@ def harness_maintenance():
     except Exception:
         pass
     # T4.1 driver-staleness: warn when the framework repo is meaningfully behind its upstream, so a
-    # stale campaign.py/hook set is surfaced like hook-drift (road ran a driver 26 commits behind main
+    # stale driver/hook set is surfaced like hook-drift (road ran a driver 26 commits behind main
     # and it cascaded). No fetch (SessionStart time budget) - measured against the last fetch; fail-open.
     try:
         import _engagement
         behind = _driver_behind(_engagement.VAULT)
         if behind >= 5:
             tags.append("driver-stale: %d commits behind upstream (git pull to refresh "
-                        "campaign.py/hooks)" % behind)
+                        "offensive.py/hooks)" % behind)
     except Exception:
         pass
     try:

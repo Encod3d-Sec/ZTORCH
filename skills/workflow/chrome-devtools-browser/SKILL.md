@@ -59,6 +59,12 @@ authed flows. Load-bearing requests still go to Burp Repeater when reachable (`S
 
 ## Safety
 
+- **If the MCP lists the wrong tabs** (about:blank / chrome-error while `curl 127.0.0.1:9222/json/list`
+  shows the real page), the MCP attached to its own chromium, not the tunnel. Do not fight it: drive
+  the real tab with a raw CDP websocket to the tab's `webSocketDebuggerUrl` — the handshake needs the
+  Origin header suppressed (`websocket.create_connection(url, suppress_origin=True)`) or Chromium
+  rejects it with 403. A minimal send/eval/screenshot trio helper is enough; this fallback has
+  rescued a live engagement.
 - The CDP port is **unauthenticated = total control of the browser** (read any tab, lift session cookies).
   It stays loopback-only + `ssh -L`; never bind `0.0.0.0` / expose it to the LAN.
 - Named tmux session only (`cdpbrowser`); never `tmux kill-server` (the VPN/other work may live in tmux).

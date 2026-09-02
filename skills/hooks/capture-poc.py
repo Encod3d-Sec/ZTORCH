@@ -17,7 +17,7 @@ Example: `bash /root/vm.sh 'nmap -sCV 10.1.1.5'` appends to poc/cmdlog/nmap.md:
     ```
 
 Grouped by the INNER binary (via tool-telemetry._binaries), so vm.sh-wrapped scans land under the
-real tool. Skips framework/dev commands (pytest, campaign.py, git, editing the vault) and empty
+real tool. Skips framework/dev commands (pytest, offensive.py, git, editing the vault) and empty
 output. Fail-open and silent; capped so one runaway scan can't bloat the file. Records into
 `cmdlog/` (not poc/ root) so it never mixes with curated PoC screenshots.
 """
@@ -33,8 +33,8 @@ sys.path.insert(0, HERE)
 
 MAX_OUT = 40000        # per-entry output cap (chars); a huge scan is truncated, not dropped
 _META_RE = re.compile(
-    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|campaign\.py|campaign-doctor|check-hooks|"
-    r"tool-phase-backfill|playbook-tools-backfill|\bgit\b|install-hooks|new-engagement|"
+    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
+    r"playbook-tools-backfill|\bgit\b|install-hooks|new-engagement|"
     r"scripts/(?:campaign|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
     r"tests/|skills/hooks|setup/|capture\.sh|\beval_metrics\b", re.IGNORECASE)
 

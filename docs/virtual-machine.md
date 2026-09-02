@@ -93,8 +93,8 @@ and is `tmux attach`-able for manual operator work. Same `--win` mechanism, spli
   so it frames a shell, not the raw `msf6 >` REPL.
 - **Operator takeover:** `tmux attach -t <eng>` on the VM, select the `shell`/`msf` window.
 
-The campaign driver records the foothold window (`campaign.py foothold <asset> --win <win>`, or
-`done ... --win <win>` on the closing find). After that, `campaign.py next` routes post-foothold tool
+The offensive driver records the foothold window (`offensive.py foothold <asset> --win <win>`, or
+`done ... --win <win>` on the closing find). After that, `offensive.py next` routes post-foothold tool
 commands for that asset through `vm-rsh --win <win>` and prints the `tmux attach` hint, keeping the
 persistent session and operator visibility past foothold.
 

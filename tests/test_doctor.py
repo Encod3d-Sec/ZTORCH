@@ -1,7 +1,6 @@
 """Tests for scripts/offensive-doctor.py (subsystem health check).
 
-The doctor self-locates its vault (VAULT = dir above scripts/), like ClaudeBrain's
-campaign-doctor.py. So the healthy test runs the REPO's doctor; the broken test
+The doctor self-locates its vault (VAULT = dir above scripts/). So the healthy test runs the REPO's doctor; the broken test
 runs a COPY of the repo whose routing table has been corrupted.
 """
 import shutil

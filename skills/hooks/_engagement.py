@@ -217,7 +217,7 @@ def append_state_asset(d, target, service="?", port="?", access="port-open", not
     target+port already exists. Returns True if a row was added. Fail-soft (returns False) on any
     IO/parse problem, so a caller (board auto-seed, the recon hook) never crashes on it.
 
-    This is the plumbing that lets `campaign.py board` auto-populate from recon instead of
+    This is the plumbing that lets `offensive.py board` auto-populate from recon instead of
     requiring a hand-edited state.md - the friction that made the board easy to bypass."""
     p = os.path.join(d, "state.md")
     tgt = (target or "").strip()

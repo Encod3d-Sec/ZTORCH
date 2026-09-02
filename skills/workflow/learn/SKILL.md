@@ -149,6 +149,11 @@ target page already covers. Before promote, re-read the target section (Phase 4)
 already there -- keep ONLY what the wiki did not have. A verbose dump that repeats known material is
 a failed harvest even if it promotes.
 
+**Format of the staged body** (it becomes the wiki page verbatim): no em-dashes (comma, semicolon,
+or rewrite; legal only inside a fence where the command itself contains one), and every code fence
+language-tagged to match its content (`sh`, `powershell`, `c`, `ruby`, `py`, `js`, `json`, `html`;
+`text` for prose payloads and value blocks) -- never a bare ``` fence.
+
 ### 4. Dedup against the wiki (the skip rule)
 For each generic candidate, search the wiki first:
 ```
@@ -180,13 +185,17 @@ python3 scripts/wiki-stage.py --kind technique --slug <slug> \
 
 **Genuinely new class with no home page:** `wiki-promote` merges into an EXISTING
 page and skips a missing target. So first create a CONTENT-FREE generic scaffold
-(frontmatter per `docs/page-types.md` + the section headings only, zero engagement
-data), then stage the body against it so the substance still arrives through the gate:
+(frontmatter per `docs/page-types.md`, zero engagement data), then stage the body
+against it so the substance still arrives through the gate:
 ```bash
-# 1. scaffold wiki/techniques/<area>/<slug>.md: frontmatter + empty section headings
-# 2. stage the generic body:
+# 1. scaffold wiki/techniques/<area>/<slug>.md: FRONTMATTER ONLY, no section-heading stubs
+#    (promote APPENDS the staged body; pre-written heading stubs are left in place and
+#     duplicate the real headings -- a scaffold with stubs ships a page whose top is
+#     a stack of empty headings)
+# 2. stage the generic body (it carries ALL the '## ' headings):
 python3 scripts/wiki-stage.py --kind technique --slug <slug> \
   --target-page techniques/<area>/<slug>.md
+# 3. after promote, verify the new page: no duplicated/empty '## ' headings at the top
 ```
 For an external source that also informs the lesson (a CVE writeup, an advisory), hand
 that part to `Skill(research-ingest)` rather than duplicating it here.

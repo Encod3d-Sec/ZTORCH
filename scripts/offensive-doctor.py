@@ -3,7 +3,7 @@
 
 Verifies a machine has the /offensive driver correctly set up so every machine runs the
 same driver, then runs a live init->index->board->next smoke test on a throwaway fixture
-engagement. Modelled on ClaudeBrain's campaign-doctor.py.
+engagement. Modelled on the retired campaign-doctor lineage.
 
 Checks (each a PASS/WARN/FAIL line; exit 1 if any FAIL):
   1. scripts/offensive.py present + importable.

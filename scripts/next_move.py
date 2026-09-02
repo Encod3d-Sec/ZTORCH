@@ -11,7 +11,7 @@ via the `next-move` skill; the SessionStart hook surfaces the top few.
 Also emits low-ranked [gap] floor moves, PER IN-SCOPE ASSET, for untested vuln classes
 (the per-type checklist in coverage-classes.json minus THAT asset's own tested classes,
 credited from the Approach.md 4a table + written findings + Deadends.md), so a class
-tested on asset A still surfaces as a gap on asset B. Skill(coverage) / status.py
+tested on asset A still surfaces as a gap on asset B. offensive.py coverage / status.py
 --coverage print the full uncapped asset x class matrix; these are just the top-5
 per-asset "don't forget class X" nudge.
 
@@ -321,14 +321,14 @@ def _ranked(limit=5):
     #     is what makes "untested in scope" provably complete: a class tested on asset A still
     #     surfaces as a gap on asset B. Ranked BELOW every concrete move (scores 24-28, under
     #     the acquisition floor of 30). Top-5 per asset here (shortlist); status.py --coverage /
-    #     Skill(coverage) carry the full uncapped matrix. Suppressed under passive_only.
+    #     offensive.py coverage carry the full uncapped matrix. Suppressed under passive_only.
     if not passive and base:
         for ent in in_scope_assets(state, etype, sc):
             tested = tested_for(ent)
             untested = [c for c in base if c.lower() not in tested]
             for i, cls in enumerate(untested[:5]):    # per-asset shortlist cap; matrix is uncapped
                 sugg.append((28 - i, "gap",
-                             f"{ent}: {cls} untested (Skill(coverage) for per-asset gaps)"))
+                             f"{ent}: {cls} untested (offensive.py coverage for per-asset gaps)"))
 
     # 5. blocked paths - surface unblock hint
     for r in paths:

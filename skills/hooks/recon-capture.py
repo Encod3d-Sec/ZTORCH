@@ -140,7 +140,7 @@ def _is_exploit_loop(cmd):
     return bool(cmd) and isinstance(cmd, str) and bool(_EXPLOIT_LOOP_RE.search(cmd))
 
 
-# nmap/rustscan asset extraction -> auto-populate state.md so `campaign.py board` works from recon.
+# nmap/rustscan asset extraction -> auto-populate state.md so `offensive.py board` works from recon.
 _SCAN_CMD_RE = re.compile(r"\b(nmap|rustscan|masscan)\b", re.I)
 _NMAP_PORT_RE = re.compile(r"^\s*(\d{1,5})/tcp\s+open\s+([A-Za-z0-9._+-]+)", re.M)
 _NMAP_HOST_RE = re.compile(r"Nmap scan report for (\S+)", re.I)
@@ -622,10 +622,10 @@ _CHECKLIST_RE = re.compile(r"^\s*-\s*\[[ x~!\-]\]", re.I | re.M)
 def _board_never_built(d):
     """GATE signal: True iff Approach.md EXISTS but carries no real board content -- no
     checklist item (`- [ ]`/`[x]`/`[~]`/`[!]`/`[-]`) AND no populated table data row. This is
-    the 'campaign board was never built' state: `campaign.py board` was never run, so the 4a
+    the 'board was never built' state: `offensive.py board` was never run, so the 4a
     table + recon checklist are still the bare stub. Fail-closed to False (no nudge) when the
     board is absent/unreadable OR has any content, so it never fires spuriously. A MISSING
-    Approach.md is deliberately NOT this case (a non-campaign engagement, board command N/A)."""
+    Approach.md is deliberately NOT this case (a driver-less engagement, board command N/A)."""
     p = os.path.join(d, "Approach.md")
     if not os.path.isfile(p):
         return False
@@ -874,14 +874,14 @@ def main():
 
     # board-never-built nudge (fire-once per engagement, advisory, fail-open): an exploit-shaped
     # command while Approach.md has NO board content (checklist empty + 4a table empty) means the
-    # campaign board was never generated. Skipping `campaign.py board` loses foothold-recording,
+    # Approach board was never generated. Skipping `offensive.py board` loses foothold-recording,
     # vm-rsh routing, and the G3 typed-evidence gate. Framework-meta commands are exempt.
     if d and _engagement and not _is_framework_meta(cmd):
         marker = os.path.join(d, ".board-nudged")
         if not os.path.exists(marker) and _is_exploit_cmd(cmd) and _board_never_built(d):
             blocks.append(
                 "BOARD NOT BUILT: an exploit-shaped command ran but Approach.md has no board rows "
-                "-- the campaign board was never generated. Run `python3 scripts/campaign.py board` "
+                "-- the Approach board was never generated. Run `python3 scripts/offensive.py board` "
                 "first: skipping it loses foothold-recording, vm-rsh routing, and the G3 typed-"
                 "evidence gate.")
             try:
@@ -1100,7 +1100,7 @@ def main():
                         "(a real vhost 302s ELSEWHERE; -fc 302 / -ac hides it); (3) another port or "
                         "the second vhost's OWN app; (4) source-read (LFI/.git/backup) before brute. "
                         "Run Skill(fuzz) to enumerate a NEW surface class adaptively (vhost/userdir/"
-                        "api/params, right wordlist per surface), or `python3 scripts/campaign.py "
+                        "api/params, right wordlist per surface), or `python3 scripts/offensive.py "
                         "board` to work it depth-first, or `Skill(redteamlead)` when stuck." % n)
         except Exception:
             pass
@@ -1124,7 +1124,7 @@ def main():
                         "vector that DoSes a lab box is almost never the intended one. Reconsider the "
                         "VECTOR, do not tune the tooling: source-read (LFI / alias-traversal / .git / "
                         "backup), a second service or vhost's own app, or OOB creds. "
-                        "`python3 scripts/campaign.py board` and work an untested class depth-first -- "
+                        "`python3 scripts/offensive.py board` and work an untested class depth-first -- "
                         "and when the next door is not obvious, call `Skill(redteamlead)` for "
                         "wiki-grounded ranked directions with an explicit STOP (that is what it is FOR: "
                         "stuck / which vector / should I keep hammering this).")
@@ -1153,7 +1153,7 @@ def main():
             pass
 
     # AUTO-POPULATE state.md from recon: a nmap/rustscan run writes one asset row per open port
-    # (host | service | port | ... | port-open) so `campaign.py board` builds itself from the scan
+    # (host | service | port | ... | port-open) so `offensive.py board` builds itself from the scan
     # instead of a hand-edited inventory. Deduped + fail-soft inside append_state_asset.
     if d and _engagement:
         try:
@@ -1165,7 +1165,7 @@ def main():
             if seeded:
                 blocks.append(
                     "state.md auto-populated from the scan: added %d asset row(s) (%s). "
-                    "Run `python3 scripts/campaign.py board` to build the Approach board from these."
+                    "Run `python3 scripts/offensive.py board` to build the Approach board from these."
                     % (len(seeded), ", ".join(seeded[:8])))
         except Exception:
             pass

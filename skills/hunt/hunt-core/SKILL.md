@@ -64,6 +64,11 @@ owns the specific "NOT confirmation / IS confirmation" list. Universal rules:
 4. **Blind classes need an OOB HIT.** No inference-only findings. The `oob.md` row must flip to
    HIT before a FIND is scaffolded.
 5. **Reproduce from scratch** against your own written steps.
+6. **A negative result needs a proven-observable channel.** "No callback / no hits" only means
+   something if the channel itself is proven to work: a listener that file-logs AND you have
+   actually read, or a self-test hit on the same path. An unobservable channel (a tmux pane that
+   captures empty, a log you never opened) produces false negatives that fossilize into dead-ends
+   and "it was patched" verdicts.
 
 Failed 1-3 is a Deadend, not a "probably real but hard to prove."
 
@@ -117,6 +122,16 @@ Stop and report rather than continuing when:
 - **You left scope.** Even one hop. Especially one hop.
 
 Stopping is not failure. "Confirmed and did not exploit" is worth more than a forfeited payout.
+
+## Published chains: exact-first
+
+When a writeup / published chain exists for the box or the vuln class, fire its EXACT form first:
+same payload, same framing, same delivery channel (chat UI vs raw API, browser vs curl). An
+adaptation is a one-variable experiment that needs a known-good baseline; adapt before the baseline
+exists and every failure is unattributable (payload? delivery? box version?). Transcribe EVERY
+writeup artifact, not just prose (screenshots carry source-IP / UA / Origin ground truth about
+where execution happens), and re-test a published chain verbatim on each new instance before
+believing it was patched. Method: [[wiki/techniques/methodology/writeup-reproduction]].
 
 **Wrong-vector tells (switch the vector, do not tune the tooling).** A vector is exhausted the
 moment it starts fighting you; grinding harder is the sunk-cost trap. Two mechanical signals mean the

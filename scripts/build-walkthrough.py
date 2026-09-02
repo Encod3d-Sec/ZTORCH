@@ -115,16 +115,17 @@ def scan_evidence(eng_dir):
 
 def _gallery_lines(eng_dir):
     """The '## Evidence' section body as a list of lines (no trailing blank line):
-    heading, blank, then either the table (header + separator + one row per image)
-    or the no-evidence placeholder."""
+    heading, blank, then one list item PER IMAGE in the operator-preferred shape:
+    a description line first, the embed indented on the NEXT line (comment on top
+    of the image; list embeds render full-size in Obsidian, images inside table
+    cells mangle), or the no-evidence placeholder."""
     rows = scan_evidence(eng_dir)
     lines = ["## Evidence", ""]
     if not rows:
         lines.append(NO_EVIDENCE)
     else:
-        lines.append("| Evidence | Description |")
-        lines.append("| --- | --- |")
-        lines.extend("| ![](%s) | %s |" % (relpath, caption) for relpath, caption in rows)
+        lines.extend("- %s\n  ![%s](%s)" % (caption, caption, relpath)
+                     for relpath, caption in rows)
     return lines
 
 

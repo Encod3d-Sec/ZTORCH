@@ -192,7 +192,7 @@ Then walk the manual checklist (do not skip any; the box's intended path is usua
 | Creds | configs, history, DB, `.ssh`, backups | reuse / su |
 | Kernel/pkg CVE | `uname -r`; pkg versions (pkexec/polkit, sudo, dbus) | **LAST resort** - check the patch level first ([[linux-privesc]]) |
 
-Box-specific chains now live in wiki (see the technique pages linked per class in `approach-notes.json` REFS).
+Box-specific chains now live in wiki (see the technique pages linked per class on the hunt skills' Wiki maps).
 
 **Don't assume the flag path** (e.g. `/root/root.txt`); once you have exec, `find` it - the root flag can live at a non-standard path.
 

@@ -65,6 +65,17 @@ concrete values + FULL paths, no `$VAR`/`export` (inline an env var on the one c
 diagnostic from log.md becomes 2-3 clean single commands here. Interactive sub-steps (an smbclient
 `get`, an `su` + password) are shown as the plain human action, not scripted.
 
+**No harness/seat plumbing in the repro steps.** Seat wrappers are how the AGENT reached the
+target, not how a reader reproduces it: `vm.sh`/`win-vm.sh`/`vm-ssh.sh` wrappers, tmux
+session/window plumbing, `capture.sh`, `browser-visible.sh`, CDP/prototype-setter snippets, and
+seat-local helper paths (`/root/j.py`, `/tmp/*.py`) never appear as the command of record. Render
+the underlying STANDARD command as typed directly on the attacker machine: the wrapper
+`bash /root/vm.sh "tmux new-session -d -s exfil 'python3 -m http.server 8000 > /tmp/hits.log 2>&1'"`
+becomes `python3 -m http.server 8000`; a browser-automation delivery becomes "paste this into the
+chat input and send". If the delivery genuinely needed a custom script, preserve the script in
+`poc/scripts/` (step d) and reference it in ONE "how the agent drove it" line - the repro step
+itself stays the human action.
+
 ### (d) Preserve exploit scripts
 Copy any exploit script (payload, escape/forge script, webshell) into
 `targets/<eng>/poc/scripts/`, the same exploit-script-preservation discipline `ctf-box` and `screenshot` use --
@@ -78,10 +89,35 @@ fenced block in the step itself so the walkthrough is self-contained.
 Before finishing, confirm:
 - no unfilled template markers remain (`<entrypoint>`, `<foothold`, or a bare `- target:` /
   `- reach:` stub line), and
-- the `## Evidence` gallery has at least one rendered image reference row.
+- the `## Evidence` gallery has at least one rendered image embed line.
 
 If either check fails, go back and fill the gap (more evidence to drain, more narrative to draft)
 rather than leaving the walkthrough half-done.
+
+## Output format (Obsidian rendering rules)
+
+The walkthrough is read in Obsidian's preview, not a terminal. Hard rules:
+
+- **No hard-wrapped prose.** One paragraph or one bullet per SOURCE line, however long; the
+  editor soft-wraps the display. Mid-sentence manual line breaks look broken, reflow badly on
+  resize, and pollute diffs. (Code fences keep their natural lines.)
+- **Flags / answers / secrets go in fenced code blocks.** The Flags section presents every
+  answer value in one ``` fence so the operator copy-pastes them into the platform's answer
+  boxes without dragging surrounding prose; in tables and narrative, wrap values in inline
+  backticks. Never a bare `THM{...}`/password in running text.
+- **Evidence images: description on top, embed below, never table cells.** Each gallery item is
+  a bullet whose FIRST line is the human description (what the image proves) and the indented
+  embed on the NEXT line: `- description text` then `  ![caption](poc/<file>.png)`. Obsidian
+  mangles images inside table cells (squeezed columns, broken aspect) and table-formatter
+  plugins re-pad the markup. Non-image evidence (log excerpts, decoded output) is referenced as
+  a plain markdown link in the narrative, not as a gallery row.
+- **No em-dashes, ever.** A `—`/`–` in prose is replaced with a comma, semicolon, colon, or a
+  rewrite (gallery captions use `![...](...) (description)` parens, not a dash). Em-dashes are
+  legal ONLY inside a code fence where the command itself contains one (a literal CLI value).
+- **Language-tag every code fence, chosen to match its content.** `sh` for shell commands,
+  `powershell` for PS, `c`/`ruby`/`py`/`js` for those languages, `json` for JSON, `html` for
+  markup/script payloads, `text` for chat prompts, messages, and flag/answer value blocks.
+  Never a bare ``` fence: untagged blocks lose highlighting and read as broken output.
 
 ## Scope and safety
 All output stays under `targets/<eng>/` (gitignored) -- never write client data into `session/*`

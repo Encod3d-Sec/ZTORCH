@@ -160,11 +160,34 @@ def merge_row(target_path, row_line, slug):
     open(target_path, "w", encoding="utf-8").write(out)
 
 
+def _strip_empty_sections(text):
+    """Drop heading lines whose section has no body (the next non-blank line is another
+    heading). A content-free scaffold pre-written with section-heading stubs would otherwise
+    duplicate the headings the promoted body itself carries, shipping a page whose top is a
+    stack of empty sections."""
+    lines = text.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        l = lines[i]
+        if l.startswith("## "):
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            if j >= len(lines) or lines[j].startswith("#"):
+                i = j  # empty section: skip the heading (and its blank padding)
+                continue
+        out.append(l)
+        i += 1
+    return "\n".join(out)
+
+
 def merge_section(target_path, body, slug):
-    """Append a technique section (body carries its own ## heading) + dedup marker."""
+    """Append a technique section (body carries its own ## heading) + dedup marker.
+    Empty scaffold-stub sections already in the target are dropped first."""
     if already_promoted(target_path, slug):
         return
-    text = open(target_path, encoding="utf-8", errors="ignore").read().rstrip() + "\n\n"
+    text = _strip_empty_sections(
+        open(target_path, encoding="utf-8", errors="ignore").read()).rstrip() + "\n\n"
     text += body.rstrip() + "\n\n<!-- promoted-slug: %s -->\n" % slug
     open(target_path, "w", encoding="utf-8").write(text)
 

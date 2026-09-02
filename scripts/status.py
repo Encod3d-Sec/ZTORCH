@@ -11,7 +11,7 @@ engagement. Run any time:
 
 The same render is surfaced compactly at SessionStart by engagement-init; this is the full
 on-demand view (evidence + dead-ends included) the operator can pull mid-engagement. The
---coverage flag prints the per-asset coverage grid (Skill(coverage)) instead of the dashboard.
+--coverage flag prints the per-asset coverage grid (offensive.py coverage) instead of the dashboard.
 """
 import glob
 import os
@@ -153,7 +153,7 @@ def main():
         return 0
     name = os.path.basename(d)
     etype = _engagement.engagement_type(d)
-    if "--coverage" in sys.argv:   # full uncapped asset x class matrix (Skill(coverage))
+    if "--coverage" in sys.argv:   # full uncapped asset x class matrix (offensive.py coverage)
         print(render_coverage(*coverage_data(d, etype)))
         return 0
     solved = _engagement.is_solved(d)
