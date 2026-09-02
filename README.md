@@ -158,7 +158,7 @@ plugins.
 AGENTS.md         top-level instructions loaded by ZCode
 .zcode/           config.json (hook registration, committed) · skills/ (per-machine links)
 wiki/             500+ page technique corpus (ships; semantic + keyword indexed)
-skills/           hunt-* skills, workflow/ (campaign drivers, triage / evidence / coverage), research / disclosure / burp, hooks/, meta-skills
+skills/           hunt-* skills, workflow/ (offensive driver, triage / evidence / coverage), research / disclosure / burp, hooks/, meta-skills
 scripts/          offensive (autonomous workflow driver), next_move, find-lint, check-leaks, index / lint tooling
 setup/            bootstrap, install-hooks, install-skills, new-engagement / research, templates
 docs/             workflows, page-types, setup, sharing (client-data boundary), conventions

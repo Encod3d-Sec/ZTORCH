@@ -33,7 +33,7 @@ The vault is ONE working copy seen under three paths:
 
 ## Invocation forms (pick by need)
 
-0. **Fastest: direct ssh, Windows -> VM.** Key-based (`setup/vm-key.sh` arms it once), no WSL hop, fails fast:
+0. **Fastest: direct ssh, Windows -> VM.** Key-based (SSH key auth, armed once manually), no WSL hop, fails fast:
    ```
    bash scripts/vm-ssh.sh '<remote command>'          # root@VM, VPN + tools + chromium live here
    VM_SH="$(pwd)/scripts/vm-ssh.sh" bash scripts/win-rsh.sh <session> '<ps cmd>'

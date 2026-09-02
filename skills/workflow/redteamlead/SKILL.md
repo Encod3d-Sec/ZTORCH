@@ -13,7 +13,7 @@ you where to go and what to STOP. On-demand and token-light: it costs nothing un
 - A vector has been tried a few times with no progress (before grinding it further).
 - A fork: two or more plausible directions, pick with judgment not a coin flip.
 - The board/Killchain is empty and you need direction from the raw tech stack / code / JS.
-- The campaign driver printed "consider Skill(redteamlead)".
+- The offensive driver printed "consider Skill(redteamlead)".
 
 ## How it runs (one fresh subagent)
 `ENG=$(cat targets/active.md)` -> the engagement dir is `targets/$ENG/`.

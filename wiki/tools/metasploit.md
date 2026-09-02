@@ -14,7 +14,7 @@ Metasploit Framework is a Ruby-based, modular penetration testing platform that 
 
 ## Core usage
 
-Non-interactive (the campaign driver emits this form so one command returns clean output instead of dropping into a prompt). `run -z` backgrounds the session so the command exits:
+Non-interactive (the offensive driver emits this form so one command returns clean output instead of dropping into a prompt). `run -z` backgrounds the session so the command exits:
 
 ```bash
 msfconsole -q -x 'search <cve-or-product>; exit'                                    # find a module
