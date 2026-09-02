@@ -34,6 +34,8 @@ organizational only.
 | Hand a fiddly, fully-specified exploit-compile/escalation run to a sub-agent | `delegate` skill (autonomous sub-agent exploit-run; false-root/hostname guardrail mandatory) |
 | Drive msfconsole (recon, exploit search/run, reverse shells, post-ex) | `metasploit` skill (msfconsole framework-driver; cheatsheet [[metasploit]]) |
 | Working the VM / WSL seat (vm.sh, tmux-on-VM, seat map) | `kali-seat` skill (Windows seat -> WSL kali -> VMware VM; `/opt/ztorch` in WSL) |
+| Stuck / which vector / "should I keep hammering this" | `redteamlead` skill (fresh RTL subagent reads state+evidence+wiki, returns ranked directions + explicit STOP) |
+| Content discovery / directory brute / hidden params / which wordlist | `fuzz` skill (adaptive wordlist selection + WAF/throttle handling) |
 
 ## Vault-local skill layout
 
@@ -42,9 +44,10 @@ every hunt assumes. `skills/workflow/` holds the offensive driver (`offensive`) 
 engagement PROCESS skills:
 `wiki-arsenal`, `triage`, `evidence`, `ingest`, `wiki-recon`,
 `nday`, `research-ingest`, `delegate`, `metasploit`, `ctf-box`, `ctf-category`,
-`screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`. `skills/burp/` holds
+`screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`, `redteamlead`, `fuzz`.
+`skills/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
 scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,
-`research/`, `disclosure/`, `code-review/`. `agents-md-improver/` is the offline
+`research/`, `disclosure/`. `agents-md-improver/` is the offline
 instruction-file reviewer (the ZCode counterpart of the old `claude-md-improver`).
 MCP/hook/plugin troubleshooting: `skills/skills-setup.md`.
