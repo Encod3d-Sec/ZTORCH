@@ -44,3 +44,16 @@ def is_prompt_framework_meta(text):
     """True if `text` is a PROMPT about the harness itself (documenting/editing the wiki,
     triggers.json, the playbook, methodology). Used by hunt-trigger to suppress false fires."""
     return is_framework_meta(text) or bool(_PROMPT_META.search(text or ""))
+
+
+# Framework/dev-command exemption: shared by capture-poc.py (skip logging to poc/cmdlog/) and
+# drift-guard.py (skip drift-nudging) -- both ask "is this a framework/dev command, not
+# engagement activity", a narrower/different question than is_framework_meta's "does this
+# operate on the vault's own wiring". Kept as ONE source after the two callers' independent
+# copies drifted apart (one said scripts/campaign, one said scripts/offensive, after the
+# campaign.py -> offensive.py rename touched only one copy).
+_DEV_META = re.compile(
+    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
+    r"\bgit\b|install-hooks|new-engagement|"
+    r"scripts/(?:offensive|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
+    r"tests/|skills/hooks|setup/", re.IGNORECASE)

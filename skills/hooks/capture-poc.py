@@ -32,11 +32,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 MAX_OUT = 40000        # per-entry output cap (chars); a huge scan is truncated, not dropped
-_META_RE = re.compile(
-    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
-    r"\bgit\b|install-hooks|new-engagement|"
-    r"scripts/(?:campaign|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
-    r"tests/|skills/hooks|setup/|capture\.sh|\beval_metrics\b", re.IGNORECASE)
+try:
+    from _meta import _DEV_META as _SHARED_DEV_META
+except Exception:
+    _SHARED_DEV_META = re.compile(
+        r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
+        r"\bgit\b|install-hooks|new-engagement|"
+        r"scripts/(?:offensive|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
+        r"tests/|skills/hooks|setup/", re.IGNORECASE)
+# This file's own extra exemptions (capture.sh's own invocations, eval_metrics.py -- neither is
+# target activity) ORed onto the shared pattern.
+_META_RE = re.compile(_SHARED_DEV_META.pattern + r"|capture\.sh|\beval_metrics\b", re.IGNORECASE)
 
 try:
     from tool_telemetry import _binaries

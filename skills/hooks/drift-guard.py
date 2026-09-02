@@ -78,11 +78,14 @@ _INTERP_RE = re.compile(
 # Framework/dev commands are NOT engagement drift: running tests, the driver itself, or editing the
 # vault's own trees while an engagement happens to be active must never fire the guard (observed:
 # `pytest` misfiring during harness development). Mirrors recon-capture.py's framework-meta guard.
-_META_RE = re.compile(
-    r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
-    r"\bgit\b|install-hooks|new-engagement|"
-    r"scripts/(?:offensive|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
-    r"tests/|skills/hooks|setup/", re.IGNORECASE)
+try:
+    from _meta import _DEV_META as _META_RE
+except Exception:
+    _META_RE = re.compile(
+        r"\bpytest\b|\bpy_compile\b|-m\s+pytest|offensive\.py|offensive-doctor|check-hooks|"
+        r"\bgit\b|install-hooks|new-engagement|"
+        r"scripts/(?:offensive|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
+        r"tests/|skills/hooks|setup/", re.IGNORECASE)
 
 
 def _bins_in(cmd):
