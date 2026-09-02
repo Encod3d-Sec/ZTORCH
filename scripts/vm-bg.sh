@@ -15,7 +15,7 @@ case "${1:-}" in
   --wait)    MODE=wait; shift;;
 esac
 ENG="${1:?need <eng>}"; WIN="${2:?need <win>}"; CMD="${3:-}"
-SESSION="$ENG"; LOG="/dev/shm/${WIN}.log"
+SESSION="$ENG"; LOG="/dev/shm/${SESSION}-${WIN}.log"
 if [ "$MODE" = read ]; then
   bash "$VM_SH" "cat '$LOG' 2>/dev/null || echo '(no log yet: $LOG)'"; exit 0
 fi
@@ -30,4 +30,4 @@ if [ "$DRY" = 1 ]; then
   printf 'DRY-RUN plan:\n  log: %s\n  stage: run in tmux %s:%s via stdbuf, redirect to /dev/shm\n  remote: %s\n' "$LOG" "$SESSION" "$WIN" "$REMOTE"
   exit 0
 fi
-bash "$VM_SH" "$REMOTE"
+bash "$VM_SH" "$REMOTE" || { echo "vm-bg: launch failed (VM unreachable via $VM_SH?)" >&2; exit 1; }
