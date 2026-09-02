@@ -23,7 +23,7 @@ The vault is ONE working copy seen under three paths:
 
 ## Which side runs what
 
-- **Agent session (Windows):** everything cognitive - wiki-first, campaign driver, hooks. Hooks
+- **Agent session (Windows):** everything cognitive - wiki-first, offensive driver, hooks. Hooks
   and skill links are already wired for this seat (`.zcode/config.json`, `.zcode/skills/`).
 - **Target commands: ALWAYS on the VM through vm.sh.** Never scan or attack from WSL or
   Windows directly - they have no VPN route and would leak the host IP.
@@ -78,7 +78,7 @@ The vault is ONE working copy seen under three paths:
 ## Setup / repair
 
 - **ONE verdict, either seat:** `python3 scripts/offensive-doctor.py` (hooks + skills + seat wiring
-  + VM reachability + campaign driver, in one run).
+  + VM reachability + offensive driver, in one run).
 - Windows seat: `bash setup/bootstrap.sh` (bridge checks, skills, wiki-search MCP, `--index`).
 - WSL side: `bash setup/install-hooks.sh` (re-creates the `/opt/ztorch` symlink, git
   safe.directory, verifies `/root/vm.sh` + creds + sshpass + qmd).
