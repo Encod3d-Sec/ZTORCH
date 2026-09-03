@@ -490,7 +490,6 @@ KRB5CCNAME=administrator.ccache secretsdump.py -k -no-pass \
 ## Wired sub-techniques
 
 <!-- auto-wired: context-reachable sub-technique pages -->
-- [[active-directory-certificate-esc-attacks]]
 - [[active-directory-certificate-esc1]]
 - [[active-directory-certificate-esc10]]
 - [[active-directory-certificate-esc11]]
@@ -537,6 +536,6 @@ PtH, use the ccache you already have.
   Remove the old `<realm> -> <ip>` line and always force `-dc-ip`/`-target-ip` so KDC/target resolution
   never depends on DNS/hosts.
 
-See [[active-directory-certificate-esc-attacks]], [[pass-the-hash]], [[certipy]].
+See [[pass-the-hash]], [[certipy]].
 
 <!-- promoted-slug: adcs-esc1-ntlm-restricted-kerberos -->

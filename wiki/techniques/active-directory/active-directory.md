@@ -22,7 +22,7 @@ AD ties users, groups, computers, GPOs, certificates, and domain trusts into a s
 - **Credential access**: [[pass-the-hash]], [[password-cracking]], roasting and ticket abuse documented under [[kerberos-attacks]]
 - **Lateral movement**: [[ad-lateral-movement]]
 - **Persistence**: [[ad-persistence]]
-- **PKI**: [[adcs]], fine-grained reference pages such as [[active-directory-certificate-esc-attacks]]
+- **PKI**: [[adcs]], fine-grained reference pages such as [[active-directory-certificate-esc1]]
 - **ACL/ACE escalation**: [[active-directory-access-controls-aclace]]
 
 ## Reference import corpus
