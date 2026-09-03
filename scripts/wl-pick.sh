@@ -2,7 +2,7 @@
 # Deterministic wordlist selector: (surface [fingerprint] [ctf|pt|bb]) -> ordered
 # absolute wordlist paths + profile-tuned flags. Reads wordlist-map.json (sibling).
 # Resolves the seclists base from the map; installs seclists if none is present.
-# The skill (skills/workflow/fuzz) calls this for WHAT to run; judgment stays in the skill.
+# The skill (skills/workflow/exec/fuzz) calls this for WHAT to run; judgment stays in the skill.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAP="$HERE/wordlist-map.json"

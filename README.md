@@ -79,7 +79,7 @@ Linux or WSL, `bash`, `python3` 3.10+, Node.js >= 18 + [bun](https://bun.sh), an
 AGENTS.md    top-level instructions ZCode loads natively
 .zcode/      config.json (hook registration, committed)
 wiki/        500+ page technique corpus (semantic + keyword indexed)
-skills/      hunt-* (one per vuln class) + workflow/ (the offensive driver + process skills)
+skills/      hunt-* (one per vuln class), vector-workflow/, workflow/ (the offensive driver + process skills)
 scripts/     offensive.py (driver), next_move, check-leaks, index/lint tooling
 setup/       bootstrap, install-hooks, install-skills, new-engagement, templates
 docs/        workflows, page-types, setup, sharing (client-data boundary), conventions

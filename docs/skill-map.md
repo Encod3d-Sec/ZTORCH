@@ -41,13 +41,18 @@ organizational only.
 ## Vault-local skill layout
 
 `skills/hunt/` holds the `hunt-*` vuln-class skills plus the shared `hunt-core` spine
-every hunt assumes. `skills/workflow/` holds the offensive driver (`offensive`) plus the
-engagement PROCESS skills:
-`wiki-arsenal`, `triage`, `evidence`, `ingest`, `wiki-recon`,
-`nday`, `research-ingest`, `delegate`, `metasploit`, `ctf-box`, `ctf-category`,
-`screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`, `redteamlead`, `fuzz`,
-`engage`, `kali-seat`,
-`vector-workflow` (board-seeding pipeline reference, not a loop step).
+every hunt assumes. `skills/vector-workflow/` is the board-seeding pipeline reference
+(not a loop step), promoted to its own top-level directory. `skills/workflow/` holds
+the two engagement entry points at its root, `offensive` (the driver) and `engage`
+(the router), plus the process/utility skills grouped into subfolders (nesting is
+organizational only -- the Skill tool discovers every skill by basename regardless of
+depth):
+- `closeout/` -- `triage`, `evidence`, `learn`, `walkthrough`
+- `recon/` -- `wiki-recon`, `nday`, `research-ingest`, `wiki-arsenal`, `ingest`
+- `exec/` -- `delegate`, `metasploit`, `redteamlead`, `fuzz`
+- `ctf/` -- `ctf-box`, `ctf-category`
+- `env/` -- `kali-seat`, `chrome-devtools-browser`, `screenshot`
+
 `skills/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
 scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,

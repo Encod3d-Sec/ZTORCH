@@ -49,10 +49,14 @@ ZTORCH/
 ├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)
 │   │                               + hooks/ (hook scripts)
 │   ├── hunt/                    <- hunt-* vuln-class skills (25) + hunt-core (shared discipline) + triggers.json
-│   ├── workflow/                <- offensive driver + engagement PROCESS skills: engage, triage, evidence,
-│   │                               ingest, wiki-recon, wiki-arsenal, nday, research-ingest, delegate, metasploit,
-│   │                               redteamlead, fuzz, ctf-box, ctf-category, screenshot, chrome-devtools-browser,
-│   │                               kali-seat, learn, walkthrough, vector-workflow
+│   ├── vector-workflow/         <- board-seeding pipeline reference (promoted to top-level; not a loop step)
+│   ├── workflow/                <- offensive (driver) + engage (router) at root; the rest subfoldered by role
+│   │                               (nesting is organizational only, skills are discovered by basename):
+│   │                               closeout/ (triage, evidence, learn, walkthrough)
+│   │                               recon/ (wiki-recon, wiki-arsenal, nday, research-ingest, ingest)
+│   │                               exec/ (delegate, metasploit, redteamlead, fuzz)
+│   │                               ctf/ (ctf-box, ctf-category)
+│   │                               env/ (kali-seat, chrome-devtools-browser, screenshot)
 │   └── burp/                    <- hunt-burp (MCP driver) + screenshot-burp (Repeater PoC capture)
 └── raw/
     ├── research/                <- CVE writeups/blogs/advisories + active research projects (<project>/ from new-research.sh; the research skill writes loop state here)
