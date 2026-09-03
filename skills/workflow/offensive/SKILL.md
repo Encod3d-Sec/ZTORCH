@@ -62,7 +62,9 @@ refuse (non-zero) on violation. You do not judge them; you satisfy them.
 - **G2 skill-first.** The mapped `Skill(hunt-*)` must have fired before the tool runs. `next` emits
   the skill; `done` refuses if it did not fire. (See the operating requirement below - G2 fail-opens
   when telemetry is unavailable.)
-- **G3 typed evidence.** `done --poc <img>` needs exactly one typed disposition: `--kind req|burp|web`.
+- **G3 typed evidence.** `done --poc <path>` needs exactly one typed disposition: `--kind req|burp|web|cli`
+  (`cli` for a command-execution finding — RCE shell, AD dump, privesc — capture.sh's default PoC-card
+  mode; `web` only for a class actually distinguishable in a rendered screenshot). The path must exist.
   `web` is only accepted for visual classes; an exploit request wants `req`/`burp`.
 - **G4 deadend-first.** An exhausted vector is closed `--dead` (one Deadends.md line); the driver
   suppresses that (asset, class) pair from ever being served again. Never re-run a dead row.

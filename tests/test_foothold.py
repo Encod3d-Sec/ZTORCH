@@ -76,6 +76,8 @@ def test_done_win_records_foothold(tmp_path):
                                      **{"vuln class": "rce"}, arsenal="payloads/command-injection",
                                      skill="hunt-rce", tool="metasploit")])
     _fire(eng, "hunt-rce")
+    (eng / "poc").mkdir(parents=True, exist_ok=True)
+    (eng / "poc" / "shell.png").write_text("")
     rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "done", "4a:1",
                          "--poc", "poc/shell.png", "--kind", "req", "--win", "3"])
     assert rc == 0

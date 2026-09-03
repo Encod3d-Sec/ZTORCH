@@ -144,6 +144,8 @@ def test_dry_streak_increments_and_resets(tmp_path):
     st = _state(eng)
     (eng / ".events.jsonl").write_text(json.dumps(
         {"tool": "Skill", "skill": "hunt-ssrf", "ts": st["started_at"]}) + "\n")
+    (eng / "poc").mkdir(parents=True, exist_ok=True)
+    (eng / "poc" / "ssrf.png").write_text("")
     _run(["--vault", str(vault), "--eng", str(eng), "done", "4a:2",
           "--poc", "poc/ssrf.png", "--kind", "req"])
     assert _state(eng)["dry_streak"] == 0

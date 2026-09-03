@@ -294,8 +294,11 @@ def cmd_board(args):
         have.add(key)
         nid += 1
         rows.append(dict(id="4a:%d" % nid, **row))
+        _stamp_row_opened(state, row["asset"], row["vuln class"])
         added += 1
     write_board(eng, rows)
+    if added:
+        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
     print("board: %d rows (%d new) -> %s" % (len(rows), added, eng / "Approach.md"))
     return 0
 
@@ -452,9 +455,11 @@ def seed_4b(eng, index, etype, st):
         have.add(key)
         nid += 1
         rows.append(dict(id="4b:%d" % nid, **row))
+        _stamp_row_opened(st, row["asset"], row["vuln class"])
         added += 1
     if added:
         write_board_4b(eng, rows)
+        (Path(eng) / STATE_NAME).write_text(json.dumps(st, indent=2))
     return added
 
 
@@ -499,6 +504,30 @@ def _events(eng):
         except ValueError:
             continue
     return out
+
+
+def _opened_key(asset, cls):
+    return "%s|%s" % ((asset or "").strip().lower(), (cls or "").strip().lower())
+
+
+def _stamp_row_opened(state, asset, cls):
+    """Record now() as this (asset, class) row's open-time, so G2 can anchor
+    'skill fired since' to when THIS row appeared rather than engagement start.
+    Rows born together in one board/vector-workflow batch share a birth moment,
+    so one post-batch Skill() invocation still satisfies all of them; a row
+    seeded later (new asset, new fingerprint) gets its own later timestamp and
+    needs a fresh invocation -- closing the loophole where a single Skill(x)
+    call at minute 1 silently covered a same-class row discovered hours later
+    on an unrelated asset."""
+    state.setdefault("row_opened_at", {})[_opened_key(asset, cls)] = \
+        datetime.now(timezone.utc).isoformat()
+
+
+def _row_since(state, asset, cls):
+    """G2's 'since' anchor for this row: its own opened_at if stamped, else
+    engagement start (fail-safe for rows that predate this tracking)."""
+    return (state.get("row_opened_at") or {}).get(_opened_key(asset, cls)) \
+        or state.get("started_at")
 
 
 def _skill_fired(eng, skill, since_iso):
@@ -667,10 +696,13 @@ def cmd_next(args):
               "exploit actions withheld]" % cls)
         return 0
 
-    # G2 skill-first: mapped hunt skill unfired -> run it, withhold the tool.
+    # G2 skill-first: mapped hunt skill unfired SINCE THIS ROW OPENED -> run it,
+    # withhold the tool. Anchored to the row's own open time (not engagement
+    # start), so a skill fired once at minute 1 doesn't silently cover an
+    # unrelated row discovered hours later -- see _row_since/_stamp_row_opened.
     # Fail-open when telemetry is absent (mirrors cmd_done ~:1079), else the
     # tool step is never reached and `next` livelocks on Skill(<skill>) forever.
-    if skill and not _skill_fired(eng, skill, state.get("started_at")):
+    if skill and not _skill_fired(eng, skill, _row_since(state, asset, cls)):
         if _events(eng) is None:
             print("  (G2 advisory: .events.jsonl absent, skill-fired "
                   "unverifiable - proceeding to the tool step)")
@@ -868,17 +900,23 @@ def cmd_done(args):
         _die("cannot close %s: arsenal cell empty - run "
              "`note %s --arsenal <slug>` first [G1 arsenal-first]"
              % (args.row, args.row))
-    # G3 typed evidence: --poc needs a kind; `web` only for visual classes.
+    # G3 typed evidence: --poc needs a kind; `web` only for visual classes; the
+    # file itself must exist (a nonexistent path is not evidence).
     if not args.kind:
-        _die("--poc requires --kind req|burp|web [G3]")
+        _die("--poc requires --kind req|burp|web|cli [G3]")
     if args.kind == "web" and cls not in VISUAL_CLASSES:
         _die("a 'web' render is not evidence for class '%s' - it is "
-             "indistinguishable from any visitor's screenshot. Use --kind req "
-             "(capture.sh req) [G3]" % cls)
-    # G2 skill-first: the mapped hunt skill must have fired since started_at. A
+             "indistinguishable from any visitor's screenshot. Use --kind cli "
+             "(capture.sh cli) for a command-execution class, or --kind req "
+             "(capture.sh req) for a request/response one [G3]" % cls)
+    if not (Path(eng) / args.poc).is_file():
+        _die("--poc %s does not exist under %s [G3: a row never closes on a "
+             "path that isn't a real captured evidence file]" % (args.poc, eng))
+    # G2 skill-first: the mapped hunt skill must have fired since THIS ROW
+    # opened (not engagement start -- see _row_since/_stamp_row_opened). A
     # `--skill <name>` override lets a CORRECTLY-fired skill satisfy G2 when the
     # board mapped the wrong class->skill; the override must itself have fired.
-    since = state.get("started_at")
+    since = _row_since(state, row.get("asset"), cls)
     g2_skill = (args.skill or "").strip() or (row.get("skill") or "").strip()
     if g2_skill and not _skill_fired(eng, g2_skill, since):
         if _events(eng) is None:
@@ -1080,7 +1118,7 @@ def main(argv=None):
     p_done = sub.add_parser("done", help="close a row (G1/G2/G3 gates) or --dead / --park")
     p_done.add_argument("row", help="board row id, e.g. 4a:3")
     p_done.add_argument("--poc", help="evidence image path (closes [x])")
-    p_done.add_argument("--kind", choices=("req", "burp", "web"), help="evidence kind for --poc")
+    p_done.add_argument("--kind", choices=("req", "burp", "web", "cli"), help="evidence kind for --poc")
     p_done.add_argument("--dead", nargs="?", const="exhausted",
                         help="mark the row [!] exhausted (optional reason)")
     p_done.add_argument("--park", help="defer the row [?] with a decision note (G7 no-ask)")

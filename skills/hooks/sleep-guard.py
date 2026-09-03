@@ -38,9 +38,24 @@ def _blank_quotes(s):
     return _QUOTED.sub(lambda m: " " * len(m.group(0)), s)
 
 
+_LOOP_RE = re.compile(r"(?<![\w-])(while|until|\bfor\b)(?![\w-])")
+
+
+def has_poll_loop(cmd):
+    """True if `cmd` contains a while/until/for loop -- poll-on-condition, the sleep
+    inside it is a beat between checks, not a blind wait. Quote-blanked first so a
+    command merely containing the WORD "while"/"until"/"for" in an unrelated quoted
+    string (an echo, a grep pattern) doesn't falsely exempt a genuinely blind sleep
+    elsewhere in the same command."""
+    return bool(_LOOP_RE.search(_blank_quotes(cmd)))
+
+
 def blind_sleeps(cmd):
     """Total seconds of sleeps in `cmd` that exceed THRESHOLD (list of the offending values).
-    Quote-blanked first so a merely-mentioned "sleep N" inside a string is never flagged."""
+    [] if a poll loop is present (see has_poll_loop). Quote-blanked first so a
+    merely-mentioned "sleep N" inside a string is never flagged."""
+    if has_poll_loop(cmd):
+        return []
     hits = []
     for m in SLEEP_RE.finditer(_blank_quotes(cmd)):
         secs = float(m.group(1)) * MULT[m.group(2).lower()]
@@ -65,11 +80,7 @@ def main():
     cmd = (data.get("tool_input") or {}).get("command", "")
     if not cmd:
         return
-    # A while/until loop anywhere = poll-on-condition; the sleep inside it is a beat
-    # between checks, not a blind wait.
-    if re.search(r"(?<![\w-])(while|until)(?![\w-])", cmd):
-        return
-    hits = blind_sleeps(cmd)
+    hits = blind_sleeps(cmd)   # [] when a poll loop is present -- see has_poll_loop
     if not hits:
         return
     reason = "blind sleep (" + ", ".join(sorted(set(hits))) + ") with no while/until poll"

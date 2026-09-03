@@ -67,7 +67,14 @@ FILE_EXT = {"json", "yml", "yaml", "md", "sh", "py", "txt", "js", "ts", "go", "r
             "png", "jpg", "jpeg", "gif", "svg", "pdf", "zip", "tar", "gz", "bak", "tmp",
             "c", "cpp", "h", "java", "rb", "php", "env", "example", "local", "sample"}
 
-BRUTEFORCE = re.compile(r"\b(hydra|medusa|patator|ncrack|kerbrute)\b|--password-file|\bspray(ing|hound)?\b|-P\s+\S+\.txt", re.I)
+BRUTEFORCE = re.compile(
+    # named brute-force tools, OR spray-shaped usage of ANY tool (incl. nxc/netexec/
+    # crackmapexec, which are general-purpose AD tools most of the time -- bare-naming
+    # them here would over-block routine single-cred enum/module calls under
+    # no_bruteforce; a wordlist-file argument on -u/-p/-P is the actual spray signal,
+    # tool-agnostic, and catches the real repro: `nxc smb 10.0.0.0/24 -u users.txt -p '...'`
+    r"\b(hydra|medusa|patator|ncrack|kerbrute)\b"
+    r"|--password-file|\bspray(ing|hound)?\b|-[uUpP]\s+\S+\.(txt|lst)\b", re.I)
 DOS = re.compile(r"\b(slowloris|hping3|stress-ng|siege|t50)\b|--flood|--min-rate\s+[0-9]{5,}|nmap[^|;&]*-T5|\bab\b[^|;&]*-n\s+[0-9]{5,}", re.I)
 ACTIVE = re.compile(r"\b(nmap|masscan|rustscan|nuclei|ffuf|gobuster|feroxbuster|nxc|netexec|crackmapexec|hydra|medusa|sqlmap|wpscan|nikto|dirb)\b", re.I)
 
@@ -96,6 +103,23 @@ def ip_out_of_scope(cmd, sc):
         if any(ip in c for c in cidrs):
             hits.append(tok)
     return hits
+
+
+def host_out_of_scope(cmd, sc, out_of_scope_match):
+    """Hostname tokens in `cmd` that match an out_of_scope entry (exact/parent match via
+    `out_of_scope_match`, e.g. _engagement.out_of_scope_match). Scope check runs BEFORE the
+    FILE_EXT filename heuristic: an explicit out_of_scope entry always wins, even if the
+    host's last label also happens to look like a file extension (".local" is the standard
+    AD domain suffix and must never be silently treated as a filename). FILE_EXT only
+    filters the residual (real filenames were never in out_of_scope)."""
+    flagged = set()
+    for host in HOST_RE.findall(_strip_noise(cmd)):
+        if out_of_scope_match(host, sc):
+            flagged.add(host)
+            continue
+        if host.rsplit(".", 1)[-1].lower() in FILE_EXT:
+            continue   # config.yml / app.py are filenames, not hosts
+    return flagged
 
 
 def _enforcing():
@@ -131,11 +155,7 @@ def main():
             # query/fragment values and data/header-flag payloads are exempt (see _strip_noise):
             # the target is the host, not an SSRF/redirect param value; `--url=<host>` is kept.
             flagged = set(ip_out_of_scope(cmd, sc))
-            for host in HOST_RE.findall(_strip_noise(cmd)):
-                if host.rsplit(".", 1)[-1].lower() in FILE_EXT:
-                    continue   # config.yml / app.py are filenames, not hosts
-                if _engagement.out_of_scope_match(host, sc):
-                    flagged.add(host)
+            flagged |= host_out_of_scope(cmd, sc, _engagement.out_of_scope_match)
             if flagged:
                 deny.append("out-of-scope: command targets " + ", ".join(sorted(flagged))
                             + " which match an OUT-OF-SCOPE entry in scope.md")
