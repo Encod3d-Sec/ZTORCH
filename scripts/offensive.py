@@ -63,10 +63,6 @@ WALLBREAK_THRESHOLD = {"pentest": 3, "bb": 3, "ctf": 2}
 # class -> automated tool slug (wiki/tools/*). Fallback = nuclei. Deterministic
 # so the board's `tool` cell is stable per class across runs.
 CLASS_TOOL = {
-    # pentest
-    "adcs": "certipy", "signing-relay": "impacket", "kerberoast": "rubeus",
-    "asreproast": "rubeus", "default-creds": "netexec", "privesc": "linpeas",
-    "lateral": "netexec", "shares": "netexec", "enum": "nmap",
     # bb / web
     "rce": "metasploit", "sqli": "sqlmap", "ssrf": "nuclei", "ssti": "nuclei",
     "xxe": "nuclei", "deserialization": "metasploit", "auth": "nuclei",
