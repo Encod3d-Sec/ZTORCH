@@ -46,11 +46,14 @@ ZTORCH/
 │                                   playbook.json
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
 ├── tests/                       <- pytest suite for engagement + wiki automation
-├── skills/                      <- obsidian/ wiki/ research/ disclosure/
-│   │                               agents-md-improver/ (offline instruction-file reviewer) + hooks/ (hook scripts)
-│   ├── burp/                    <- hunt-burp (MCP driver) + screenshot-burp (Repeater PoC capture)
-│   └── hunt/                    <- all hunt-* (except hunt-burp) + triage/evidence/coverage/ingest/next-move/
-│                                   wiki-recon/nday/research-ingest/ctf-box/ctf-category/screenshot/learn + triggers.json
+├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)
+│   │                               + hooks/ (hook scripts)
+│   ├── hunt/                    <- hunt-* vuln-class skills (25) + hunt-core (shared discipline) + triggers.json
+│   ├── workflow/                <- offensive driver + engagement PROCESS skills: engage, triage, evidence,
+│   │                               ingest, wiki-recon, wiki-arsenal, nday, research-ingest, delegate, metasploit,
+│   │                               redteamlead, fuzz, ctf-box, ctf-category, screenshot, chrome-devtools-browser,
+│   │                               kali-seat, learn, walkthrough, vector-workflow
+│   └── burp/                    <- hunt-burp (MCP driver) + screenshot-burp (Repeater PoC capture)
 └── raw/
     ├── research/                <- CVE writeups/blogs/advisories + active research projects (<project>/ from new-research.sh; the research skill writes loop state here)
     ├── assets/                  <- screenshots and other non-text files (read-only)

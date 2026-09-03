@@ -97,7 +97,7 @@ Format:
 
 After outputting the quality report, ask user for confirmation before updating.
 
-**Update Guidelines (Critical):**
+**Update Guidelines (Critical):** see [references/update-guidelines.md](references/update-guidelines.md) for the full worked examples (what to add/not add, diff format, validation checklist).
 
 1. **Propose targeted additions only** - Focus on genuinely useful info:
    - Commands or workflows discovered during analysis

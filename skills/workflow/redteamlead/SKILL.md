@@ -19,10 +19,11 @@ you where to go and what to STOP. On-demand and token-light: it costs nothing un
 `ENG=$(cat targets/active.md)` -> the engagement dir is `targets/$ENG/`.
 Dispatch ONE subagent via the Agent tool on the MAIN model (glm-5.3) - guidance is judgment work, so
 never downgrade the RTL to a cheaper tier (user directive 2026-09-02, overriding the earlier
-sonnet-for-subagents rule for RTL specifically; exploit-execution delegations stay cheap-tier via
-`Skill(delegate)`). On a ZCode build with per-agent selection, dispatch a `fork` (always runs the
-main model); otherwise omit `model` so it inherits the session's model. It is a fresh, independent
-context, NOT invested in the approach you have been hammering, which is the point. Continuity across
+cheap-tier-for-subagents default for RTL specifically; exploit-execution delegations stay cheap-tier
+(glm-5.3-flash) via `Skill(delegate)`). On a ZCode build with per-agent selection, dispatch a `fork`
+(always runs the main model); otherwise omit `model` so it inherits the session's model. It is a
+fresh, independent context, NOT invested in the approach you have been hammering, which is the
+point. Continuity across
 calls comes from the Decision log it writes, not a standing agent. Give it this prompt (fill <ENG>, <OBSTACLE>):
 
 > You are a principal offensive engineer and vulnerability researcher, senior across: Web/app (SQLi,

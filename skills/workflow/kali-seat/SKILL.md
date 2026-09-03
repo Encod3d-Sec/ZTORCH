@@ -24,7 +24,7 @@ The vault is ONE working copy seen under three paths:
 ## Which side runs what
 
 - **Agent session (Windows):** everything cognitive - wiki-first, offensive driver, hooks. Hooks
-  and skill links are already wired for this seat (`.zcode/config.json`, `.zcode/skills/`).
+  and skill links are already wired for this seat (`.zcode/config.json`, `~/.claude/skills/`).
 - **Target commands: ALWAYS on the VM through vm.sh.** Never scan or attack from WSL or
   Windows directly - they have no VPN route and would leak the host IP.
 - **Harness scripts:** run from either side. Windows seat uses the bridge

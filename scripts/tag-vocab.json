@@ -35,8 +35,7 @@
     "directory-brute-force": "brute-force",
     "spraying": "brute-force",
     "credential-testing": "brute-force",
-    "defense-evasion": "evasion",
-    "websocket": "websocket"
+    "defense-evasion": "evasion"
   },
   "keep": [
     "access-control", "account-takeover", "auth-bypass", "deserialization",
@@ -61,7 +60,7 @@
     "xs-leak", "mythic", "kiosk",
     "sqli", "rop", "ntds", "rbcd", "kerberoasting", "cors", "dom",
     "prototype-pollution", "cracking", "exploit-dev", "shellcode", "service-exploitation",
-    "credential-dumping", "open-redirect", "subdomain-takeover", "deception",
+    "credential-dumping", "deception",
     "lateral-movement", "service", "ipsec", "vpc", "ssm", "ec2", "s3",
     "golden-ticket", "silver-ticket", "relay", "jwt", "golden-certificate"
   ],
@@ -70,6 +69,6 @@
     "session", "domain", "tokens", "parameters", "boolean", "recursion",
     "real-time", "detection", "devops", "owasp", "cvss", "poc", "shell", "tty",
     "http", "rest", "xml", "encoding", "sensitive-data", "source-code",
-    "source-review", "static-analysis", "dynamic-analysis", "scripting"
+    "source-review", "dynamic-analysis"
   ]
 }

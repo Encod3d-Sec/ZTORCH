@@ -25,7 +25,7 @@ Re-run `next`. That is the whole cycle.
 
 1. `python3 scripts/offensive.py init <name> --type pentest|ctf|bb` - scaffolds `targets/<name>/`
    (state.md, scope.md, loot.md, Killchain.md, Deadends.md, oob.md, decisions.md, Approach.md).
-2. `python3 scripts/offensive.py index` - compiles the vault routing table to `.offensive-index.json`.
+2. `python3 scripts/offensive.py --eng <name> index` - compiles the vault routing table to `.offensive-index.json`.
    The board and gates read this cache; a stale one is refused by G9.
 3. Feed recon into `state.md` (assets/services), then
    `python3 scripts/offensive.py --eng <name> board` - writes the Approach.md 4a coverage matrix from
@@ -108,9 +108,10 @@ at the active engagement, or G2 silently degrades to advice. G1/G3/G4/G8/G9 do n
 ## Close-out
 
 Objective landed (target-severity finding, or both flags) -> set `## STATUS: SOLVED` in `state.md`,
-then `python3 scripts/offensive.py --eng <name> closeout`. It prints the per-type Skill chain (pentest:
-triage -> evidence -> report -> learn; bb: triage -> evidence -> learn; ctf: walkthrough -> learn).
-Run it in the printed order.
+then `python3 scripts/offensive.py --eng <name> closeout`. It prints the per-type Skill chain
+(pentest/bb: triage -> evidence -> walkthrough -> learn; ctf: walkthrough -> learn). Run it in the
+printed order; the chain lives only in `CLOSEOUT_CHAINS` (`scripts/offensive.py`) - don't restate it
+elsewhere, ask the driver.
 
 ## If the driver is unavailable
 

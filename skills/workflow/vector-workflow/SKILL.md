@@ -15,8 +15,10 @@ happens automatically each time `board` writes the Approach.md 4a matrix, the sa
 `derive_rows(eng, index, etype)` builds the desired 4a rows in this fixed sequence:
 
 1. **OSINT pre-pass (once, target-level).** Before any host/IP exists, `VECTOR_CLASSES["osint"]` =
-   `osint-subdomain`, `osint-leaks` are emitted keyed to the engagement name itself
-   (`Path(eng).name` stands in for "asset" since no asset row exists yet at this phase).
+   `osint-subdomain`, `osint-leaks`, `subdomain-takeover` are emitted keyed to the engagement name
+   itself (`Path(eng).name` stands in for "asset" since no asset row exists yet at this phase).
+   `subdomain-takeover` lives here (not the `web` vector) because it's a subdomain-enumeration-time
+   check against every discovered subdomain, not gated on a per-asset web fingerprint.
 2. **Per asset, once `state.md` has assets** (from rustscan+nmap etc.), for each asset row:
    a. **Fingerprint-implied classes first.** Every routing-table fingerprint whose `\b<fp>\b` regex
       matches the asset's `hay` text (built from `tech`/`services`/`service`/`os`/`notes` columns)
@@ -43,7 +45,7 @@ VECTOR_INDICATOR = {
     "linux":      r"\b(ssh|22|linux|nfs|rsync)\b",
 }
 VECTOR_CLASSES = {
-    "osint":      ["osint-subdomain", "osint-leaks"],
+    "osint":      ["osint-subdomain", "osint-leaks", "subdomain-takeover"],
     "web":        ["content-discovery", "js-extract", "recon-nuclei", "recon-nikto"],
     "ad_windows": ["ad", "windows"],
     "linux":      ["linux-svc-enum"],
@@ -64,6 +66,7 @@ straight from the compiled index, no special-casing for vector rows. Current map
 |---|---|---|---|---|
 | osint-subdomain | hunt-secrets | web-attack-surface | recon | subfinder |
 | osint-leaks | hunt-secrets | secret-hunting | recon-dorks | trufflehog |
+| subdomain-takeover | hunt-secrets | subdomain-takeover | recon | nuclei |
 | content-discovery | hunt-rce | web-attack-surface | wordlists | ffuf |
 | js-extract | hunt-secrets | javascript-source-map-exploitation | recon-dorks | linkfinder |
 | recon-nuclei | hunt-rce | web-attack-surface | nuclei-arsenal | nuclei |
@@ -76,8 +79,8 @@ straight from the compiled index, no special-casing for vector rows. Current map
 `ad` and `windows` are real hunt-core classes reused as the `ad_windows` vector baseline, not
 vector-only pseudo-classes - they also fire directly off `ad`/`windows` fingerprint matches.
 `content-discovery`/`js-extract`/`recon-nuclei`/`recon-nikto`/`wpscan-scan`/`osint-subdomain`/
-`osint-leaks`/`linux-svc-enum` are the eight pseudo-classes that exist only to give the vector
-pipeline (and OSINT pre-pass) a routable row.
+`osint-leaks`/`subdomain-takeover`/`linux-svc-enum` are the nine pseudo-classes that exist only to
+give the vector pipeline (and OSINT pre-pass) a routable row.
 
 ## When this matters
 

@@ -1,6 +1,6 @@
 # Vault Setup
 
-**New machine:** run `bash setup/bootstrap.sh` from the vault root. This verifies the committed hook registration (`.zcode/config.json`), links the vault skills into `.zcode/skills/`, installs bun + qmd, registers the `wiki-search` and `caveman-shrink` MCP servers at user scope (`~/.zcode/cli/config.json`), and prints the optional-plugin list. ZCode loads `AGENTS.md` and the workspace config natively from the repo, so no user-dir includes are needed. After setup, restart ZCode and run `qmd update && qmd embed` to build the local search index (`update` indexes text, `embed` the semantic vectors; without `embed` new pages answer only keyword queries). ZCode ships with the official plugins (skill-creator, document-skills, browser-use, computer-use, zcode-guide) already available.
+**New machine:** run `bash setup/bootstrap.sh` from the vault root. This verifies the committed hook registration (`.zcode/config.json`), links the vault skills into `~/.claude/skills/`, installs bun + qmd, registers the `wiki-search` and `caveman-shrink` MCP servers at user scope (`~/.zcode/cli/config.json`), and prints the optional-plugin list. ZCode loads `AGENTS.md` and the workspace config natively from the repo, so no user-dir includes are needed. After setup, restart ZCode and run `qmd update && qmd embed` to build the local search index (`update` indexes text, `embed` the semantic vectors; without `embed` new pages answer only keyword queries). ZCode ships with the official plugins (skill-creator, document-skills, browser-use, computer-use, zcode-guide) already available.
 
 **Caveman (both machines):** Output compression skill -- cuts ~65% of output tokens with no accuracy loss. Requires Node >=18. Bootstrap handles install automatically; to install manually: `curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash`. Trigger per session with `/caveman`, or say "talk like caveman". Source: https://github.com/JuliusBrussee/caveman
 
@@ -19,7 +19,11 @@ ZCode needs no per-device hook symlink: registration ships in the committed
 `<vault>/.zcode/config.json` and resolves scripts via ${ZCODE_PROJECT_DIR}.
 ```
 
-Then verify the hook registration in `.zcode/config.json` (`bash setup/install-hooks.sh` checks it; the canonical set is 12 hook commands across 5 ZCode events -- see below). On a new machine, re-running `bash setup/bootstrap.sh` handles all steps automatically.
+The committed `.zcode/config.json` is the live registration on a ZCode build -- nothing to run to
+verify it, it ships with the repo (13 hook commands across 6 events -- see below). `bash
+setup/install-hooks.sh` provisions the SEPARATE, per-device `~/.claude/settings.json` used by a
+Claude Code CLI seat instead (see the section below); it does not read or write `.zcode/config.json`.
+On a new machine, re-running `bash setup/bootstrap.sh` handles all steps automatically.
 
 ## Claude Code CLI seat (alternate client)
 
@@ -57,26 +61,28 @@ into this vault's `skills/hooks/`), not the ZCode `.zcode/config.json` path abov
 # 1. let Obsidian Sync finish pulling the vault (incl. skills/, scripts/, setup/)
 # 2. then, once per device:
 cd <vault-root>
-bash setup/install-hooks.sh    # verifies .zcode/config.json registration + interpreters
+bash setup/install-hooks.sh    # provisions ~/.claude/settings.json for a Claude-Code-CLI seat
 # 3. restart ZCode
 ```
 
-`install-hooks.sh` is self-locating (works on any user/path/spelling) and idempotent. It registers the canonical set (mirrored in `scripts/check-hooks.py` `EXPECTED_HOOKS`; `engagement-init` warns at SessionStart if any is unregistered) -- 12 hook commands across 5 ZCode events:
-- **SessionStart** -- `session-start.py` (skill auto-register + hot.md cache), `engagement-init.py` (self-heals the per-type core set: ctf gets `state/loot/Approach/...`, pentest/bugbounty add `Killchain`; injects the state summary + plan board status + top next-moves + one compact `harness:` maintenance line).
+`install-hooks.sh` is self-locating (works on any user/path/spelling) and idempotent. It registers the canonical set (mirrored in `scripts/check-hooks.py` `EXPECTED_HOOKS`; `engagement-init` warns at SessionStart if any is unregistered) -- 13 hook commands across 6 events:
+- **SessionStart** -- `session-start.sh` (skill auto-register + hot.md cache), `engagement-init.py` (self-heals the per-type core set: ctf gets `state/loot/Approach/...`, pentest/bugbounty add `Killchain`; injects the state summary + plan board status + top next-moves + one compact `harness:` maintenance line).
 - **UserPromptSubmit** -- `hunt-trigger.py` (fires hunt skills from `skills/hunt/triggers.json`).
 - **PreToolUse (Bash)** -- `scope-guard.py` (ENFORCES: denies out-of-scope host/IP (IPv4+IPv6, CIDR-aware; query-param/fragment values exempt) or RoE-forbidden tooling; fail-open + `skills/hooks/.enforce-off` escape hatch; also logs each block as a drift signal).
+- **PreToolUse (Bash)** -- `sleep-guard.py` (ENFORCES: denies a blind `sleep N` wait, N >= 10, with no poll loop watching output; fail-open + `.enforce-off` escape hatch).
 - **PreToolUse (Write)** -- `session-guard.py` (client-marker leak guard: session/* AND git-tracked framework trees; targets/ + docs/superpowers/ exempt; logs a boundary-drift signal).
 - **PreToolUse (Bash)** -- `drift-guard.py` (keeps the offensive driver in view: on an off-board exploit-shaped command during an active engagement at pass>=5 -- a NET_BINS/handroll call whose binary no open board row names -- escalates an `off_board_streak` in `.offensive.json` and injects a "run offensive.py next" advisory; an `offensive.py next|board|done` call resets it. Advisory-only, fail-open; shares the `.enforce-off` escape hatch).
 - **PostToolUse (Bash)** -- `recon-capture.py` (fingerprint router + OOB callback correlation + a once-per-engagement GATE-1 wiki-first nudge; a framework-meta guard suppresses false fires; advisory).
 - **PostToolUse (all)** -- `tool-telemetry.py` (per-box telemetry: appends every tool/skill call to `targets/<eng>/.events.jsonl`, stamps `started_at`, records the session `transcript_path`; feeds `scripts/eval_metrics.py`. Silent, fail-open).
 - **PostToolUse (Write/Edit)** -- `wiki-reindex.py` (auto-reindex: a Write/Edit to `wiki/**/*.md` fires a debounced background `qmd update && qmd embed` so the change is searchable (text AND semantic) without a manual reindex; off the blocking path, fail-open).
 - **Stop** -- `close-out.py` (close-out reflex: when the engagement is SOLVED but its walkthrough is unassembled / the learn harvest is due, nudges Skill(walkthrough) then Skill(learn); advisory, self-clearing).
+- **PreCompact** -- `pre-compact.sh` (fires before a context compaction).
 
 **Hooks self-locate the vault** via `realpath(__file__)` from `${ZCODE_PROJECT_DIR}/skills/hooks/...` -- no hardcoded paths, so the same code runs unmodified on every device.
 
 **Active engagement pointer:** `targets/active.md` (one line: engagement dir name). It is markdown, so it syncs via Obsidian to both devices. Engagement files: `targets/<eng>/{state,loot,Approach,scope,Deadends}.md` + `ingest/` for ctf; pentest/bugbounty add `Killchain,log,walkthrough,eval`. Scaffolded from `setup/templates/<type>/` via `bash setup/new-engagement.sh <name> <pentest|bugbounty|ctf>`.
 
-**Hook registration is committed** (`<vault>/.zcode/config.json`, portable via `${ZCODE_PROJECT_DIR}`), so it syncs with the repo; what stays machine-local are the `.zcode/skills/` links and the user-scope MCP servers. Run `bash setup/install-skills.sh` (or let the SessionStart hook self-heal) and `bash setup/install-hooks.sh` to verify after the first git pull.
+**Hook registration is committed** (`<vault>/.zcode/config.json`, portable via `${ZCODE_PROJECT_DIR}`), so it syncs with the repo; what stays machine-local are the `~/.claude/skills/` links and the user-scope MCP servers. Run `bash setup/install-skills.sh` (or let the SessionStart hook self-heal) after the first git pull; `bash setup/install-hooks.sh` is only needed on a Claude-Code-CLI seat (it provisions that seat's separate `~/.claude/settings.json`, not `.zcode/config.json`).
 
 ## Burp GUI automation: the Kali seat must stay UNLOCKED (gotcha)
 

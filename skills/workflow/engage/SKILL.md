@@ -63,9 +63,8 @@ Memory index, one line per class, so no hunt skill is forgotten:
 
 ## 4. Close-out
 
-- CTF: `Skill(walkthrough)` -> `Skill(learn)`.
-- bb/pt: `Skill(triage)` -> `Skill(evidence)` -> `Skill(walkthrough)` -> `Skill(learn)`
-  (walkthrough assembles the report-ready document; there is no separate report skill).
+Run `python3 scripts/offensive.py --eng <name> closeout` and follow its printed order - the chain
+lives only in `CLOSEOUT_CHAINS` (`scripts/offensive.py`), not restated here to avoid drift.
 
 ## Maintenance rule
 

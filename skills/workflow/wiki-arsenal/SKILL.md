@@ -34,7 +34,7 @@ every new surface to raise wiki coverage cheaply. Stop here unless the surface i
 ## Mode: deep (opt-in - "deep"/"full arsenal", or a whole service/target worth prepping)
 
 Dispatch FOUR parallel subagents in a SINGLE message (Agent tool), one per area, with
-on the cheap tier (GLM-Flash; pin `model` only if your ZCode build exposes per-agent selection) - each only
+on the cheap tier (glm-5.3-flash; pin `model` only if your ZCode build exposes per-agent selection) - each only
 reads its area and distils a card, which a lightweight model does well at a fraction of the cost (a
 full-model fan-out measured ~170k tokens; the cheap tier cuts that hard). Each
 is told to search only its area, read the top 2-3 matching pages, and return a compact ready-to-use

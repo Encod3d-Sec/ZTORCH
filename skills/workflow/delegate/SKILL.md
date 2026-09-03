@@ -21,7 +21,7 @@ is a guess wearing a checklist.
 (Pin a tier via your Agent tool only if your ZCode build exposes per-agent model selection;
 otherwise the tier guidance below still tells you WHAT to hand off.)
 
-the CHEAP TIER (GLM-Flash) is the DEFAULT for a fully-specified mechanical or wait-heavy run: compile-and-run a known
+the CHEAP TIER (glm-5.3-flash) is the DEFAULT for a fully-specified mechanical or wait-heavy run: compile-and-run a known
 exploit, deliver an ELF, decrypt a credential store, a pspy/tcpdump watch window, a fixed-payload
 flag-read. On CTF and RoE-approved pentests the safety bar for a cheap model executing an exploit is
 already cleared, so lean into the cheap tier there and keep the main model on strategy. Step UP to the mid/high tier

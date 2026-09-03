@@ -46,6 +46,7 @@ engagement PROCESS skills:
 `wiki-arsenal`, `triage`, `evidence`, `ingest`, `wiki-recon`,
 `nday`, `research-ingest`, `delegate`, `metasploit`, `ctf-box`, `ctf-category`,
 `screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`, `redteamlead`, `fuzz`,
+`engage`, `kali-seat`,
 `vector-workflow` (board-seeding pipeline reference, not a loop step).
 `skills/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
