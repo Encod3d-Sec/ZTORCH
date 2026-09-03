@@ -69,32 +69,48 @@ When the user provides a GitHub URL to clone and analyse:
 
 ## Target session
 
-When the user starts working on a target, follow the state-first discipline (full schema in `targets/TARGETS.md`; the engagement file set is self-healed by the `engagement-init` hook).
+For any offensive engagement (pentest, bug bounty, or CTF box), `scripts/offensive.py` via
+`Skill(offensive)` owns the loop, the gates, and the plan board -- it is the authority for how a
+target session actually runs. Full mechanics (the `init` -> `index` -> `board` -> `next`/`note`/`done`
+cycle, the G1-G9 gates, close-out) live there and in `Skill(vector-workflow)` for how the board's 4a
+rows get seeded; this doc does not duplicate them (duplicating them here is exactly what let this
+section drift the last time the driver changed -- go to the skill, don't re-derive it from memory).
+In short: `Skill(offensive)`'s `next` prints the row to work and the exact Skill/tool to run, `note`
+records the arsenal card consulted, `done` closes it with typed evidence (or `--dead`/`--park`); repeat.
 
-1. **Load engagement context** -- read the active engagement's state files at session start, so no documented work is repeated:
-   - `scope.md` -- in/out-of-scope + RoE flags; read before ANY action
-   - `state.md` -- hosts/services/access (and owned status)
-   - `loot.md` -- captured credentials + reuse map
-   - `Killchain.md` -- the evolving attack chain: open/blocked attack-path rows + the Confirmed-chain header
-   - `Deadends.md` -- exhausted vectors (do not re-test without new input)
-   - `Approach.md` -- the plan board: phase checklist + per-asset vuln classes already tested (the `### 4a` table)
-   - `Vuln-index.md` -- confirmed findings and chains; `hot.md` -- rolling session cache
+The state files underneath the driver are still the source of truth it reads and writes, and the
+conventions below (full schema in `targets/TARGETS.md`; the file set is self-healed by the
+`engagement-init` hook) stay accurate independent of which loop is driving:
 
-2. **Search wiki before each attack phase:**
-   - Run `qmd query "<service or technique>"` before attacking any service
-   - Read the matching technique page for methodology, payloads, and bypass variants
-   - Read the relevant tool page before running a tool (e.g. `wiki/tools/sqlmap.md`)
+- `scope.md` -- in/out-of-scope + RoE flags; read before ANY action
+- `state.md` -- hosts/services/access (and owned status)
+- `loot.md` -- captured credentials + reuse map
+- `Killchain.md` -- the evolving attack chain: open/blocked attack-path rows + the Confirmed-chain header
+- `Deadends.md` -- exhausted vectors (do not re-test without new input); a `done --dead` writes this
+  automatically and suppresses that (asset, class) pair from ever being re-served
+- `Approach.md` -- the plan board: the `### 4a`/`4b` coverage matrix the driver reads and writes
+- `Vuln-index.md` -- confirmed findings and chains; `hot.md` -- rolling session cache
 
-3. **Capture as you go** (prose in chat is lost; the tables persist across sessions and devices):
-   - `state.md` / `loot.md` -- new hosts/services/access + credentials (drop raw tool output in `ingest/` and run the ingest skill, or edit the tables directly)
-   - `Killchain.md` -- update when an attack path opens or blocks
-   - `Vulns/` + `Vuln-index.md` -- write each finding as `FIND-NNN-SEVERITY-title.md`; run `scripts/find-lint.py` before /evidence
-   - record a tested vuln class in the Approach.md 4a table (add a row with status `[x]`) so `next_move` / `coverage` stop re-surfacing it
-   - `Deadends.md` -- log a bounded-out vector immediately, one line, then switch vector
+Search-wiki-before-attacking and capture-as-you-go still apply -- `Skill(offensive)`'s G1 gate
+enforces the wiki-arsenal lookup before any exploit action, and `note`/`done` are how you record it,
+but the underlying discipline is the same one this doc has always described: run `qmd query "<service
+or technique>"` (or `Skill(wiki-arsenal)`) before attacking a service, read the matching technique and
+tool pages, then write results into `state.md`/`loot.md`/`Killchain.md` immediately (prose in chat is
+lost; the tables persist) rather than letting them pile up in the conversation. Findings still go to
+`Vulns/FIND-NNN-SEVERITY-title.md`, linted with `scripts/find-lint.py` before `/evidence`.
 
-4. **After the session:** run `gsd:pause-work` -- append a named entry to the engagement `log.md` (audit) and refresh `hot.md` (rolling cache). Generic/framework learnings (no client specifics) go to `session/log.md` + `session/hot.md`.
+**If the driver is unavailable** (no `scripts/offensive.py`, or working off-campaign): fall back to
+`Approach.md` by hand -- take the top open row, run its arsenal lookup then its hunt skill, capture
+typed evidence, mark `[x]`; on exhaustion write one `Deadends.md` line and mark `[!]`.
 
-5. **Feed reusable knowledge back to wiki** -- after a novel bypass, payload, or CVE chain, update the relevant `wiki/techniques/` page in generic form (no client specifics). Do not create per-finding wiki pages.
+**After the session:** run `gsd:pause-work` -- append a named entry to the engagement `log.md` (audit)
+and refresh `hot.md` (rolling cache). Generic/framework learnings (no client specifics) go to
+`session/log.md` + `session/hot.md`.
+
+**Feed reusable knowledge back to wiki** -- after a novel bypass, payload, or CVE chain, update the
+relevant `wiki/techniques/` page in generic form (no client specifics). Do not create per-finding wiki
+pages. At close-out, `Skill(offensive)`'s printed chain includes `Skill(learn)` to sweep the whole
+engagement for anything still missing from the wiki.
 
 ## Query
 

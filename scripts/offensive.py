@@ -317,6 +317,10 @@ _H4B = "### 4b. Post-foothold (privesc / lateral)"
 # arsenal hint + tool only (skill cell stays empty, which next/done G2 skip).
 LINUX_PRIVESC = "linux-privesc"
 
+# 4b tools that are mechanical/wait-heavy (a watch window, a known checklist) rather
+# than judgment-heavy -> cmd_next nudges Skill(delegate) for these, never unconditionally.
+MECHANICAL_4B_TOOLS = {"pspy", "linpeas", "winpeas"}
+
 # 4b concept -> (routing class for skill+arsenal, tool). OS-picked per foothold
 # asset. A concept with no hunt class of its own borrows a sensible one
 # (hunt-windows/hunt-macos/hunt-ad) so the row is never hollow (brief rule).
@@ -671,12 +675,20 @@ def cmd_next(args):
     # so the operator keeps visibility (CLAUDE.md Burp-first / post-foothold).
     if state.get("foothold"):
         win = (state.get("footholds") or {}).get(asset)
+        # bb has no 4b board (derive_privesc_rows returns [] for it) -> the "see the
+        # ### 4b rows" pointer would dangle at nothing, so drop it for bb only.
+        board_hint = "" if state.get("type") == "bb" else "  (see the ### 4b rows)"
         if win:
             print("POST-EX   route tool cmds for %s through: bash scripts/vm-rsh.sh "
-                  "--win %s '<cmd>'  (see the ### 4b rows)" % (asset, win))
+                  "--win %s '<cmd>'%s" % (asset, win, board_hint))
         else:
             print("POST-EX   foothold established; route post-ex cmds through the "
-                  "recorded vm-rsh shell (see the ### 4b rows)")
+                  "recorded vm-rsh shell%s" % board_hint)
+        # G-cost-control: the row's tool is mechanical/wait-heavy (pspy/linpeas/winpeas,
+        # a compile-and-run exploit) -> surface Skill(delegate) here, the one place the
+        # driver otherwise never mentions it. Judgment-heavy rows (e.g. bloodhound) get no nudge.
+        if (row.get("tool") or "").strip().lower() in MECHANICAL_4B_TOOLS:
+            print("  (mechanical/wait-heavy? consider Skill(delegate) to run this on the cheap tier)")
 
     # method block for the row's class (parse_hunt_method result, keyed by skill).
     # Fields may be empty on real skills; print what's present.

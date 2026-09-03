@@ -155,6 +155,22 @@ def test_next_serves_4b_after_4a(tmp_path, capsys):
     assert "board exhausted" in out2
 
 
+def test_post_ex_no_4b_pointer_for_bb(tmp_path, capsys):
+    """bb has no 4b board (derive_privesc_rows returns [] for etype=="bb"); the
+    POST-EX line must not dangle a '(see the ### 4b rows)' pointer at nothing."""
+    vault, eng = _setup(tmp_path, etype="bb")
+    offensive.write_board(eng, [_row(id="4a:1", asset="asset1", **{"vuln class": "rce"},
+                                     arsenal="payloads/x", skill="hunt-rce", tool="metasploit")])
+    offensive.main(["--vault", str(vault), "--eng", str(eng),
+                    "foothold", "asset1", "--win", "1"])
+    capsys.readouterr()                      # clear the foothold command's own output
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "next"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "POST-EX" in out
+    assert "4b" not in out
+
+
 def test_linux_foothold_routes_linux(tmp_path):
     """A Linux (unknown-OS -> Linux default) foothold's privesc 4b row uses Linux
     tooling (linpeas/pspy) + a linux arsenal hint with NO hunt skill, and never
