@@ -164,8 +164,37 @@ Find the home page (one class = one page). Read only its frontmatter and the rel
 section. If the technique/payload/cred is ALREADY covered there, SKIP it - wiki has it.
 Keep only the delta. This step is the whole point: "extract stuff we haven't had yet".
 
+### 4.5. Vector-workflow completeness check
+For each `Approach.md` 4a board row this engagement actually populated whose `vuln class` is a
+`scripts/offensive.py` `VECTOR_CLASSES` member (content-discovery/js-extract/recon-nuclei/
+recon-nikto/wpscan-scan/osint-subdomain/osint-leaks/linux-svc-enum/ad/windows), look up its
+mapped tool via `CLASS_TOOL` and check `wiki/techniques/<area>/` (same vuln-class -> area table
+as Step 5 below) for a page that actually covers that tool/technique. If missing or thin, treat it
+as a candidate: generalize it the same way as Step 3 and stage a gap-fill note through the SAME
+`wiki-stage.py` -> `wiki-promote.py` leak-gated pipeline used for every other candidate -- never a
+direct write. Silent no-op if this engagement's board never touched a vector-baseline row (most
+pre-vector-workflow engagements, or a box with no matching vector).
+
+This runs the wiki-completeness check FOR the vector(s) this engagement actually exercised, not a
+standing full-vault audit of all four vectors every time -- a web-heavy box checks `web`'s
+coverage, an AD box checks `active-directory`'s, etc.
+
 ### 5. Route each survivor through stage
-Never hand-edit `wiki/` with engagement-derived content. Stage it:
+Never hand-edit `wiki/` with engagement-derived content. Stage it.
+
+**If the lesson traces back to a vector-workflow baseline row** (check the finding's originating
+board row's `vuln class` cell against `scripts/offensive.py`'s `VECTOR_CLASSES`), pick `<area>`
+deterministically from this table instead of guessing:
+
+| vuln class (board row) | `<area>` |
+|---|---|
+| `osint-subdomain`, `osint-leaks` | `osint` |
+| `content-discovery`, `js-extract`, `recon-nuclei`, `recon-nikto`, `wpscan-scan` | `web` |
+| `ad`, `windows` (via the `ad_windows` vector match) | `active-directory` |
+| `linux-svc-enum` | `linux` |
+
+Falls back to normal ad hoc judgment (search the wiki, pick the closest existing
+`techniques/<area>/` directory) for anything that isn't a vector-baseline class.
 ```bash
 # default / vendor-known credential -> the cred cheatsheet
 python3 scripts/wiki-stage.py --kind default-cred --slug <product>-default \
