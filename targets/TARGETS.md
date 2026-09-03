@@ -87,7 +87,7 @@ walkthrough.
 
 ```markdown
 ---
-title: "<Target> — Confirmed Finding Writeups Index"
+title: "<Target> - Confirmed Finding Writeups Index"
 engagement: <Legal entity name>
 tester: <email>
 date_retested: YYYY-MM-DD

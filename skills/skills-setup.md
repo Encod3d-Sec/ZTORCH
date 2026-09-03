@@ -16,12 +16,12 @@ Semantic and keyword search across `wiki/`. Required for all vault search operat
   "type": "stdio",
   "command": "qmd",
   "args": ["mcp"],
-  "env": { "QMD_VAULT": "/mnt/c/Users/{user}/Documents/ObisidianVaults/ZTorch/ZTorch" }
+  "env": { "QMD_VAULT": "/mnt/c/Users/{user}/Documents/ObsidianVaults/ZTorch" }
 }
 ```
 
 Replace `{user}` with your Windows username (the WSL path is
-`/mnt/c/Users/<you>/Documents/ObisidianVaults/ZTorch/ZTorch`). If you keep a
+`/mnt/c/Users/<you>/Documents/ObsidianVaults/ZTorch`). If you keep a
 per-machine table, it lives in the git-ignored `AGENTS.local.md`.
 
 Config location: `~/.zcode/cli/config.json` -> `mcp.servers` (user scope; `setup/bootstrap.sh`
@@ -35,7 +35,7 @@ Previously used `mcp-obsidian` (Obsidian Local REST API). Removed because:
 - Requires Obsidian app to be running on Windows - breaks if closed
 - Not needed: ZCode's `Read` tool accesses vault files directly via WSL path
 
-**Replacement:** `Read /mnt/c/Users/{user}/Documents/ObisidianVaults/ZTorch/ZTorch/<relative-path>` (see machine usernames above)
+**Replacement:** `Read /mnt/c/Users/{user}/Documents/ObsidianVaults/ZTorch/<relative-path>` (see machine usernames above)
 
 ---
 

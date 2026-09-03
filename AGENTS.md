@@ -52,13 +52,14 @@ Output/mode plugins (optional; the harness degrades gracefully without them): **
 
 SessionStart also auto-loads `session/hot.md`. No manual reads needed.
 
-Engagement-state hooks (workspace-scoped, registered in the committed `.zcode/config.json`, scripts under `skills/hooks/`). All fail open (any error -> allow, never trap). Policy: **deterministic guards ENFORCE (deny the tool call); semantic reflexes ADVISE (inject a suggestion).** Enforcement is reserved for no-judgement checks (scope/RoE, blind sleeps) where blocking the wrong action costs near-zero; judgement calls (wiki-first, tools-not-manual, intended-path) stay advisory because a false block wastes more time than it saves. Escape hatch for a bad block: `touch skills/hooks/.enforce-off` (downgrades every deny to advisory). ZCode supports exactly seven hook events; the old `PreCompact` slot has no ZCode equivalent and stays unregistered. Per-hook events and mechanics (all of it) live in `docs/auto-triggers.md`; the set at a glance:
+Engagement-state hooks (workspace-scoped, registered in the committed `.zcode/config.json`, scripts under `skills/hooks/`). All fail open (any error -> allow, never trap). Policy: **deterministic guards ENFORCE (deny the tool call); semantic reflexes ADVISE (inject a suggestion).** Enforcement is reserved for no-judgement checks (scope/RoE, blind sleeps) where blocking the wrong action costs near-zero; judgement calls (wiki-first, tools-not-manual, intended-path) stay advisory because a false block wastes more time than it saves. Escape hatch for a bad block: `touch skills/hooks/.enforce-off` (downgrades every deny to advisory). ZCode registers 13 hook commands across six events (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PreCompact); `PreCompact` is registered (`skills/hooks/pre-compact.sh`). Per-hook events and mechanics (all of it) live in `docs/auto-triggers.md`; the set at a glance:
 
 - SessionStart: self-heals engagement files, injects the state summary + next-moves + OOB HITs, registers skills.
 - UserPromptSubmit: routes hunt skills from `triggers.json` (leak-safe telemetry).
 - PreToolUse: ENFORCES out-of-scope host/IP + RoE-forbidden tooling, and blind `sleep >= 10` with no poll; ADVISES on off-board drift and a client-marker-in-`session/*` warn.
 - PostToolUse: routes tech -> hunt Skill (+ G1 wiki-first nudge), correlates OOB waiting -> HIT, captures PoC pairs + telemetry, re-indexes wiki.
 - Stop: nudges SOLVED-box close-out (flag accounting, evidence, walkthrough, learn).
+- PreCompact: runs `skills/hooks/pre-compact.sh` before context compaction.
 
 Register/repair the set per-device with `bash setup/install-hooks.sh` (verifies and repairs the committed `.zcode/config.json`; canonical set in `scripts/check-hooks.py`).
 

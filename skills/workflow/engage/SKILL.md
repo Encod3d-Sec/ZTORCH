@@ -43,6 +43,8 @@ is absent, this map IS the router.
 | Vuln/CVE research on a binary/repo/app/firmware | `Skill(research)`; ingest a CVE writeup: `Skill(nday)` / `Skill(research-ingest)` |
 | "Is this valid / should I report it" - validating a finding | `Skill(triage)` |
 | Evidence hygiene before a report or any share | `Skill(evidence)`; screenshots: `Skill(screenshot)` |
+| Confirmed/proven finding needs responsible disclosure | `Skill(disclosure)` |
+| "Why is this row on the board" / which vector baseline applies | `Skill(vector-workflow)` |
 | Wiki maintenance (re-index, status, page types) | `Skill(wiki)` |
 
 Discipline spine for every hunt: `Skill(hunt-core)` loads alongside any hunt skill (scope gate,
