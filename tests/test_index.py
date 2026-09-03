@@ -158,7 +158,12 @@ def test_tool_without_usage_exits_nonzero(tmp_path, capsys):
     assert "Core usage" in err
 
 
-def test_index_stale_true_after_source_touch(tmp_path):
+def test_index_stale_true_after_source_touch(tmp_path, monkeypatch):
+    # index_stale() caches a confirmed-fresh result for a few seconds (perf fix: it's
+    # called every driver loop turn) -- disable that window so this test's two
+    # back-to-back calls each do a real scan, same as the production default did
+    # before that fix.
+    monkeypatch.setenv("OFFENSIVE_STALE_INTERVAL", "0")
     eng = tmp_path / "demo"
     eng.mkdir()
     offensive.build_index(eng, VAULT)
@@ -173,5 +178,30 @@ def test_index_stale_true_after_source_touch(tmp_path):
         assert offensive.index_stale(eng, VAULT) is True
     finally:
         # restore mtime so repeat test runs / other tests aren't affected
+        now = time.time()
+        os.utime(src, (now, now))
+
+
+def test_index_stale_check_is_cached_within_interval(tmp_path, monkeypatch):
+    """Perf fix: index_stale() is called every driver loop turn and a full scan over
+    ~100 source files costs real wall-clock on a slow filesystem. A confirmed-fresh
+    result is cached for OFFENSIVE_STALE_INTERVAL seconds; a source touched WITHIN
+    that window is not detected until it elapses -- the accepted trade for a check
+    that runs hundreds of times per engagement."""
+    monkeypatch.setenv("OFFENSIVE_STALE_INTERVAL", "60")
+    eng = tmp_path / "demo"
+    eng.mkdir()
+    offensive.build_index(eng, VAULT)
+    assert offensive.index_stale(eng, VAULT) is False   # stamps the cache
+
+    cache_mtime = (eng / ".offensive-index.json").stat().st_mtime
+    future = cache_mtime + 10
+    src = VAULT / "skills" / "hunt" / "hunt-core" / "SKILL.md"
+    os.utime(src, (future, future))
+    try:
+        # within the interval -> still reports fresh (cached), even though a real
+        # source is now newer than the cache
+        assert offensive.index_stale(eng, VAULT) is False
+    finally:
         now = time.time()
         os.utime(src, (now, now))

@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import time
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -369,22 +370,49 @@ def _record_axis_once(path, axis):
 _WIKI_IDX_CACHE = None
 
 
+_WIKI_IDX_CEILING = 3600   # seconds; fallback rebuild if the reindex-stamp signal is unavailable
+
+
 def _wiki_index():
     """slug -> best path, over wiki/**.md. On a duplicate basename (payloads/xss.md vs
     techniques/web/xss.md -- ~13 such pairs exist) keep the LARGEST file: the substantive
     twin. A plain dict assignment here silently dropped one of every pair and was a real bug
     in wiki-wiring-audit.py, so do not reintroduce it.
 
-    Memoized per hook-process lifetime (module-level cache): the full recursive os.walk over
-    wiki/ (a large multi-hundred-file tree) could otherwise run twice within one invocation
-    when a single Bash command triggers both a GATE1-unmet check and a fingerprint hit."""
+    Persisted to <vault>/.wiki-slug-index.json ACROSS hook-process invocations. Each
+    PostToolUse fire is a fresh python process, so the old module-level-only
+    `_WIKI_IDX_CACHE` never actually survived between calls despite its docstring's claim --
+    only within one process, which is not where the cost was: the full recursive os.walk
+    over wiki/ (a large multi-hundred-file tree) measured ~1.3s on this filesystem, paid
+    again on the first probe command that fingerprints EACH new tech. Invalidated by
+    .wiki-reindex-stamp (touched whenever a wiki page is actually Write/Edit'd) being newer
+    than the cache file, with a time ceiling as a fallback in case that stamp mechanism
+    isn't registered on this machine. The in-process _WIKI_IDX_CACHE global still short-
+    circuits a second call within the SAME invocation (unchanged from before)."""
     global _WIKI_IDX_CACHE
     if _WIKI_IDX_CACHE is not None:
         return _WIKI_IDX_CACHE
-    idx = {}
     try:
         import _engagement
-        root = os.path.join(_engagement.VAULT, "wiki")
+        vault = _engagement.VAULT
+    except Exception:
+        return {}
+    cache_path = os.path.join(vault, ".wiki-slug-index.json")
+    reindex_stamp = os.path.join(vault, ".wiki-reindex-stamp")
+    try:
+        cache_mtime = os.path.getmtime(cache_path)
+        stamp_newer = (os.path.exists(reindex_stamp)
+                       and os.path.getmtime(reindex_stamp) > cache_mtime)
+        if not stamp_newer and (time.time() - cache_mtime) < _WIKI_IDX_CEILING:
+            with open(cache_path, encoding="utf-8") as f:
+                _WIKI_IDX_CACHE = json.load(f)
+            return _WIKI_IDX_CACHE
+    except Exception:
+        pass   # no cache yet, or unreadable -- fall through to a full rebuild
+
+    idx = {}
+    try:
+        root = os.path.join(vault, "wiki")
         for dirpath, _dirnames, filenames in os.walk(root):
             for fn in filenames:
                 if not fn.endswith(".md"):
@@ -401,6 +429,11 @@ def _wiki_index():
     except Exception:
         return {}
     _WIKI_IDX_CACHE = {k: v[1] for k, v in idx.items()}
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(_WIKI_IDX_CACHE, f)
+    except Exception:
+        pass   # cache write is best-effort; the in-memory result is still valid
     return _WIKI_IDX_CACHE
 
 

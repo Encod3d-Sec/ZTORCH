@@ -9,8 +9,10 @@ on this cache via build_index/load_index/index_stale.
 Python 3 stdlib only.
 """
 import json
+import os
 import re
 import sys
+import time
 from pathlib import Path
 
 CACHE_NAME = ".offensive-index.json"
@@ -251,11 +253,29 @@ def load_index(eng_dir):
     return json.loads((Path(eng_dir) / CACHE_NAME).read_text())
 
 
+_STALE_CHECK_INTERVAL = 5   # seconds
+
 def index_stale(eng_dir, vault_root):
     """True if any source markdown is newer than the cache (or no cache).
-    Predicate only - offensive.py's cmd_next calls this and _die()s on staleness."""
-    cache = Path(eng_dir) / CACHE_NAME
+    Predicate only - offensive.py's cmd_next calls this and _die()s on staleness.
+
+    cmd_next calls this EVERY driver loop turn (the "whole cycle"), and a full scan
+    stats ~100 source files (wiki/tools/*.md + every hunt-*/SKILL.md) - measured
+    ~280ms on this vault's filesystem, added directly to turn latency. Framework
+    sources rarely change mid-engagement, so a confirmed-fresh result is cached via
+    a stamp file and the full scan re-runs at most once per _STALE_CHECK_INTERVAL
+    seconds; a genuine wiki edit is caught within that window, not instantly, which
+    is the right trade for a check that runs hundreds of times per engagement."""
+    eng_dir = Path(eng_dir)
+    cache = eng_dir / CACHE_NAME
     if not cache.exists():
         return True
+    interval = float(os.environ.get("OFFENSIVE_STALE_INTERVAL", _STALE_CHECK_INTERVAL))
+    stamp = eng_dir / ".index-stale-checked"
+    if interval > 0 and stamp.exists() and (time.time() - stamp.stat().st_mtime) < interval:
+        return False   # confirmed fresh within the last interval, skip the full scan
     cache_mtime = cache.stat().st_mtime
-    return any(p.stat().st_mtime > cache_mtime for p in _index_sources(vault_root))
+    stale = any(p.stat().st_mtime > cache_mtime for p in _index_sources(vault_root))
+    if not stale:
+        stamp.touch()
+    return stale

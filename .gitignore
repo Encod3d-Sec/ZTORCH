@@ -48,6 +48,7 @@ skills/hooks/.enforce-off
 .pending-*
 .wiki-stamp
 .wiki-reindex-stamp
+.wiki-slug-index.json
 .cve-stamp
 
 # --- Python / pytest --------------------------------------------------------
