@@ -121,9 +121,8 @@ def _scanner_cap(d, cmd):
         pass
     if prior:
         age = int(now - float(prior["ts"]))
-        return ("a scan is already running (`%s` launched %ds ago) - serialize on this small/tunnel "
-                "box (scope.md: curl-preferred), or drop threads to -t<=20. Wait for it or kill it "
-                "first." % (prior.get("tool", "?"), age))
+        return ("a scan is already running (`%s` launched %ds ago) - serialize on this target, "
+                "or drop threads to -t<=20. Wait for it or kill it first." % (prior.get("tool", "?"), age))
     try:                                              # record this launch, then allow
         with open(p, "a", encoding="utf-8") as f:
             f.write(json.dumps({"ts": now, "tool": sorted(heavy)[0]}) + "\n")
