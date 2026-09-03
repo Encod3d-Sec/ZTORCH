@@ -9,11 +9,12 @@ description: Web cache poisoning + cache deception hunting - unkeyed input poiso
 
 ## Wiki
 
-qmd_query "web cache poisoning deception unkeyed input cache-key path confusion" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[web-cache-poisoning]] · Payload arsenal: `wiki/payloads/web-cache.md`
 Anchors: [[web-cache-deception]], [[web-cache-attacks]], [[http-host-header-attacks]], [[http-request-smuggling]]
 **REFS:** [[web-cache-poisoning]], wiki/payloads/web-cache.md
+
+qmd_query "web cache poisoning deception unkeyed input cache-key path confusion" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface
 

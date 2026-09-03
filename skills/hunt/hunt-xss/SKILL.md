@@ -11,11 +11,12 @@ char canaries, check the baseline first) lives in hunt-core.
 
 ## Wiki
 
-qmd_query "XSS cross-site scripting DOM CSP bypass sanitizer" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[techniques/web/xss]] · Payload arsenal: `wiki/payloads/xss.md`
 Anchors: [[dangling-markup]], [[xssi]], [[browser-extension-attacks]], [[prototype-pollution]]
 **REFS:** [[techniques/web/xss]], wiki/payloads/xss.md
+
+qmd_query "XSS cross-site scripting DOM CSP bypass sanitizer" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Confirmation gate
 NOT confirmation: payload URL-encoded or HTML-encoded in response, `<script>` appears as `&lt;script&gt;`, ASP.NET validator blocked `<`.

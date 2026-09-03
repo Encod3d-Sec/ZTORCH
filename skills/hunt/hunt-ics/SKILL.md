@@ -13,11 +13,12 @@ Writing to a live PLC moves real machinery: it can over-pressure a vessel, over-
 
 ## Wiki
 
-qmd_query "ICS SCADA OT Modbus S7comm EtherNet/IP DNP3 OpenPLC Node-RED PLC HMI coil holding register" via wiki-search MCP
-
 Hub: [[network-moc]] · Primary page: [[ics-scada-modbus]] · Payload arsenal: `wiki/payloads/modbus.md`
 Anchors: [[iot-attacks]], [[firmware-hardware]], [[modbus]]
 **REFS:** [[ics-scada-modbus]], wiki/payloads/modbus.md
+
+qmd_query "ICS SCADA OT Modbus S7comm EtherNet/IP DNP3 OpenPLC Node-RED PLC HMI coil holding register" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked by exploitation value)
 

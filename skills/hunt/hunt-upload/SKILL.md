@@ -9,11 +9,12 @@ description: File upload attack hunting - extension/content-type/magic-byte bypa
 
 ## Wiki
 
-qmd_query "file upload webshell extension content-type magic-byte bypass SVG XXE zip slip path traversal" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[file-upload]] · Payload arsenal: `wiki/payloads/file-upload.md`
 Anchors: [[path-traversal-lfi]], [[xxe]]
 **REFS:** [[file-upload]], wiki/payloads/file-upload.md
+
+qmd_query "file upload webshell extension content-type magic-byte bypass SVG XXE zip slip path traversal" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface
 

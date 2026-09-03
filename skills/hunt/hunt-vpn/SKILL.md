@@ -9,11 +9,12 @@ description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisc
 
 ## Wiki
 
-qmd_query "SSL VPN Fortinet Citrix Cisco Palo Alto Pulse Ivanti CVE default credentials pre-auth exploit" via wiki-search MCP
-
 Hub: [[network-moc]] · Primary page: [[network-service-attacks]] · CVE arsenal: `wiki/cheatsheets/cve-arsenal.md` · Default creds: `wiki/cheatsheets/default-credentials.md`
 Anchors: [[network-discovery]], [[cve-arsenal]], [[default-credentials]]
 **REFS:** [[network-service-attacks]], [[cve-arsenal]], [[default-credentials]]
+
+qmd_query "SSL VPN Fortinet Citrix Cisco Palo Alto Pulse Ivanti CVE default credentials pre-auth exploit" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## When to Use
 Recon surfaces: `+CSCOE+` paths (Cisco ASA), `Set-Cookie: SVPNCOOKIE=` (Fortinet), `NSC_AAA=` (Citrix), `DSAuthSession=` (Pulse), `BIGipServer*` (F5), ports 443/8443/10443 with VPN login pages.

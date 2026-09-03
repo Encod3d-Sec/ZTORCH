@@ -9,11 +9,12 @@ description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, U
 
 ## Wiki
 
-qmd_query "SQL injection SQLi NoSQL union boolean-blind time-based error-based" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[sql-injection]] · Payload arsenal: `wiki/payloads/sqli.md`
 Anchors: [[nosql-injection]], [[orm-injection]]
 **REFS:** [[sql-injection]], wiki/payloads/sqli.md
+
+qmd_query "SQL injection SQLi NoSQL union boolean-blind time-based error-based" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Confirmation gate
 

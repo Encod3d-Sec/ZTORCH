@@ -9,11 +9,12 @@ description: macOS attack hunting - foothold to root/persistence on a macOS host
 
 ## Wiki
 
-qmd_query "macOS TCC SIP Gatekeeper AMFI keychain XPC dylib injection sandbox escape code signing entitlements" via wiki-search MCP
-
 Hub: [[macos-moc]] · Primary page: [[macos-tcc]] · Payload arsenal: `wiki/payloads/macos-app-injection.md`
 Anchors: [[macos-privesc]], [[macos-keychain]]
 **REFS:** [[macos-tcc]], wiki/payloads/macos-app-injection.md
+
+qmd_query "macOS TCC SIP Gatekeeper AMFI keychain XPC dylib injection sandbox escape code signing entitlements" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Environment note
 

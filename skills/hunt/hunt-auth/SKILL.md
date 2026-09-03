@@ -9,11 +9,12 @@ description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, Share
 
 ## Wiki
 
-qmd_query "authentication bypass account takeover password reset poisoning session fixation legacy protocol" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[authentication-attacks]] · Payload arsenal: `wiki/payloads/auth-bypass.md`
 Anchors: [[session-management-attacks]], [[mfa-bypass]], [[jwt-attacks]], [[cryptography-attacks]]
 **REFS:** [[authentication-attacks]], wiki/payloads/auth-bypass.md
+
+qmd_query "authentication bypass account takeover password reset poisoning session fixation legacy protocol" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked)
 

@@ -9,11 +9,12 @@ description: LLM / AI application attack hunting - prompt injection (direct + in
 
 ## Wiki
 
-qmd_query "LLM prompt injection direct indirect excessive agency insecure output system prompt leak OWASP LLM Top 10" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[llm-attacks]] · Payload arsenal: [[llm-prompt-injection]]
 Anchors: [[adversarial-ml]], [[mcp-server-attacks]]
 **REFS:** [[llm-attacks]], [[llm-prompt-injection]]
+
+qmd_query "LLM prompt injection direct indirect excessive agency insecure output system prompt leak OWASP LLM Top 10" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface signals
 

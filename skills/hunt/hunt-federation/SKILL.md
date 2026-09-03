@@ -9,11 +9,12 @@ description: OAuth and SAML attack hunting - redirect_uri bypass, state CSRF, SA
 
 ## Wiki
 
-qmd_query "OAuth SAML federation redirect_uri bypass XSW signature stripping state CSRF" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[oauth-attacks]] · Payload arsenal: `wiki/payloads/oauth-saml.md`
 Anchors: [[saml-attacks]], [[jwt-attacks]]
 **REFS:** [[oauth-attacks]], wiki/payloads/oauth-saml.md
+
+qmd_query "OAuth SAML federation redirect_uri bypass XSW signature stripping state CSRF" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface
 

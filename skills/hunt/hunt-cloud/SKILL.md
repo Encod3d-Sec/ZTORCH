@@ -9,11 +9,12 @@ description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, 
 
 ## Wiki
 
-qmd_query "cloud AWS Azure GCP metadata SSRF IAM privilege escalation credential discovery persistence" via wiki-search MCP
-
 Hub: [[cloud-moc]] · Primary page: [[cloud-iam-attacks]] · Payload arsenal: `wiki/payloads/imds-cloud-metadata.md`
 Anchors: [[aws-metadata-ssrf]], [[azure-ad-iam]]
 **REFS:** [[cloud-iam-attacks]], wiki/payloads/imds-cloud-metadata.md
+
+qmd_query "cloud AWS Azure GCP metadata SSRF IAM privilege escalation credential discovery persistence" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Cloud CLI quick reference (use this, don't hand-roll)
 

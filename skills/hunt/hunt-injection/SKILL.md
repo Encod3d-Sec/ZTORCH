@@ -9,11 +9,12 @@ description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI 
 
 ## Wiki
 
-qmd_query "SSTI XXE GraphQL injection template injection XML external entity" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[ssti]] · Payload arsenal: `wiki/payloads/ssti.md`
 Anchors: [[xxe]], [[graphql-attacks]], [[xslt-injection]], [[xslt]]
 **REFS:** [[ssti]], wiki/payloads/ssti.md
+
+qmd_query "SSTI XXE GraphQL injection template injection XML external entity" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface
 

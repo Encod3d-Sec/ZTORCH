@@ -11,11 +11,12 @@ description: Local Windows privilege escalation on a STANDALONE / workgroup host
 
 ## Wiki
 
-qmd_query "Windows local privilege escalation service misconfig unquoted path SeImpersonate potato AlwaysInstallElevated autologon scheduled task DLL hijack UAC bypass" via wiki-search MCP
-
 Hub: [[red-team-moc]] · Primary page: [[windows-privesc]] · Arsenal: [[privesc-exploit-arsenal]]
 Anchors: [[windows-enumeration]], [[netexec]], [[network-services]]
 **REFS:** [[windows-privesc]], [[privesc-exploit-arsenal]]
+
+qmd_query "Windows local privilege escalation service misconfig unquoted path SeImpersonate potato AlwaysInstallElevated autologon scheduled task DLL hijack UAC bypass" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 [[netexec]] is the remote-side workhorse even on a standalone box: `--local-auth` cred checks, `--sam`/`--lsa`/`--dpapi` looting, `-M enum_av` before dropping a payload, and the stored-cred loot modules (winscp/putty/rdcman/keepass/eventlog_creds).
 

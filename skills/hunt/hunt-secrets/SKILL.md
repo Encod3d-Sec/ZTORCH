@@ -9,11 +9,12 @@ description: Exposed-secrets hunting - .git/ dir + history mining, exposed .env/
 
 ## Wiki
 
-qmd_query "exposed secrets git directory .env config hardcoded API keys JS bundle source maps S3 CI leakage" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[secret-hunting]] · Arsenal: [[hardcoded-secrets-enumeration]], [[recon-dorks]]
 Anchors: [[javascript-source-map-exploitation]], [[git-exposure]], [[source-code-analysis]], [[supply-chain-attacks]], [[aws-service-s3-buckets]], [[aws-access-token-secrets]]
 **REFS:** [[secret-hunting]], [[hardcoded-secrets-enumeration]]
+
+qmd_query "exposed secrets git directory .env config hardcoded API keys JS bundle source maps S3 CI leakage" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Secret-hunting quick reference (use this, don't hand-roll)
 

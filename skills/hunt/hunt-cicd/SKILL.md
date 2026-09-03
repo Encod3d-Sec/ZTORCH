@@ -9,11 +9,12 @@ description: CI/CD pipeline attack hunting (GitHub Actions focus) - pwn requests
 
 ## Wiki
 
-qmd_query "CI/CD GitHub Actions pull_request_target pwn request script injection self-hosted runner OIDC cache poisoning" via wiki-search MCP
-
 Hub: [[cloud-moc]] · Primary page: [[cicd-github-actions]] · Payload arsenal: `wiki/payloads/cicd.md`
 Anchors: [[supply-chain-attacks]], [[cloud-oidc-trust-abuse]], [[cicd-attacks]]
 **REFS:** [[cicd-github-actions]], wiki/payloads/cicd.md
+
+qmd_query "CI/CD GitHub Actions pull_request_target pwn request script injection self-hosted runner OIDC cache poisoning" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked)
 

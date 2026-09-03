@@ -9,11 +9,12 @@ description: MCP server attack hunting - tool poisoning, indirect prompt injecti
 
 ## Wiki
 
-qmd_query "MCP server tool poisoning indirect prompt injection rug pull cross-tool shadowing excessive agency lethal trifecta" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[mcp-server-attacks]] · Arsenal: [[llm-prompt-injection]]
 Anchors: [[llm-attacks]], [[adversarial-ml]]
 **REFS:** [[mcp-server-attacks]], [[llm-attacks]]
+
+qmd_query "MCP server tool poisoning indirect prompt injection rug pull cross-tool shadowing excessive agency lethal trifecta" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface
 

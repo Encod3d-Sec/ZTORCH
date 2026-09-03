@@ -16,11 +16,12 @@ limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-der
 
 ## Wiki
 
-qmd_query "IDOR BOLA insecure direct object reference access control" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[access-control]] · Payload arsenal: `wiki/payloads/idor.md`
 Anchors: [[uuid-insecurities]], [[jwt-attacks]]
 **REFS:** [[access-control]], wiki/payloads/idor.md
+
+qmd_query "IDOR BOLA insecure direct object reference access control" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface signals
 

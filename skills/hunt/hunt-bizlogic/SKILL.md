@@ -9,11 +9,12 @@ description: Business-logic flaw hunting - workflow/state bypass, price/quantity
 
 ## Wiki
 
-qmd_query "business logic flaw workflow state bypass price quantity tampering coupon refund race condition" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[business-logic]] · No payload arsenal (manual reasoning, zero scanner coverage)
 Anchors: [[race-conditions]], [[access-control]]
 **REFS:** [[business-logic]], [[race-conditions]]
+
+qmd_query "business logic flaw workflow state bypass price quantity tampering coupon refund race condition" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## No scanner finds these
 

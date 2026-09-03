@@ -9,11 +9,12 @@ description: Microsoft 365 / Entra ID attack - tenant discovery, user enumeratio
 
 ## Wiki
 
-qmd_query "Microsoft 365 Entra ID Azure AD tenant discovery user enumeration OneDrive AADSTS smart lockout conditional access ROPC" via wiki-search MCP
-
 Hub: [[cloud-moc]] · Primary page: [[azure-ad-enumerate]] · Arsenal: [[azure-ad-access-and-tokens]]
 Anchors: [[azure-ad-conditional-access-policy]], [[azure-ad-iam]]
 **REFS:** [[azure-ad-enumerate]], [[azure-ad-conditional-access-policy]]
+
+qmd_query "Microsoft 365 Entra ID Azure AD tenant discovery user enumeration OneDrive AADSTS smart lockout conditional access ROPC" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked - spend the zero-auth signal before any auth attempt)
 

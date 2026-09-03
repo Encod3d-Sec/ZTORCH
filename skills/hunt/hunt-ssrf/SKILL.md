@@ -10,11 +10,12 @@ limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-der
 
 ## Wiki
 
-qmd_query "SSRF server-side request forgery cloud metadata" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[ssrf]] · Payload arsenal: `wiki/payloads/ssrf.md`
 Anchors: [[dns-rebinding]], [[open-redirect]], [[werkzeug-debug-console-rce]]
 **REFS:** [[ssrf]], wiki/payloads/ssrf.md
+
+qmd_query "SSRF server-side request forgery cloud metadata" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Confirmation gate
 **Blind SSRF claims require OOB confirmation. No exceptions.**

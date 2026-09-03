@@ -9,11 +9,12 @@ description: Active Directory attack hunting - enumeration to domain dominance. 
 
 ## Wiki
 
-qmd_query "Active Directory kerberoast AS-REP ADCS ESC delegation DCSync lateral movement BloodHound" via wiki-search MCP
-
 Hub: [[active-directory-moc]] · Primary page: [[active-directory]] · Tooling: [[netexec]]
 Anchors: [[adcs]], [[kerberos-attacks]], [[ad-lateral-movement]], [[default-credentials]]
 **REFS:** [[active-directory]], [[adcs]], [[kerberos-attacks]]
+
+qmd_query "Active Directory kerberoast AS-REP ADCS ESC delegation DCSync lateral movement BloodHound" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 Read [[netexec]]'s LDAP + SMB sections before hand-rolling any AD enumeration; most steps below are one nxc flag.
 

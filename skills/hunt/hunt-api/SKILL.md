@@ -9,11 +9,12 @@ description: API attack hunting (REST / GraphQL / gRPC) - BOLA/IDOR, BFLA, mass 
 
 ## Wiki
 
-qmd_query "API REST GraphQL gRPC BOLA BFLA mass assignment excessive data exposure OWASP API Top 10" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[api-security]] · Payload arsenal: `wiki/payloads/api.md`
 Anchors: [[api-testing]], [[graphql-attacks]], [[grpc-web-attacks]], [[rsql-injection]], [[rsql]], [[rate-limit-bypass]], [[redos]], [[jwt-attacks]]
 **REFS:** [[api-security]], wiki/payloads/api.md
+
+qmd_query "API REST GraphQL gRPC BOLA BFLA mass assignment excessive data exposure OWASP API Top 10" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 For object-level authorization (BOLA/IDOR) see `hunt-idor`.
 
