@@ -2,7 +2,7 @@
 title: "Node.js --inspect and CEF/Chromium Debugger Abuse"
 type: technique
 tags: [linux, nodejs, electron, cef, debugger, privilege-escalation, rce]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-15
 date_updated: 2026-07-15
 sources: [hacktricks-linux]

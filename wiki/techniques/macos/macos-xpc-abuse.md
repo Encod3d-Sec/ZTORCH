@@ -2,7 +2,7 @@
 title: "macOS XPC Abuse"
 type: technique
 tags: [macos, xpc, privilege-escalation]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-15
 date_updated: 2026-07-15
 sources: [hacktricks-macos]

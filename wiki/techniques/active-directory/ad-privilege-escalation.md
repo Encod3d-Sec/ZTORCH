@@ -97,7 +97,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[active-directory-access-controls-aclace]]
-- [[active-directory-gpo]]
+- [[active-directory-group-policy-objects]]
 - [[active-directory-group-policy-objects]]
 - [[active-directory-machine-account-quota]]
 - [[active-directory-read-only-domain-controller]]

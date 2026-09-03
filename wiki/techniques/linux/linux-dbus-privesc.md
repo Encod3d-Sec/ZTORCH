@@ -2,7 +2,7 @@
 title: "Linux D-Bus Privilege Escalation"
 type: technique
 tags: [linux, privilege-escalation, dbus]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-14
 date_updated: 2026-07-14
 sources: [hacktricks-linux]

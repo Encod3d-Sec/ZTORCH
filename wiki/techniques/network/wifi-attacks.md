@@ -3,6 +3,8 @@ title: WiFi Attacks
 type: technique
 domain: network
 tags: [wifi, wireless, wpa, wpa2, eap, evil-twin, pmkid, deauth]
+date_created: 2026-09-03
+date_updated: 2026-09-03
 sources: [hacktricks-wifi]
 related: ["[[network-service-attacks]]", "[[password-cracking]]", "[[hash-capture-and-cracking]]"]
 ---

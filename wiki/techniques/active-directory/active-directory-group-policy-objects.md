@@ -1,10 +1,10 @@
 ---
 title: Active Directory - Group Policy Objects
 type: technique
-tags: [active-directory, gpo, persistence, reference-import, windows]
+tags: [active-directory, gpo, persistence, privilege-escalation, reference-import, windows]
 phase: post-exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
+date_updated: 2026-09-03
 sources: [InternalAllTheThings]
 ---
 
@@ -12,11 +12,13 @@ sources: [InternalAllTheThings]
 
 ## What it is
 
+Group Policy Objects (GPOs) control security settings, scripts, and preferences across an AD domain. Attackers who gain **Edit** rights on a GPO can inject malicious scripts, scheduled tasks, or modify security settings to achieve persistence, privilege escalation, or lateral movement.
+
 > Creators of a GPO are automatically granted explicit Edit settings, delete, modify security, which manifests as CreateChild, DeleteChild, Self, WriteProperty, DeleteTree, Delete, GenericRead, WriteDacl, WriteOwner.
 
 ## How it works
 
-Attackers who hold write rights over a GPO can modify the policy files on SYSVOL to add immediate scheduled tasks, logon scripts, or security setting overrides that apply to all machines and users in the linked OU. GPO creators are granted `WriteDacl` by default, so an account that created a GPO retains edit rights even after being removed from admin groups. Exploitation is driven by the automatic 90-minute group policy refresh cycle, giving attackers domain-wide code execution or persistence without touching individual systems.
+Attackers who hold write rights over a GPO can modify the policy files on SYSVOL to add immediate scheduled tasks, logon scripts, registry modifications, or security setting overrides that apply to all machines and users in the linked OU. GPO creators are granted `WriteDacl` by default, so an account that created a GPO retains edit rights even after being removed from admin groups. Exploitation is driven by the automatic 90-minute group policy refresh cycle, giving attackers domain-wide code execution or persistence without touching individual systems.
 
 ## Attack phases
 

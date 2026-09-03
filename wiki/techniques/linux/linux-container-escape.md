@@ -2,7 +2,7 @@
 title: "Linux Container / Kubernetes Escape"
 type: technique
 tags: [linux, container, docker, kubernetes, privilege-escalation, container-escape]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-14
 date_updated: 2026-07-15
 sources: [hacktricks-linux]

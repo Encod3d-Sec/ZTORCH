@@ -2,7 +2,7 @@
 title: "Logstash Privilege Escalation"
 type: technique
 tags: [linux, logstash, elastic, privilege-escalation]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-15
 date_updated: 2026-07-15
 sources: [hacktricks-linux]

@@ -2,7 +2,7 @@
 title: "macOS Sandbox Escape"
 type: technique
 tags: [macos, sandbox, privesc, evasion]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-14
 date_updated: 2026-07-14
 sources: [hacktricks-macos]

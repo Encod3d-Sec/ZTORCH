@@ -2,7 +2,7 @@
 title: "CTF Creation — Linux BOF Infrastructure"
 type: technique
 tags: [bof, exploit-dev, methodology, privilege-escalation]
-phase: methodology
+phase: post-exploitation
 date_created: 2026-05-23
 date_updated: 2026-05-23
 sources: []

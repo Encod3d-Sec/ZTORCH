@@ -3,6 +3,8 @@ title: "Browser Extension Attacks"
 type: technique
 tags: [web, browser-extension, chrome, content-script, message-passing]
 phase: exploitation
+date_created: 2026-09-03
+date_updated: 2026-09-03
 sources: [hacktricks-web]
 ---
 

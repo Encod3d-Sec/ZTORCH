@@ -2,7 +2,7 @@
 title: Windows - COM Hijacking
 type: technique
 tags: [windows, privilege-escalation, com, persistence]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-14
 date_updated: 2026-07-14
 sources: [hacktricks-windows]

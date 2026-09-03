@@ -2,7 +2,7 @@
 title: "macOS Authorization DB and authd"
 type: technique
 tags: [macos, privilege-escalation, post-exploitation]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-15
 date_updated: 2026-07-15
 sources: [hacktricks-macos]

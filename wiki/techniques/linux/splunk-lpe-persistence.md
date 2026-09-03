@@ -2,7 +2,7 @@
 title: "Splunk Local Privesc and Persistence"
 type: technique
 tags: [linux, splunk, privilege-escalation, persistence, lateral-movement]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-15
 date_updated: 2026-07-15
 sources: [hacktricks-linux]

@@ -3,6 +3,8 @@ title: Layer 2 and Routing Protocol Attacks
 type: technique
 domain: network
 tags: [layer2, vlan, hsrp, glbp, eigrp, fhrp, dhcpv6, ssdp, upnp, mitm]
+date_created: 2026-09-03
+date_updated: 2026-09-03
 sources: [hacktricks-network]
 related: ["[[ipv6-attacks]]", "[[internal-ntlm-relay]]", "[[network-discovery]]", "[[pivoting-tunneling]]"]
 ---

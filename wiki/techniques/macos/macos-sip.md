@@ -2,7 +2,7 @@
 title: "macOS SIP"
 type: technique
 tags: [macos, sip, privesc, evasion]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-14
 date_updated: 2026-07-15
 sources: [hacktricks-macos]

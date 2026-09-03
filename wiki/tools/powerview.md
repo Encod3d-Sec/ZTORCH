@@ -111,7 +111,7 @@ Get-DomainUser -Credential $cred
 - Finding Kerberoast targets with `Get-DomainUser -SPN`: [[roasting-kerberoasting]].
 - Finding AS-REP roast targets with `Get-DomainUser -PreauthNotRequired`: [[roasting-asrep-roasting]].
 - ACL abuse discovery and weaponization (`Find-InterestingDomainAcl`, `Add-DomainObjectAcl`, `Set-DomainObject`): [[active-directory-access-controls-aclace]].
-- GPO enumeration and local-group mapping (`Get-DomainGPO`, `Get-DomainGPOUserLocalGroupMapping`): [[active-directory-gpo]], [[active-directory-group-policy-objects]].
+- GPO enumeration and local-group mapping (`Get-DomainGPO`, `Get-DomainGPOUserLocalGroupMapping`): [[active-directory-group-policy-objects]].
 - Group membership enumeration (`Get-DomainGroup`, `Get-DomainGroupMember -Recurse`): [[active-directory-groups]].
 - Share and sensitive-file hunting (`Find-DomainShare`, `Find-InterestingDomainShareFile`): [[internal-shares]].
 - User hunting and local-admin mapping for lateral movement (`Invoke-UserHunter`, `Find-LocalAdminAccess`): [[ad-lateral-movement]].

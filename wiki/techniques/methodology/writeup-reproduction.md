@@ -47,10 +47,10 @@ Rooms and products bump versions silently; the same URL can behave differently o
 without the technique being "patched". Re-test the published chain verbatim on EACH new instance
 before concluding anything, and before trusting the negative, prove the observation channel (a
 file-logged listener you have actually read, or a self-test hit on the same path): see
-[[Safe Probing and Controls]]. An unobservable channel plus an adapted payload is how "I got the
+[[safe-probing-and-controls|Safe Probing and Controls]]. An unobservable channel plus an adapted payload is how "I got the
 test wrong" becomes "the box was patched".
 
-Related: [[LLM Attacks]] (watcher-bot render as the gate-bypass execution context, found by
+Related: [[llm-attacks|LLM Attacks]] (watcher-bot render as the gate-bypass execution context, found by
 transcribing a writeup screenshot).
 
 <!-- promoted-slug: writeup-reproduction -->

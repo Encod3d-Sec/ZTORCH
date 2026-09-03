@@ -2,7 +2,7 @@
 title: "macOS Privilege Escalation"
 type: technique
 tags: [macos, privesc, post-exploitation]
-phase: privilege-escalation
+phase: post-exploitation
 date_created: 2026-07-14
 date_updated: 2026-07-14
 sources: [hacktricks-macos]
