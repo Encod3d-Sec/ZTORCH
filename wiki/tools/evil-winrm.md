@@ -200,7 +200,7 @@ WINDCORP.HTB = {
 ## Related techniques
 
 - [[ad-lateral-movement|AD Lateral Movement]]
-- [[Pass-the-Hash]]
+- [[pass-the-hash|Pass-the-Hash]]
 - [[active-directory-certificate-esc-attacks|Active Directory Certificate Services (ADCS)]]
 - [[kerberos-attacks]]
 - SeBackupPrivilege abuse

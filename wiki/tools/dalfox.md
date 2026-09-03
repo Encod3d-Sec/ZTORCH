@@ -15,7 +15,7 @@ phase: exploit
 ## Install / setup
 
 ```bash
-go install github.com/hahwul/dalfox/v2@latest        # or: apt install dalfox
+go install github.com/hahwul/dalfox/v2@latest
 ```
 
 ## Core usage

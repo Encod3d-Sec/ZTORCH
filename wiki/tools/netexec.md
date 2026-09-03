@@ -34,7 +34,7 @@ pipx reinstall netexec    # force latest commits
 
 Binaries for Linux/Windows/macOS are on the [releases page](https://github.com/Pennyw0rth/NetExec/releases). Docker: `docker build -t netexec . && docker run --rm -it netexec --help`.
 
-Entry points are `netexec`, `NetExec`, and `nxc` (all the same binary), plus `nxcdb` for the database shell. Tab completion:
+Entry points are `netexec` and `nxc` (all the same binary), plus `nxcdb` for the database shell. Tab completion:
 
 ```bash
 sudo apt install python3-argcomplete

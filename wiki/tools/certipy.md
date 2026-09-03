@@ -22,7 +22,7 @@ pipx install certipy-ad
 uv tool install certipy-ad
 ```
 
-The binary is `certipy`. Keep it updated: ESC detection signatures are added regularly (e.g., ESC16 was added fewer than two weeks before the Fluffy HTB machine released).
+The apt package is `certipy-ad` (Kali/Debian) and it installs the binary `/usr/bin/certipy-ad` — there is no package-provided `certipy` binary. This vault additionally symlinks `certipy -> certipy-ad` on the Kali VM (`/usr/local/bin/certipy`) so the shorter, more common name works too; every command example in the vault (including the Core usage section below) uses the bare `certipy` name relying on that symlink. Keep it updated: ESC detection signatures are added regularly (e.g., ESC16 was added fewer than two weeks before the Fluffy HTB machine released).
 
 ```bash
 uv tool upgrade certipy-ad
