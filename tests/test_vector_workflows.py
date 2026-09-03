@@ -9,20 +9,14 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import offensive  # noqa: E402
 
 
-def _copytree(src, dst):
-    import shutil
-    shutil.copytree(src, dst)
-
-
 def _mk_eng(tmp_path, tech, deadends_rows=""):
     """Init an engagement, set one asset's tech tags + optional Deadends rows.
     Mirrors tests/test_board.py::_mk_eng exactly."""
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
+    # symlink (read-only for these tests); setup/ is never read via --vault
     for sub in ("skills", "wiki"):
-        _copytree(ROOT / sub, vault / sub)
-    for name in ("setup",):
-        _copytree(ROOT / name, vault / name)
+        (vault / sub).symlink_to(ROOT / sub, target_is_directory=True)
 
     offensive.main(["--vault", str(vault), "init", "demo", "--type", "bb"])
     eng = vault / "targets" / "demo"

@@ -14,11 +14,11 @@ def _mk_eng(tmp_path, tech, deadends_rows=""):
     """Init an engagement, set one asset's tech tags + optional Deadends rows."""
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
-    # copy the real routing/tool sources so build_index sees them
+    # symlink the real routing/tool sources so build_index sees them (read-only for
+    # these tests -- a copytree of skills/+wiki/'s 600+ small files costs seconds per
+    # test on this filesystem; setup/ is never read via --vault, dropped entirely)
     for sub in ("skills", "wiki"):
-        _copytree(ROOT / sub, vault / sub)
-    for name in ("setup",):
-        _copytree(ROOT / name, vault / name)
+        (vault / sub).symlink_to(ROOT / sub, target_is_directory=True)
 
     offensive.main(["--vault", str(vault), "init", "demo", "--type", "bb"])
     eng = vault / "targets" / "demo"
@@ -36,11 +36,6 @@ def _mk_eng(tmp_path, tech, deadends_rows=""):
 
     offensive.build_index(eng, vault)
     return vault, eng
-
-
-def _copytree(src, dst):
-    import shutil
-    shutil.copytree(src, dst)
 
 
 def test_board_rows_from_fingerprints(tmp_path):

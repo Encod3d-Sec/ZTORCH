@@ -1,6 +1,5 @@
 """Tests for offensive.py `foothold` + `done --win` post-foothold 4b re-board."""
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -15,8 +14,9 @@ def _setup(tmp_path, etype="pentest"):
     carries windows/macos/ad classes the 4b rows resolve against), build index."""
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
-    for sub in ("skills", "wiki", "setup"):
-        shutil.copytree(ROOT / sub, vault / sub)
+    # symlink (read-only for these tests); setup/ is never read via --vault
+    for sub in ("skills", "wiki"):
+        (vault / sub).symlink_to(ROOT / sub, target_is_directory=True)
     offensive.main(["--vault", str(vault), "init", "demo", "--type", etype])
     eng = vault / "targets" / "demo"
     offensive.build_index(eng, vault)
