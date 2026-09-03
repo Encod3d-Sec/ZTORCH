@@ -46,20 +46,11 @@ Pick it once at `init`; everything downstream follows from it.
 
 ## Vector workflow (board seeding)
 
-`board` seeds 4a rows in a fixed order, not just the flat fingerprint+base union:
-
-1. **OSINT** (once, pre-scan): subdomain/asset/leak-discovery rows keyed to the engagement name
-   itself (no host/IP exists yet at this phase) -- run these before any port scan.
-2. **Per asset** (once `state.md` has assets from rustscan+nmap): fingerprint-implied classes
-   first, then that asset's matched vector baseline(s) -- **web > ad_windows > linux** priority --
-   each with a fixed tool set that always runs once the vector is confirmed, plus a small number
-   of narrow exceptions gated on a specific sub-fingerprint (e.g. `wpscan-scan` only fires when
-   WordPress is detected). `BASE_CLASSES[etype]` still fills in anything neither implied nor
-   vector-matched, same as before.
-
-An asset can match more than one vector (e.g. a host running both SMB and a web app gets both
-`ad_windows` and `web` baseline rows). `next`/`done`/G1-G9 treat every vector row exactly like any
-other 4a row -- no new gate, no new command.
+`board` seeds 4a rows in a fixed order, not just the flat fingerprint+base union: an OSINT
+pre-pass keyed to the engagement name, then per-asset fingerprint-implied classes, then that
+asset's matched vector baseline(s) in **web > ad_windows > linux** priority (plus narrow
+fingerprint-gated exceptions), then `BASE_CLASSES[etype]` fallback. Full mechanics:
+`Skill(vector-workflow)`.
 
 ## Gates (enforced by the driver)
 

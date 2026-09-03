@@ -25,6 +25,7 @@ organizational only.
 | Parallel independent tasks                    | Dispatch several Agent tool calls in one message, or `superpowers:dispatching-parallel-agents` (optional) |
 | Run a full pentest/bb/ctf engagement autonomously  | `offensive` skill (driver: `scripts/offensive.py --type pentest\|bb\|ctf`; the single source of truth for the execution loop) |
 | Check the offensive driver is set up on this machine | `offensive-doctor` (`scripts/offensive-doctor.py`)                              |
+| Board seeding order / vector workflow (why a row is on the board) | `vector-workflow` skill (OSINT pre-pass -> per-asset vector baseline -> base fallback, `derive_rows()`) |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
 | Driving a web target through Burp (proxy-history triage, Repeater/Intruder/Collaborator) | `hunt-burp` skill (Burp MCP; setup [[burp-mcp]])       |
 | Starting recon on any target                  | wiki-recon skill                                                                       |
@@ -44,7 +45,8 @@ every hunt assumes. `skills/workflow/` holds the offensive driver (`offensive`) 
 engagement PROCESS skills:
 `wiki-arsenal`, `triage`, `evidence`, `ingest`, `wiki-recon`,
 `nday`, `research-ingest`, `delegate`, `metasploit`, `ctf-box`, `ctf-category`,
-`screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`, `redteamlead`, `fuzz`.
+`screenshot`, `chrome-devtools-browser`, `learn`, `walkthrough`, `redteamlead`, `fuzz`,
+`vector-workflow` (board-seeding pipeline reference, not a loop step).
 `skills/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
 scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,

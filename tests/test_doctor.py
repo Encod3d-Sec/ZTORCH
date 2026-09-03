@@ -12,6 +12,20 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCTOR = ROOT / "scripts" / "offensive-doctor.py"
 
 
+def _mk_vault_copy(dest):
+    """Copy only what offensive-doctor.py actually reads (scripts/, skills/, wiki/,
+    tests/fixtures/offensive -- confirmed by grepping every VAULT-relative path the script
+    touches), not the whole repo. targets/ alone is 200+MB of real engagement data the doctor
+    never reads; copying the full ROOT made each of these tests take 70-90s on this filesystem."""
+    ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
+    dest.mkdir(parents=True)
+    for sub in ("scripts", "skills", "wiki"):
+        shutil.copytree(ROOT / sub, dest / sub, ignore=ignore)
+    (dest / "tests" / "fixtures").mkdir(parents=True)
+    shutil.copytree(ROOT / "tests" / "fixtures" / "offensive",
+                    dest / "tests" / "fixtures" / "offensive", ignore=ignore)
+
+
 def _run(doctor_path, *args):
     r = subprocess.run([sys.executable, str(doctor_path), *args],
                        capture_output=True, text=True)
@@ -26,8 +40,7 @@ def test_doctor_passes_on_healthy_vault():
 
 def test_doctor_flags_missing_routing_table(tmp_path):
     vault = tmp_path / "vault"
-    shutil.copytree(ROOT, vault,
-                    ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"))
+    _mk_vault_copy(vault)
     # corrupt the routing table: overwrite hunt-core with a stub that has no
     # `## Routing table (machine-readable)` section.
     core = vault / "skills" / "hunt" / "hunt-core" / "SKILL.md"
@@ -41,8 +54,7 @@ def test_phase_check_is_frontmatter_scoped(tmp_path):
     """A body `phase: exploit` line with no frontmatter `phase:` key must FAIL,
     not false-pass a whole-file regex."""
     vault = tmp_path / "vault"
-    shutil.copytree(ROOT, vault,
-                    ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"))
+    _mk_vault_copy(vault)
     bogus = vault / "wiki" / "tools" / "zz-bogus-tool.md"
     bogus.write_text(
         "---\n"
@@ -64,8 +76,7 @@ def test_4b_hollow_only_warns_if_all_rows_blank(tmp_path):
     """Blanking the FIRST windows routing row's arsenal must not warn as long
     as another windows row still carries an arsenal."""
     vault = tmp_path / "vault"
-    shutil.copytree(ROOT, vault,
-                    ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"))
+    _mk_vault_copy(vault)
     core = vault / "skills" / "hunt" / "hunt-core" / "SKILL.md"
     text = core.read_text()
     old_row = "| windows | windows | hunt-windows | windows-privesc | privesc-exploit-arsenal |"
