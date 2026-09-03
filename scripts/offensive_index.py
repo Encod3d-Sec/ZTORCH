@@ -23,8 +23,8 @@ def _read(p):
 
 
 def _die(msg, code=2):
-    """Hard-refusal exit (mirrors campaign.py's _die): print to stderr, exit
-    non-zero. Used by the G1/G2/G3/G9 gates - never a silent drop."""
+    """Hard-refusal exit: print to stderr, exit non-zero. Used by the
+    G1/G2/G3/G9 gates - never a silent drop."""
     print("offensive: %s" % msg, file=sys.stderr)
     sys.exit(code)
 
@@ -253,7 +253,7 @@ def load_index(eng_dir):
 
 def index_stale(eng_dir, vault_root):
     """True if any source markdown is newer than the cache (or no cache).
-    Predicate only - Task 4 wires the enforcement."""
+    Predicate only - offensive.py's cmd_next calls this and _die()s on staleness."""
     cache = Path(eng_dir) / CACHE_NAME
     if not cache.exists():
         return True

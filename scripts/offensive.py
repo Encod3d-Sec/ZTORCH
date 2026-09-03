@@ -33,12 +33,12 @@ TEMPLATE_FILES = ("state.md", "scope.md", "Deadends.md", "loot.md",
                    "Killchain.md", "oob.md", "decisions.md", "Approach.md")
 
 # 4a coverage-matrix columns (header spellings are load-bearing: cells resolve
-# by header name). Mirrors campaign.py BOARD_COLS.
+# by header name).
 BOARD_COLS = ["id", "asset", "vuln class", "arsenal", "skill", "tool",
               "status", "poc", "poc_kind"]
 
-# Base vuln-class set per engagement type (RULING R4: literal dict, no JSON
-# file). Each entry MUST be a `class` in the hunt-core routing table so every
+# Base vuln-class set per engagement type (literal dict, no JSON file). Each
+# entry MUST be a `class` in the hunt-core routing table so every
 # base-superset row resolves to a real skill+arsenal (satisfies board G1/G2).
 # tests/test_board.py::test_no_base_row_has_blank_skill enforces this.
 BASE_CLASSES = {
@@ -52,10 +52,10 @@ BASE_CLASSES = {
 }
 
 # Per-type close-out chain (Skill names the agent runs in order) + wall-break
-# dry-streak threshold. Mirrors campaign.py tconf["closeout"] / dry_streak.
+# dry-streak threshold.
 CLOSEOUT_CHAINS = {
-    "pentest": ["triage", "evidence", "report", "learn"],
-    "bb": ["triage", "evidence", "learn"],
+    "pentest": ["triage", "evidence", "walkthrough", "learn"],
+    "bb": ["triage", "evidence", "walkthrough", "learn"],
     "ctf": ["walkthrough", "learn"],
 }
 WALLBREAK_THRESHOLD = {"pentest": 3, "bb": 3, "ctf": 2}
@@ -63,26 +63,14 @@ WALLBREAK_THRESHOLD = {"pentest": 3, "bb": 3, "ctf": 2}
 # class -> automated tool slug (wiki/tools/*). Fallback = nuclei. Deterministic
 # so the board's `tool` cell is stable per class across runs.
 CLASS_TOOL = {
-    # bb / web
-    "rce": "metasploit", "sqli": "sqlmap", "ssrf": "nuclei", "ssti": "nuclei",
-    "xxe": "nuclei", "deserialization": "metasploit", "auth": "nuclei",
-    "idor": "burp-suite", "oauth-saml": "burp-suite",
-    "request-smuggling": "nuclei", "jwt": "jwt_tool", "graphql": "nuclei",
-    "file-upload": "nuclei", "business-logic": "burp-suite",
-    "prototype-pollution": "nuclei", "xss": "dalfox", "csrf": "burp-suite",
-    "cors": "nuclei", "web-cache": "nuclei", "host-header": "nuclei",
-    "open-redirect": "nuclei", "subdomain-takeover": "nuclei",
-    "session": "burp-suite", "race-condition": "burp-suite", "mcp": "curl",
-    "cicd": "trufflehog", "recon": "httpx",
-    # ctf
-    "web": "ffuf", "pwn": "pwntools", "rev": "ghidra", "crypto": "python3",
-    "binary": "ghidra", "forensics": "volatility", "stego": "binwalk",
-    "osint": "amass",
-    # routing-implied classes not otherwise listed
-    "api": "nuclei", "injection": "nuclei", "federation": "burp-suite",
-    "cloud": "pacu", "secrets": "trufflehog", "smuggling": "nuclei",
-    "upload": "nuclei", "vpn": "nmap", "windows": "winpeas", "ad": "netexec",
-    "m365": "netexec", "macos": "linpeas", "llm": "curl", "bizlogic": "burp-suite",
+    "rce": "metasploit", "sqli": "sqlmap", "ssrf": "nuclei",
+    "deserialization": "metasploit", "auth": "nuclei", "idor": "burp-suite",
+    "xss": "dalfox", "subdomain-takeover": "nuclei", "mcp": "curl",
+    "cicd": "trufflehog", "api": "nuclei", "injection": "nuclei",
+    "federation": "burp-suite", "cloud": "pacu", "secrets": "trufflehog",
+    "smuggling": "nuclei", "upload": "nuclei", "vpn": "nmap",
+    "windows": "winpeas", "ad": "netexec", "m365": "netexec",
+    "macos": "linpeas", "llm": "curl", "bizlogic": "burp-suite",
     "cache": "nuclei",
 }
 
@@ -97,7 +85,7 @@ CLASS_TOOL.update({
 # osint is handled as a separate pre-pass (target-level, before any asset/IP exists) rather than
 # appearing in VECTOR_PRIORITY.
 VECTOR_CLASSES = {
-    "osint": ["osint-subdomain", "osint-leaks"],
+    "osint": ["osint-subdomain", "osint-leaks", "subdomain-takeover"],
     "web": ["content-discovery", "js-extract", "recon-nuclei", "recon-nikto"],
     "ad_windows": ["ad", "windows"],
     "linux": ["linux-svc-enum"],
@@ -173,7 +161,7 @@ _BOARD_RE = re.compile(r"(^\|\s*id\s*\|[^\n]*\n)(\|[-:| ]+\|[^\n]*\n)?((?:\|[^\n
 
 def write_board(eng, rows):
     """Replace the 4a table body with `rows`, preserving the rest of Approach.md.
-    Creates Approach.md (and a 4a section) if absent. Mirrors campaign.write_board."""
+    Creates Approach.md (and a 4a section) if absent."""
     p = Path(eng) / "Approach.md"
     text = p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
     header = "| " + " | ".join(BOARD_COLS) + " |\n"
@@ -280,7 +268,6 @@ def _next_board_id(rows, prefix="4a"):
 
 
 def cmd_board(args):
-    vault = Path(args.vault) if args.vault else DEFAULT_VAULT
     eng = _resolve_eng(args.eng)
     if eng is None or not eng.is_dir():
         print("error: --eng <name|path> required for `board`")
@@ -319,7 +306,7 @@ def cmd_board(args):
 # privesc + lateral movement. `foothold` (or `done --win`) records the shell and
 # re-runs THIS derivation to append 4b rows under a `### 4b` section. Rows are
 # non-hollow (skill+arsenal from the routing index, a real privesc/lateral tool)
-# and G4-suppressed, exactly like 4a. Models campaign.derive_privesc_rows.
+# and G4-suppressed, exactly like 4a.
 
 _H4B = "### 4b. Post-foothold (privesc / lateral)"
 
@@ -475,7 +462,7 @@ def seed_4b(eng, index, etype, st):
 #
 # The agent loop: run `next`, do exactly what it prints, record, repeat. `next`
 # NEVER prints a question (G7) - if nothing is actionable it prints a terminal
-# state, not a menu. Cursor + action resolution model campaign.py cmd_next.
+# state, not a menu.
 
 # Exploit-shaped classes route load-bearing HTTP requests: G8 also emits a Burp
 # Repeater push so the operator watches the exploit live (CLAUDE.md Burp-first).
@@ -498,7 +485,7 @@ VISUAL_CLASSES = {
 
 def _events(eng):
     """Parsed .events.jsonl rows, or None if the telemetry file is absent (G2
-    then fails open - the skill is emitted). Mirrors campaign._events."""
+    then fails open - the skill is emitted)."""
     p = Path(eng) / ".events.jsonl"
     if not p.is_file():
         return None
@@ -663,7 +650,7 @@ def cmd_next(args):
                   "recorded vm-rsh shell (see the ### 4b rows)")
 
     # method block for the row's class (parse_hunt_method result, keyed by skill).
-    # Fields may be empty on real skills (Task 13 backfills); print what's present.
+    # Fields may be empty on real skills; print what's present.
     method = (index.get("methods") or {}).get(skill, {})
     if method.get("approach"):
         print("APPROACH  %s" % method["approach"])
@@ -710,9 +697,9 @@ def cmd_next(args):
 #
 # `next` withholds; these RECORD the outcome and enforce the evidence gates.
 # note --arsenal satisfies G1; done enforces G1 (arsenal set) + G2 (mapped skill
-# fired) + G3 (exactly one typed disposition). Modelled on campaign.cmd_note /
-# cmd_done: gate refusals are hard (_die, non-zero); status transitions mutate
-# the board in place. `next` recomputes the cursor each run, so parking/killing
+# fired) + G3 (exactly one typed disposition). Gate refusals are hard (_die,
+# non-zero); status transitions mutate the board in place. `next` recomputes
+# the cursor each run, so parking/killing
 # a row advances the loop with no state write here (G7 no-ask).
 
 
@@ -732,9 +719,9 @@ def _eng_state(args, cmd):
 
 def cmd_note(args):
     """G1 release: set the row's arsenal cell (the consulted wiki-arsenal card
-    slug) and write the board. Flips a fresh [ ] row to [~] (in-progress),
-    mirroring campaign.cmd_note. No card-file validation - the board carries the
-    slug; the operator ran Skill(wiki-arsenal) to get it."""
+    slug) and write the board. Flips a fresh [ ] row to [~] (in-progress).
+    No card-file validation - the board carries the slug; the operator ran
+    Skill(wiki-arsenal) to get it."""
     eng, state = _eng_state(args, "note")
     if eng is None:
         return 2
@@ -767,8 +754,7 @@ def cmd_park(eng, state, rows, row, reason, writer=write_board):
 def _set_state_access(eng, asset, win, access="foothold"):
     """Flip the state.md inventory row whose first cell == `asset` to
     access=`access` and append a `tmux:<win>` note. Line-based rewrite of one
-    cell (mirrors campaign._set_state_access). Returns True if a row matched;
-    fail-soft on IO/absent columns."""
+    cell. Returns True if a row matched; fail-soft on IO/absent columns."""
     p = Path(eng) / "state.md"
     try:
         lines = p.read_text(encoding="utf-8", errors="ignore").split("\n")

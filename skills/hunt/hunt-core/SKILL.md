@@ -222,7 +222,7 @@ driver itself (`scripts/offensive.py coverage` / `offensive.py next`).
 
 The prose table above is for a human reasoning about approach; this table is the parse contract
 `offensive.py index` reads (fixed columns, one row per hunt class plus one row per tech-fingerprint
-token). Seeded from the 24 `hunt-*` classes above and the fingerprint keys in ClaudeBrain's
+token). Seeded from the 25 `hunt-*` classes above and the fingerprint keys in this vault's
 `scripts/playbook.json` that route to a hunt skill (kernel-CVE/metasploit-only fingerprints are out
 of scope here - they carry no hunt skill). `primary wiki` and `arsenal slug` come from each class's
 own `## Wiki` block. Extend this table, not `playbook.json`, when a driver-side signal is added.
@@ -328,6 +328,7 @@ own `## Wiki` block. Extend this table, not `playbook.json`, when a driver-side 
 | wpscan-scan-baseline | wpscan-scan | hunt-rce | cms-exploitation | cms-exploitation |
 | osint-subdomain-baseline | osint-subdomain | hunt-secrets | web-attack-surface | recon |
 | osint-leaks-baseline | osint-leaks | hunt-secrets | secret-hunting | recon-dorks |
+| subdomain-takeover-baseline | subdomain-takeover | hunt-secrets | subdomain-takeover | recon |
 | linux-svc-enum-baseline | linux-svc-enum | hunt-rce | vuln-assessment | service-enumeration |
 | dynamodb | cloud | hunt-cloud | cloud-iam-attacks | aws-service-dynamodb |
 | ec2 | cloud | hunt-cloud | cloud-iam-attacks | aws-service-ec2 |

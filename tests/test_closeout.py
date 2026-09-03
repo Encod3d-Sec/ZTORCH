@@ -51,8 +51,8 @@ def _set_state(eng, **kw):
 
 def test_closeout_chain_per_type(tmp_path, capsys):
     expected = {
-        "pentest": ["triage", "evidence", "report", "learn"],
-        "bb": ["triage", "evidence", "learn"],
+        "pentest": ["triage", "evidence", "walkthrough", "learn"],
+        "bb": ["triage", "evidence", "walkthrough", "learn"],
         "ctf": ["walkthrough", "learn"],
     }
     for etype, chain in expected.items():
@@ -65,9 +65,8 @@ def test_closeout_chain_per_type(tmp_path, capsys):
             assert "Skill(%s)" % s in out
         positions = [out.index("Skill(%s)" % s) for s in chain]
         assert positions == sorted(positions)
-        # no other-type skill leaks in (report only for pentest)
-        if "report" not in chain:
-            assert "Skill(report)" not in out
+        # no nonexistent 'report' skill (a stale close-out step, since removed)
+        assert "Skill(report)" not in out
 
 
 # --------------------------------------------------------------------------- coverage

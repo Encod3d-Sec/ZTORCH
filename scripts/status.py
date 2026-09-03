@@ -35,18 +35,21 @@ def evidence_counts(d):
 
 
 def deadend_lines(d, limit=3):
-    """The most recent Dead-ends.md bullet lines (skip headers/frontmatter/blank)."""
-    p = os.path.join(d, "Deadends.md")
-    if not os.path.isfile(p):
-        return []
+    """The most recent Dead-ends.md table rows (asset x class -- what/why), formatted
+    as one-line summaries. Deadends.md is a markdown table (asset|class|what was
+    tried|why exhausted|date|reopen-if), not a bullet list."""
+    import _engagement
+    rows = _engagement._parse_table(os.path.join(d, "Deadends.md"))
     out = []
-    for line in open(p, encoding="utf-8", errors="ignore"):
-        s = line.strip()
-        if s.startswith("- ") and len(s) > 2:
-            body = s[2:].strip()
-            # skip template placeholders: a bare/empty checkbox line carries no dead-end
-            if body and not re.fullmatch(r"\[[ x!~-]?\]", body):
-                out.append(body)
+    for r in rows:
+        asset = (r.get("asset") or "").strip()
+        cls = (r.get("class") or "").strip()
+        if not asset or not cls:
+            continue
+        bits = [b for b in ((r.get("what was tried") or "").strip(),
+                             (r.get("why exhausted") or "").strip()) if b]
+        out.append("%s x %s -- %s" % (asset, cls, "; ".join(bits)) if bits
+                    else "%s x %s" % (asset, cls))
     return out[-limit:]
 
 

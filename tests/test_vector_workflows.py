@@ -42,7 +42,7 @@ def test_osint_rows_emitted_once_keyed_to_engagement_name(tmp_path):
     rows = offensive.derive_rows(eng, index, "bb")
     osint_rows = [r for r in rows if r["asset"] == "demo"]
     classes = {r["vuln class"] for r in osint_rows}
-    assert classes == {"osint-subdomain", "osint-leaks"}
+    assert classes == {"osint-subdomain", "osint-leaks", "subdomain-takeover"}
     for r in osint_rows:
         assert r["skill"], "OSINT rows must resolve a non-blank skill"
 
@@ -85,8 +85,8 @@ def test_no_vector_row_has_blank_skill_across_all_types(tmp_path):
     for all 3 engagement types -- mirrors test_board.py::test_no_base_row_has_blank_skill."""
     vault, eng = _mk_eng(tmp_path, "nginx, wordpress, smb, kerberos, ssh, linux")
     index = offensive.build_index(eng, vault)
-    new_classes = {"osint-subdomain", "osint-leaks", "content-discovery", "js-extract",
-                   "recon-nuclei", "recon-nikto", "wpscan-scan", "linux-svc-enum"}
+    new_classes = {"osint-subdomain", "osint-leaks", "subdomain-takeover", "content-discovery",
+                   "js-extract", "recon-nuclei", "recon-nikto", "wpscan-scan", "linux-svc-enum"}
     for etype in ("pentest", "bb", "ctf"):
         rows = offensive.derive_rows(eng, index, etype)
         by_class = {r["vuln class"]: r for r in rows}
