@@ -1,6 +1,6 @@
 ---
 name: delegate
-description: Autonomous sub-agent hand-off for a fiddly, fully-specified exploit-compile / escalation RUN - the main agent stays on strategy and the board while a cheap sub-agent runs an exact copy-paste checklist behind a false-root/hostname guardrail. Use for "delegate", "offload", "hand this to a sub-agent", "spin a flash" (or "spin a haiku"), or the moment a foothold plus a working escalation vector is identified. Main agent dispatches, waits (no parallel duplicate), integrates the result.
+description: Autonomous sub-agent hand-off for a fiddly, fully-specified exploit-compile / escalation RUN - the main agent stays on strategy and the board while a cheap sub-agent runs an exact copy-paste checklist behind a false-root/hostname guardrail. Use for "delegate", "offload", "hand this to a sub-agent", "spin a flash" (or "spin a haiku" / "spin glm-5.3-flash"), or the moment a foothold plus a working escalation vector is identified. Main agent dispatches, waits (no parallel duplicate), integrates the result.
 ---
 
 # Delegate: sub-agent exploit-run
