@@ -865,9 +865,8 @@ def _antiautomation_nudge(d, blob, eng):
 
 # AD pre-flight reflex: the FIRST Kerberos/impacket command of an engagement is the moment to
 # check for a stale /etc/hosts realm line or /etc/krb5.conf entry left by a PRIOR ("sister") box --
-# a silent, recurring root cause of repeated impacket Kerberos timeouts (confirmed: thm_ledger lost
-# ~3 calls to a stale thm.local->old-ip hosts line; thm_jump wasted xfreerdp time on a stale
-# krb5.conf realm). Fire-once per engagement, advisory, fail-open.
+# a silent, recurring root cause of repeated impacket Kerberos timeouts and wasted xfreerdp time
+# across multiple past boxes. Fire-once per engagement, advisory, fail-open.
 _AD_TOOL_RE = re.compile(
     r"\b(secretsdump|GetNPUsers|GetUserSPNs|getTGT|kerbrute|klist|kinit)\b|krb5\.conf", re.IGNORECASE)
 

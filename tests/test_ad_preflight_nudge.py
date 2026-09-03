@@ -1,6 +1,6 @@
 """Wave 7 W7-6: the first Kerberos/impacket command of an engagement nudges checking for a stale
 /etc/hosts realm entry or /etc/krb5.conf line left by a prior ('sister') box - confirmed root cause
-of repeated impacket timeouts in the THM corpus (thm_ledger, thm_jump). Fire-once per engagement."""
+of repeated impacket timeouts across multiple past boxes. Fire-once per engagement."""
 import importlib.util
 import os
 
