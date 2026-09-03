@@ -15,6 +15,28 @@ Hub: [[web-moc]] · Primary page: [[secret-hunting]] · Arsenal: [[hardcoded-sec
 Anchors: [[javascript-source-map-exploitation]], [[git-exposure]], [[source-code-analysis]], [[supply-chain-attacks]], [[aws-service-s3-buckets]], [[aws-access-token-secrets]]
 **REFS:** [[secret-hunting]], [[hardcoded-secrets-enumeration]]
 
+## Secret-hunting quick reference (use this, don't hand-roll)
+
+Every command below is a real, tested invocation - the SAME primitive a hand-rolled curl/regex loop
+would reimplement worse. Look the operation up here first; full context for each lives in the numbered
+methodology step. Per-service live-validation calls are already tabled in `## Verification /
+Validation` below - not repeated here.
+
+| Operation | Command | Step |
+|---|---|---|
+| Probe a fixed dotfile/config path for exposure | `curl -s -o /dev/null -w "%{http_code}\n" "https://target.com/<path>"` (path e.g. `.env`, `.git/HEAD`, `.git-credentials`, `.aws/credentials`, `.npmrc`, `config.json`) | 1 |
+| Dump an exposed `.git/` directory | `git-dumper https://target.com/.git/ ./dump` | 2 |
+| Mine dumped repo for verified secrets | `trufflehog filesystem ./dump --only-verified` | 2 |
+| Mine dumped repo for secrets (gitleaks) | `gitleaks detect --source ./dump --no-banner` | 2 |
+| Grep a JS bundle for key-shaped strings | `curl -s https://target.com/static/js/main.js \| grep -Eo '(AKIA[0-9A-Z]{16}\|AIza[0-9A-Za-z_-]{35}\|sk_live_[0-9A-Za-z]{24}\|ghp_[0-9A-Za-z]{36}\|xox[baprs]-[0-9A-Za-z-]+)'` | 3 |
+| Rebuild original source from a JS source map | `npx source-map-explorer main.js main.js.map` | 3 |
+| Mine rebuilt bundle source for secrets | `trufflehog filesystem ./bundles --only-verified` | 3 |
+| List an S3 bucket (public-read proof) | `aws s3 ls s3://<name> --no-sign-request` | 4 |
+| List a GCS bucket | `curl -s "https://storage.googleapis.com/<name>/"` | 4 |
+| List an Azure blob container | `curl -s "https://<name>.blob.core.windows.net/?comp=list"` | 4 |
+| Search public GitHub org/repos for verified secrets | `trufflehog github --org=<org> --only-verified` | 5 |
+| Mine a cloned repo for secrets (gitleaks) | `gitleaks detect --source ./cloned-repo --no-banner` | 5 |
+
 ## Attack surface signals
 
 **APPROACH:** Rank highest-yield first - exposed `.git/` (dump + mine history) > `.env`/config files > JS bundles + source maps (rebuilt source) > public org/employee repos > CI logs > S3/blob listings; collect each candidate with its type tag, then LIVE-validate.

