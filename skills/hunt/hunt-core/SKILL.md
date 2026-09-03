@@ -321,6 +321,14 @@ own `## Wiki` block. Extend this table, not `playbook.json`, when a driver-side 
 | ofbiz | rce | hunt-rce | os-command-injection | cve-arsenal |
 | aws-keys | cloud | hunt-cloud | cloud-iam-attacks | aws-access-token-secrets |
 | cognito | cloud | hunt-cloud | cloud-iam-attacks | aws-service-cognito |
+| content-discovery-baseline | content-discovery | hunt-rce | web-attack-surface | wordlists |
+| js-extract-baseline | js-extract | hunt-secrets | javascript-source-map-exploitation | recon-dorks |
+| recon-nuclei-baseline | recon-nuclei | hunt-rce | web-attack-surface | nuclei-arsenal |
+| recon-nikto-baseline | recon-nikto | hunt-rce | web-attack-surface | cve-arsenal |
+| wpscan-scan-baseline | wpscan-scan | hunt-rce | cms-exploitation | cms-exploitation |
+| osint-subdomain-baseline | osint-subdomain | hunt-secrets | web-attack-surface | recon |
+| osint-leaks-baseline | osint-leaks | hunt-secrets | secret-hunting | recon-dorks |
+| linux-svc-enum-baseline | linux-svc-enum | hunt-rce | vuln-assessment | service-enumeration |
 | dynamodb | cloud | hunt-cloud | cloud-iam-attacks | aws-service-dynamodb |
 | ec2 | cloud | hunt-cloud | cloud-iam-attacks | aws-service-ec2 |
 | lambda | cloud | hunt-cloud | cloud-iam-attacks | aws-service-lambda-api-gateway |

@@ -90,6 +90,34 @@ CLASS_TOOL = {
     "cache": "nuclei",
 }
 
+CLASS_TOOL.update({
+    "content-discovery": "ffuf", "js-extract": "linkfinder", "recon-nuclei": "nuclei",
+    "recon-nikto": "nikto", "wpscan-scan": "wpscan", "osint-subdomain": "subfinder",
+    "osint-leaks": "trufflehog", "linux-svc-enum": "searchsploit",
+})
+
+# Vector-workflow pipeline (osint pre-pass, then per-asset web/ad_windows/linux baseline +
+# narrow fingerprint-gated exceptions). VECTOR_PRIORITY controls per-asset row emission order;
+# osint is handled as a separate pre-pass (target-level, before any asset/IP exists) rather than
+# appearing in VECTOR_PRIORITY.
+VECTOR_CLASSES = {
+    "osint": ["osint-subdomain", "osint-leaks"],
+    "web": ["content-discovery", "js-extract", "recon-nuclei", "recon-nikto"],
+    "ad_windows": ["ad", "windows"],
+    "linux": ["linux-svc-enum"],
+}
+# (vector, fingerprint substring) -> extra class, only added when BOTH the vector matched AND
+# the substring appears in the asset's hay text. Narrow and hand-curated on purpose.
+VECTOR_EXCEPTION = {
+    ("web", "wordpress"): "wpscan-scan",
+}
+VECTOR_PRIORITY = ["web", "ad_windows", "linux"]
+VECTOR_INDICATOR = {
+    "web": re.compile(r"\b(https?|nginx|apache|iis|tomcat)\b"),
+    "ad_windows": re.compile(r"\b(smb|ldap|kerberos|winrm|rdp|445|389|88|3389|5985)\b"),
+    "linux": re.compile(r"\b(ssh|22|linux|nfs|rsync)\b"),
+}
+
 
 # --------------------------------------------------------------------------- helpers
 
@@ -175,17 +203,42 @@ def _class_info(index):
     return info
 
 
+def _emit_row(out, seen, dead, info, asset, cls):
+    """Append a 4a row dict for (asset, cls) unless already seen/deadended. Shared by the
+    OSINT pre-pass and the per-asset implied/vector/base emission in derive_rows()."""
+    key = (asset.lower(), cls.lower())
+    if key in seen or key in dead:
+        return
+    seen.add(key)
+    skill, arsenal = info.get(cls, ("", ""))
+    out.append({
+        "asset": asset, "vuln class": cls, "arsenal": arsenal,
+        "skill": skill, "tool": CLASS_TOOL.get(cls, "nuclei"),
+        "status": "[ ]", "poc": "", "poc_kind": "",
+    })
+
+
 def derive_rows(eng, index, etype):
-    """Desired 4a rows (dicts, no id) for the engagement: one per applicable
-    vuln-class per asset. Applicable = classes implied by matched fingerprints
-    (higher-ranked) UNION BASE_CLASSES[etype]. G4-suppresses any (asset, class)
-    already in Deadends.md. Skill/arsenal from the routing index, tool from
-    CLASS_TOOL."""
+    """Desired 4a rows (dicts, no id) for the engagement, in this order:
+    (1) OSINT baseline rows, once, keyed to the engagement name (pre-scan, target-level --
+        no asset/IP exists yet at this phase);
+    (2) per real asset (from state.md): fingerprint-implied classes, then the baseline classes
+        of each matched vector (web > ad_windows > linux, VECTOR_PRIORITY) plus any narrow
+        fingerprint-gated VECTOR_EXCEPTION class, then BASE_CLASSES[etype] fallback.
+    G4-suppresses any (asset, class) already in Deadends.md. Skill/arsenal from the routing
+    index, tool from CLASS_TOOL."""
     routing = index.get("routing") or {}
     info = _class_info(index)
     dead = _deadend_pairs(eng)
     out, seen = [], set()
     base = BASE_CLASSES.get(etype, [])
+
+    # (1) OSINT pre-pass: pre-scan, target-level, engagement name stands in for "asset" since
+    # no host/IP exists at this phase.
+    osint_asset = Path(eng).name
+    for cls in VECTOR_CLASSES["osint"]:
+        _emit_row(out, seen, dead, info, osint_asset, cls)
+
     for r in _parse_table(Path(eng) / "state.md"):
         asset = (r.get("asset") or r.get("host") or r.get("target") or "").strip()
         if not asset or asset == "?":
@@ -199,17 +252,21 @@ def derive_rows(eng, index, etype):
                 cls = (row.get("class") or "").strip()
                 if cls and cls not in implied:
                     implied.append(cls)
-        for cls in implied + [c for c in base if c not in implied]:
-            key = (asset.lower(), cls.lower())
-            if key in seen or key in dead:
+        for cls in implied:
+            _emit_row(out, seen, dead, info, asset, cls)
+
+        # (2) vector baseline + narrow exceptions, in VECTOR_PRIORITY order
+        for vector in VECTOR_PRIORITY:
+            if not VECTOR_INDICATOR[vector].search(hay):
                 continue
-            seen.add(key)
-            skill, arsenal = info.get(cls, ("", ""))
-            out.append({
-                "asset": asset, "vuln class": cls, "arsenal": arsenal,
-                "skill": skill, "tool": CLASS_TOOL.get(cls, "nuclei"),
-                "status": "[ ]", "poc": "", "poc_kind": "",
-            })
+            for cls in VECTOR_CLASSES[vector]:
+                _emit_row(out, seen, dead, info, asset, cls)
+            for (v, fp_substr), exc_cls in VECTOR_EXCEPTION.items():
+                if v == vector and fp_substr in hay:
+                    _emit_row(out, seen, dead, info, asset, exc_cls)
+
+        for cls in [c for c in base if c not in implied]:
+            _emit_row(out, seen, dead, info, asset, cls)
     return out
 
 
