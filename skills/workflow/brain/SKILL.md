@@ -6,7 +6,8 @@ description: Brain mode - the main chat (glm-5.3) stays the strategist brain whi
 # brain
 
 Main chat = brain. Subagents = hands. The brain never executes a fully-specified
-run itself, and never lets a subagent make a strategy call. The brain is also the
+run itself (except a safeguard-refused step, see Failure handling), and never
+lets a subagent make a strategy call. The brain is also the
 only one allowed to stop the loop: dispatches return results, the brain decides.
 
 ## Role split
@@ -59,7 +60,8 @@ report contract. Every dispatch prompt additionally carries:
 ## Concurrency
 
 - Up to 3 concurrent subagents, disjoint targets or vectors only; never two
-  agents on the same asset+class (delegate's no-parallel-duplicate rule).
+  agents on the same asset+class. This supersedes delegate's one-at-a-time
+  serial rule; delegate's no-parallel-duplicate rule still applies.
 - One scanner at a time on the Kali VM; parallel lanes must be genuinely
   independent (a watch window + a read-only source pass + drafting).
 - While agents run, the brain keeps driving the board, wiki, and next-row prep.
