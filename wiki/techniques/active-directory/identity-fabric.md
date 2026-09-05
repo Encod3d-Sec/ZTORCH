@@ -284,7 +284,7 @@ Discovered client_ids from JS bundles can be used to craft OAuth consent phishin
 
 **Cerberus** mirrors how enterprise appliances ship **plaintext SAML federation metadata**. When `ISSUER_URL=http://dc.cerberus.local/adfs/services/trust` satisfies an exploitable SSO handler (documented externally for CVE-2022-47966 workflows), chaining becomes configuration-driven rather than pure AD compass work.
 
-Operational lesson: fingerprint **`/adfs/ls/`** flows early, correlate **PKI material** on disk, and hunt **plaintext IdP issuer strings** bundled with SSO-integrated appliances (see [[adcs]], [[evil-winrm]] for adjacent Windows tooling contexts).
+Operational lesson: fingerprint **`/adfs/ls/`** flows early, correlate **PKI material** on disk, and hunt **plaintext IdP issuer strings** bundled with SSO-integrated appliances (see [[adcs]], [[wiki/tools/evil-winrm]] for adjacent Windows tooling contexts).
 
 ---
 

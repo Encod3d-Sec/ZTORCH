@@ -31,4 +31,4 @@ Roughly **170** sister pages sourced from Swisskyrepo *InternalAllTheThings* sha
 
 ## Tools
 
-Cross-check [[netexec]], [[certipy]], [[evil-winrm]], and tool notes inside [[ad-cheatsheet|Active Directory cheatsheet]] during engagements.
+Cross-check [[netexec]], [[certipy]], [[wiki/tools/evil-winrm]], and tool notes inside [[ad-cheatsheet|Active Directory cheatsheet]] during engagements.

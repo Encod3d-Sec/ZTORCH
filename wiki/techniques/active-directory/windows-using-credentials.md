@@ -589,7 +589,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[evil-winrm]]
+- [[wiki/tools/evil-winrm]]
 - [[impacket]]
 - [[netexec]]
 - [[radare2]]

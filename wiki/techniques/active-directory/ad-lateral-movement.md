@@ -384,7 +384,7 @@ Treat BloodHound edges as prerequisites for reachable services and tools. Enumer
 | `GenericAll`, `ForceChangePassword`, `Self` on User | Controlled password reset, SMB or WinRM with new secret | **445**, **5985**; RPC **setuserinfo2** versus PowerShell ACL helpers |
 | `WriteDacl` / privileged group join on sensitive object | Delegate **DCSync** capability | Replication RPC (**445**, **135**, high ports) via `secretsdump.py` |
 | Replication rights (**GetChanges** + **GetChangesAll**) | Direct NTDS pull | Same as DCSync path |
-| `PSRemote`, **Remote Management Users** membership | Scripted shell transport | **5985**, **5986**; [[evil-winrm]], `Enter-PSSession` |
+| `PSRemote`, **Remote Management Users** membership | Scripted shell transport | **5985**, **5986**; [[wiki/tools/evil-winrm]], `Enter-PSSession` |
 | `AdminTo` edge with Administrative access | SMB-style execution | **445** via `psexec.py`, `wmiexec.py`, `smbexec.py`, or [[netexec]] |
 | Delegation bits / RBCD `msDS-AllowedToActOnBehalfOfOtherIdentity` | S4U workflows | Kerberos **88**; tooling on [[kerberos-attacks]] |
 
@@ -403,7 +403,7 @@ evil-winrm -i DC_hostname -u administrator -H ADMIN_NTLM_HEX
 
 **Intelligence / Search.** rerun **bloodhound-python** after swapping user context — GMSA and delegation artefacts often appear only for higher-priv collectors.
 
-**Pivotapi.** Ingest aligns SQL-linked Windows principals with Remote Management memberships; escalate with [[evil-winrm]] once creds crack.
+**Pivotapi.** Ingest aligns SQL-linked Windows principals with Remote Management memberships; escalate with [[wiki/tools/evil-winrm]] once creds crack.
 
 **Rebound.** Large graph supplemented with **`findDelegation.py`** for constrained delegation plus RBCD before DC impersonation workflows ([[kerberos-attacks]]).
 

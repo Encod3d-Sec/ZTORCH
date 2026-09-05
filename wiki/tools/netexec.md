@@ -604,7 +604,7 @@ nxc winrm <target> -u user -p pass --lsa
 nxc winrm <target> -u user -p pass --dpapi          # Credential Manager for the connecting user, NO admin needed
 ```
 
-WinRM `--dpapi` without admin is an underused primitive for looting your own user's saved credentials. Hand off to [[evil-winrm]].
+WinRM `--dpapi` without admin is an underused primitive for looting your own user's saved credentials. Hand off to [[wiki/tools/evil-winrm]].
 
 ## WMI protocol
 

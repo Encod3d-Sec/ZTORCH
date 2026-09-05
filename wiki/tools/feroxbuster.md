@@ -158,7 +158,7 @@ This happens before enumeration begins and eliminates thousands of false positiv
 
 **Version banner.** feroxbuster always prints the config file path, version, and flags used in the banner. The `New Version Available` line is informational only; it does not affect scanning.
 
-**OpenSSL compatibility issue.** On Ubuntu hosts with newer OpenSSL defaults, evil-winrm (and other Ruby tools) may fail with connection errors. A similar issue can affect feroxbuster's HTTPS scanning. Fix by adjusting `/etc/ssl/openssl.cnf`. See [[evil-winrm]] tips for details.
+**OpenSSL compatibility issue.** On Ubuntu hosts with newer OpenSSL defaults, evil-winrm (and other Ruby tools) may fail with connection errors. A similar issue can affect feroxbuster's HTTPS scanning. Fix by adjusting `/etc/ssl/openssl.cnf`. See [[wiki/tools/evil-winrm]] tips for details.
 
 **Scan Management Menu.** Pressing Enter during a scan opens an interactive menu to pause, add or remove filters, or adjust thread count in real time without restarting.
 
