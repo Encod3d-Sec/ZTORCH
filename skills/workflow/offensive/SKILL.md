@@ -21,6 +21,10 @@ python3 scripts/offensive.py --eng <name> done <row> --poc <img> --kind req   # 
 outcome with `note` (arsenal card consulted) and `done` (closed with evidence, dead, or parked).
 Re-run `next`. That is the whole cycle.
 
+Under `/brain` (see `Skill(brain)`): the driver loop, gates, and board stay in
+the brain; the execution of each `next` action is delegated to a subagent per
+brain's tier table. Plain `Skill(offensive)` without /brain is unchanged.
+
 ## Start / resume
 
 1. `python3 scripts/offensive.py init <name> --type pentest|ctf|bb` - scaffolds `targets/<name>/`
