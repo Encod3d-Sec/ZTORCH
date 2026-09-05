@@ -159,3 +159,33 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## Detecting a mimispool-class PrintNightmare from host artefacts
+
+The exploit cleans its registry footprint (no rogue driver under
+`Print\Environments\Windows x64\Drivers\Version-3`, no rogue printer under `Print\Printers`), so
+detection lives in Sysmon/Security events and the spool filesystem. Chain, in order:
+
+- Security 4648 (explicit credential logon) to the rogue print server, TargetServerName with an
+  FQDN and port 445: the account used is a GUEST-class credential, not the logged-in user.
+- Sysmon 11 (FileCreate, Image=spoolsv.exe): stock TTY driver DLLs staged into
+  `C:\Windows\System32\spool\drivers\x64\3\New\` (driver-package staging dir), then the payload
+  `mimispool.dll` into `x64\3\New\` and a 32-bit fallback `W32X86\3\New\`; final rest location is
+  one level up (`x64\3`, `W32X86\3`).
+- Sysmon 13 (RegistryEvent SetValue, Image=spoolsv.exe): `HKLM\SYSTEM\CurrentControlSet\Enum\SWD\PRINTENUM\{...}\FriendlyName`
+  set to `\\<rogue-server>\<Printer Name>` - the ONLY surviving record of the added printer's name
+  once the printer/driver keys are deleted.
+- Sysmon 1 (ProcessCreate): `cmd.exe` as `NT AUTHORITY\SYSTEM` with ParentImage spoolsv.exe (the
+  payload shell), followed by `net.exe ... localgroup administrators <user> /add` parented by that
+  cmd; Security 4732 lands milliseconds later (user added to Builtin\Administrators).
+- Filesystem: `C:\Windows\System32\spool\SERVERS\<rogue-server-FQDN>\` persists after the exploit.
+- PCAP pairing: NTLMSSP session-setup spray from the interactive user (STATUS_LOGON_FAILURE,
+  0xc000006d) is noise; the exploit itself is a SUCCESSFUL session setup as a different
+  guest-class account, tree-connects to `IPC$` (srvsvc, spoolss named pipes) then `print$`, and
+  READs both DLL paths off it.
+
+<!-- promoted-slug: printnightmare-detection-artifacts -->

