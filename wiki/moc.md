@@ -16,7 +16,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[cloud-moc|Cloud]] (53)
 - [[cracking-moc|Cracking]] (6)
 - [[exploit-dev-moc|Exploit Dev]] (19)
-- [[forensics-moc|Forensics]] (2)
+- [[forensics-moc|Forensics]] (3)
 - [[linux-moc|Linux]] (10)
 - [[macos-moc|Macos]] (19)
 - [[methodology-moc|Methodology]] (13)
@@ -56,6 +56,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[lfi-path-traversal]]
 - [[llm-prompt-injection]]
 - [[macos-app-injection]]
+- [[mcp-tool-poisoning]]
 - [[mfa-bypass]]
 - [[modbus]]
 - [[nosql]]
