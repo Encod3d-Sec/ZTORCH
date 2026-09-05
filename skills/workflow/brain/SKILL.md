@@ -1,6 +1,6 @@
 ---
 name: brain
-description: Brain mode - the main chat (glm-5.3) stays the strategist brain while all execution runs in subagents: haiku (glm-5.3-flash) for fully-specified mechanical runs, sonnet (glm-5.3) when the run needs in-run judgement, up to 3 concurrent disjoint agents. Fully integrated with the offensive driver: invoked via /brain, the driver loop stays in the brain and each next-action's execution is dispatched. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
+description: Brain mode - the main chat (glm-5.3) stays the strategist brain while all execution runs in subagents (haiku = glm-5.3-flash for fully-specified mechanical runs, sonnet = glm-5.3 when the run needs in-run judgement), up to 3 concurrent disjoint agents. Fully integrated with the offensive driver - invoked via /brain, the driver loop stays in the brain and each next-action's execution is dispatched. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
 ---
 
 # brain
