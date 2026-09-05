@@ -73,3 +73,22 @@ Room answer-format masks (the `**.**.**` strings) are approximate; trust the raw
 - [[splunk-lpe-persistence]] for the offensive side of Splunk instances
 
 <!-- promoted-slug: splunk-siem-investigation -->
+
+## Direct-IP access lane (no reverse proxy)
+
+- Splunk FREE LICENSE (8.2.x): management port 8089 refuses every credential with `Remote login disabled ... please use Splunk Web (free license)`. Basic-auth REST is dead regardless of password; do not burn rounds guessing creds, go straight to the web-form session lane above.
+- On some builds the splunkd web-proxy export endpoint answers `405 Method Not Allowed` to POST while accepting GET with urlencoded args; if POST 405s once, switch to `curl -G ... --data-urlencode 'search=search <SPL>'` rather than debugging headers.
+
+## Sysmon question ladder (endpoint-only rooms)
+
+When the index is a single Windows endpoint (`WinEventLog:Microsoft-Windows-Sysmon/Operational`), the ladder is EventCode-driven. Beats that recurred:
+
+- Renamed tooling: the binary name tells you nothing; identity comes from `EventCode=1` PE fields `Company`, `Product`, `OriginalFileName`, `Description` (a renamed NirSoft tool keeps `Company=NirSoft`; a renamed browser-credential dumper keeps its CLI flags like `/stab`).
+- A binary that ran but has NO EventCode=1 row (pre-installed second stage): find it via `EventCode=7 Image=<path>` (image-load) and enumerate its `ImageLoaded` DLLs, which also answers "which DLLs did it load" (filter to its own folder, exclude system DLLs, sort alphabetically).
+- C2: `EventCode=3 Image=<suspect> | stats count by DestinationIp DestinationPort`, a count of 2 on one external IP is the room's "two outbound connections"; ignore loopback and CDN noise.
+- Registry tamper: `EventCode=13` `TargetObject`/`Details`; nine DWORD 1 writes under `Policies\...\Windows Defender` = defense evasion.
+- AV tamper chain: `EventCode=1 CommandLine=*MpPreference*` shows `forfiles` LOLBAS invocations spawning `cmd -> powershell WMIC /NAMESPACE:\\root\Microsoft\Windows\Defender PATH MSFT_MpPreference call Add ThreatIDDefaultAction_Ids=<ID> ThreatIDDefaultAction_Actions=6 Force=True` (Actions=6 = allow). Order the series by _time; the IDs in execution order is a standard room question.
+- Cleanup: `EventCode=1 taskkill` CommandLines carry the killed AND deleted binary names (`taskkill /im X /f & erase X`); confirm termination with EventCode=5.
+- `Image` paths mix `FINANC~1` short names with long names for the same directory: match with `Image=*Temp*` wildcards, not exact paths.
+
+<!-- promoted-slug: splunk-siem-sysmon-ladder -->
