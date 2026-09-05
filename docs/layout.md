@@ -50,7 +50,7 @@ ZTORCH/
 │   │                               + hooks/ (hook scripts)
 │   ├── hunt/                    <- hunt-* vuln-class skills (25) + hunt-core (shared discipline) + triggers.json
 │   ├── vector-workflow/         <- board-seeding pipeline reference (promoted to top-level; not a loop step)
-│   ├── workflow/                <- offensive (driver) + engage (router) at root; the rest subfoldered by role
+│   ├── workflow/                <- offensive (driver) + engage (router) + brain (subagent dispatch) at root; the rest subfoldered by role
 │   │                               (nesting is organizational only, skills are discovered by basename):
 │   │                               closeout/ (triage, evidence, learn, walkthrough)
 │   │                               recon/ (wiki-recon, wiki-arsenal, nday, research-ingest, ingest)

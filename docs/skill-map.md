@@ -24,6 +24,7 @@ organizational only.
 | Session end / pause work                      | `gsd:pause-work` (optional plugin) or the manual pause-work steps                      |
 | Parallel independent tasks                    | Dispatch several Agent tool calls in one message, or `superpowers:dispatching-parallel-agents` (optional) |
 | Run a full pentest/bb/ctf engagement autonomously  | `offensive` skill (driver: `scripts/offensive.py --type pentest\|bb\|ctf`; the single source of truth for the execution loop) |
+| Run an engagement (or any task) with the main chat as brain and execution in subagents | `brain` skill (haiku = glm-5.3-flash default, sonnet = glm-5.3 for in-run judgement; max 3 concurrent disjoint agents; wraps `offensive` when invoked via /brain) |
 | Check the offensive driver is set up on this machine | `offensive-doctor` (`scripts/offensive-doctor.py`)                              |
 | Board seeding order / vector workflow (why a row is on the board) | `vector-workflow` skill (OSINT pre-pass -> per-asset vector baseline -> base fallback, `derive_rows()`) |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
@@ -44,7 +45,7 @@ organizational only.
 every hunt assumes. `skills/vector-workflow/` is the board-seeding pipeline reference
 (not a loop step), promoted to its own top-level directory. `skills/workflow/` holds
 the two engagement entry points at its root, `offensive` (the driver) and `engage`
-(the router), plus the process/utility skills grouped into subfolders (nesting is
+(the router), plus `brain` (subagent dispatch mode over the driver), plus the process/utility skills grouped into subfolders (nesting is
 organizational only -- the Skill tool discovers every skill by basename regardless of
 depth):
 - `closeout/` -- `triage`, `evidence`, `learn`, `walkthrough`
