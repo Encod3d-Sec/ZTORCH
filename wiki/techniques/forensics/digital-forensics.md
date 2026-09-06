@@ -22,8 +22,6 @@ Post-exploitation / analysis (CTF forensics; IR; evidence extraction).
 ## Prerequisites
 - The artifact (image/dump/pcap) and its type. For memory: the OS profile/symbols.
 
-## Methodology
-
 ### File triage (start here)
 ```bash
 file artifact;  binwalk artifact            # embedded files/signatures ([[binwalk]])
@@ -86,8 +84,6 @@ Full-disk encryption, log integrity (append-only/remote), memory-acquisition res
 
 ## Tools
 `volatility3`, [[binwalk]], Wireshark / [[wiki/tools/tshark]], `foremost`, `exiftool`, Autopsy / sleuthkit, `bulk_extractor`, `regripper`, plaso. See [[steganography]], [[encoding-transformations]].
-
-## Sources
 
 ### WMI CIM repository (fileless persistence extraction)
 
@@ -181,3 +177,35 @@ hand-rolled (not a known framework - for the known-framework case see the Empire
    the attacker's session and pull the flag.
 
 <!-- promoted-slug: malware-c2-reconstruction-evtx-pcap -->
+
+### PyInstaller covert-channel implant over pcap (image-cover C2)
+
+When the capture contains BOTH the implant download (HTTP body, often pure base64 text) and the
+implant's C2 traffic: **unpack the implant and read its logic BEFORE any cryptanalysis of the
+captured payloads.** A Python implant hands you the framing and the key outright; blind attacks on
+the ciphertext (XOR/RC4 wordlists, invented encodings) burn the session. Corollary: structure
+inferred from a corrupted carve is not evidence - if a decode looks exotic (bit-shifted records,
+odd null runs), suspect the extraction first, then re-derive the framing from the implant source.
+
+- **Persistent-socket b64 framing gotcha:** per message the wire is
+  `b64(cover file) + <separator> + b64(XOR(payload))` and the separator is split on the BASE64
+  TEXT layer, not on decoded bytes. Each message's b64 run is separately padded, so on a socket
+  carrying many concatenated messages you must split the text at the separator AND sub-chunk at
+  every `=` run boundary before decoding; stripping `=` mid-stream silently corrupts the decode.
+  Cover files (memes, logos) are decoys - the payload half after the separator is the data.
+- **PyInstaller onefile with a broken cookie:** `pyinstxtractor` extracts zero entries when the
+  88-byte cookie's toc/toclen numbers do not close (toc+toclen overruns pkglen). Recover without
+  it: the TOC is a 16-byte-aligned entry chain that ENDS exactly at the cookie magic; find its
+  start by walking entries with validation (entrySize sane, printable name, type byte in
+  `smbMzZxod`), then solve the data-base offset from a known magic (`PYZ\x00` for the PYZ entry)
+  against that entry's stored position.
+- **Main script = type `s` entry** (short, non-dotted name). Its payload is zlib-deflated and
+  extracts to a BARE marshal code object (no .pyc header). No decompiler needed for keys/config:
+  `strings -n 3` on it reveals every string constant (XOR key, separator, C2 host/port); confirm
+  the cipher by reading the ~15 bytecode opcodes of the crypto helper (repeating
+  `data[i] ^ key[i % len(key)]` is visible directly in the marshal dump).
+- With framing + key from the implant, decode BOTH directions in frame order (commands one way,
+  command output the other) to rebuild the attacker's full session - the room answers (files
+  read, backdoor user/executable+md5, cronjobs, flag) fall out of the transcript.
+
+<!-- promoted-slug: pyinstaller-c2-forensics -->
