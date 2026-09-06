@@ -1089,6 +1089,13 @@ def cmd_init(args):
         "started_at": datetime.now(timezone.utc).isoformat(),
     }
     state_path.write_text(json.dumps(state, indent=2))
+    # repoint targets/active.md so hook telemetry (.events.jsonl) lands in THIS engagement;
+    # a stale pointer silently breaks G2 (skill fires recorded under the old engagement)
+    active = vault / "targets" / "active.md"
+    prev = active.read_text().strip() if active.exists() else ""
+    if prev != args.name:
+        active.write_text(args.name + "\n")
+        print("init: targets/active.md -> %s (was: %s)" % (args.name, prev or "<none>"))
     print("init: %s type=%s -> %s" % (args.name, args.type, eng))
     return 0
 
