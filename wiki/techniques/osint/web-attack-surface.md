@@ -208,3 +208,22 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[information-disclosure]]
+
+## <Heading>
+
+<generic technique steps; no client host/IP/domain>
+
+## Dead-domain developer attribution (CT log dates + repo-search API)
+
+When a domain's hosting is gone (every name NXDOMAIN) and the task is to find WHO built it: certificate transparency keeps the historical issuance dates, and the distinctive domain word (the part before the TLD) in the REPOSITORY search API finds the developer's own repo where the USER search API returns nothing (usernames rarely contain the domain word, repo names/descriptions often do).
+
+```sh
+curl -s "https://crt.sh/?q=%25.<domain>.com&output=json"          # names + not_before dates
+curl -s "https://api.github.com/search/repositories?q=<domainword>"  # repo + created_at + owner login
+```
+
+Attribution cross-check: a dev-side cert (a staging/uat/admin SAN) issued on the same DAY a candidate repo was created ties the anonymous repo to the domain's build window; a first-commit footer credit ("Website developed by <login>") then confirms it outright. Sequence once cloned: `git log --all --format='%ae | %s'` for identity and intent; the commit whose message says something was REMOVED is the one to `git show`, the removed content (comment, credit, key) survives in the diff.
+
+Gotcha: answer-format masks in CTF-style tasks disambiguate same-day certs (a SAN shared cert with admin + staging names: count the mask characters against each candidate).
+
+<!-- promoted-slug: osint-domain-developer-attribution -->
