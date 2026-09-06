@@ -362,6 +362,9 @@ go build
 
 # crt.sh for subdomain discovery via SSL certificates
 curl -s "https://crt.sh/?q=example.com&output=json" | jq -r '.[].name_value' | sort -u
+
+# Reader proxy for bot-blocked pages (curl/WebFetch get 403 from Medium, Cloudflare challenges)
+curl -sL "https://r.jina.ai/https://medium.com/@author/some-writeup"    # returns page as markdown
 ```
 
 ---

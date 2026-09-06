@@ -197,6 +197,18 @@ WINDCORP.HTB = {
 
 **evil-winrm-py is a separate Python implementation** used in darkzero. It has the same basic interface (`-i`, `-u`, `-H`) but is a distinct project, not the standard Ruby gem.
 
+**Non-interactive one-shot commands (scripted use).** evil-winrm v3.7 has no exec flag for one-shot commands. Pipe the session instead: base64 the command locally, decode and `iex` remotely, which sidesteps every quoting problem:
+
+```bash
+CMD_B64=$(printf '%s' 'Get-LocalUser | select Name' | base64 -w0)
+echo "[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(\"$CMD_B64\")) | iex" | \
+  evil-winrm -i TARGET -u USER -p PASSWORD
+```
+
+**Large single-line stdout comes back empty.** Output over ~1 KB on a SINGLE line (one CSV row, a base64 blob, minified JSON) frequently returns 0 bytes over WinRM; multi-line output of the same size is usually fine. Workaround: write to a file on the target, base64 it in chunks, then `download` the file instead of scraping stdout.
+
+**Path mangling in piped one-shot mode.** Backslash-bearing absolute paths (`C:\Users\...`) get eaten by the local shell before reaching WinRM; stage payloads under a short relative path (`C:\programdata\tool.exe`) and `cd` first, or pass paths as base64 like any other string.
+
 ## Related techniques
 
 - [[ad-lateral-movement|AD Lateral Movement]]
