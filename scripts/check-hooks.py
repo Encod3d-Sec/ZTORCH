@@ -40,6 +40,7 @@ EXPECTED_HOOKS = [
     ("PreToolUse", "sleep-guard.py"),
     ("PreToolUse", "session-guard.py"),
     ("PreToolUse", "drift-guard.py"),
+    ("PreToolUse", "zg-nudge.py"),
     ("PreCompact", "pre-compact.sh"),
     ("Stop", "close-out.py"),
 ]

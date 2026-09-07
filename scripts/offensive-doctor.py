@@ -18,9 +18,11 @@ Checks (each a PASS/WARN/FAIL line; exit 1 if any FAIL):
 
 WARN never fails the run. Exit 0 = all green (warns allowed); 1 = at least one FAIL.
 """
+import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -123,6 +125,36 @@ def _skill_and_hook():
           "G2 fails open without it - run setup/install-hooks.sh", warn=True)
 
 
+# --------------------------------------------------------------------------- 6. zg (zvec-grep) search layer
+
+def _zg():
+    """zg integration health: warn-level, fail-open - the harness works without zg,
+    doctrine just prefers it. Each check prints its own fix command."""
+    zg = shutil.which("zg")
+    if check("zg CLI on PATH", bool(zg),
+             "npm install -g @zvec/zvec-grep (Node 22+)", warn=True):
+        idx = os.path.join(VAULT, ".zvec-grep")
+        check("zg standing index present (vault root)", os.path.isdir(idx),
+              "cd %s && zg index --no-ignore -g '!.obsidian/**' -g '!**/poc/cmdlog/**' "
+              "--embedding local/potion-retrieval-32m "
+              "(full exclude set: wiki/tools/zvec-grep.md)" % VAULT, warn=True)
+        reg = False
+        try:
+            with open(os.path.expanduser("~/.claude.json"), encoding="utf-8") as fh:
+                reg = "zvec-grep" in (json.load(fh).get("mcpServers") or {})
+        except Exception:
+            pass
+        check("zg MCP server registered (user scope)", reg,
+              "claude mcp add -s user -t http zvec-grep http://127.0.0.1:7999/mcp", warn=True)
+        daemon = False
+        try:
+            with socket.create_connection(("127.0.0.1", 7999), timeout=1):
+                daemon = True
+        except OSError:
+            pass
+        check("zg daemon reachable (loopback 7999)", daemon, "zg server on", warn=True)
+
+
 # --------------------------------------------------------------------------- 7. live smoke test
 
 def _smoke():
@@ -162,6 +194,7 @@ def main(argv):
         _routing(off)
         _tools(off)
     _skill_and_hook()
+    _zg()
     _smoke()
 
     fails = [r for r in RESULTS if r[1] == "FAIL"]

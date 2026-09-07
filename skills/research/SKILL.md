@@ -14,8 +14,9 @@ This skill is the research analog of the engagement framework: `raw/research/<pr
 ## 0. Setup (once per target)
 1. Identify target **type + version + source**. Get the code/binary: repos via WSL clone (`wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>`), releases by download.
 2. Scaffold: `bash setup/new-research.sh <project_name>` -> `raw/research/<project>/{target,surface,findings,deadends,loop}.md + poc/` (also sets it active in `raw/research/active.md`, so SessionStart surfaces its status).
-3. Build/run it where possible - a runnable target unlocks dynamic testing + fuzzing.
-4. Fill `target.md`: what it is, version, language, build/run commands, trust boundaries.
+3. zg covers clones automatically - the standing vault index includes `raw/git/`, so `zg query` reaches the repo (AGENTS.md Search rule). No per-clone index step: `zg index` climbs to the enclosing workspace root, per-clone workspaces are not a thing.
+4. Build/run it where possible - a runnable target unlocks dynamic testing + fuzzing.
+5. Fill `target.md`: what it is, version, language, build/run commands, trust boundaries.
 
 ## 1. State-first (EVERY iteration, MANDATORY)
 Read `raw/research/<project>/{loop.md, deadends.md, findings.md}` before acting. Never re-run a logged dead-end without new input. Resume from the last iteration. This is the anti-loop rule - the same discipline engagements use. Run `python3 scripts/research_status.py` for the current phase + ranked next move (also auto-surfaced at SessionStart from `raw/research/active.md`).
@@ -54,7 +55,7 @@ A finding spawns its own mini-loop - each question is an iteration, and a dead-e
 2. **Reachability** - is it triggerable from a real attacker boundary (not just an internal call)?
 3. **Exploitability** - is the primitive controllable (overwrite what / leak what / which state)?
 4. **Impact** - RCE / memory corruption / info leak / DoS / privesc / auth bypass.
-5. **Variants** - is the same bug pattern present elsewhere (grep the codebase)?
+5. **Variants** - is the same bug pattern present elsewhere (zg or grep the codebase)?
 
 ## 7. Prove + novelty-check
 - Minimal reproducible **PoC / trigger** in `poc/`.

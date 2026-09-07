@@ -142,6 +142,10 @@ if not has("PreToolUse", "drift-guard.py"):
     add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/drift-guard.py", "timeout": 10}]})
     print("added PreToolUse drift-guard")
+if not has("PreToolUse", "zg-nudge.py"):
+    add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/zg-nudge.py", "timeout": 10}]})
+    print("added PreToolUse zg-nudge")
 if not has("SessionStart", "session-start.sh"):
     add("SessionStart", {"hooks": [{"type": "command",
         "command": "bash ~/.claude/vault-hooks/session-start.sh"}]})

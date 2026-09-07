@@ -33,6 +33,7 @@ ZTORCH/
 │   ├── conventions.md           <- cross-referencing, log format, style guide
 │   ├── auto-triggers.md         <- what auto-fires (hooks, triggers.json, playbook) and when
 │   ├── skill-map.md             <- task -> skill/tool dispatch table (relocated from AGENTS.md)
+│   ├── superpowers/             <- design specs/plans (git-ignored; machine paths, scrub before sharing)
 │   └── layout.md                <- this file: full annotated directory tree
 ├── scripts/                     <- automation (self-documenting via docstrings): next_move,
 │                                   status.py (on-demand engagement dashboard: phase/counts/evidence/deadends/moves),

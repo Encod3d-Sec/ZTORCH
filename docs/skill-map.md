@@ -16,7 +16,8 @@ organizational only.
 | Write/edit vault `.md`                        | `obsidian:obsidian-markdown` (optional plugin), else follow `docs/page-types.md` conventions |
 | Fetch URL for ingest                          | `WebFetch` tool                                                                        |
 | Read vault file                               | `Read` tool with machine path (see AGENTS.md / `AGENTS.local.md`)                      |
-| Search vault                                  | `qmd_query` (semantic) or `qmd_search` (keyword) via `wiki-search` MCP                 |
+| Search vault (wiki semantic/keyword)          | `qmd_query` (semantic) or `qmd_search` (keyword) via `wiki-search` MCP                 |
+| Search workspace files (vault, targets/, raw/git) | `zg` first: `zvec_grep_search` MCP or `zg query --human "..."`; grep only inside one file |
 | Maintain wiki index (re-index, status)        | `wiki` skill                                                                           |
 | Load engagement playbook / FIND schema        | Read `targets/TARGETS.md`                                                              |
 | Audit AGENTS.md (full review)                 | `agents-md-improver` skill (vault-local offline reviewer)                              |

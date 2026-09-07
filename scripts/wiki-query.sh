@@ -19,7 +19,7 @@ export HF_HUB_DISABLE_PROGRESS_BARS=1     # silence the model-load progress nois
 
 if ! command -v qmd >/dev/null 2>&1; then
   echo "wiki-query: qmd not installed (setup/bootstrap.sh installs it)." >&2
-  echo "  fallback: grep -rin '<term>' wiki/   (then Read the matching page)" >&2
+  echo "  fallback: zg query --human '<term>' -g 'wiki/**'   (then Read the matching page)" >&2
   exit 1
 fi
 
@@ -44,11 +44,20 @@ qmd --help 2>/dev/null | grep -qE '^[[:space:]]*qmd search ' || KW=keyword
 
 keyword_search() {
   local out rc
+  # zg first (hybrid lexical over the vault index, wg 2026-09); qmd stays the
+  # deterministic fallback when zg is missing or its daemon is down.
+  if command -v zg >/dev/null 2>&1; then
+    if out="$(zg query --human "$Q" --limit "$N" -g 'wiki/**' 2>&1)"; then
+      printf '%s\n' "$out"
+      return 0
+    fi
+    echo "wiki-query: zg query failed -> qmd keyword fallback" >&2
+  fi
   out="$(qmd "$KW" "$Q" -n "$N" 2>&1)"; rc=$?
   if [ "$rc" -ne 0 ] || printf '%s\n' "$out" | grep -qi 'unknown command'; then
     echo "wiki-query: 'qmd $KW' failed -- qmd CLI changed?" >&2
     printf '%s\n' "$out" >&2
-    echo "  fallback: grep -rin '$Q' wiki/   (then Read the matching page)" >&2
+    echo "  fallback: zg query --human '$Q' -g 'wiki/**'   (then Read the matching page)" >&2
     return 1
   fi
   printf '%s\n' "$out"
