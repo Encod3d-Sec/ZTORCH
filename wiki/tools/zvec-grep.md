@@ -30,16 +30,13 @@ MCP registration (once, user scope): `claude mcp add -s user -t http zvec-grep h
 
 Notes: `--no-ignore` is required because `targets/` is git-ignored but must stay searchable. `zg index` always climbs to the enclosing workspace root, so per-clone indexes do not exist; `raw/git` clones are covered by the standing index. `poc/cmdlog/` transcripts and images/binaries are excluded: engagement command logs are grep-heavy noise that swamps ranked results (measured in T2), and they stay reachable via grep/Read. Everything stays local (local embedding model, loopback server).
 
-## Usage
+## Core usage
 
 ```bash
-# ranked semantic+lexical search (preferred)
 zg query --human "where is the scope guard that blocks out-of-scope hosts" --limit 5
-# wiki-scoped query
-zg query --human "prefetch runcount artefact" --limit 5 -g 'wiki/**'
-# exact pattern with full ripgrep power over the index
-zg query --rg -e "CVE-2023-23752"
-# MCP tools (agent toolset): zvec_grep_search; full toolset adds *_rg/_index/_status/_server_status
+zg query --human "prefetch runcount artefact" --limit 5 -g 'wiki/**'   # wiki-scoped
+zg query --rg -e "CVE-2023-23752"                                      # exact pattern, ripgrep power
+# MCP (agent toolset): zvec_grep_search; full toolset adds *_rg/_index/_status/_server_status
 ```
 
 ## Harness integration
