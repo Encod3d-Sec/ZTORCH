@@ -132,6 +132,10 @@ Read the full engagement and list every candidate GENERIC lesson:
 - `Deadends.md` - what failed. Negative knowledge is reusable: a bypass that does NOT
   work on tech X, a default cred changed in vendor version Y, a false-positive pattern.
 - `Vuln-index.md` / `Vulns/` - findings and their reusable exploitation technique.
+- A small indicator that would have routed you to the vector early (a sink call, a token shape,
+  an error signature, a header quirk) -> a HIGH-PRECISION row in `scripts/tells.json` (the
+  tracked tell battery; hunt-core runs it before big reads). Ask per finding: "what one string,
+  grepped early, names this class?" - if the answer exists and is precise, add the row now.
 - `Approach.md`, `log.md` - anything else non-obvious that recurs.
 
 A candidate is worth harvesting only if it is REUSABLE on the next engagement. Skip

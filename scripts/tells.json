@@ -16,6 +16,18 @@
     {"re": "<!--[^>]{0,200}(TODO|FIXME|admin|internal|debug|staging|backdoor|remove (this|before))", "class": "secrets", "skill": "hunt-secrets", "note": "HTML comment hint; read the whole comment block"},
     {"re": "Traceback \\(most recent|\\bat [\\w.$]+\\([\\w.$]+:(java|py|js):?\\d+\\)|Fatal error:|Stack trace", "class": "secrets", "skill": "hunt-secrets", "note": "stack trace in output; harvest paths/versions/SQL from it"},
     {"re": "(Server|X-Powered-By):\\s*[A-Za-z]+/\\d", "class": "recon", "skill": "", "note": "version banner; fingerprint -> playbook.json targeted tests"},
-    {"re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV.*production|NODE_ENV.*development", "class": "recon", "skill": "", "note": "debug mode flag; debug mode = stack traces + code exec surfaces"}
+    {"re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV.*production|NODE_ENV.*development", "class": "recon", "skill": "", "note": "debug mode flag; debug mode = stack traces + code exec surfaces"},
+    {"re": "bypassSecurityTrust|\\[innerHTML\\]|\\$sce\\.trustAs|ng-bind-html|<%=\\s*raw\\s*\\(|\\{\\{[^}]*\\|\\s*safe|\\|\\s*safe\\s*\\}\\}", "class": "xss", "skill": "hunt-xss", "note": "framework raw-HTML/sanitizer-bypass sink (Angular/Jinja/Rails); trace the bound value"},
+    {"re": "(include|require)(_once)?\\s*\\(?\\s*\\$_(GET|POST|REQUEST)|eval\\s*\\(\\s*(base64_decode|gzinflate|str_rot13)", "class": "rce", "skill": "hunt-rce", "note": "PHP RFI/LFI on request input, or a webshell signature; read the include path"},
+    {"re": "\\bpassthru\\s*\\(|\\bproc_open\\s*\\(|pcntl_exec|os/exec\\.Command|exec\\.Command\\(", "class": "rce", "skill": "hunt-rce", "note": "PHP/Go command-exec sink; trace the argument back to input"},
+    {"re": "sequelize\\.literal|knex\\.raw|\\.whereRaw\\(|rawQuery\\(|executeQuery\\s*\\(\\s*[\"'][^\"']*\\+|createQuery\\([^)]*\\+", "class": "sqli", "skill": "hunt-sqli", "note": "ORM-raw or string-built SQL (Node/Java); read the query builder + param flow"},
+    {"re": "algorithms\\s*[:=]\\s*\\[\\s*[\"']none[\"']|[\"']?verify[\"']?\\s*[=:]\\s*False|ignoreExpiration\\s*=\\s*True|jwt\\.decode\\(\\s*[^,]+,\\s*None", "class": "auth", "skill": "hunt-auth", "note": "weak JWT verification config; forge/bypass path"},
+    {"re": "ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|glpat-[A-Za-z0-9_-]{20,}", "class": "secrets", "skill": "hunt-secrets", "note": "vendor token SHAPE (GitHub/Slack/Stripe/Google/GitLab); capture verbatim, test its scope"},
+    {"re": "pull_request_target|workflow_run", "class": "cicd", "skill": "hunt-cicd", "note": "fork-trigger workflow; does it check out the fork HEAD near secrets?"},
+    {"re": "\\$\\{\\{\\s*github\\.event\\.|id-token:\\s*write", "class": "cicd", "skill": "hunt-cicd", "note": "untrusted template context / OIDC write in a workflow; workflow-injection surface"},
+    {"re": "\\bphar://|XMLDecoder|readObject\\s*\\(", "class": "deserialization", "skill": "hunt-deserialization", "note": "PHP phar / Java XMLDecoder-readObject deser sink; who controls the input"},
+    {"re": "MessageDigest\\.getInstance\\(\\s*\"(MD5|SHA-1)\"|hashlib\\.(md5|sha1)\\s*\\(", "class": "auth", "skill": "hunt-auth", "note": "weak hash over creds/sessions; offline-crack path"},
+    {"re": "getHeader\\(\\s*\"X-Forwarded-For\"|\\[[\"']X-Forwarded-For[\"']\\]", "class": "auth", "skill": "hunt-auth", "note": "CODE trusts XFF (only meaningful in source, not saved requests); IP-spoof/auth-bypass surface"},
+    {"re": "Access-Control-Allow-Origin:\\s*\\*", "class": "recon", "skill": "", "note": "wildcard CORS; check Allow-Credentials + what the endpoint reflects"}
   ]
 }
