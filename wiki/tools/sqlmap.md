@@ -22,8 +22,6 @@ git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git sqlmap-dev
 python sqlmap-dev/sqlmap.py -h
 ```
 
-## Core Usage
-
 ### Basic detection
 
 ```bash
@@ -75,8 +73,6 @@ sqlmap -u URL --mobile           # use smartphone User-Agent
 sqlmap -u URL --method PUT       # non-standard HTTP method
 ```
 
-## DB Enumeration
-
 ### Basic DB info
 
 ```bash
@@ -109,8 +105,6 @@ sqlmap -u URL --dump-all --exclude-sysdbs               # dump all non-system DB
 sqlmap -u URL --search -T user   # find tables matching 'user' (LIKE)
 sqlmap -u URL --search -C pass   # find columns matching 'pass'
 ```
-
-## WAF Bypass and Advanced Options
 
 ### Level and risk
 
@@ -256,3 +250,19 @@ Test a GET parameter for SQL injection non-interactively:
 ```bash
 sqlmap -u "http://www.example.com/vuln.php?id=1" --batch
 ```
+
+## --ignore-stdin over non-TTY drivers
+
+Run over a non-TTY stdin (an `ssh host "sqlmap ..."` pipe, an agent/CI driver), sqlmap
+detects the piped stdin, and silently discards the `-r` request file: the run proceeds,
+tests the wrong thing or nothing, and can end in a false negative. Always add
+`--ignore-stdin` when stdin is not a terminal:
+
+```sh
+ssh user@host "sqlmap -r req.txt --ignore-stdin --dbms=mysql --technique=E --batch"
+```
+
+Error-based verdicts (`GTID_SUBSET`-family on MySQL) come back fine this way on dup-check
+sinks where time-based heuristics stay silent.
+
+<!-- promoted-slug: sqlmap-ignore-stdin-non-tty -->

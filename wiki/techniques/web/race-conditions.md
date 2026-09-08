@@ -34,8 +34,6 @@ This is a subtype of **Time-Of-Check to Time-Of-Use (TOCTOU)** flaws. The state 
 - The server processes the check and update non-atomically (e.g., in application code rather than a single DB transaction)
 - Ability to send requests with sub-millisecond timing differences
 
-## Methodology
-
 ### 1. Identify target endpoints
 
 Look for actions with enforced limits:
@@ -231,8 +229,6 @@ The gate ensures all 51 requests (1 register + 50 confirm) are released simultan
 
 **Session-based locking bypass:** Some frameworks (e.g., PHP native session handler) process only one request per session at a time. If requests appear sequential even when sent in parallel, switch to using different session tokens for each request to bypass the per-session lock.
 
-## Key payloads / examples
-
 ### Burp Repeater — group parallel send
 
 1. `POST /cart/coupon` — duplicate 20 times
@@ -319,8 +315,6 @@ Chaturbate enforced a per-account subdomain registration limit in application co
 - Raceocat — https://github.com/JavanXD/Raceocat — highly efficient CLI tool for exploiting web race conditions
 - h2spacex — https://github.com/nxenon/h2spacex — HTTP/2 Single Packet Attack low-level library based on Scapy
 - Custom scripts — `requests` + `ThreadPoolExecutor` for internal port enumeration races
-
-## PortSwigger Labs
 
 ### Lab 1 — Limit overrun race conditions (Apprentice)
 
@@ -437,3 +431,19 @@ def handleResponse(req, interesting):
 - [[access-control]] (TOCTOU races bypass single-use limits and permission checks)
 - [[business-logic]] (limit-overrun and coupon races are a business-logic flaw class)
 - [[idor]] (concurrent access to a shared object mirrors direct-object-reference abuse)
+
+## Reading a clean race negative (serialized check-then-write)
+
+After a bounded burst (e.g. 10 concurrent single-unit operations from a known starting
+state), the outcome pattern tells you whether the class is worth more effort:
+
+- Some requests 4xx ("insufficient balance", "limit reached") AND the final state is exactly
+  `start - successes * unit` (balance exact, cap held): the check-then-write is serialized
+  server-side. There is no TOCTOU window; record the negative and switch vectors.
+- Bursts that land exactly at a cap, with the accepted requests being TRAILING completions,
+  indicate insert-then-verify/locking: also not a race.
+
+Only a final state that beats the constraint (double-spend, cap exceeded) is a finding;
+grinding a serialized endpoint with bigger bursts only re-proves the lock.
+
+<!-- promoted-slug: race-clean-negative-diagnostics -->

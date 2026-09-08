@@ -41,8 +41,6 @@ The server executes the modified query and returns results based on the injected
 
 ---
 
-## Methodology
-
 ### Detection
 
 Probe each parameter with characters that break SQL syntax and observe response differences:
@@ -1168,3 +1166,52 @@ Rule: decode-inspect ANY encoded/constant-format token BEFORE declaring its para
 non-injectable (encode a marker like `1'` and see whether the error text changes shape).
 
 <!-- promoted-slug: encoded-param-sqli -->
+
+## MySQL 1265/1366/1054 on a JSON API is usually binding, not injection
+
+`1265 Data truncated`, `1366 Incorrect integer value`, and `1054 Unknown column` surfaced
+from a write endpoint are usually the DB connector coercing a PARAMETERIZED value (binding a
+string into a numeric column), not raw interpolation. Decisive test: send a payload that
+would span multiple SQL tokens if concatenated (`1',col=7,flag='1`); if the response returns
+the SAME single coercion error, the whole payload arrived as one bound string, the value path
+is parameterized, and no prefix/comment variant will break out. Bank the raw error disclosure
+as an info-disc item and stop the lane instead of escalating payloads.
+
+<!-- promoted-slug: mysql-coercion-errors-not-sqli -->
+
+## MySQL constant-folded error-based extraction in zero-row sinks
+
+On a uniqueness/dup-check SELECT (a clause that normally matches zero rows), an injected
+`extractvalue()`/`concat()` still executes: MySQL constant-folds deterministic expressions
+during query optimization, before any row is evaluated. The resulting `1105 XPATH syntax
+error` reflects ~32 characters of arbitrary subquery output to the caller, with no matching
+row needed. Ideal on pre-auth register/dup surfaces where the probe username never exists.
+
+```sql
+x' AND extractvalue(1,concat(0x7e,(SELECT version())))||'
+-- 1105 (HY000): XPATH syntax error: '~<version>'
+x' AND extractvalue(1,concat(0x7e,(SELECT SUBSTRING(col,1,30) FROM tbl)))||'   -- chunk 1
+x' AND extractvalue(1,concat(0x7e,(SELECT SUBSTRING(col,31,30) FROM tbl)))||'  -- chunk 2
+```
+
+- Values longer than the ~32-char reflection cap: page with `SUBSTRING(col,N,30)`.
+- `SLEEP()` is volatile, so it is NOT constant-folded and never fires when zero rows match:
+  time-based probes are falsely negative on exactly these sinks. A flat `SLEEP` battery does
+  not close the parameter; try the error-based fold first.
+
+<!-- promoted-slug: mysql-constant-fold-error-based-sqli -->
+
+## Battery the pre-auth WRITE paths when login is clean
+
+A parameterized login clears nothing else: the register endpoint's uniqueness check and other
+pre-auth writes are separate queries, frequently string-concatenated (f-string/format) when
+the login SELECT is parameterized. When login probes come back flat, switch surfaces, not
+payloads: register, dup-check, resend-verification, and similar unauthenticated write paths
+(use a fresh username per probe so the dup check actually runs).
+
+Second-order follow-on: a syntactically VALID payload username is often accepted and stored
+verbatim, and the value then rides the session identity (e.g. the JWT `username` claim) into
+authenticated scoping queries. After confirming the injection, register one such account and
+log in: the claim-carried payload is a second-order path worth one confirmation probe.
+
+<!-- promoted-slug: pre-auth-write-sqli-surface -->

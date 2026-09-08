@@ -47,8 +47,6 @@ ADACLScan.ps1 -Base "DC=contoso;DC=com" -Filter "(&(AdminCount=1))" -Scope subtr
 ./Invoke-ACL.ps1 -SharpHoundLocation .\sharphound.exe -mimiKatzLocation .\mimikatz.exe -Username 'user1' -Domain 'domain.local' -Password 'Welcome01!'
 ```
 
-## GenericAll/GenericWrite
-
 ### User/Computer
 
 We can set a **SPN** on a target account, request a Service Ticket (ST), then grab its hash and kerberoast it.
@@ -408,12 +406,29 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[hashcat]]
+- [[wiki/tools/hashcat]]
 - [[impacket]]
-- [[john]]
+- [[wiki/tools/john]]
 - [[mimikatz]]
 - Also uses (no dedicated page yet): PowerView, SharpHound, PowerSploit
 
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## GenericWrite on a privileged group: nested membership, raw-LDAP self-add, revert
+
+The generic group-add (bloodyAD `add groupMember`, `net group ... /add`) has three complements:
+
+- The target group may itself be NESTED in Domain Admins; writing your own DN into that group's `member` attribute is enough, you never touch Domain Admins directly.
+- When only LDAP is reachable (e.g. through a SOCKS pivot where RPC does not work), add membership with one ldap3 MODIFY_ADD:
+
+```py
+c.modify("CN=<group>,OU=Groups,DC=<domain>", {"member": [(MODIFY_ADD, ["CN=<you>,DC=<domain>"])]})
+```
+
+- Revert immediately after the DCSync dump (same modify with MODIFY_DELETE) and verify the member list is restored.
+
+Triage heuristic: a service account with an empty Kerberoast/AS-REP/delegation/ADCS surface but a fat set of EXPLICIT ACEs on Tier-0 objects is exactly this pattern; `adminCount=1` can be a stale artifact, trust the ACE list over it.
+
+<!-- promoted-slug: genericwrite-nested-group-selfadd -->

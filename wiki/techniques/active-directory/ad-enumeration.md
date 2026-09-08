@@ -25,8 +25,6 @@ AD exposes its object model through several protocols: LDAP (port 389/636), Kerb
 - For BloodHound SharpHound collection: PowerShell execution on domain-joined host
 - For LDAP queries from Linux: `ldapsearch` and DC IP
 
-## Methodology
-
 ### 1. Basic net commands (built-in Windows)
 
 ```cmd
@@ -346,7 +344,7 @@ Representative chains from sampled writeups (~20 machines across Easy to Hard):
 | Rebound | oorend | Large graph: bad ACL on group grants control over accounts with shadow creds / WinRM; BH supports **delegation edge** enumeration alongside `findDelegation.py` | Constrained delegation + **RBCD** to DC backup account (see [[kerberos-attacks]]) |
 | Delegate (VulnLab) | tier-1 domain user | **netexec ldap --bloodhound** zip into BloodHound CE UI | Abuse **SeEnableDelegationPrivilege**, configure delegation |
 
-For ticket-level detail after BH flags **delegation** or **DCSync**, use [[kerberos-attacks]]. For [[adcs]] template and relay pivots surfaced in BH, use [[certipy]] and [[adcs]].
+For ticket-level detail after BH flags **delegation** or **DCSync**, use [[kerberos-attacks]]. For [[adcs]] template and relay pivots surfaced in BH, use [[wiki/tools/certipy]] and [[adcs]].
 
 ## Detection and defence
 
@@ -416,3 +414,22 @@ placeholder/template content (unmodified stock names, `contact@example.com`) - t
 end. The signal is in what content-discovery surfaces that the rendered site never links to.
 
 <!-- promoted-slug: ad-username-enum-exposed-backup-file -->
+
+## Read the lockout policy from SYSVOL: LockoutBadCount = 0 disables lockout domain-wide
+
+While in SYSVOL, read the Default Domain Policy's `Policies\<GUID>\MACHINE\Microsoft\Windows NT\SecEdit\GptTmpl.inf`: `LockoutBadCount = 0` means account lockout is disabled for the whole domain, which changes password-spray calculus (no lockout risk; still expect badPwdCount monitoring and alerting). Stock GptTmpl files with no `cpassword` also close the GPP-password check in one read.
+
+<!-- promoted-slug: gpttmpl-lockoutbadcount-zero -->
+
+## Standalone WORKGROUP host: confirm domain membership before investing in AD pivots
+
+A Windows host in WORKGROUP (joined to nothing) has no AD pivot value, and its configured DNS resolver may be infrastructure, not the domain controller. Confirm from the foothold before building AD plans on it:
+
+```bat
+nltest /dsgetdc:<domain.fqdn>
+systeminfo | findstr /i "domain"
+```
+
+`/dsgetdc` returning a DC (with DS/LDAP/KDC flags) from a given vantage also proves that vantage can reach the DC at all, which is the cheapest reachability test for a pivot decision.
+
+<!-- promoted-slug: standalone-workgroup-no-ad-pivot -->

@@ -54,6 +54,18 @@ MATCH p=()-[:ADCSESC1|ADCSESC3|ADCSESC4]->() RETURN p
 - The graph is a hypothesis generator - confirm each edge is actually abusable (ACL inheritance, protected groups) before acting.
 
 ## Related techniques
-[[active-directory]], [[ad-lateral-movement]], [[ad-enumeration]], [[adcs]]. Collected via [[netexec]]; abused with [[impacket]]/[[certipy]]. Drives the `hunt-ad` skill.
+[[active-directory]], [[ad-lateral-movement]], [[ad-enumeration]], [[adcs]]. Collected via [[netexec]]; abused with [[impacket]]/[[wiki/tools/certipy]]. Drives the `hunt-ad` skill.
 
-## Sources
+## Analyzing a BloodHound zip without the GUI (jq over the JSON)
+
+The collection zip works without any UI/Neo4j: unzip it and enumerate what a principal holds rights over, across users and groups JSON at once.
+
+```sh
+jq -r '.data[] | select(.Aces!=null) | . as $u | .Aces[]
+       | select(.PrincipalSID=="S-1-5-21-...-<your-rid>")
+       | "\($u.Properties.name) <- \(.RightName)"' *users.json *groups.json | sort -u
+```
+
+Explicit (non-inherited) GenericWrite on Tier-0 objects and groups shows up here exactly as in the GUI; add `select(.IsInherited==false)` to cut inherited noise.
+
+<!-- promoted-slug: bloodhound-json-jq-no-gui -->

@@ -327,8 +327,6 @@ C:\Windows\System32\fxstmp
 C:\Windows\SysWOW64\fxstmp
 ```
 
-## EoP - Looting for passwords
-
 ### SAM and SYSTEM files
 
 The Security Account Manager (SAM), often Security Accounts Manager, is a database file. The user passwords are stored in a hashed format in a registry hive either as a LM hash or as a NTLM hash. This file can be found in %SystemRoot%/system32/config/SAM and is mounted on HKLM/SAM.
@@ -414,7 +412,6 @@ $token = (Get-AADIntAccessToken -ClientId "9bc3ab49-b65d-410a-85ad-de819febfddc"
 # Second, search on Sharepoint
 ## Method 1: using search strings in ./presets dir
 .\SnaffPoint.exe -u "https://your.sharepoint.com" -t $token
-## Method 2: using search string in command line
 ### -l uses FQL search, see: https://learn.microsoft.com/en-us/sharepoint/dev/general-development/fast-query-language-fql-syntax-reference
 .\SnaffPoint.exe -u "https://your.sharepoint.com" -t $token -l -q "filename:.config"
 ```
@@ -895,8 +892,6 @@ To cross compile a program from Kali, use the following command.
 Kali> i586-mingw32msvc-gcc -o adduser.exe useradd.c
 ```
 
-## EoP - Microsoft Windows Installer
-
 ### AlwaysInstallElevated
 
 Using the `reg query` command, you can check the status of the `AlwaysInstallElevated` registry key for both the user and the machine. If both queries return a value of `0x1`, then `AlwaysInstallElevated` is enabled for both user and machine, indicating the system is vulnerable.
@@ -1012,8 +1007,6 @@ Citrix USB Filter Driver
     Signer: CN="Citrix Systems, Inc.", OU=XenApp(ClientSHA256), O="Citrix Systems, Inc.", L=Fort Lauderdale, S=Florida, C=US
 <SNIP>
 ```
-
-## EoP - Printers
 
 ### Universal Printer
 
@@ -1341,8 +1334,6 @@ JuicyPotatoNG.exe -t * -p "C:\Windows\System32\cmd.exe" -a "/c whoami" > C:\juic
 .\PrintSpoofer64.exe -d 3 -c "powershell -ep bypass"
 ```
 
-## EoP - Privileged File Write
-
 ### DiagHub
 
 :warning: Starting with version 1903 and above, DiagHub can no longer be used to load arbitrary DLLs.
@@ -1421,8 +1412,6 @@ The exploit contains a .msi file with 2 actions, the first one produces a delay 
 
 Then switch to the secure desktop using `[CTRL]+[ALT]+[DELETE]` and open the On-Screen Keyboard (`osk.exe`).
 The `osk.exe` process first looks for the `C:\Program Files\Common Files\microsoft shared\ink\HID.dll` library instead of `C:\Windows\System32\HID.dll`
-
-## EoP - Common Vulnerabilities and Exposure
 
 ### MS08-067 (NetAPI)
 
@@ -1880,8 +1869,8 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[hashcat]]
-- [[john]]
+- [[wiki/tools/hashcat]]
+- [[wiki/tools/john]]
 - [[metasploit]]
 - [[mimikatz]]
 - [[netexec]]
@@ -1917,3 +1906,9 @@ Same idea as the writable-service-binary vector (a privileged process runs a use
 different Windows subsystem: Task Scheduler rather than the Service Control Manager.
 
 <!-- promoted-slug: scheduled-task-writable-admin-binary -->
+
+## Autologon password stored as an LSA secret (LsaStorePrivateData), not in the registry
+
+`AutoAdminLogon=1` with NO `DefaultPassword` value under `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon` does not mean no password is stored: provisioning scripts that use `LsaStorePrivateData` keep it in the LSA `DefaultPassword` secret instead. As SYSTEM, `impacket-secretsdump <localadmin>@<host>` (or mimikatz `lsadump::secrets`) prints it under `[*] DefaultPassword`, and it can be a full DOMAIN credential, valuable far beyond the host. Hints that point at it: an auto-login setup script on disk, and a same-day DCC2 cache row proving the account really logs on interactively.
+
+<!-- promoted-slug: lsa-autologon-defaultpassword-secret -->

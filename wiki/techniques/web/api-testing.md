@@ -24,8 +24,6 @@ API testing focuses on identifying and exploiting vulnerabilities in RESTful and
 
 Root cause: APIs expose application logic and data directly; developers frequently omit access controls, input validation, or method restrictions on individual endpoints, trusting that clients will only send "expected" requests.
 
-## Enumeration
-
 ### Discovering API Endpoints
 
 - Use **Burp Scanner** to crawl the application and surface API paths.
@@ -85,8 +83,6 @@ Technique: modify the `Content-Type` header and reformat the request body accord
 - Mass assignment frameworks bind all request fields to the internal object; submitting undocumented fields may silently update privileged properties.
 
 Example: a GET response reveals `isAdmin`, but the documented PATCH only mentions `username` and `email`. Submitting `isAdmin` in a PATCH request may elevate privileges.
-
-## Attack Techniques
 
 ### 1. Exploiting API Documentation (Unauthorized Endpoint Access)
 
@@ -334,8 +330,6 @@ if (resetToken) {
 GET /forgot-password?reset_token=<TOKEN>
 ```
 
-## Tools
-
 ### Burp Suite
 
 - **Burp Scanner** — crawl application to surface API endpoints automatically.
@@ -364,8 +358,6 @@ Common paths to fuzz for API documentation:
 /api/docs
 /v1/docs
 ```
-
-## PortSwigger Labs
 
 ### Apprentice
 
@@ -515,3 +507,19 @@ Do not use a path's declared (or absent) `security` requirement in an OpenAPI/Sw
 Treat the spec only as an endpoint-discovery source. For every endpoint touching personal, internal, or operational data, send one request with no credential and confirm the real result. Where an endpoint accepts optional filter parameters documented as narrowing a result set, also test the bare unfiltered call: filters that work correctly when supplied can still leave the endpoint returning its entire unbounded dataset when simply omitted.
 
 <!-- promoted-slug: an-openapi-swagger-spec-s-security-annotation-is-not-reliabl -->
+
+## SPA frontends: mine the bundle, distrust route fuzzing and OPTIONS
+
+- A static host whose web-server catch-all serves index.html for every path returns
+  uniform-size 200s: directory fuzzing there is dead. The real API surface lives in the JS
+  bundle (grep for `API_URL` and route constant objects), not in a wordlist.
+- Frontend-only routes are not necessarily server-mounted. Prove a route absent with the
+  catch-all oracle: on an API with a GET-only catch-all, any unregistered path 405s non-GET
+  verbs and 404s GET; a response byte-identical to a nonsense-path probe means no server
+  route exists.
+- `OPTIONS` Allow headers can be catch-all lies (the same Allow returned on every path,
+  registered or not); confirm a method with a real request instead.
+- Dead client code (bundle functions calling endpoints the server never implemented, e.g. a
+  leftover delete handler) creates false leads; trust the catch-all oracle over the bundle.
+
+<!-- promoted-slug: spa-route-and-catchall-oracle -->

@@ -32,8 +32,6 @@ Failures occur because access control logic is designed by humans and applied in
 - For admin function access: knowledge or discovery of the admin URL/endpoint
 - For IDOR: a user-controlled parameter that references a data object (ID, filename, username)
 
-## Methodology
-
 ### 1. Discover Unprotected Functionality (Vertical Escalation)
 
 Browse the application fully as a low-privilege user. Then attempt direct navigation to administrative paths:
@@ -435,8 +433,6 @@ nuclei -t http/exposed-panels -u https://example.com
 nuclei -t http/default-logins -u https://example.com
 ```
 
-## PortSwigger Labs
-
 ### Apprentice
 
 #### Lab 1 — Unprotected admin functionality
@@ -739,3 +735,18 @@ cookie bypass alone — if it 403s/redirects while the API/IDOR still works, you
 different gates, not one.
 
 <!-- promoted-slug: forgeable-cookie-gates-only-part-of-app -->
+
+## Mass assignment: battery the UPDATE path, identifier in the body
+
+A create path that filters privileged fields (role/approved/balance silently dropped from
+POST) says nothing about the update path: PUT/PATCH handlers are written separately and may
+bind client fields with no per-role allowlist. Re-submit the same privileged field on the
+update request even when create is clean. Two mechanics decide reachability:
+
+- The object identifier may be read from the request BODY, not the query string (query-only
+  identifier rejected with "id must be specified"): send it in body AND query, trying every
+  alias (`id`, `<object>_id`, `<object>_number`).
+- Confirm with an owner readback (GET the object afterwards), not the update response:
+  filtered writes still return success, and cross-owner no-op writes also return 200.
+
+<!-- promoted-slug: mass-assignment-update-path-delta -->

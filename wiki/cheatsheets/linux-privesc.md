@@ -612,3 +612,15 @@ Wrap the `sudo scp` in `timeout` so the fake transport can't hang the session. R
 `chmod u-s /bin/bash`. See GTFOBins `scp` (sudo).
 
 <!-- promoted-slug: sudo-scp-gtfobins -->
+
+## SUID find: keep -p, and read group names as hints
+
+The classic SUID `find` shell needs `-p` on the shell or the elevated euid is dropped (the generic one-liner without `-p` looks successful but runs unprivileged):
+
+```sh
+/usr/bin/find /tmp -exec /bin/sh -p -c "id; cat /root/root.txt" \;
+```
+
+Enum hint: a secondary group named after a specific tool or binary (e.g. a `find`-themed group on the web user) is a deliberate nudge, check that binary's SUID/SGID bit first.
+
+<!-- promoted-slug: suid-find-sh-p-group-hint -->

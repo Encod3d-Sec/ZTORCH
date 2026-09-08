@@ -889,3 +889,15 @@ grep -RIn 'flag{\|HTB{\|picoCTF{' / --exclude-dir={proc,sys,dev,run,mnt} 2>/dev/
   you more often than a live client engagement would.
 
 <!-- promoted-slug: ctf-flag-accounting-sweep-all-flags -->
+
+## All-ports-filtered verdicts from narrow probes are artifacts
+
+Two failure shapes, one rule: a top-ports or narrow-range probe can report a host as all-filtered (a probe artifact, not a firewall fact), and can miss the only real service sitting on a high port. Before writing a host off, run the full sweep:
+
+```sh
+nmap -p- --min-rate 1000 -Pn --open <host>
+```
+
+An "all filtered" answer from anything narrower is unproven; re-run wide before declaring the host dead.
+
+<!-- promoted-slug: full-port-sweep-filtered-artifact -->

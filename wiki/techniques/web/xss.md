@@ -27,8 +27,6 @@ A vulnerable web application accepts user-controlled input and includes it in an
 - For DOM XSS: client-side JavaScript reads attacker-controlled sources (URL hash, query string, `postMessage`) and writes to dangerous sinks
 - For stored XSS: the application persists unsanitised input and renders it to other users
 
-## Types of XSS
-
 ### Reflected XSS
 The payload is returned immediately in the HTTP response. The attacker sends a crafted URL to a victim. Server does not store the payload.
 
@@ -47,8 +45,6 @@ The vulnerability exists entirely within client-side JavaScript. The server neve
 5. **Craft context-appropriate payload** — match the injection context (see Key Payloads)
 6. **Deliver payload** — via URL, stored form submission, or DOM manipulation
 7. **Weaponise** — steal cookies, perform CSRF, keylog, redirect, exfiltrate data
-
-## Key Payloads / Examples
 
 ### Basic proof of concept
 
@@ -342,8 +338,6 @@ div  {
 }
 ```
 
-## Bypasses and Variants
-
 ### Whitespace / control character bypass
 
 HTTP tab, newline, and carriage-return characters can break blocklist pattern matching:
@@ -557,8 +551,6 @@ Brave Software paid **$1,000** for an XSS in the iOS Reader Mode implementation.
 - THM DOM-based Attacks (`https://tryhackme.com/room/dombasedattacks`)
 - THM CORS & SOP (`https://tryhackme.com/room/corsandsop`)
 - PortSwigger Academy — cookiegrabber.php script
-
-## From the Wild
 
 ### HTB — Sightless (2024)
 - **Technique variant**: Froxlor blind XSS — injected payload executed in admin's browser context, used to exfiltrate KeePass database credentials
@@ -977,3 +969,43 @@ live page itself (e.g. prepending `location.href` or a marker into `document.bod
 <!-- promoted-slug: a-url-format-validator-that-parses-input-using-a-generic-hos -->
 
 <!-- promoted-slug: when-triggering-javascript-uri-xss-via-a-link-click-an-expre -->
+
+## SPA stored-XSS sink map plus server-side escape diff
+
+In a React/Vue SPA, framework text escaping holds for every field EXCEPT those rendered
+through `dangerouslySetInnerHTML` / `v-html`. Locate the sink candidates in the bundle, then
+diff the API's per-field escaping to find the one field stored raw:
+
+```sh
+grep -oE ".{60}__html:.{0,80}" index-*.js    # which fields hit the raw-HTML sink
+```
+
+1. Submit the same markup (`<b>x</b>`) to EVERY write field the API offers.
+2. Read each back: entity-encoded readback = escaped at create; raw readback = stored
+   verbatim. The intersection (raw storage AND a raw-HTML render sink) is the stored-XSS
+   field; escaped sibling fields are the control proving the gap is field-specific, not
+   app-wide output encoding.
+3. Fingerprint the escaping implementation by type confusion: send a wrong type
+   (`"field": ["<img src=x onerror=alert(1)>"]`); a 500 like `'list' object has no attribute
+   'replace'` names the per-field escaping call in the backend.
+
+Payload shape: event-handler tags (`img onerror`); script tags do not execute via innerHTML
+sinks. A bot endpoint that takes a victim username+password is the impact proof.
+
+<!-- promoted-slug: spa-sink-map-escape-diff -->
+
+## XSS verification bots: read the contract, distrust a wedged instance
+
+Platform/exam XSS bots (submit a victim account, a headless browser renders it) apply a
+detector contract that decides pass/fail; map it before grinding payload variants:
+
+- The detector often checks ONE signal (e.g. `document.cookie` for a marker value).
+  localStorage/sessionStorage poisoning can execute and still score "failed".
+- The bot may render only the FIRST item of the victim's collection: give the victim
+  account exactly one item carrying the payload, or the probe tests the wrong object.
+- A single-instance bot shared by two testers WEDGES (instant generic "failed", no
+  navigation happening): that is a false negative for your payload, not a verdict. Re-test
+  solo after it recovers before recording any bot-dependent negative, and never burn a
+  payload battery against a wedged bot.
+
+<!-- promoted-slug: xss-verification-bot-contract -->

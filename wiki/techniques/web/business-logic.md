@@ -229,8 +229,6 @@ HackerOne's "leave program" fast-track re-invitation feature forwarded a copy of
 - Audit state-machine transitions for unreachable-from-UI paths that remain accessible via direct API calls
 - Test concurrent requests on all single-use or quota-enforced actions (see [[race-conditions]])
 
-## PortSwigger Labs
-
 ### Apprentice
 
 ### Lab 1 — Excessive trust in client-side controls
@@ -434,3 +432,18 @@ This matters for triage/impact framing: a missing file prompts someone to ask wh
 <!-- promoted-slug: a-checkout-booking-flow-that-resolves-a-secondary-object-id -->
 
 <!-- promoted-slug: a-storage-file-move-or-rename-api-operation-that-is-implemen -->
+
+## Negative amount on a two-legged transfer reverses both legs
+
+Transfer endpoints that validate only sufficient balance (never `amount > 0`) and do signed
+arithmetic (`sender -= amount; recipient += amount`) let a negative amount reverse the whole
+operation: the SENDER gains and the RECIPIENT is debited. The balance gate passes by
+construction (`sender -= -5` raises the balance), so the insufficient-funds control actively
+masks the bug. One request mints money in your own account; naming another user's account as
+the recipient drains theirs.
+
+Battery on every money-movement endpoint: `amount = -5, 0, 0.001, "5", 1e9, NaN, Infinity`;
+re-read BOTH balances afterward as the impact proof. A string amount that 500s with a
+validation TypeError is its own minor finding (error disclosure).
+
+<!-- promoted-slug: negative-amount-transfer -->

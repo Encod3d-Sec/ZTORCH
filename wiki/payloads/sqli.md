@@ -117,3 +117,21 @@ scanner: extract ONE serial request at a time.
   blacklist with functions + hex only (no quotes, no comments).
 
 <!-- promoted-slug: sqli-request-rate-limiter -->
+
+## OR-expansion turns a dup check into a boolean oracle
+
+In a string-concatenated uniqueness check (`... WHERE username='INPUT'`), OR-expansion makes
+the clause match every row, so the duplicate error fires for ANY fresh name: execution proven
+with no error-reflection sink needed. The create/dup message difference is then a full
+boolean oracle:
+
+```sql
+x'||(SELECT 1)||'                     -- MySQL: matches every row -> dup error for any fresh name
+x'||(SELECT IF((<cond>),1,NULL))||'   -- NULL branch: no match -> created; 1 -> dup error
+```
+
+Bisect with `ASCII(SUBSTRING((SELECT ...),i,1))>N` inside the condition, one request per bit.
+Caveat: `||` is OR on default MySQL but string-concat on Postgres/Oracle
+(PIPES_AS_CONCAT); re-check the operator semantics per backend before reading the oracle.
+
+<!-- promoted-slug: dup-check-or-expansion-oracle -->

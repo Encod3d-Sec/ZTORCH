@@ -753,3 +753,12 @@ cron/pipeline that bash-executes uploads gives code exec as the PROCESSING user 
   password prompt.
 
 <!-- promoted-slug: ftp-dropbox-exec -->
+
+## Quick dead-end tells: stock resolver, empty loopback redis
+
+One line each, do not grind:
+
+- DNS server that REFUSES every A query and AXFR, answering only the CHAOS `version.bind` query, is a stock caching/forwarding resolver: no custom zones, no PTRs, no DNS intel to mine externally (check `named.conf` locally if a shell lands).
+- Loopback-only redis with `DBSIZE` returning 0 (empty keyspace) has nothing to read and no remote exposure; move on.
+
+<!-- promoted-slug: dns-redis-deadend-tells -->

