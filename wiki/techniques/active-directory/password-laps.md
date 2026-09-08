@@ -140,7 +140,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[john]]
+- [[wiki/tools/john]]
 - [[netexec]]
 - Also uses (no dedicated page yet): PowerView
 

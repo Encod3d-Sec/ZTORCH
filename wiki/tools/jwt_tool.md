@@ -40,12 +40,12 @@ jwt_tool <JWT> -X s                                     # signature strip / null
 
 - RS to HS confusion needs the server's public key (often `/jwks.json` or the TLS cert).
 - Always confirm the server actually validates the signature before claiming a bypass.
-- For pure GPU cracking of HS256 secrets, [[hashcat]] `-m 16500` is much faster.
+- For pure GPU cracking of HS256 secrets, [[wiki/tools/hashcat]] `-m 16500` is much faster.
 - Full attack matrix and defences in [[jwt]] / [[jwt-attacks]].
 
 ## Related techniques
 
-[[jwt]], [[jwt-attacks]], [[hashcat]]
+[[jwt]], [[jwt-attacks]], [[wiki/tools/hashcat]]
 
 ## Sources
 

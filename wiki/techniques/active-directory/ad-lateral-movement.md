@@ -375,7 +375,7 @@ netsh advfirewall firewall add rule name="Open Port 3389" dir=in action=allow pr
 
 ## From the Wild — graph edges to tooling (HTB, 0xdf)
 
-Treat BloodHound edges as prerequisites for reachable services and tools. Enumeration workflow stays on [[ad-enumeration]]. Kerberos-heavy material (delegation, shadow credentials, silver tickets, RBCD, `findDelegation.py`, `getST.py`) stays on [[kerberos-attacks]]. Certificate pivots tie to [[certipy]] / [[adcs]].
+Treat BloodHound edges as prerequisites for reachable services and tools. Enumeration workflow stays on [[ad-enumeration]]. Kerberos-heavy material (delegation, shadow credentials, silver tickets, RBCD, `findDelegation.py`, `getST.py`) stays on [[kerberos-attacks]]. Certificate pivots tie to [[wiki/tools/certipy]] / [[adcs]].
 
 ### Pattern cheat sheet
 

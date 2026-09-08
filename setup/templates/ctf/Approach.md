@@ -58,7 +58,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 |----|-------|-----------|---------|-------|------|--------|-----|----------|
 
 cred attacks:  sqlmap / hydra / medusa / john / hashcat
-  -> [[sqlmap]] [[wiki/tools/hydra]] [[medusa]] [[wiki/tools/john]] [[hashcat]] [[password-attacks]] [[wordlists]] [[default-credentials]]
+  -> [[sqlmap]] [[wiki/tools/hydra]] [[medusa]] [[wiki/tools/john]] [[wiki/tools/hashcat]] [[password-attacks]] [[wordlists]] [[default-credentials]]
 route by class: Skill(wiki-arsenal) -> Skill(`hunt-<class>`)
 
 ### 4b. Post-Ex / Privesc  ([[linux-privesc]] · [[privesc-exploit-arsenal]])

@@ -144,9 +144,9 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[hashcat]]
+- [[wiki/tools/hashcat]]
 - [[impacket]]
-- [[john]]
+- [[wiki/tools/john]]
 - [[netexec]]
 - Also uses (no dedicated page yet): Rubeus, PowerView, PowerSploit
 

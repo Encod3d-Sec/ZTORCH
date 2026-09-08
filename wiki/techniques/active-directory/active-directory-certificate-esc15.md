@@ -94,7 +94,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Tools
 
 - [[bloodhound]]
-- [[certipy]]
+- [[wiki/tools/certipy]]
 - [[impacket]]
 
 ## Sources

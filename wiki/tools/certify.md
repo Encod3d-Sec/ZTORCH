@@ -10,7 +10,7 @@ phase: postex
 
 ## Purpose
 
-**Certify** is a C# tool (GhostPack) for enumerating and abusing Active Directory Certificate Services (ADCS). It is the Windows-side companion to [[certipy]]: it locates CAs and certificate templates, flags vulnerable configurations (the ESC1 through ESC8 family), requests certificates including with an attacker-chosen Subject Alternative Name (the core of ESC1/ESC6), and downloads issued certificates. The resulting certificate is fed to `Rubeus asktgt /certificate` to obtain a TGT (certificate to Kerberos).
+**Certify** is a C# tool (GhostPack) for enumerating and abusing Active Directory Certificate Services (ADCS). It is the Windows-side companion to [[wiki/tools/certipy]]: it locates CAs and certificate templates, flags vulnerable configurations (the ESC1 through ESC8 family), requests certificates including with an attacker-chosen Subject Alternative Name (the core of ESC1/ESC6), and downloads issued certificates. The resulting certificate is fed to `Rubeus asktgt /certificate` to obtain a TGT (certificate to Kerberos).
 
 ## Installation
 
@@ -111,7 +111,7 @@ Certify enumerates and requests; each vulnerable configuration maps to a techniq
 - ESC1 (enrollee supplies subject, client-auth EKU): `find /vulnerable` then `request /altname:administrator` : [[active-directory-certificate-esc1]].
 - ESC2 (Any Purpose or no EKU): [[active-directory-certificate-esc2]].
 - ESC3 (enrollment-agent template): `request /onbehalfof` : [[active-directory-certificate-esc3]].
-- ESC4 (template ACL is writable): edit the template to be ESC1, then request. Certify does not edit templates; use PowerView `Set-DomainObject` or [[certipy]] `template`. Reference: [[active-directory-certificate-esc4]].
+- ESC4 (template ACL is writable): edit the template to be ESC1, then request. Certify does not edit templates; use PowerView `Set-DomainObject` or [[wiki/tools/certipy]] `template`. Reference: [[active-directory-certificate-esc4]].
 - ESC6 (CA `EDITF_ATTRIBUTESUBJECTALTNAME2`): any template plus `/altname` : [[active-directory-certificate-esc6]].
 - ESC7 (`ManageCA` / `ManageCertificates`): issue a pending request, then `Certify.exe download /id:` : [[active-directory-certificate-esc7]].
 - ESC8 (web enrollment accepts NTLM): Certify flags the HTTP endpoint in `find`; exploit by relaying coerced auth with `ntlmrelayx --adcs` or `certipy relay` : [[active-directory-certificate-esc8]], [[internal-ntlm-relay]].
@@ -124,14 +124,14 @@ Once a certificate is obtained, authenticate to Kerberos with `Rubeus asktgt /ce
 - CA name format: use the exact `CA_HOST\CA_NAME` string from `Certify.exe cas` (for example `CA01.corp.local\corp-CA01-CA`), not just the CA short name.
 - Certify emits PEM (certificate plus private key). Build a `.pfx` with `openssl pkcs12 -export` before handing it to Rubeus or `certutil`.
 - ESC1 needs three conditions together: `ENROLLEE_SUPPLIES_SUBJECT`, a client-authentication (or Any Purpose) EKU, and enrollment rights for your principal. `find /vulnerable` confirms all three.
-- Strong certificate mapping (KB5014754, post-May 2022) makes the KDC require the account SID inside the certificate. Classic Certify may not embed the SID, so `Rubeus asktgt` can fail; fall back to [[certipy]] `req -sid <SID>`, which writes the szOID SID extension.
+- Strong certificate mapping (KB5014754, post-May 2022) makes the KDC require the account SID inside the certificate. Classic Certify may not embed the SID, so `Rubeus asktgt` can fail; fall back to [[wiki/tools/certipy]] `req -sid <SID>`, which writes the szOID SID extension.
 - Certify 2.0 (2024) rewrote the CLI into subcommands and added detection/abuse for ESC9, ESC11, ESC13, ESC14, ESC15, and ESC16; the flags above are the classic 1.x form. Run `Certify.exe --help` to confirm the syntax of the build you have.
 - Certify is heavily signatured by AV/EDR. Run it via `execute-assembly` or an in-memory loader.
-- On Linux, [[certipy]] covers the full ESC suite in one tool, including relay, shadow credentials, forge, and ESC7 automation.
+- On Linux, [[wiki/tools/certipy]] covers the full ESC suite in one tool, including relay, shadow credentials, forge, and ESC7 automation.
 
 ## Related
 
-- [[certipy]] : the Linux equivalent and the more complete ESC toolkit.
+- [[wiki/tools/certipy]] : the Linux equivalent and the more complete ESC toolkit.
 - [[rubeus]] : turns a Certify-issued certificate into a TGT or NT hash.
 - [[impacket]] : `ntlmrelayx.py --adcs` for the ESC8 relay.
 - [[bloodhound]] : surfaces the certificate-template and CA relationships worth targeting.

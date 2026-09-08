@@ -17,7 +17,7 @@ IDOR/BOLA, privilege escalation, forced browsing, missing function-level auth.
 - **Real-world:** Optus (2022) - unauthenticated API exposed 9.8M records via sequential IDs (BOLA).
 - **CVEs:** CVE-2023-7028 (GitLab reset-to-arbitrary-email ATO), CVE-2023-22515 (Confluence broken access -> admin).
 - **Payloads:** `wiki/payloads/api.md` (BOLA/BFLA/mass-assign), `wiki/payloads/auth-bypass.md` (403->200).
-- **Pages:** [[access-control]], [[account-takeover]], [[csrf]], [[api-security]]. **Skills:** `hunt-idor`, `hunt-api`, `hunt-auth`.
+- **Pages:** [[access-control]], [[wiki/techniques/web/account-takeover]], [[csrf]], [[api-security]]. **Skills:** `hunt-idor`, `hunt-api`, `hunt-auth`.
 
 ## A02 - Cryptographic Failures
 Cleartext transport/storage, weak hashing, hardcoded keys, bad randomness.
@@ -58,7 +58,7 @@ Weak auth, broken session, MFA bypass, credential stuffing, weak reset.
 - **Real-world:** credential-stuffing ATO waves; reset-poisoning takeovers across bug-bounty programs.
 - **CVEs:** CVE-2023-7028 (GitLab ATO).
 - **Payloads:** `wiki/payloads/auth-bypass.md`, `wiki/payloads/oauth-saml.md`, `wiki/payloads/jwt`.
-- **Pages:** [[authentication-attacks]], [[account-takeover]], [[mfa-bypass]], [[session-management-attacks]], [[jwt-attacks]], [[oauth-attacks]], [[saml-attacks]]. **Skills:** `hunt-auth`, `hunt-federation`.
+- **Pages:** [[authentication-attacks]], [[wiki/techniques/web/account-takeover]], [[mfa-bypass]], [[session-management-attacks]], [[jwt-attacks]], [[oauth-attacks]], [[saml-attacks]]. **Skills:** `hunt-auth`, `hunt-federation`.
 
 ## A08 - Software and Data Integrity Failures
 Insecure deserialization, unsigned updates, CI/CD compromise, dependency confusion.

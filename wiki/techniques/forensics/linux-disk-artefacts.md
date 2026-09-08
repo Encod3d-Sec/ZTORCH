@@ -10,7 +10,7 @@ sources: []
 
 ## Linux disk artefact triage (mounted image)
 
-Answering user-activity and intrusion-timeline questions from a mounted Linux disk (or image loop-mounted read-only). Linux counterpart to [[windows-artefacts]]; general carving/memory work stays on [[digital-forensics]].
+Answering user-activity and intrusion-timeline questions from a mounted Linux disk (or image loop-mounted read-only). Linux counterpart to [[wiki/techniques/forensics/windows-artefacts]]; general carving/memory work stays on [[digital-forensics]].
 
 Artefact map, highest yield first:
 

@@ -496,7 +496,7 @@ Ensure /etc/hosts resolves the exact FQDN (SPN mismatches break GSSAPI).
 | Tool | Purpose |
 |------|---------|
 | [[netexec]] | AS-REP Roasting (`--asreproast`), Kerberoasting (`--kerberoasting`), RID cycling for userlist |
-| [[certipy]] | ADCS enumeration and exploitation; Kerberos relay chains |
+| [[wiki/tools/certipy]] | ADCS enumeration and exploitation; Kerberos relay chains |
 | Impacket `GetNPUsers.py` | AS-REP Roasting |
 | Impacket `GetUserSPNs.py` | Kerberoasting; `-no-preauth` mode for credless Kerberoast |
 | Impacket `getST.py` | S4U2Self + S4U2Proxy for constrained delegation and RBCD |
@@ -529,7 +529,7 @@ Derived from 0xdf HackTheBox writeups covering Kerberos-heavy machines:
 | Scrambled | Silver Ticket (NTLM disabled domain-wide) |
 | APT | Kerbrute at scale; Kerberos hash brute from NTDS backup |
 
-Cross-references: [[ad-enumeration]], [[ad-lateral-movement]], [[pass-the-hash]], [[ad-persistence]], [[password-cracking]], [[netexec]], [[certipy]], [[adcs]]
+Cross-references: [[ad-enumeration]], [[ad-lateral-movement]], [[pass-the-hash]], [[ad-persistence]], [[password-cracking]], [[netexec]], [[wiki/tools/certipy]], [[adcs]]
 
 ## Wired sub-techniques
 

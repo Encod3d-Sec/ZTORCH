@@ -93,8 +93,8 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[certipy]]
-- [[john]]
+- [[wiki/tools/certipy]]
+- [[wiki/tools/john]]
 - Also uses (no dedicated page yet): Rubeus, Certify
 
 ## Sources

@@ -55,7 +55,7 @@ grep -E '1995|1402' name.txt | grep -vE '[^A-Za-z0-9]'
 
 Then fall back to the full unfiltered list if the filtered subset misses.
 
-Feed the resulting wordlist to [[wiki/tools/hydra]], medusa, or [[john]] against the login/SSH target.
+Feed the resulting wordlist to [[wiki/tools/hydra]], medusa, or [[wiki/tools/john]] against the login/SSH target.
 
 ## Tips and gotchas
 
@@ -66,7 +66,7 @@ Feed the resulting wordlist to [[wiki/tools/hydra]], medusa, or [[john]] against
 ## Related techniques
 
 - [[wiki/tools/hydra]]: feed the generated wordlist to `-P` for online brute force
-- [[john]]: crack an extracted hash with the CUPP list via `--wordlist`
+- [[wiki/tools/john]]: crack an extracted hash with the CUPP list via `--wordlist`
 - [[password-cracking]], [[password-attacks]]
 
 ## Sources

@@ -62,6 +62,6 @@ responder -I eth0 -wF
 - Loud and disruptive: poisoning can break legit name resolution. Respect `no_dos` / scope; coordinate on production.
 
 ## Related techniques
-[[active-directory]], [[ad-lateral-movement]], `ntlm-relay-smb-signing-disabled`. Pairs with [[impacket]] (ntlmrelayx), [[hashcat]], [[netexec]] (relay-list + signing check). Used by the `hunt-ad` skill.
+[[active-directory]], [[ad-lateral-movement]], `ntlm-relay-smb-signing-disabled`. Pairs with [[impacket]] (ntlmrelayx), [[wiki/tools/hashcat]], [[netexec]] (relay-list + signing check). Used by the `hunt-ad` skill.
 
 ## Sources

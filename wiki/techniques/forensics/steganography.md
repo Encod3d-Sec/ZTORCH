@@ -46,7 +46,7 @@ pngcheck -v image.png               # malformed chunks / appended data
 - LSB in WAV (`WavSteg`, `stego-lsb`). DTMF tones (`multimon-ng`), Morse, reversed/slowed audio.
 
 ### Files / containers
-- Polyglots (file valid as two types); ZIP appended to image (`binwalk`/`unzip`); password ZIP -> `zip2john` + [[hashcat]].
+- Polyglots (file valid as two types); ZIP appended to image (`binwalk`/`unzip`); password ZIP -> `zip2john` + [[wiki/tools/hashcat]].
 - NTFS Alternate Data Streams (`dir /R`, `streams.exe`); PDF/Office embedded objects.
 
 ### Text

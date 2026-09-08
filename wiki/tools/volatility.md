@@ -63,6 +63,6 @@ vol -f mem.raw linux.bash              # recovered shell history
 - `windows.bash`/`linux.bash`, `cmdline`, and `consoles` often hold the flag directly. `bulk_extractor` complements Volatility for raw string/key carving.
 
 ## Related techniques
-[[digital-forensics]], [[steganography]]. Cracked hashes -> [[hashcat]], [[password-cracking]].
+[[digital-forensics]], [[steganography]]. Cracked hashes -> [[wiki/tools/hashcat]], [[password-cracking]].
 
 ## Sources

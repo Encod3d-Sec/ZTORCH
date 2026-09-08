@@ -123,7 +123,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[john]]
+- [[wiki/tools/john]]
 - [[metasploit]]
 - [[mimikatz]]
 - [[netexec]]

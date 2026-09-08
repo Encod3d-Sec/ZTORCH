@@ -240,7 +240,7 @@ secretsdump.py -hashes :NTLM_HASH -just-dc DOMAIN/user@DC_IP
 
 ## From the Wild — persistence-shaped AD abuse (HTB, 0xdf)
 
-These abuses are often reachable **before** full domain admin yet behave like persistence because they endure until someone removes ACLs or burns keys. Enumeration on [[ad-enumeration]]; lateral follow-through on [[ad-lateral-movement]]; Kerberos ticket depth on [[kerberos-attacks]]; PKI abuses on [[adcs]] / [[certipy]].
+These abuses are often reachable **before** full domain admin yet behave like persistence because they endure until someone removes ACLs or burns keys. Enumeration on [[ad-enumeration]]; lateral follow-through on [[ad-lateral-movement]]; Kerberos ticket depth on [[kerberos-attacks]]; PKI abuses on [[adcs]] / [[wiki/tools/certipy]].
 
 ### DACL and replication-class footholds that outlive unrelated password resets
 

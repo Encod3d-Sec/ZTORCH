@@ -237,7 +237,7 @@ After each phase, write to `targets/<eng>/`: hosts/access -> `state.md`, creds -
 - [[wiki/tools/whatweb]]
 - [[arjun]]
 - [[dalfox]]
-- [[swaks]]
+- [[wiki/tools/swaks]]
 - [[wiki/cheatsheets/recon]]
 - [[nuclei-arsenal]]
 - [[wordlists]]

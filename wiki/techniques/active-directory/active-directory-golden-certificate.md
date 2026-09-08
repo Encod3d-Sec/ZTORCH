@@ -135,7 +135,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Tools
 
 - [[bloodhound]]
-- [[certipy]]
+- [[wiki/tools/certipy]]
 - [[mimikatz]]
 - Also uses (no dedicated page yet): Rubeus, Certify
 

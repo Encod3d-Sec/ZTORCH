@@ -60,7 +60,7 @@ Then test the web/network surface as normal ([[os-command-injection]] is extreme
 Signed + encrypted firmware, disabled/locked JTAG and serial console in production, secure boot, no hardcoded creds/keys, eFuse-protected keys.
 
 ## Tools
-[[binwalk]], `firmadyne`/FirmAE, `qemu-*-static`, `flashrom`, `openocd`, USB-UART adapter, logic analyzer. Web layer -> [[os-command-injection]]; creds -> [[hashcat]].
+[[binwalk]], `firmadyne`/FirmAE, `qemu-*-static`, `flashrom`, `openocd`, USB-UART adapter, logic analyzer. Web layer -> [[os-command-injection]]; creds -> [[wiki/tools/hashcat]].
 
 ## Firmware anti-rollback / downgrade bypass and image acquisition
 

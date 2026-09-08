@@ -29,8 +29,8 @@ Proven end-to-end paths from how real engagements actually win. Each step links 
 ## 3. AD: foothold -> Domain Admin
 1. Network access, no creds: null/anon SMB+LDAP, Responder ([[responder]]) NetNTLMv2.
 2. User list -> lockout-safe spray (`Season2025!`) -> a valid cred -> `hunt-ad`.
-3. Roast: AS-REP / Kerberoast -> crack ([[hashcat]]) -> [[kerberos-attacks]].
-4. BloodHound ([[bloodhound]]) -> shortest path: ACL abuse, ADCS ESC1 ([[adcs]], [[certipy]]), or DCSync.
+3. Roast: AS-REP / Kerberoast -> crack ([[wiki/tools/hashcat]]) -> [[kerberos-attacks]].
+4. BloodHound ([[bloodhound]]) -> shortest path: ACL abuse, ADCS ESC1 ([[adcs]], [[wiki/tools/certipy]]), or DCSync.
 5. DA -> golden ticket / krbtgt -> [[ad-persistence]].
 **Impact:** full domain compromise.
 
@@ -55,7 +55,7 @@ Proven end-to-end paths from how real engagements actually win. Each step links 
 
 ## 7. OAuth/SAML -> account takeover
 1. `redirect_uri` bypass or SAML XSW/sig-strip -> steal code/assertion -> [[oauth-attacks]] / [[saml-attacks]], payloads [[oauth-saml]].
-2. Replay -> log in as victim/admin -> [[account-takeover]], `hunt-federation`.
+2. Replay -> log in as victim/admin -> [[wiki/techniques/web/account-takeover]], `hunt-federation`.
 **Impact:** SSO break -> ATO of any user.
 
 ## 8. Secret in JS/repo -> API -> mass data (BOLA)

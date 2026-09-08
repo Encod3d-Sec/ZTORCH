@@ -187,6 +187,6 @@ Min fraction digits: 0
 
 ## Related
 
-- [[account-takeover]] (bypassing MFA is a direct route to full account takeover)
+- [[wiki/techniques/web/account-takeover]] (bypassing MFA is a direct route to full account takeover)
 - [[rate-limit-bypass]] (OTP brute forcing depends on breaking the rate limit first)
 - [[authentication-attacks]] (MFA is one layer of the broader authentication surface)

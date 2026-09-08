@@ -81,8 +81,8 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[certipy]]
-- [[john]]
+- [[wiki/tools/certipy]]
+- [[wiki/tools/john]]
 
 ## Sources
 

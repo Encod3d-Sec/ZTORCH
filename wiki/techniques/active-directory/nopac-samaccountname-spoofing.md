@@ -205,7 +205,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Tools
 
 - [[impacket]]
-- [[john]]
+- [[wiki/tools/john]]
 - [[netexec]]
 - [[radare2]]
 - Also uses (no dedicated page yet): Rubeus, PowerView

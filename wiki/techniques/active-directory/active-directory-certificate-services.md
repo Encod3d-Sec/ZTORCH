@@ -264,7 +264,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 - [[adcs]] — practical, box-tested `certipy` walkthroughs per ESC class (ESC1/3/4/7/8/9/10/14/16, shadow credentials, golden certificate)
 - [[bloodhound]]
-- [[certipy]]
+- [[wiki/tools/certipy]]
 - [[impacket]]
 - [[netexec]]
 - Also uses (no dedicated page yet): Rubeus

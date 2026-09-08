@@ -33,7 +33,7 @@ string). Preconditions for tossing: attacker controls a subdomain or has XSS on 
   the HttpOnly value into a reflected parameter.
 - Empty-name cookie (`document.cookie="=a=b"`) lets you inject/overwrite another cookie server-side.
 
-Payload strings: [[session]] (payloads). Related: [[csrf]].
+Payload strings: [[wiki/payloads/session]] (payloads). Related: [[csrf]].
 
 ## Sources
 - HackTricks (pentesting-web)

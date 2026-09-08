@@ -123,7 +123,7 @@ Use when you have candidate pairs (e.g. reused creds from a breach dump) rather 
 
 - **Bootstrapping a domain foothold from a name list.** Run `userenum` first to turn a noisy OSINT name list into a confirmed user list, then `passwordspray` a seasonal/default password. See [[ad-enumeration]] and [[password-spraying]].
 
-- **Feeding valid users straight into AS-REP roasting.** Every confirmed username is a candidate for a Kerberos pre-auth check: accounts with `DONT_REQ_PREAUTH` set return an AS-REP whose encrypted portion is crackable offline. Pipe Kerbrute's validated list into Impacket's `GetNPUsers.py` (see [[impacket]]), then crack with [[hashcat]] or [[john]]. Full workflow in [[roasting-asrep-roasting]].
+- **Feeding valid users straight into AS-REP roasting.** Every confirmed username is a candidate for a Kerberos pre-auth check: accounts with `DONT_REQ_PREAUTH` set return an AS-REP whose encrypted portion is crackable offline. Pipe Kerbrute's validated list into Impacket's `GetNPUsers.py` (see [[impacket]]), then crack with [[wiki/tools/hashcat]] or [[wiki/tools/john]]. Full workflow in [[roasting-asrep-roasting]].
 
 ```bash
 # 1. Kerbrute confirms who exists
@@ -180,7 +180,7 @@ hashcat -m 18200 asrep.hash /usr/share/wordlists/rockyou.txt
 - [[roasting-kerberoasting]]: SPN-based offline cracking, the follow-on to a valid cred
 - [[impacket]]: `GetNPUsers.py` for the AS-REP roast step
 - [[netexec]]: validate hits and pull the lockout policy / group membership
-- [[hashcat]], [[john]]: crack the resulting `$krb5asrep$` hashes
+- [[wiki/tools/hashcat]], [[wiki/tools/john]]: crack the resulting `$krb5asrep$` hashes
 
 ## Sources
 

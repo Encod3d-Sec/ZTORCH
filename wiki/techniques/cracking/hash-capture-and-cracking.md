@@ -175,8 +175,8 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[hashcat]]
-- [[john]]
+- [[wiki/tools/hashcat]]
+- [[wiki/tools/john]]
 - [[responder]]
 
 ## Sources

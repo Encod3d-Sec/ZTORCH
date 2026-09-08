@@ -9,7 +9,7 @@ date_updated: 2026-06-16
 
 # Host Header Injection
 
-Abuse a trusted/reflected `Host` (OWASP A05). Drives password-reset poisoning, cache poisoning, SSRF, and auth bypass. See [[http-host-header-attacks]]; reset chain [[account-takeover]].
+Abuse a trusted/reflected `Host` (OWASP A05). Drives password-reset poisoning, cache poisoning, SSRF, and auth bypass. See [[http-host-header-attacks]]; reset chain [[wiki/techniques/web/account-takeover]].
 
 ## Probes
 ```

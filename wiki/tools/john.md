@@ -10,7 +10,7 @@ phase: exploit
 
 ## Purpose
 
-**John the Ripper** (the `-jumbo` build) cracks password hashes and, crucially, ships a large family of **`*2john` extractors** that turn files (ZIP, PDF, Office, SSH keys, KeePass, disk images) into crackable hash formats. CPU-focused and format-rich; the companion to GPU-focused [[hashcat]].
+**John the Ripper** (the `-jumbo` build) cracks password hashes and, crucially, ships a large family of **`*2john` extractors** that turn files (ZIP, PDF, Office, SSH keys, KeePass, disk images) into crackable hash formats. CPU-focused and format-rich; the companion to GPU-focused [[wiki/tools/hashcat]].
 
 ## Install / setup
 
@@ -46,9 +46,9 @@ john --list=formats | grep -i <type>
 ## Tips and gotchas
 - `--show` reads the **john.pot** cache of cracked hashes (`~/.john/john.pot`); delete it for a clean re-run.
 - Rules multiply a wordlist cheaply (`--rules=Jumbo`/`KoreLogic`); `--incremental` for unknown patterns.
-- Use John for the `*2john` extraction and odd CPU formats; pipe the resulting hash to [[hashcat]] (`-m`) when you want GPU speed. Methodology: [[password-cracking]], [[hash-capture-and-cracking]].
+- Use John for the `*2john` extraction and odd CPU formats; pipe the resulting hash to [[wiki/tools/hashcat]] (`-m`) when you want GPU speed. Methodology: [[password-cracking]], [[hash-capture-and-cracking]].
 
 ## Related techniques
-[[password-cracking]], [[hash-capture-and-cracking]], [[cryptography-attacks]]. GPU counterpart: [[hashcat]].
+[[password-cracking]], [[hash-capture-and-cracking]], [[cryptography-attacks]]. GPU counterpart: [[wiki/tools/hashcat]].
 
 ## Sources

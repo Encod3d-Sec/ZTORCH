@@ -9,7 +9,7 @@ date_updated: 2026-07-21
 
 # Payloads: MFA / 2FA Bypass
 
-Defeat the second factor (OWASP A07). Routed via the `hunt-auth` skill. See [[techniques/web/mfa-bypass]]; reset/login [[account-takeover]].
+Defeat the second factor (OWASP A07). Routed via the `hunt-auth` skill. See [[techniques/web/mfa-bypass]]; reset/login [[wiki/techniques/web/account-takeover]].
 
 ## Skip / state
 ```

@@ -104,7 +104,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[certipy]]
+- [[wiki/tools/certipy]]
 - Also uses (no dedicated page yet): Rubeus, Certify
 
 ## Sources

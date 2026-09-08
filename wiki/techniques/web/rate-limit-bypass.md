@@ -12,7 +12,7 @@ sources: [hacktricks-web]
 
 ## What it is
 
-Techniques to defeat a request throttle so brute-force, OTP guessing, and enumeration remain viable. Beyond classic IP-header spoofing, the high-yield modern bypasses exploit where the counter lives (which endpoint, which value, which connection, which PoP). Related: [[cdn-waf-bypass]], [[account-takeover]].
+Techniques to defeat a request throttle so brute-force, OTP guessing, and enumeration remain viable. Beyond classic IP-header spoofing, the high-yield modern bypasses exploit where the counter lives (which endpoint, which value, which connection, which PoP). Related: [[cdn-waf-bypass]], [[wiki/techniques/web/account-takeover]].
 
 ## Classic IP-header spoofing
 Rotate the apparent source with `X-Forwarded-For`, `X-Originating-IP`, `X-Client-IP`, or a double `X-Forwarded-For`. Automate per-request source rotation with `fireprox` (disposable AWS API Gateway) or Burp IPRotate.

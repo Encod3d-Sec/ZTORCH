@@ -35,4 +35,4 @@ For a 1 GB session across a slow link, query on the box instead of pulling it:
 ## Related
 
 - [[digital-forensics]]
-- [[windows-artefacts]]
+- [[wiki/techniques/forensics/windows-artefacts]]

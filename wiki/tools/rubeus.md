@@ -174,7 +174,7 @@ Rubeus.exe diamond /krbkey:<krbtgt_aes256> /enctype:aes \
 - Overpass-the-hash / pass-the-key to obtain a TGT from a hash or AES key: [[hash-overpass-the-hash]], [[hash-pass-the-key]].
 - Delegation abuse via S4U (constrained, RBCD, unconstrained): [[kerberos-delegation-constrained-delegation]], [[kerberos-delegation-resource-based-constrained-delegation]], [[kerberos-delegation-unconstrained-delegation]], [[kerberos-service-for-user-extension]].
 - Golden, silver, and diamond ticket forgery for persistence and DC access: [[ad-persistence]], [[kerberos-tickets]], [[kerberos-attacks]].
-- UnPAC-the-hash: turn a certificate (from ADCS abuse) into the account NT hash, chaining from [[adcs]] and the [[certipy]] / [[certify]] output.
+- UnPAC-the-hash: turn a certificate (from ADCS abuse) into the account NT hash, chaining from [[adcs]] and the [[wiki/tools/certipy]] / [[certify]] output.
 - Capturing coerced TGTs with `monitor` after a forced authentication: [[internal-coerce]].
 - Ticket reuse for lateral movement: [[ad-lateral-movement]].
 
@@ -195,7 +195,7 @@ Rubeus.exe diamond /krbkey:<krbtgt_aes256> /enctype:aes \
 
 - [[mimikatz]] : the classic alternative for ticket dumping and golden/silver forgery.
 - [[impacket]] : Linux equivalents (`getTGT.py`, `GetUserSPNs.py`, `getST.py`, `ticketer.py`).
-- [[certipy]] / [[certify]] : ADCS abuse producing certificates that Rubeus turns into TGTs.
+- [[wiki/tools/certipy]] / [[certify]] : ADCS abuse producing certificates that Rubeus turns into TGTs.
 - [[bloodhound]] : find the delegation and roasting paths that Rubeus then exploits.
 
 ## Sources

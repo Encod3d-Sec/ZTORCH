@@ -133,7 +133,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[hashcat]]
+- [[wiki/tools/hashcat]]
 - [[mimikatz]]
 - [[netexec]]
 - Also uses (no dedicated page yet): Kerbrute

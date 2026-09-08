@@ -477,7 +477,7 @@ KRB5CCNAME=administrator.ccache secretsdump.py -k -no-pass \
 
 ## Related techniques
 
-- [[certipy]] — tool reference for all subcommands and flags
+- [[wiki/tools/certipy]] — tool reference for all subcommands and flags
 - [[uac-bypass]] — ESC1 via CVE-2022-26923 (machine template SPN manipulation) is documented there
 - [[pass-the-hash]] — use NT hashes returned by certipy auth
 - [[ad-lateral-movement]] — shadow credentials enable lateral movement
@@ -536,6 +536,6 @@ PtH, use the ccache you already have.
   Remove the old `<realm> -> <ip>` line and always force `-dc-ip`/`-target-ip` so KDC/target resolution
   never depends on DNS/hosts.
 
-See [[pass-the-hash]], [[certipy]].
+See [[pass-the-hash]], [[wiki/tools/certipy]].
 
 <!-- promoted-slug: adcs-esc1-ntlm-restricted-kerberos -->

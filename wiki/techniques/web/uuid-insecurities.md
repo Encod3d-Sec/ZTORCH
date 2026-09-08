@@ -26,7 +26,7 @@ Any UUID with `1` in the version nibble is a candidate; a leaked MAC/node from o
 also narrows the space. Tools: Lupin-Holmes/sandwich (automates the range attack), Burp
 UUID Detector extension.
 
-Related: [[account-takeover]], [[access-control]].
+Related: [[wiki/techniques/web/account-takeover]], [[access-control]].
 
 ## Sources
 - HackTricks (pentesting-web)

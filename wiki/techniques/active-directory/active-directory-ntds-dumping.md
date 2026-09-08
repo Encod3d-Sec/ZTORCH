@@ -234,7 +234,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 ## Tools
 
-- [[hashcat]]
+- [[wiki/tools/hashcat]]
 - [[impacket]]
 - [[mimikatz]]
 - [[netexec]]

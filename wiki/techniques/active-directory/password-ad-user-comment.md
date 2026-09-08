@@ -78,7 +78,7 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Tools
 
 - [[bloodhound]]
-- [[john]]
+- [[wiki/tools/john]]
 - [[netexec]]
 
 ## Sources
