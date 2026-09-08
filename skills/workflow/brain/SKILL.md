@@ -1,6 +1,6 @@
 ---
 name: brain
-description: Brain mode - the main chat (glm-5.3) stays the strategist brain while all execution runs in subagents (haiku = glm-5.3-flash for fully-specified mechanical runs, sonnet = glm-5.3 when the run needs in-run judgement), up to 3 concurrent disjoint agents. Fully integrated with the offensive driver - invoked via /brain, the driver loop stays in the brain and each next-action's execution is dispatched. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
+description: Brain mode - the main chat (glm-5.3) stays the strategist brain while all execution runs in subagents (haiku = glm-5.3-flash for fully-specified mechanical runs, sonnet = glm-5.3 when the run needs in-run judgement), 2-3 concurrent disjoint agents. The DEFAULT execution posture for any engagement with 2+ open assets (engage/offensive route here; `offensive.py next` prints the PARALLEL line), not just /brain. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain", or whenever the board has 2+ open assets.
 ---
 
 # brain
@@ -44,7 +44,7 @@ A guess wearing a checklist stays on the brain (see `Skill(delegate)`).
 
 ## The dispatch (checklist contract)
 
-Reuse `Skill(delegate)`'s six-slot checklist as the prompt skeleton: confirmed
+Reuse `Skill(delegate)`'s eight-slot checklist as the prompt skeleton: confirmed
 primitive, exact copy-paste commands with real IPs/paths inline (no `$VAR`),
 egress/port constraints, false-root/hostname guardrail, fragile-box discipline,
 report contract. Every dispatch prompt additionally carries:
@@ -83,8 +83,8 @@ report contract. Every dispatch prompt additionally carries:
    Deadend), records `note`/`done`/`foothold` on the driver, re-runs `next`.
 
 The closeout chain (triage, evidence, walkthrough, learn) stays on the brain.
-Plain `Skill(offensive)` without /brain is unchanged: single agent, main model
-executes directly.
+Below 2 open assets, plain single-agent `Skill(offensive)` execution applies:
+main model executes directly.
 
 ## Failure handling
 

@@ -30,6 +30,7 @@ is absent, this map IS the router.
 
 | Phase / situation | Skill |
 |---|---|
+| Board has 2+ open assets/vectors (the DEFAULT execution posture; `offensive.py next` prints `PARALLEL`) | `Skill(brain)` - driver/board/triage stay in the main session, execution dispatched to 2-3 concurrent disjoint-lane subagents |
 | Raw tool output landed (scans, crawls, recon dumps) -> state/loot/Killchain | `Skill(ingest)` (cheap-tier subagent; bounded job) |
 | "Which tool/payload for this surface" - wiki lookup (quick or deep) | `Skill(wiki-arsenal)` |
 | External recon / OSINT / attack-surface mapping | `Skill(wiki-recon)` |

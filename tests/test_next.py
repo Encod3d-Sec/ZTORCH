@@ -169,3 +169,23 @@ def test_g8_output_class_wraps_vm_bg(tmp_path, capsys):
     assert rc == 0
     assert "vm-bg.sh demo sqlmap-web1" in out
     assert "vm-bg.sh --read demo sqlmap-web1" in out
+
+
+def test_next_parallel_hint_on_two_open_assets(tmp_path, capsys):
+    """Default brain posture: 2+ open assets -> the driver names the parallel
+    posture (Skill(brain), 2-3 disjoint lanes)."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "recon"},
+             arsenal="wiki/recon", skill="", tool="nmap"),
+        _row(id="4a:2", asset="db1", **{"vuln class": "secrets"},
+             arsenal="wiki/secrets", skill="", tool="nuclei"),
+    ])
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0
+    assert "Skill(brain)" in out and "2-3" in out
+    # single open asset -> no parallel directive
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "recon"},
+                                     arsenal="wiki/recon", skill="", tool="nmap")])
+    _, out1 = _next_out(capsys, vault, eng)
+    assert "Skill(brain)" not in out1

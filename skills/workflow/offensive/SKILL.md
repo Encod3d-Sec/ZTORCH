@@ -21,9 +21,11 @@ python3 scripts/offensive.py --eng <name> done <row> --poc <img> --kind req   # 
 outcome with `note` (arsenal card consulted) and `done` (closed with evidence, dead, or parked).
 Re-run `next`. That is the whole cycle.
 
-Under `/brain` (see `Skill(brain)`): the driver loop, gates, and board stay in
-the brain; the execution of each `next` action is delegated to a subagent per
-brain's tier table. Plain `Skill(offensive)` without /brain is unchanged.
+Default posture (2026-09-08): once the board has 2+ open assets, run the loop under
+`Skill(brain)` - the driver, gates, and board stay in the brain; each `next` action's
+execution is dispatched to one of 2-3 concurrent disjoint-lane subagents per brain's
+tier table. `next` prints a `PARALLEL` line when this applies. Plain single-agent
+execution is the fallback below 2 open assets, not the default.
 
 ## Start / resume
 

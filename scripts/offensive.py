@@ -679,6 +679,15 @@ def cmd_next(args):
     skill = (row.get("skill") or "").strip()
     print("PASS %s | ASSET %s | ROW %s %s" % (state.get("pass", 0), asset, rid, cls))
 
+    # Default posture (2026-09-08): 2+ open assets -> run the loop under Skill(brain)
+    # (main = strategy/board/triage, execution in 2-3 concurrent disjoint lanes).
+    # Below 2 open assets the serial single-agent loop stays correct.
+    if len(_open_assets(rows)) >= 2:
+        print("PARALLEL  %d open assets - default posture is Skill(brain): keep the "
+              "driver/board/triage in the main session, dispatch 2-3 concurrent "
+              "disjoint-lane subagents for execution (lane contract: delegate slots a-h)"
+              % len(_open_assets(rows)))
+
     # Post-foothold: route load-bearing tool commands through the recorded shell
     # so the operator keeps visibility (CLAUDE.md Burp-first / post-foothold).
     if state.get("foothold"):
