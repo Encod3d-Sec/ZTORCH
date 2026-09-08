@@ -1,13 +1,13 @@
 ---
 name: nightmare
-description: Recompiled Windows LPE arsenal (Nightmare_Eclipse PoCs) for CTF/lab privilege escalation. Build triage from the target Windows version, pull binaries from the PRIVATE Encod3d-Sec/nightmare repo, run per the interactive-session test protocol, record Defender verdicts. Use when a standard-user Windows foothold needs a kernel/LPE shortcut on a CTF box, or when asked to test/update the nightmare arsenal.
+description: Recompiled Windows LPE arsenal (Nightmare_Eclipse PoCs) for CTF/lab privilege escalation. Build triage from the target Windows version, pull binaries from the PRIVATE Encod3d-Sec/Nightmare repo, run per the interactive-session test protocol, record Defender verdicts. Use when a standard-user Windows foothold needs a kernel/LPE shortcut on a CTF box, or when asked to test/update the nightmare arsenal.
 ---
 
 # Nightmare Arsenal (Windows LPE, CTF)
 
 Reworked (hash-changed, cross-compiled) Windows LPE PoCs from Nightmare_Eclipse
 (git.churchofmalware.org; upstream clones read-only at `raw/git/`). Binaries +
-verdicts live in the PRIVATE repo `github.com/Encod3d-Sec/nightmare`; build
+verdicts live in the PRIVATE repo `github.com/Encod3d-Sec/Nightmare`; build
 recipes in its BUILD.md. Authorized CTF/lab targets ONLY.
 
 **Hub:** [[privesc-exploit-arsenal]] (Windows table, nightmare row) · routed from Skill(hunt-windows).
@@ -33,7 +33,7 @@ Pick ONE, highest-fits-first: mini-plasma > red-sun > legacy-hive > green-plasma
 
 ## Workflow
 
-1. **Pull the arsenal** (Kali): clone `git@github.com:Encod3d-Sec/nightmare.git`
+1. **Pull the arsenal** (Kali): clone `git@github.com:Encod3d-Sec/Nightmare.git`
    into the engagement working dir. Read the PoC's VERDICT.md: verdicts are
    PER-BUILD, a different target build means the binary is unproven, not bad.
 2. **Record the build**: `cmd /c ver` + DisplayVersion (repo tools/nm.sh build).
