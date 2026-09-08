@@ -38,7 +38,9 @@ operator watches it fire live. **Burp-first does NOT end at RCE/shell:** the rec
 foothold then scripting the entire post-exploitation over raw `curl`/`vm.sh`/urllib, so the operator
 loses sight of it. Keep the requests that matter (the authed API call, the injection that reads the flag,
 each privesc fetch) in Repeater to the end of the box. Quick throwaway loops over the bridge are fine; the
-requests you'd screenshot are not throwaway -> Repeater.
+requests you'd screenshot are not throwaway -> Repeater. Same discipline at confirm time: build the
+Repeater tab and capture the PoC when the confirming request lands, never as a deferred close-out batch
+(a deferred replay drifts from the exact request that proved the finding and gets lost across compaction).
 
 ## Drive each Burp tool (native name -> what it is for)
 Every load-bearing action has a tool; reach for it instead of a raw request so the operator watches it live. (Authoritative 27-tool surface: `PortSwigger/mcp-server` `Tools.kt`.)

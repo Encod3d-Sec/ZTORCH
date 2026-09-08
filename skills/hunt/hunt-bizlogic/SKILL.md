@@ -49,8 +49,11 @@ currency swap            # pay in a weaker currency, credited in a stronger one
 integer overflow / very large qty
 decimal / rounding (0.001 * 1000)
 ```
+On a two-legged transfer, a negative amount flips BOTH legs (sender gains, recipient debited) and
+passes the insufficient-balance check by construction; re-read both balances afterward as the
+impact proof. [[business-logic]]
 
-4. **Repetition / limits / logic race.** Apply a coupon twice, redeem a gift card twice, exceed a per-account limit. When the limit is a check-then-act with no lock, fire a **small concurrent burst** at the single endpoint (logic [[race-conditions]]) so several requests pass the check before any commits. Keep the burst bounded: a handful of parallel requests is the proof, honor `no_dos`, never a sustained flood. Per `hunt-core` this is a bounded active proof, not object enumeration, so the 5-to-20 identifier ceiling does not apply, but the RoE rate cap does. Send the request to **Turbo Intruder** via `send_to_intruder` / the Burp MCP and fire it with a single-packet or synchronized-gate script so the operator watches the race live; a hand-rolled parallel `curl` loop hides it.
+4. **Repetition / limits / logic race.** Apply a coupon twice, redeem a gift card twice, exceed a per-account limit. When the limit is a check-then-act with no lock, fire a **small concurrent burst** at the single endpoint (logic [[race-conditions]]) so several requests pass the check before any commits. Keep the burst bounded: a handful of parallel requests is the proof, honor `no_dos`, never a sustained flood. Per `hunt-core` this is a bounded active proof, not object enumeration, so the 5-to-20 identifier ceiling does not apply, but the RoE rate cap does. Send the request to **Turbo Intruder** via `send_to_intruder` / the Burp MCP and fire it with a single-packet or synchronized-gate script so the operator watches the race live; a hand-rolled parallel `curl` loop hides it. Read the negative before re-racing: a final state of exactly `start - successes*unit`, or bursts that land at the cap with only TRAILING completions accepted, prove a serialized check-then-write; record the class closed and switch vectors ([[race-conditions]]).
 
 5. **Mass assignment / parameter injection.** Add fields the UI never sends (`isAdmin`, `role`, `balance`, `verified`, `discount`, `userId`) to JSON or form bodies; observe a privilege or state change.
 

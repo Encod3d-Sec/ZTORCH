@@ -31,7 +31,10 @@ exploitability test beats a blind fire. Cheatsheet: Search and Selection + Optio
 ## Reverse shells
 `multi/handler` catches. Payload choice: meterpreter first
 (`linux/x64/meterpreter/reverse_tcp` / `windows/x64/meterpreter/reverse_tcp`), fall back to plain
-`shell_reverse_tcp` when meterpreter is blocked or unstable, routine on hardened Windows/EDR.
+`shell_reverse_tcp` when meterpreter is blocked or unstable, routine on hardened Windows/EDR. Third
+rung, when AV reaps even the plain stager seconds after connect: skip msf payloads entirely, stage a
+minimal non-network stub (tiny compiled launcher that just runs a batch file) over the existing
+webshell/file-write channel - pattern on [[wiki/cheatsheets/windows-privesc]].
 Delivery via `msfvenom` (ELF/EXE/ASPX/PHP, cheatsheet's MSFVenom section has every format).
 Egress-test the LPORT (80/443/53 before 4444). Background the handler correctly:
 `set ExitOnSession false; run -j` so it keeps catching new sessions. On the VM,

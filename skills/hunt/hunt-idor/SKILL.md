@@ -154,6 +154,9 @@ calls.
     request shape. **Prefer reversible operations** - changing B's display name proves it;
     deleting B's account proves the same and destroys your setup. Confirm from B's side.
     **Never test a destructive write against an identifier you have not confirmed is B's.**
+    The update response is never the verdict: a `200 "updated"` with an empty details object is a
+    common no-op mask (the write silently scoped to the caller's own rows); only an owner-side GET
+    readback decides. [[access-control]]
 11. **Bounded ID sampling - never a range sweep.** Per `hunt-core`: five identifiers by default,
     twenty ceiling with approval, zero under `no_bruteforce`. Two or three adjacent IDs establish
     a sequential pattern; that is the whole proof. For scale, cite the `total` or pagination

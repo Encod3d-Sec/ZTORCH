@@ -46,7 +46,8 @@ usual failure mode, not a weak sub-agent.
 - **(c) egress/port constraints**, an egress-tested LPORT, not a guess at 4444.
 - **(d) the false-root guardrail** (next section), non-negotiable.
 - **(e) fragile-box discipline** if applicable: serial requests, long timeouts, no fuzzers.
-- **(f) report-back contract**: return the primitive/creds/flag plus evidence path; do not pivot
+- **(f) report-back contract**: return the primitive/creds/flag plus evidence path; REVERT any state
+  the run changed (a group membership added, a registry key set) before reporting back; do not pivot
   further without the main agent.
 - **(g) anti-give-up + no-guess**: run the FULL specified window (a 5-minute pspy watch is 5 minutes,
   not 2); if blocked, report the RAW output/errors and STOP, never guess or substitute a value and
@@ -55,10 +56,11 @@ usual failure mode, not a weak sub-agent.
 
 ## False-root/hostname guardrail (MANDATORY every delegation)
 
-A returned `uid=0`/root is trusted ONLY if `hostname` matches the target AND the expected uid holds.
+A returned `uid=0`/root (Linux) or `nt authority\system` (Windows) is trusted ONLY if `hostname`
+matches the target AND the expected uid holds.
 Otherwise the shell died back to the Kali box, which runs as root; `$(...)`/backticks there substitute
 LOCALLY, the false-RCE trap. The fix is re-pop, not celebrate. The sub-agent MUST report `hostname`
-alongside any `id` output, every time, no exceptions.
+alongside any `id`/`whoami` output, every time, no exceptions.
 
 ## Main-agent discipline
 

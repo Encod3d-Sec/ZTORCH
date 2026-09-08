@@ -18,7 +18,7 @@ doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket f
 
 ## Confirmation gate
 
-**NOT confirmation:** a generic `500`; a WAF block page or a "SQL injection detected" string (that is the app's filter firing, not the database); a reflected error string you have not proved originates from the DB; a single non-repeatable slow response; a boolean or time inference with no differential (no clean baseline-vs-injected delta); the payload echoed back from your own request; any verdict read off a response body without a clean-session re-verify.
+**NOT confirmation:** a generic `500`; a WAF block page or a "SQL injection detected" string (that is the app's filter firing, not the database); a reflected error string you have not proved originates from the DB; a single non-repeatable slow response; a boolean or time inference with no differential (no clean baseline-vs-injected delta); the payload echoed back from your own request; any verdict read off a response body without a clean-session re-verify; MySQL `1265`/`1366`/`1054` from a write endpoint (usually the connector coercing a BOUND value, not injection; decisive test: a payload that would span multiple SQL tokens returns the SAME single coercion error) [[sql-injection]].
 
 **IS confirmation:** a DB error whose text is demonstrably from the engine (`extractvalue`/`updatexml` output, a driver error naming the DBMS); UNION or error-based output that returns real DB content; a boolean oracle that flips TRUE/FALSE consistently across probes; a time delta that reproduces on repeat (baseline vs `SLEEP(5)`/`pg_sleep(5)`/`WAITFOR`, re-run); or an out-of-band DNS/HTTP hit to your unique Collaborator/interactsh subdomain. Re-verify in a CLEAN session every time; on a login-redirect oracle clear the session cookie between probes (a stale authenticated session reads as always-true).
 
@@ -32,6 +32,7 @@ doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket f
 Highest-value injection points first:
 
 - **Authentication / login** - a bypass here is auth bypass; the login-redirect oracle (below) turns even a filtered, output-less login into a blind extractor.
+- **Pre-auth WRITE paths (register/dup-check, resend-verification, reset submit)** - a clean, parameterized login clears nothing else: these are separate queries, frequently string-concatenated when the login SELECT is parameterized. Use a fresh username per probe so the dup check actually runs; an OR-expanded payload turns the dup-vs-created message difference into a boolean oracle ([[sql-injection]], `wiki/payloads/sqli.md`).
 - **Search / filter / sort / report params** - `?q=`, `?category=`, `?sort=&order=` (ORDER BY injection), `?start_date=`; user input lands straight in a WHERE/ORDER BY.
 - **Anything that reflects query output or a DB error** - error-based and UNION need a reflection sink; if the page you are hitting reflects nothing, test on one that does.
 - **JSON bodies with nested objects** - operator injection -> NoSQL (`{"$gt":""}`, `[$ne]`).
@@ -70,6 +71,10 @@ test the SQLi on a different page that does.
 4. In-band first: error-based (`extractvalue`/`updatexml`) and UNION (`ORDER BY` for col count,
    then `UNION SELECT`). Mind display truncation when sizing extracted chunks.
 5. Only then blind: boolean (`AND 1=1` vs `AND 1=2`) then time (`SLEEP(5)`/`pg_sleep(5)`/`WAITFOR`).
+   Caveat: a flat time battery does NOT close a zero-row sink (a dup-check/uniqueness SELECT): `SLEEP`
+   is volatile, never constant-folded, and cannot fire there even when the param IS injectable, while
+   error-based `extractvalue`/`updatexml` folds during optimization and reflects ~32 chars of any
+   subquery; probe error-based first on exactly those sinks. [[sql-injection]]
 6. **Second-order:** if login/register is parameterized, the SAME stored value may be unsafe on
    another page (profile/dashboard/"last logins") OR simply wherever the app echoes your stored
    name back - a greeting, a "Welcome X", a counter/result line. Register the payload as the
@@ -88,6 +93,8 @@ curl -o /dev/null -s -w "%{time_total}\n" "https://target.com/search?q=test' AND
 # sqlmap owns the rest: DBMS fingerprint, WAF bypass, enumeration, extraction
 sqlmap -u "https://target.com/search?q=test" --level=3 --risk=2 --batch --dbs
 ```
+Over a non-TTY stdin (an ssh/VM pipe or an agent driver), sqlmap silently discards `-r` request files
+and the run false-negatives (baseline auth 401s); always add `--ignore-stdin` there. [[sqlmap]]
 Keep exactly ONE manual curl in the writeup as the confirming PoC; sqlmap owns enumeration.
 
 **Anti-automation signal -> do NOT run sqlmap at all (stay manual + serial).** A taunt string

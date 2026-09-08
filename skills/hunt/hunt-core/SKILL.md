@@ -368,6 +368,11 @@ Append to Deadends.md: - [ ] <class> on <host> <param/endpoint> -- <why it faile
 The reason matters more than the entry. `403 on cross-account, authorization enforced` stops you
 retesting; a bare entry does not.
 
+Before recording a class exhausted app-wide, diff the endpoints you actually probed against the
+app's full route/parameter inventory; the verdict covers only the endpoints in it, and the one
+route never touched (a pre-auth register/dup-check path is the classic) is usually where the class
+was actually live.
+
 ## Distillation
 
 When a confirmed finding is a reusable technique rather than a target quirk, stage it:

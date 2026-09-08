@@ -56,6 +56,11 @@ path to the mid-tier (moderator) flag/role on a box that also has a heavier unin
   LIMITED window; buried test messages never surface, so "no callback" becomes ambiguous (broken
   payload vs not-rendered). Submit ONE payload + a paired plain-`<img>` control in the SAME message
   (same render), so a callback disambiguates render-vs-execution. Iterate in a clean queue.
+- **Read the bot's contract before iterating payloads.** The detector often scores ONE signal (a
+  cookie marker) while localStorage poison runs unscored; the bot may render only the victim's FIRST
+  item, so give the victim account exactly one item; and a shared single-instance bot can WEDGE
+  (instant generic failures, no navigation): its negative is not a verdict, stop burning probes and
+  re-test solo after it recovers. [[techniques/web/xss]]
 - Payload arsenal + WAF-token isolation examples: `wiki/payloads/xss.md`.
 
 DOM XSS signals in JS:
@@ -65,7 +70,10 @@ eval(  $.html(  $(location  document.referrer
 ```
 
 ## Methodology
-1. Map all reflection points - URL params, form fields, HTTP headers, file upload names
+1. Map all reflection points - URL params, form fields, HTTP headers, file upload names. In an SPA,
+   grep the JS bundle for `dangerouslySetInnerHTML`/`v-html` first (that names the raw-HTML sinks),
+   then submit the same markup to EVERY write field and diff the readbacks: raw storage AND a raw-HTML
+   sink is the stored-XSS field; escaped sibling fields are the control. [[techniques/web/xss]]
 2. Classify: Reflected / Stored / DOM
 3. Probe sanitizer: send `aaa"bbb'ccc<ddd` - observe which chars escaped
 4. Test allowlisted tag combos: `<math><style>`, `<svg><style>`, `<iframe srcdoc>`

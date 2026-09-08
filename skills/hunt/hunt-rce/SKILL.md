@@ -43,7 +43,7 @@ Payloads" below - not repeated here.
 
 **Rank before probing.** Not every free-text field is equally likely to reach an interpreter:
 
-- **Config / template editors** - Nomad, CI job specs, notification templates: user text is compiled, not just stored.
+- **Config / template editors** - Nomad, CI job specs, notification templates: user text is compiled, not just stored. A CMS admin theme/template editor is arbitrary write into an EXECUTED file with no CVE needed (a patched traversal CVE does not close the editor's legitimate save), and its CSRF token is typically single-use: re-scrape it per POST ([[cms-exploitation]]).
 - **Import / render / export endpoints** - `?template=`, `?url=`, document generation, PDF/HTML renderers.
 - **Admin and management consoles** - richer surface, weaker input handling, often the shortest path.
 - **Deserialization sinks** - any endpoint eating a serialized blob (magic bytes, `!!` YAML tags, Java `AC ED`, PHP `O:`).
@@ -59,6 +59,7 @@ Tech stack signals:
 | ingress-nginx annotations | Path field regex bypass |
 | Spring Boot `*-routing-expression` header | SpEL injection |
 | `X-GitHub-Enterprise-Version` | Nomad/collectd/syslog-ng config injection |
+| Tomcat manager app exposed | default creds -> WAR deploy; manager-gui-only (`/manager/text` 403, breaks scripted/msf deploys) needs the GUI upload with a fresh single-use CSRF nonce per POST ([[api-request-findings]]) |
 
 ## Methodology
 0. **Prefer a vetted module over a hand-rolled exploit.** For a known CVE/product, check Metasploit

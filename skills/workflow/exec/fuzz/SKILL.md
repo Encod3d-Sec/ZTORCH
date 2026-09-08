@@ -29,6 +29,7 @@ It prints the seclists base, the profile flags line, and the ordered absolute pa
 ## 3. Calibrate (native first, backstop with judgment)
 - Default to ffuf `-ac`/`-acc` and feroxbuster auto-filtering.
 - If a wildcard/soft-404 fools `-ac` (everything returns 200 with varying size): fire 2-3 known-bogus random paths first, read status/size/words, then set explicit `-fs`/`-fw` on the catch-all baseline, or `-mc 200,301,302,401,403` on a clean 404.
+- Uniform catch-all (every path returns the same-size SPA index): content fuzzing is BLIND on that host; stop after calibration and mine the JS bundle for the real surface instead ([[api-testing]]).
 - READ tool output END-TO-END, never a grep. A real hit hides in the noise.
 
 ## 4. Climb tiers on SIGNAL (the adaptive core)

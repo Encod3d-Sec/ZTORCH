@@ -32,7 +32,7 @@ Rank the sinks first - not every upload reaches code:
 Then attack in layers, cheapest first: **extension -> content-type -> magic-byte -> parser/render.**
 
 ## Methodology
-1. **Baseline:** upload a valid file; note stored path, returned URL, filename transformation, and whether it is reachable + executed by the server.
+1. **Baseline:** upload a valid file; note stored path, returned URL, filename transformation, and whether it is reachable + executed by the server. **Prove a SINK exists before any bypass work:** if storage is a DB blob returned as base64 JSON with no serve or render route anywhere in the app, the vector is dead no matter how weak the filter; close the lane there. [[file-upload]]
 2. **Extension bypass:**
 ```
 shell.php  shell.phtml  shell.php5  shell.phar  shell.pHp
