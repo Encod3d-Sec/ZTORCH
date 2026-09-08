@@ -255,3 +255,30 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## Remote share-content hunting at scale (MANSPIDER, PowerHuntShares)
+
+Snaffler (above) hunts from a domain-joined Windows box. Two more for when that does not fit:
+
+**MANSPIDER** (Linux, best via its docker image to avoid dependency pain) spiders SMB shares by filename AND content, downloads matches, and auto-extracts cred-looking strings from them:
+
+```sh
+docker run --rm -v ./manspider:/root/.manspider blacklanternsecurity/manspider TARGET_IP -c 'passw' -u 'user' -p 'pass'
+# matches land in ./manspider/loot; -c searches file CONTENT, add -f to filter extensions
+```
+
+**PowerHuntShares** (PowerShell, does NOT need a domain-joined host) hunts all reachable SMB shares in the domain and writes a reviewable HTML report with severity-tagged data-exposure findings:
+
+```powershell
+Invoke-HuntSMBShares -Threads 100 -OutputDirectory C:\Users\Public
+```
+
+**NetExec inline content search** when you already have creds and want one share fast:
+
+```sh
+nxc smb TARGET_IP -u user -p 'pass' --spider IT --content --pattern "passw"
+```
+
+Keyword strategy: search for the literal `DOMAIN\` (the domain prefix, e.g. `CORP\`) alongside `passw`/`user` - scripts and config files that hardcode `DOMAIN\user:pass` pairs match it and skip a thousand false positives on the bare word "password".
+
+<!-- promoted-slug: smb-share-content-hunting -->

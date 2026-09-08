@@ -16,7 +16,9 @@ a module from memory when a targeted lookup would confirm the right one/target i
 ## Setup / DB
 `msfconsole -q` in a named tmux tab, never a blind background job, the operator needs to see
 sessions land live. `workspace -a <eng>` scopes loot to the engagement, `db_status` confirms the
-Postgres backend is up before anything else. Cheatsheet: Setup + Database sections.
+Postgres backend is up before anything else. If it stays down after an msf update, `msfdb reinit`
+rebuilds it. Record captured creds with `creds add` so the workspace, not just `state.md`, holds
+them. Cheatsheet: Setup + Database sections.
 
 ## Recon via msf
 `db_nmap` writes straight to `hosts`/`services`; layer `auxiliary/scanner/*` (smb/http/ssh
@@ -26,7 +28,9 @@ ctf-box Phase-1 basics, it does not replace them, run both.
 ## Search / select / verify
 `search <app> <ver>` or `search cve:<id>`, `use`, `info` to read the module's CVE refs and
 target list, `check` before `run`/`exploit` whenever the module supports it, a non-destructive
-exploitability test beats a blind fire. Cheatsheet: Search and Selection + Options and Running.
+exploitability test beats a blind fire (`search check:true` pre-filters to modules that have one).
+When no local module matches the version, a `searchsploit` `.rb` import fills the gap ([[metasploit]]
+module-import section). Cheatsheet: Search and Selection + Options and Running.
 
 ## Reverse shells
 `multi/handler` catches. Payload choice: meterpreter first

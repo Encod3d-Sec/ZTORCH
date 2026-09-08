@@ -50,8 +50,6 @@ tshark -r file.pcap -c 10
 tshark -q
 ```
 
-## Common use cases
-
 ### Live capture with autostop
 
 ```bash
@@ -233,3 +231,35 @@ capinfos file.pcap
 - THM: TShark CLI Wireshark Features (tsharkcliwiresharkfeatures)
 - THM: Security Footage CTF
 - THM: SMBv2 decrypt
+
+## Credentials from network captures
+
+When the loot is a pcap (or a position on the wire), mine credentials directly instead of eyeballing follow-streams. Which protocols still leak plaintext credentials:
+
+| Protocol | Port | Credential exposed |
+|---|---|---|
+| HTTP | 80 | Basic/NTLM auth headers, login-form POST bodies |
+| FTP | 21 | USER/PASS commands in cleartext |
+| SMTP | 25 | AUTH PLAIN/LOGIN (base64, trivially decoded) |
+| POP3 / IMAP | 110 / 143 | USER/PASS, LOGIN commands |
+| SNMP v1/v2c | 161 | community strings |
+| LDAP | 389 | simple-bind credentials |
+
+Credential-hunting display filters (beyond the basic set above):
+
+```sh
+tshark -r capture.pcap -Y 'http.request.method == "POST"'   # form logins in plaintext HTTP
+tshark -r capture.pcap -Y 'http contains "passw"'           # broader: any HTTP frame mentioning it
+tshark -r capture.pcap -Y 'ftp.request.command == "PASS"'
+```
+
+**PCredz** automates the whole sweep over a pcap or a live interface and also parses challenge-response protocols Wireshark makes you dig for: credit card numbers, POP/SMTP/IMAP/FTP cleartext creds, SNMP community strings, HTTP Basic/NTLM headers and form-submitted passwords, NTLMv1/v2 hashes (from DCE-RPC, SMBv1/2, LDAP, MSSQL, HTTP), and Kerberos AS-REQ pre-auth etype 23:
+
+```sh
+./Pcredz -f capture.pcapng      # offline capture
+sudo ./Pcredz -i eth0 -v        # live interface
+```
+
+Run PCredz first on any handed-over pcap; fall back to manual filters only for what it misses. Recovered NetNTLMv2 / etype-23 hashes crack per [[password-cracking]].
+
+<!-- promoted-slug: network-credential-sniffing -->

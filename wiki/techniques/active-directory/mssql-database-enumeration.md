@@ -52,8 +52,6 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
 - [NetSPI/PowerUpSQL](https://github.com/NetSPI/PowerUpSQL) - A PowerShell Toolkit for Attacking SQL Server
 - [skahwah/SQLRecon](https://github.com/skahwah/SQLRecon/) - A C# MS SQL toolkit designed for offensive reconnaissance and post-exploitation.
 
-## Identify Instances and Databases
-
 ### Discover Local SQL Server Instances
 
 ```ps1
@@ -139,8 +137,6 @@ WHERE DB1.type = 'R'
 ORDER BY DB1.name;
 ```
 
-## Identify Sensitive Information
-
 ### Get Tables from a Specific Database
 
 ```ps1
@@ -211,3 +207,25 @@ Tool references are inline in **Methodology**; see the `tools/` pages for CLI us
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## MSSQL post-access gotchas: system DBs, impersonation context, linked-server quoting
+
+- **Default system databases** (skip these when hunting company data): MSSQL ships `master`,
+  `msdb`, `model`, `resource`, `tempdb`; MySQL ships `mysql`, `information_schema`,
+  `performance_schema`, `sys`. Anything else is application data.
+- **`EXECUTE AS LOGIN` should run from the `master` database** (`USE master` first): every login
+  can reach master, and if the impersonated login cannot access the database you were in, the
+  impersonation errors out. Run the check queries, then `REVERT` from the same context.
+- **Local Windows auth against a non-domain SQL Server:** pass the machine name as the domain,
+  `TARGET\\user` or `./user` (e.g. `mssqlclient.py 'TARGET/user:pass@TARGET' -windows-auth`).
+- **Linked-server execution quoting:** the `EXECUTE(...) AT [...]` string is parsed by the REMOTE
+  server, so escape inner quotes by doubling them; a semicolon chains multiple statements in one
+  round trip when stacked queries are otherwise unavailable.
+
+```sql
+-- doubled quotes survive the remote parse; semicolon chains the next statement
+EXECUTE('select system_user; select is_srvrolemember(''sysadmin'')') AT [LINKED_SERVER]
+GO
+```
+
+<!-- promoted-slug: mssql-post-access-gotchas -->

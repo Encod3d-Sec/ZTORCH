@@ -901,3 +901,37 @@ nmap -p- --min-rate 1000 -Pn --open <host>
 An "all filtered" answer from anything narrower is unproven; re-run wide before declaring the host dead.
 
 <!-- promoted-slug: full-port-sweep-filtered-artifact -->
+
+## Fingerprint Every Redirect Hop (Differential Headers)
+
+One `curl -I` on the apex only sees one hop. Each hop in the `http -> https -> www` chain serves different headers, and each leaks a different layer of the stack:
+
+```bash
+curl -I http://target.com
+curl -I https://target.com        # hop 2: X-Redirect-By: WordPress appears once TLS is on
+curl -I https://www.target.com    # hop 3: Link: <.../wp-json/>; rel="https://api.w.org/" = WP + REST API location
+```
+
+Read `X-Redirect-By` (which CMS moved you), `Link rel="https://api.w.org/"` (REST API base), and `Server` per hop; the final 200 usually carries the most (framework, CDN, API links). Repeat per discovered vhost - each has its own stack.
+
+<!-- kind: technique | feeds: recon.md Web Fingerprinting section -->
+
+<!-- promoted-slug: redirect-chain-differential-fingerprinting -->
+
+## Well-Known URI Sweep (RFC 8615)
+
+`/.well-known/` centralizes a site's service metadata (IANA registry). Beyond `security.txt`, probe the recon-valuable entries on every alive host:
+
+```bash
+T="https://target.com"
+for p in security.txt openid-configuration change-password assetlinks.json mta-sts.txt; do
+  curl -sk -m 10 -o /dev/null -w "$p → %{http_code}\n" "$T/.well-known/$p"
+done
+```
+
+- `openid-configuration` is a free API map on ANY OIDC site (not just M365): read `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`, `jwks_uri`, and `scopes_supported` straight from the JSON; feeds [[oauth-attacks]] probes.
+- `assetlinks.json` confirms app-to-domain ownership (mobile attack surface); `change-password` locates the account-recovery flow.
+
+<!-- kind: technique | feeds: recon.md Always-On HTTP Checks section -->
+
+<!-- promoted-slug: well-known-uri-recon-sweep -->

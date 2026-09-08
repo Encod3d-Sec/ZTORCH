@@ -74,15 +74,21 @@ eval(  $.html(  $(location  document.referrer
    grep the JS bundle for `dangerouslySetInnerHTML`/`v-html` first (that names the raw-HTML sinks),
    then submit the same markup to EVERY write field and diff the readbacks: raw storage AND a raw-HTML
    sink is the stored-XSS field; escaped sibling fields are the control. [[techniques/web/xss]]
-2. Classify: Reflected / Stored / DOM
+2. Classify: Reflected / Stored / DOM. Input in a `#fragment` that never appears in the
+   Network tab is DOM (client-side only); markup absent from View-Source but present in the
+   live Inspector was written by JS after page load. Re-fires after refresh = stored.
 3. Probe sanitizer: send `aaa"bbb'ccc<ddd` - observe which chars escaped
 4. Test allowlisted tag combos: `<math><style>`, `<svg><style>`, `<iframe srcdoc>`
 5. Hunt SVG upload vectors - often bypasses CSP
 6. Test markdown/RDoc: `[text](javascript:alert(1))`, `link:javascript:`
 7. Check redirect params: `?redirect=javascript:alert(1)`
 8. Test UTM params: `utm_source`, `utm_medium` - often unsanitized on marketing pages
-9. Plant blind-XSS beacons in admin-viewable fields: error messages, User-Agent, Referer, username, email
-10. Validate in real browser before reporting
+9. Plant blind-XSS beacons in admin-viewable fields (error messages, User-Agent, Referer, username,
+   contact/support forms): load a remote script whose PATH names the field so one submission
+   reveals which field fired; skip fields validated on both ends or never rendered in cleartext
+   (passwords get hashed). [[techniques/web/xss]]
+10. Validate in real browser before reporting; prefer `alert(window.origin)` over `alert(1)`
+    so the popup names the executing origin when input renders in a cross-domain iframe
 11. **Distill when confirmed** (per hunt-core): reusable sanitizer or CSP bypass, GENERIC, `python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page techniques/web/xss.md`.
 
 ## Key Payloads

@@ -61,8 +61,6 @@ full `rockyou` run.
 - Wordlists (e.g., `rockyou.txt`, SecLists)
 - Sufficient compute resources (GPU preferred for Hashcat)
 
-## Methodology
-
 ### 1. Identify the hash format
 
 ```bash
@@ -337,3 +335,17 @@ Gotchas:
   passwords are prime candidates for OS-account reuse (see [[linux-privesc]]).
 
 <!-- promoted-slug: mysql-caching-sha2-cracking -->
+
+## Mounting a BitLocker volume after cracking (dislocker)
+
+Once the BitLocker password falls to `bitlocker2john` + `-m 22100` (above), dislocker mounts the volume on Linux with no Windows host needed:
+
+```sh
+sudo losetup -f -P Backup.vhd                         # attach the VHD; note the data partition, e.g. /dev/loop0p2
+sudo dislocker /dev/loop0p2 -u'<cracked-password>' -- /media/bitlocker
+sudo mount -o loop /media/bitlocker/dislocker-file /media/bitlockermount
+```
+
+`-u` takes the user password; the decrypted image appears as `dislocker-file`, which needs the loop mount. Detach in reverse (`umount` both mounts, then `losetup -d /dev/loop0`).
+
+<!-- promoted-slug: bitlocker-dislocker-mount -->

@@ -16,7 +16,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[cloud-moc|Cloud]] (53)
 - [[cracking-moc|Cracking]] (6)
 - [[exploit-dev-moc|Exploit Dev]] (19)
-- [[forensics-moc|Forensics]] (5)
+- [[forensics-moc|Forensics]] (6)
 - [[linux-moc|Linux]] (10)
 - [[macos-moc|Macos]] (19)
 - [[methodology-moc|Methodology]] (13)
@@ -67,10 +67,10 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[race-conditions]]
 - [[redos]]
 - [[rsql]]
-- [[wiki/payloads/session]]
+- [[session]]
 - [[smuggling]]
 - [[sqli]]
-- [[wiki/payloads/ssrf]]
+- [[ssrf]]
 - [[ssti]]
 - [[web-cache]]
 - [[webauthn-passkey]]

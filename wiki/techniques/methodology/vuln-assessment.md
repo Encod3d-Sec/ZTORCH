@@ -117,8 +117,6 @@ CVSS scores rate *severity*; feasibility verdicts rate *exploitability given spe
 
 ---
 
-## CVE and NVD
-
 ### CVE (Common Vulnerabilities and Exposures)
 
 CVE is a publicly available catalog of security issues sponsored by the U.S. Department of Homeland Security and maintained by MITRE. Each entry has a unique CVE ID (format: `CVE-YEAR-NNNNN`), a description, and references.
@@ -151,8 +149,6 @@ https://nvd.nist.gov/vuln/detail/CVE-YYYY-NNNNN
 **OVAL (Open Vulnerability Assessment Language):** an XML-based standard used by scanners (including Nessus) to define what to check on a system. OVAL definitions describe vulnerable states, compliance requirements, installed software, and patch status without requiring active exploitation.
 
 ---
-
-## Tools
 
 ### Nessus
 
@@ -660,3 +656,11 @@ Distinct from bounding a version off a JSON config's key-set or a stack trace's 
 <!-- promoted-slug: when-a-product-s-version-banner-is-gated-behind-authenticati -->
 
 <!-- promoted-slug: a-fronting-proxy-gateway-component-with-no-version-banner-ca -->
+
+## Scanner ops: exports, triage timing, recurring noise
+
+- Nessus export pick: `.nessus` is an XML copy of scan settings plus plugin outputs (enough for re-triage); `.db` additionally bundles the scan KB, the plugin audit trail, and any scan attachments, which is what later re-analysis or tool imports want.
+- A full GVM/OpenVAS task can run 1-2 hours; triage findings as they land in the report instead of blocking on completion.
+- Recurring-scan noise: a detection that reappears every cycle but is verified benign (e.g., Microsoft DirectAccess advertising insecure and null cipher suites by design) should be documented once as accepted/false-positive with its rationale, not re-litigated each scan.
+
+<!-- promoted-slug: va-scanner-ops-notes -->

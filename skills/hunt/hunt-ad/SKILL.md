@@ -55,6 +55,7 @@ whole auth string for `-k -no-pass` with `KRB5CCNAME` exported. Every op needs `
 
 Ports: SMB 445, LDAP 389/636, Kerberos 88, ADWS 9389, WinRM 5985/5986, RPC 135, MSSQL 1433, ADCS web enroll 80/443 (`/certsrv`).
 Footholds: null/guest SMB, anonymous LDAP bind, AS-REP-roastable users (no preauth), SMB signing OFF (relay), `ms-DS-MachineAccountQuota > 0`, pre-Win2000 computers, LAPS readable.
+SQL Server access (1433) doubles as a coercion foothold: point `xp_dirtree`/`xp_subdirs` at the attacker SMB listener and the SQL service account (often an over-privileged domain account) hands over its NetNTLMv2 - feed the capture into step 3 ([[network-service-attacks]]).
 
 ## Spray-safe + AD safety gate (READ FIRST)
 - **Spray-safe lockout gate - the AD analog of the `hunt-core` enumeration limits.** Read the domain lockout policy BEFORE any spray: `nxc smb <dc> -u <user> -p <pass> --pass-pol`. Spray at most **1 attempt per account per observation window**, and never exceed `(lockoutThreshold - 1)` attempts per account per window. RoE `no_bruteforce` / `passive_only` -> enumerate only, NO spray. Locking real accounts is a client-impacting incident, not a finding.
@@ -118,6 +119,9 @@ hashcat -m 18200 asrep.txt rockyou.txt;  hashcat -m 13100 tgs.txt rockyou.txt
      Always: `ldapsearch -x -H ldap://<dc> -b <base> "(&(servicePrincipalName=*)(objectCategory=person))" sAMAccountName servicePrincipalName`.
    - **No creds but an AS-REP-roastable account exists? Kerberoast WITHOUT pre-auth** (credless): use the
      roastable account as the requester -> `impacket-GetUserSPNs -no-preauth <asrep_user> -usersfile <spn_users> -dc-host <dc> <domain>/`. Then `hashcat -m 13100`. See [[roasting-kerberoasting]].
+   - **Multiple DIFFERENT NetNTLMv2 hashes for one account are normal, not corruption:** client and
+     server challenges are randomized per interaction, so every capture differs yet all crack to the
+     same password - dedupe by account, crack one representative ([[hash-capture-and-cracking]]).
    - **hashcat single-instance lock:** a long crack (e.g. rockyou x big-rule) holds `/usr/bin/hashcat`;
      a second crack exits INSTANTLY with "Already an instance ... running" (Started==Stopped, empty
      `--show`). `pkill hashcat` (or wait) before the next crack, and check output for that line when a

@@ -187,8 +187,6 @@ wc -l target.wordlist
 
 ---
 
-## SAM / LSASS Extraction (Windows)
-
 ### Registry Hive Dump (requires local admin)
 
 ```powershell
@@ -477,3 +475,29 @@ If the plaintext genuinely is not on-box, only then crack - and feed a target-th
 first, since a resistant hash is usually a non-dictionary phrase.
 
 <!-- promoted-slug: read-app-logs-before-cracking -->
+
+## Attack-class selection (which brute-force class when)
+
+Pick the class from what you already hold before touching a tool; each class trades keyspace coverage against attempt count, and attempt count is the lockout budget.
+
+| Class | Input needed | Use when |
+|---|---|---|
+| Default creds | product fingerprint | always first; check [[default-credentials]] |
+| Password spraying | username list | lockout threshold present; 1-3 passwords spread across many users |
+| Dictionary | known username | single account, weak-password likelihood, no lockout |
+| Hybrid (dict + mutation) | known username + policy | users append digits/symbols to common words |
+| Credential stuffing | breached user:pass pairs | leak pairs in hand; reuse assumed |
+| Reverse brute force | one leaked password | strong hint one password is reused; sweep it across usernames |
+| Pure brute (`-x min:max:charset`) | none | PIN-sized keyspace only; combinations explode past ~6 chars |
+
+- A known or default username halves the problem: drop to password-only instead of a user x password matrix.
+- Enumerate the password policy first (registration or change-password error messages), then filter the wordlist to comply: a wrong-shape candidate can never succeed and only spends attempts. Chained grep, one stage per requirement (min length, upper, lower, digit, two specials here):
+
+```sh
+grep -E '^.{8,}$' list.txt | grep -E '[A-Z]' | grep -E '[a-z]' | \
+    grep -E '[0-9]' | grep -E '([!@#$%^&*].*){2,}' > policy-filtered.txt
+```
+
+Per-service mechanics: [[hydra]], [[medusa]]; AD spraying: [[password-spraying]].
+
+<!-- promoted-slug: brute-force-attack-class-selection -->

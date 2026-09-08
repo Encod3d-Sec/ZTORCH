@@ -136,6 +136,7 @@ When a probe is filtered rather than absent, the sink may still be reachable:
 - **Command filters:** `$IFS` (or `${IFS}`) for blocked spaces, quote/backslash breaking (`c""url`, `w\get`), `base64 -d | sh`, wildcard globbing (`/???/??t`), `$(...)` / backticks, and env-var indirection.
 - **Template keyword filters:** rebuild blocked names via attribute access and concatenation (Jinja `request|attr('application')...`, `'os'` assembled from chars) rather than the literal `os`/`popen`.
 - **WAF on the body:** move the payload to the query string (or vice versa) - the eval sink in step 3b frequently lives on only one of them.
+- **Public webshells (Laudanum/Antak/wwwolf):** strip their ASCII-art banners and author comments before upload (common AV signature anchors) and set the built-in allowedIps/credential gate; toolkit locations in [[reverse-shells]].
 
 Marker discipline (`hunt-core`): use a unique 8+ char canary in reflected/SSTI probes, never `test`, and check the baseline for it before claiming reflection.
 
@@ -165,6 +166,7 @@ Marker discipline (`hunt-core`): use a unique 8+ char canary in reflected/SSTI p
 
 RCE is rarely the finish line. Once exec is confirmed:
 
+- **Stabilise before enumerating** - a fresh nc/meterpreter `shell` session is non-tty (`sudo -l` and `su` silently return nothing); upgrade with python pty or the no-python fallback ladder in [[reverse-shells]] first.
 - **Loot credentials from the foothold** - env vars, config files, cloud metadata, `.git-credentials`, connection strings. Hand off to `hunt-secrets`.
 - **Lateral movement** - reused creds, service tokens, and internal trust from the RCE host pivot into the domain. Hand off to `hunt-ad`.
 - **Vector-specific siblings** - a serialized-blob sink is `hunt-deserialization`; a container/orchestrator surface is `hunt-cloud`.

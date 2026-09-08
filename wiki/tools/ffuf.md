@@ -77,8 +77,6 @@ ffuf -u http://target.com/NORAJ -w wordlist.txt:NORAJ
 | `-fs`    | Filter by response size                      |
 | `-fw`    | Filter by word count                         |
 
-## Common Use Cases
-
 ### Directory Fuzzing
 
 ```bash
@@ -235,3 +233,63 @@ Directory/content discovery (`FUZZ` marks the injection point):
 ```bash
 ffuf -u http://target.com/FUZZ -w /path/to/wordlist.txt
 ```
+
+## Progressive Content-Discovery Ladder
+
+Each step's output decides the next; do not jump straight to a giant recursive scan.
+
+1. Directory fuzz (`FUZZ` at path position). An empty-looking page that is NOT 404/403 means the directory exists and probably hides pages inside: keep it for step 3.
+2. Extension fuzz to learn the stack before page fuzzing. `index.*` exists on most sites, so probe it:
+
+```sh
+ffuf -w /usr/share/wordlists/seclists/Discovery/Web-Content/web-extensions.txt:FUZZ \
+     -u http://TARGET/blog/indexFUZZ -t 100 -ic -c
+```
+
+   GOTCHA: `web-extensions.txt` entries already include the leading dot, so write `indexFUZZ`, not `index.FUZZ`. Server-type hint when in doubt: Apache usually `.php`, IIS usually `.asp`/`.aspx`.
+3. Page fuzz inside found directories with the discovered extension (`-u .../blog/FUZZ.php`). Multiple extensions in one run: `-e .php,.phps,.php7`.
+4. Recursive fuzz with a bounded depth (`-recursion -recursion-depth 1`), then re-fuzz only the interesting branches; deep trees explode scan time.
+5. Subdomain (DNS) then vhost (Host header) fuzz, then repeat steps 1-4 against every vhost hit (each hit is a fresh docroot).
+
+<!-- promoted-slug: ffuf-content-discovery-ladder -->
+
+## Fuzz Both GET and POST Parameters (methods are asymmetric)
+
+A page can accept a parameter under POST that its GET surface rejects, and vice versa; never stop at the first method fuzzed. Run the same wordlist both ways:
+
+```sh
+# GET: FUZZ in the query string, filter the default-page baseline
+ffuf -w /usr/share/wordlists/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ \
+     -u 'http://TARGET/page.php?FUZZ=value' -t 100 -ic -c -fs 798
+
+# POST: FUZZ in the body (PHP requires the urlencoded content type)
+ffuf -w /usr/share/wordlists/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ \
+     -u http://TARGET/page.php -X POST -d 'FUZZ=value' \
+     -H 'Content-Type: application/x-www-form-urlencoded' -t 100 -ic -c -fs 798
+```
+
+- A GET-only hit that returns "deprecated"/"not in use" is a dead name; the live parameter often shows up only in the POST run.
+- A hit that changes the response body (e.g. error flips to "Invalid id!") confirms the parameter is READ, not just present; then value-fuzz it (`-d 'id=FUZZ'`) with a generated list: `for i in $(seq 1 1000); do echo $i >> ids.txt; done` (numeric ids) or `Usernames/` lists from SecLists for name-type parameters.
+- Triage: unpublished parameters are typically less tested and less secured, so route every confirmed hidden param through the normal vuln checks (injection, IDOR, auth bypass).
+
+<!-- promoted-slug: ffuf-parameter-fuzzing-get-post -->
+
+## Choosing Between Filtering and Matching
+
+Default behavior: ffuf keeps only non-404-ish codes (`-mc` defaults to 200,204,301,302,307,401,403,405). When a server answers every probe (vhost fuzz, soft-404 catch-alls), status filtering is useless.
+
+Rule: filter (`-fs`/`-fw`/`-fc`) on the KNOWN-BAD baseline, match (`-ms`/`-mr`/`-mw`) only when you know the SUCCESS signature. You usually know the baseline (one bogus request) and not the success shape, so filtering is the default reflex.
+
+- Baseline method: fire 2-3 bogus probes, note the dominant size, then `-fs <size>` (or `-fw <words>` when sizes jitter).
+- Content matching (`-mr`) finds pages by a body marker when every response is 200, e.g. hunting access-gated pages inside a found directory:
+
+```sh
+ffuf -w /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt:FUZZ \
+     -u http://TARGET/courses/FUZZ -e .php,.php7 \
+     -mr "You don.t have access" -t 100 -ic -c
+```
+
+   `-mr` is a regexp, so escape or `.`-wildcard regex metacharacters in the marker text.
+- Combine freely: `-fs` to drop the baseline plus `-mr` to keep only marker hits.
+
+<!-- promoted-slug: ffuf-response-filtering-matching -->

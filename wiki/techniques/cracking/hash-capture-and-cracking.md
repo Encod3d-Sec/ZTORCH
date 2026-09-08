@@ -182,3 +182,22 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Sources
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
+
+## NetNTLMv2 hash variance: different hashes per capture are normal
+
+Responder/capture logs fill with what looks like contradictory results: the SAME account yields
+several DIFFERENT NetNTLMv2 hashes across interactions. This is expected, not corruption or a
+tool bug. The client and server challenges are randomized per authentication exchange, so the
+salted response differs every time while the underlying password stays constant. All variants
+crack (hashcat `-m 5600`) to the same plaintext.
+
+Triage implications:
+
+- Dedupe captures by account, crack one representative hash per account; identical hash strings
+  across accounts would be the actual anomaly worth investigating.
+- A capture that never cracks after a full wordlist pass is a wrong-password situation, not a
+  "wrong hash" situation; re-capturing will not change the outcome.
+- Machine-account captures (trailing `$`) rarely crack usefully; route them at relay
+  ([[internal-ntlm-relay]]) instead of the cracker.
+
+<!-- promoted-slug: netntlm-hash-variance -->

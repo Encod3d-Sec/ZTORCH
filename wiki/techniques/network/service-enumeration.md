@@ -762,3 +762,40 @@ One line each, do not grind:
 - Loopback-only redis with `DBSIZE` returning 0 (empty keyspace) has nothing to read and no remote exposure; move on.
 
 <!-- promoted-slug: dns-redis-deadend-tells -->
+
+## DNS TXT: read it as a third-party attack-surface map, not just verification noise
+
+Each TXT record names a SaaS the org runs, which converts directly into the next enumeration target:
+
+- SPF `v=spf1 ... ip4:<x.x.x.x> ...` embeds the org's own mail-sending IP ranges, often internal addresses not otherwise visible.
+- `MS=msXXXXXXX` -> a Microsoft 365 tenant is bound to the domain; the org authenticates against Entra ID (password spray, OAuth app surface).
+- `atlassian-domain-verification=` -> Confluence/Jira/Bitbucket somewhere; probe for exposed instances and public repos.
+- `include:_spf.atlassian.net` / `mailgun.org` -> transactional email APIs exist; look for the sending domain's API endpoints (IDOR/SSRF surface).
+- `spf.protection.outlook.com` -> Exchange Online plus, frequently, Azure storage; Azure Files speaks SMB, so look for file endpoints on 445.
+- `logmein-verification-code=` -> centralized remote-access tooling; one admin password reuse away from fleet-wide access.
+
+Run `dig txt <domain>` alongside the AXFR/subdomain work in the DNS section and log every provider as its own attack surface.
+
+<!-- promoted-slug: dns-txt-attack-surface-map -->
+
+## SMTP: VRFY can false-positive, verify before trusting the user list
+
+`VRFY`/`EXPN` responses are server-policy dependent: many servers answer `252` ("cannot verify, will accept") for ANY address, including obviously nonexistent ones. A `252` for a random garbage username is the tell that the whole VRFY-derived user list is unverified.
+
+- Before building a spray list from VRFY output, send `VRFY` with a guaranteed-nonsense username; if it also returns `252`, the enumeration is worthless as ground truth.
+- `RCPT TO` during a `MAIL FROM` session gives a harder signal (`250` vs `550`) on servers that neuter VRFY; cross-check a few users that way.
+- Automated tools (smtp-user-enum) report whatever the server said; the 252 caveat applies to their output unchanged, so treat their lists as candidates, not confirmed accounts.
+
+<!-- promoted-slug: smtp-user-enum-verification -->
+
+## SNMP: full process command lines leak creds in argv
+
+Beyond the running-process NAMES walk (`.1.3.6.1.2.1.25.4.2.1.2`, see [[protocol-attacks]]), the host-resources run table also stores each process's full command line INCLUDING arguments. Recovery scripts, backup agents, and DB starters are routinely launched with `user password` on the command line, so the argv walk is a direct credential grab, not just inventory:
+
+```sh
+snmpwalk -v2c -c <community> <target> .1.3.6.1.2.1.25.1.7    # hrSWInstalled/hrSWRun subtree incl. argv
+```
+
+Read the whole dump rather than grepping a keyword: the cred line looks like `<path>/script.sh` followed by a bare string that only reads as a password in context. Pairs with the general SNMP flow (onesixtyone -> snmpwalk -> braa) above; any cred found feeds the reuse matrix across SSH/IMAP/DB.
+
+<!-- promoted-slug: snmp-process-args-creds -->

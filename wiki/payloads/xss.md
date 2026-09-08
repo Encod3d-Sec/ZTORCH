@@ -140,3 +140,27 @@ smarter rule; this is one layer past that.
 - [[xs-leak]]
 
 <!-- promoted-slug: when-a-keyword-blocklist-also-catches-the-split-concatenated -->
+
+## Proof payloads when alert() is blocked or ambiguous
+
+Use `alert(window.origin)` instead of `alert(1)` as the default probe: the popup names the
+origin that executed, which matters when the input renders inside a cross-domain iframe (the
+iframe's origin, not the top page's, identifies the vulnerable form).
+
+Alert-free alternatives when the browser or context blocks dialogs:
+
+```html
+<script>print()</script>   <!-- opens the print dialog, rarely blocked like alert -->
+<plaintext>                <!-- proves HTML injection: rendering stops, raw source shows -->
+```
+
+`<plaintext>` proves markup injection only (no script ran), useful as the first rung when
+you are still establishing whether tags survive at all.
+
+DOM-XSS classification tells while verifying: input carried only in the `#fragment` and
+producing zero rows in the Network tab never reached the server (client-side parameter);
+payload absent from View-Source but present in the live Inspector means JS wrote it after the
+base page was fetched. Reflected vs stored: refresh the page, a payload that re-fires is
+stored.
+
+<!-- promoted-slug: xss-proof-payloads-alert-blocked -->

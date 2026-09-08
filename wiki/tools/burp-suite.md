@@ -64,8 +64,6 @@ use auxiliary/scanner/http/robots_txt
 set PROXIES HTTP:127.0.0.1:8080
 ```
 
-## Core Usage
-
 ### Proxy — Intercept, Forward, Drop
 
 The Proxy tab is the central feature. Toggle interception with the `Intercept is on/off` button.
@@ -215,8 +213,6 @@ Crawls links within the target to build a full site map.
 
 `Target > Site map` > right-click target > `Issues > Report issues for this host`. Export as HTML for appendix documentation.
 
-## Extensions
-
 ### BApp Store
 
 `Extensions > BApp Store`. Sort by popularity.
@@ -322,8 +318,6 @@ Built into Burp — no install needed. Access via `Burp > Clickbandit` in the me
 
 → Full usage: [[clickjacking]]
 
-## Common Use Cases
-
 ### Intercept and manipulate a request
 
 ```
@@ -409,3 +403,37 @@ Route a CLI tool through the running proxy (Burp listening on `127.0.0.1:8080`):
 ```bash
 proxychains -q curl http://TARGET
 ```
+
+## Intruder refinements
+
+- **Leave the two trailing blank lines** at the end of the request when marking positions; stripping them often yields a server error before any payload is sent.
+- **Grep - Match against the status line** (`200 OK`): clear the default list, add `200 OK`, and switch OFF `Exclude HTTP Headers`; the status string lives in the headers Burp excludes by default, so the column stays empty otherwise.
+- **Combine wordlists**: `Load` a second file into the same payload set and it appends; manual `Add` entries mix in too. Cheaper than concatenating files for one-off merged lists.
+- **Resource Pool** (right sidebar) caps the concurrent connections an attack uses; lower it for fragile targets or shared uplinks instead of retrying a wedged scan.
+- **Payload encoding toggle**: `Payload Encoding > URL-encode` is on by default; disable it when double-encoding is the point (raw `%` payloads must survive Burp untouched).
+- **Chained-encoded values**: when a cookie/param is layered (e.g. base64 over hex), fully decode to readable text, mutate, then re-encode in reverse order. To brute one unknown character inside such a value (e.g. a truncated hash), set the position on the missing char and chain payload processing: `Add Prefix: <known-part>` + `Encode: Base64` + `Encode: ASCII hex`, matching the app's layering.
+
+## Scanner refinements
+
+- **Crawl is not content discovery**: the crawler only follows links/forms actually referenced by pages; unreferenced directories need Intruder or the Content Discovery feature, then add the found paths to scope so the audit covers them.
+- **Application login takes a recorded sequence**, not just credentials: perform a manual login in Burp's browser while the New Scan dialog records it, so authenticated crawling covers areas anonymous crawling never reaches.
+- **Exclude session-killers from scope**: `Remove from scope` on logout/ reset endpoints (and `Target > Scope` advanced regex for patterns) before any crawl-and-audit, or the scanner logs itself out mid-run.
+- **Logger tab** shows every request Burp itself issued (scanner, Intruder, extensions), separate from Proxy history; the place to debug what an active scan actually sent.
+- Scanner reports (`Issues > Report issues for this host`) are appendix material with PoC + remediation per issue; never ship a raw tool export as the deliverable.
+
+<!-- promoted-slug: burp-intruder-scanner-refinements -->
+
+## Intercept responses to defeat client-side validation (and make it stick)
+
+Front-end restrictions (an input locked to `type="number"`, a `maxlength`, a `disabled` button) are browser-side only; edit the HTML in transit instead of the request every time:
+
+1. Enable response interception: `Proxy > Proxy settings > Response interception rules > Intercept Response` (the "intercept responses based on..." toggle).
+2. Force a full refresh in the browser (`CTRL+SHIFT+R`), forward the request, and the response halts in the Intercept pane before it reaches the browser.
+3. Edit the HTML: `type="number"` to `type="text"`, raise `maxlength="3"` to `100`, strip the `disabled` attribute from the button. Forward. The rendered page now accepts the input the JS was blocking.
+4. The edit is one-shot (lost on next refresh). To make it persistent, add a `Proxy > Proxy settings > HTTP match and replace rules` rule with `Type: Response body`, literal `Match: type="number"`, `Replace: type="text"`, regex off; every subsequent page load rewrites itself.
+
+Same mechanism on the request side for UA-filtered apps: a match-and-replace rule with `Type: Request header`, regex `^User-Agent.*$`, `Replace: User-Agent: <custom>`, regex ON rewrites the header on every request. Verify by checking the next intercepted request.
+
+Key framing: this bypasses what the page *lets you send*; it proves nothing until the back-end fails to validate the same value (that gap is the actual finding, see [[file-upload]] for the same server-side-gap pattern). Interception + edit is also the cheap way to unhide hidden form fields or enable disabled admin controls for further probing.
+
+<!-- promoted-slug: burp-response-interception-client-bypass -->

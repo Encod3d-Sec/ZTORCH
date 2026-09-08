@@ -28,6 +28,7 @@ Per the engagement discipline, default-cred checks are an acceptable early move;
 | Camunda Platform (7.x web apps) | 7.x | demo | demo | vendor | distribution's example user; login at `/camunda/app/welcome/`; Cockpit/Tasklist reaches scripted tasks (business-logic impact) |
 | Splunk (THM lab rooms) | 9.x/10.x | admin | TryHackMe! | observed | THM pre-indexed-evidence rooms ship Splunk with this pair; also try admin/changeme (vendor default) before anything else |
 | Product | Service / entry point | Default | Note |
+| <product> | <version> | <username> | <password> | observed | <generic notes; NO client host> |
 
 ## Citizen-portal default password: the national ID number itself
 
@@ -48,3 +49,26 @@ Test with a held or self-registered account confirming an untouched account stil
 <!-- promoted-slug: splunk-thm-default -->
 
 <!-- promoted-slug: pluxml-default-admin -->
+
+<!-- promoted-slug: ipmi-oracle-default-creds -->
+
+## Network appliance defaults (routers, cameras, DVRs, IoT)
+
+Edge/consumer appliances ship documented vendor defaults; on network-facing engagements these rows land more often than software-service defaults. Full corpus: `SecLists/Passwords/Default-Credentials/default-passwords.txt`.
+
+| Product | Username | Password |
+|---|---|---|
+| Linksys / D-Link / TP-Link / Asus router | admin | admin |
+| Netgear / Belkin router | admin | password |
+| Cisco router | cisco | cisco |
+| Zyxel router | admin | 1234 |
+| Samsung SmartCam | admin | 4321 |
+| Hikvision DVR / Panasonic DVR | admin | 12345 |
+| Axis IP camera | root | pass |
+| Ubiquiti UniFi AP | ubnt | ubnt |
+| Canon network printer | admin | admin |
+| Honeywell smart thermostat | admin | 1234 |
+
+Default usernames stay valuable even after the password is changed: a confirmed name (`admin`, `root`, `ubnt`) collapses the attack to password-only. Before any matrix spray, enumerate likely usernames from `SecLists/Usernames/top-usernames-shortlist.txt` plus per-vendor documentation.
+
+<!-- promoted-slug: network-appliance-default-credentials -->

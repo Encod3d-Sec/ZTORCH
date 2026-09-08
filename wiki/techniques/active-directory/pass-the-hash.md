@@ -31,8 +31,6 @@ sources: [cpts-password-attacks, thm-ad-lateral]
 - For PtT: Valid, unexpired Kerberos ticket; network access to target
 - UAC restriction note: only the built-in local Administrator (RID 500) can perform remote PtH to local accounts by default; domain accounts with local admin rights are not restricted
 
-## Methodology
-
 ### Obtaining hashes
 
 #### Dump SAM (local accounts only)
@@ -388,3 +386,13 @@ evil-winrm -i dc01.domain.local -r domain.local
 
 - CPTS Password Attacks — Pass the Hash, Pass the Ticket (Windows/Linux), Pass the Certificate
 - THM PT1 Prep — AD Lateral Movement: Alternative Authentication Material
+
+## Ticket/key loot gotchas
+
+- **mimikatz 2.2.0 ekeys bug:** on some Windows 10 builds `sekurlsa::ekeys` presents every key as `des_cbc_md4`, and tickets exported with `sekurlsa::tickets /export` then fail (wrong encryption). Use the ekeys to mint fresh tickets, or export via `Rubeus.exe dump /nowrap` instead.
+- **Rubeus `createnetonly` is only a clean room:** it creates a sacrificial hidden logon session (type 9, `/show` to reveal, equivalent of `runas /netonly`) that does NOT touch tickets itself - request/import (`asktgt /ptt`) inside that window so the current session's TGTs are not clobbered.
+- **Keytab hunting beyond `/etc/krb5.keytab`:** admins drop user/service keytabs next to the scripts that use them - `find / -name '*keytab*' -ls 2>/dev/null`, then check cron jobs and scripts for `kinit` lines (a `kinit -k -t` cron entry names both the keytab and the principal it impersonates).
+- **Using a found keytab needs rw on the file** (not just read), and `kinit user@REALM.UPPER` must match the principal exactly (case-sensitive). KeyTabExtract then pulls NT/AES keys for PtH or cracking.
+- **Check `klist` expiry before chaining:** an expired TGT silently breaks every downstream `-k` tool; renew or re-request first.
+
+<!-- promoted-slug: kerberos-loot-gotchas -->

@@ -118,7 +118,9 @@ Stop and report rather than continuing when:
 - **You have a traffic-affecting primitive** - desync, cache poisoning, connection-pool effects.
   The mechanism is the finding.
 - **The last step needs volume** beyond the limits above.
-- **You already have the severity ceiling.** More escalation, more risk, no more payout.
+- **You already have the severity ceiling.** More escalation, more risk, no more payout. Post-ex
+  serves one of two purposes, proving impact or feeding the next hop; if it is impact, the minimum
+  that demonstrates it is the ceiling.
 - **You left scope.** Even one hop. Especially one hop.
 
 Stopping is not failure. "Confirmed and did not exploit" is worth more than a forfeited payout.

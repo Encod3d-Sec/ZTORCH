@@ -95,6 +95,9 @@ sqlmap -u "https://target.com/search?q=test" --level=3 --risk=2 --batch --dbs
 ```
 Over a non-TTY stdin (an ssh/VM pipe or an agent driver), sqlmap silently discards `-r` request files
 and the run false-negatives (baseline auth 401s); always add `--ignore-stdin` there. [[sqlmap]]
+Retrieval stalls/corrupt dumps or a blocked 0x-cast -> rerun with `--no-cast` (or `--hex` for
+binary); login-form OR injections need `--risk=2+`; `--os-shell` over UNION returning no output
+-> retry `--technique=E`.
 Keep exactly ONE manual curl in the writeup as the confirming PoC; sqlmap owns enumeration.
 
 **Anti-automation signal -> do NOT run sqlmap at all (stay manual + serial).** A taunt string
@@ -152,10 +155,16 @@ username[$ne]=invalid&password[$ne]=invalid
 Once you have a working injection, escalate along these edges (keep extraction scoped to proof):
 
 - **File read** - MySQL `LOAD_FILE('/etc/passwd')`, MSSQL `OPENROWSET`, Oracle `UTL_FILE`; the OOB
-  DNS-exfil sinks above double as blind file read.
+  DNS-exfil sinks above double as blind file read. Before trying MySQL file ops, prove the lane
+  through the injection itself: `super_priv`/`user_privileges` for FILE, then `secure_file_priv`
+  from `information_schema.global_variables` (SHOW VARIABLES cannot ride a UNION); NULL = dead
+  lane, empty = anywhere. [[sql-injection]]
 - **File write -> RCE** - MySQL `INTO OUTFILE`/`DUMPFILE` a web-shell into the docroot; MSSQL
   `xp_cmdshell`; Postgres `COPY ... TO PROGRAM`; stacked queries where the driver allows them.
-  Hand off to `hunt-rce` once you have command execution.
+  Find the docroot first by reading the server config through `LOAD_FILE` (nginx sites-enabled,
+  apache2.conf, IIS applicationHost.config) and write the shell as a hex blob so no quote has to
+  survive the payload context. Hand off to `hunt-rce` once you have command execution.
+  `wiki/payloads/sqli.md`
 - **Credential reuse** - hashes/plaintext pulled from the DB (see PROCESSLIST below) are frequently
   reused for SSH, not the web login. Crack, then pivot; hand off to `hunt-auth` for the ATO.
 - **Dumped table -> targeted crack wordlist.** A dumped user/credential table (even a different

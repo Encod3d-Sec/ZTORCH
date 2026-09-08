@@ -260,3 +260,30 @@ on-demand, so do not waste time running pspy to catch a periodic caller that doe
 who holds its token instead (a peer service / admin panel).
 
 <!-- promoted-slug: systemd-unit-service-mapping -->
+
+## Credential hunting extras
+
+**Old password hashes: `/etc/security/opasswd`.** PAM (`pam_unix.so`) password history stores each user's PREVIOUS hashes here, comma-separated per user, root-readable:
+
+```sh
+sudo cat /etc/security/opasswd
+user:1000:2:$1$HjFAfYTG$qNDkF0zJ3v8ylCOrKB0kt0,$1$kcUjWZJX$E9uMSmiQeRh4pAAgzuvkq1
+```
+
+Read the crypt prefix per entry: old `$1$` (MD5) entries crack in minutes where the current `$6$`/`$y$` would not. The payoff is the PATTERN, not the password: users rotate predictably (Season+Year, incrementing digit), so a cracked old hash predicts the current one - mutate it per [[password-cracking]] instead of grinding the live hash.
+
+**Memory scraping: mimipenguin** (root) dumps cleartext credentials from process memory on Linux - harvests login/system passwords and browser secrets from processes that hold plaintext in memory, the way LaZagne does for files:
+
+```sh
+sudo python3 mimipenguin.py
+```
+
+**Private-key passphrase probe:** before cracking a found key with ssh2john, check whether it even has a passphrase - `ssh-keygen -yf id_rsa` prompts only if one is set. Hunt keys with `grep -rnE '^\-{5}BEGIN [A-Z0-9]+ PRIVATE KEY\-{5}' / 2>/dev/null` (matches RSA/EC/OpenSSH/PUtty variants).
+
+**Broad content grep** (the Windows `findstr /SIM /C:"password" *.txt *.ini` equivalent):
+
+```sh
+grep -rn "password" /home /root /opt --include="*.txt" --include="*.conf" --include="*.cfg" --include="*.ini" 2>/dev/null
+```
+
+<!-- promoted-slug: linux-cred-hunting-loot -->

@@ -10,7 +10,7 @@ description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI 
 ## Wiki
 
 Hub: [[web-moc]] · Primary page: [[ssti]] · Payload arsenal: `wiki/payloads/ssti.md`
-Anchors: [[xxe]], [[graphql-attacks]], [[xslt-injection]], [[xslt]]
+Anchors: [[xxe]], [[graphql-attacks]], [[xslt-injection]], [[xslt]], [[path-traversal-lfi]] (payloads: `wiki/payloads/lfi-path-traversal.md`)
 **REFS:** [[ssti]], wiki/payloads/ssti.md
 
 qmd_query "SSTI XXE GraphQL injection template injection XML external entity" via wiki-search MCP — ONLY when you have a concrete hint the map above
@@ -140,6 +140,7 @@ Highest yield first: PDF/invoice generators and email-template fields (server-si
 - **SSTI -> RCE.** Evaluation confirmed -> escalate to command execution with the engine payload above (safe command first). For sandbox-escape gadget chains and OOB-blind RCE, hand off to `hunt-rce`.
 - **XXE -> SSRF / file read.** Point the external entity at `http://169.254.169.254/...` for cloud metadata or an internal service; for the full SSRF surface (redirect bypass, protocol smuggling, Collaborator-gated blind) hand off to `hunt-ssrf`. File read escalates to source/config disclosure and, through those, to further creds.
 - **GraphQL IDOR / auth bypass -> object enumeration.** Nested-resolver and `node(id:)` traversal are IDOR - hand off to `hunt-idor` (two-account method) or `hunt-api` (BOLA/BFLA, mass assignment, batching).
+- **File inclusion (LFI/RFI).** Template/`?page=`-style params route here too: confirm the read via `php://filter` base64 disclosure, and gate every wrapper/RFI RCE attempt on the php.ini `allow_url_include`/`expect` check instead of guessing. Full ladder (uploads, log poisoning, filter chains): [[path-traversal-lfi]] and [[lfi-path-traversal]].
 
 ## Confirmation gate
 

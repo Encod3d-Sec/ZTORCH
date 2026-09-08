@@ -129,3 +129,28 @@ ffuf -w /opt/SecLists/Fuzzing/LFI/LFI-Jhaddix.txt -u 'https://t/?page=FUZZ' -mr 
 ffuf -w raft-large-words.txt:FUZZ -u https://t/FUZZ -mc 200,403 -ac
 ```
 See [[lfi-path-traversal]], [[recon-dorks]].
+
+## Policy-shaped password guesses
+
+Human-chosen passwords in corporate environments follow policy shapes far more than the rockyou distribution. When spraying or cracking with any target-adjacent word (company name, season, victim's name), build candidates in these shapes BEFORE reaching for a big list:
+
+| Shape | Examples |
+|---|---|
+| Season + year (+ symbol) | `Winter2020`, `Spring2021!` (capitalized season, 4-digit year) |
+| Month + year (+ symbol) | `June2023`, `June2023!` |
+| Company/domain word + year + symbol | `Acme2024!`, `acme2024` |
+| Expiry-driven rotation | policy forces a change, the user increments: `Acme2023!` -> `Acme2024!` |
+
+Build them mechanically instead of by hand:
+
+```sh
+# rules on a seed word: capitalize + append year + symbol
+echo -e 'c $2$0$2$6\n$!\nc $2$0$2$5 $!' > shapes.rule
+hashcat --stdout -r shapes.rule seeds.txt | sort -u
+# or a mask for the shape: 5 lowercase + 4 digits + 1 symbol
+hashcat -a 3 -m <mode> hash.txt '?l?l?l?l?l?d?d?d?d?s'
+```
+
+The rotation row is the force multiplier: a cracked OLD password (from [[password-cracking]], `/etc/security/opasswd` history, an old breach dump) plus an increment guess often beats the current hash outright. Feed the candidates to netexec/kerbrute spraying within hunt bounds (5 default, 20 ceiling, 0 under `no_bruteforce`).
+
+<!-- promoted-slug: corporate-password-patterns -->

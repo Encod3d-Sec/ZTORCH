@@ -111,6 +111,14 @@ Push the load-bearing requests through Burp for operator visibility (`Skill(hunt
 
 When the primary login rate-limits or enforces MFA, the bypass is usually a *different entry point to the same credential store*, not a cleverer payload: the legacy endpoints above, an alternate host (mobile/partner/API), an older API version, or a SOAP/JSON variant of the same auth call. For a hardened reset flow, vary the host-header injection vector (`X-Forwarded-Host`, dual `Host` headers, absolute-URI request line) rather than repeating one form.
 
+**When every door is guarded, the credential itself is the surface:** check [[default-credentials]] for the stack, then guess policy-shaped passwords (company word + year + symbol, Season+Year) mutated per [[password-cracking]] instead of a generic wordlist run - bounded exactly like the rate-limit probe (5 default, 20 ceiling, 0 under `no_bruteforce`).
+
+A confirmed username (default name like `admin`/`root`, an enumerated one) collapses the attack to password-only; never run a full user x password matrix when one name is known.
+
+Derive the exact password policy from registration/change-password errors first and filter the candidate list to it: a wrong-shape password cannot succeed and only burns lockout budget (grep filter chain in [[hydra]] "Custom Wordlists").
+
+Before any form attack, capture one real login attempt (devtools Network tab or Burp) to fix the POST path, param names, and one reliable `F=`/`S=` success/failure condition - a wrong params string fails silently ([[hydra]] carries the condition-string mechanics).
+
 ## Severity
 
 Rated on demonstrated impact (per hunt-core), not the mechanism.

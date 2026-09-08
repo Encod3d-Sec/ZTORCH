@@ -32,8 +32,8 @@ Rank the sinks first - not every upload reaches code:
 Then attack in layers, cheapest first: **extension -> content-type -> magic-byte -> parser/render.**
 
 ## Methodology
-1. **Baseline:** upload a valid file; note stored path, returned URL, filename transformation, and whether it is reachable + executed by the server. **Prove a SINK exists before any bypass work:** if storage is a DB blob returned as base64 JSON with no serve or render route anywhere in the app, the vector is dead no matter how weak the filter; close the lane there. [[file-upload]]
-2. **Extension bypass:**
+1. **Baseline:** fingerprint the executing language first when routes hide extensions (probe `/index.php` / `/index.asp` / `/index.aspx` / `/index.jsp`); the shell must match the runtime. Upload a valid file; note stored path, returned URL, filename transformation, and whether it is reachable + executed by the server; a benign echo probe is the cheapest execution test (raw source echoed back = stored, NOT executed). **Prove a SINK exists before any bypass work:** if storage is a DB blob returned as base64 JSON with no serve or render route anywhere in the app, the vector is dead no matter how weak the filter; close the lane there. [[file-upload]]
+2. **Extension bypass:** if rejection fires before any HTTP request leaves the browser (JS-only validation), rename the multipart `filename` in Burp or strip the `onchange`/`accept` handler in dev tools; otherwise work the ladder:
 ```
 shell.php  shell.phtml  shell.php5  shell.phar  shell.pHp
 shell.php.jpg   shell.jpg.php   shell.php%00.jpg   shell.php;.jpg
@@ -50,10 +50,10 @@ web.config (IIS)   .jsp/.jspx/.war (Java)   .asp/.aspx (IIS)
 9. **Distill (confirmed, generic):** per hunt-core, `python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page techniques/web/file-upload.md`.
 
 ## Evasion (when a layer rejects)
-Double extension (`shell.php.jpg` / `shell.jpg.php`), null byte (`shell.php%00.jpg`), content-type spoof (`Content-Type: image/png` on a script), magic-byte prefix (`GIF89a;` + payload), and case variation (`.pHp`, `.PHtml`). Combine them - a single-layer allowlist rarely survives extension + content-type + magic-byte applied together.
+Double extension (`shell.php.jpg` / `shell.jpg.php`), null byte (`shell.php%00.jpg`), content-type spoof (`Content-Type: image/png` on a script), magic-byte prefix (`GIF89a;` + payload), and case variation (`.pHp`, `.PHtml`). Combine them - a single-layer allowlist rarely survives extension + content-type + magic-byte applied together. Against a denylist, fuzz the extension in Intruder (marker on the extension only, payload encoding OFF) and sort by response length to cluster accepted vs rejected; an extension that uploads may still not execute, so cycle the accepted list until one runs.
 
 ## Chaining
-- **Upload -> web-shell RCE:** once a shell executes, hand off `hunt-rce` for post-exploitation and CVE-specific escalation.
+- **Upload -> web-shell RCE:** once a shell executes, hand off `hunt-rce` for post-exploitation and CVE-specific escalation. Prefer an uploaded reverse shell when egress allows (interactive); fall back to the web shell when egress filtering or disabled functions block the callback.
 - **SVG/HTML -> stored XSS:** hand off `hunt-xss` (marker discipline, blind-XSS beacon for a stored context).
 - **SVG/XML/DOCX -> XXE:** hand off `hunt-injection` (OOB-mandatory for blind XXE).
 
