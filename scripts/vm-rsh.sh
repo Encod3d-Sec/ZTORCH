@@ -7,25 +7,37 @@
 # bridge), run between unique markers in the shell tab, and only the output between the
 # markers is returned.
 #
-# Usage: bash vm-rsh.sh [--win shell] [--timeout 40] <session> <command...>
+# Usage: bash vm-rsh.sh [--win shell] [--timeout 40] [--create] <session> <command...>
 #   bash vm-rsh.sh <eng> 'strings /srv/x | grep -i clearance'
 #   bash vm-rsh.sh --win shell <eng> 'cat /root/root.txt'
+#   bash vm-rsh.sh --create --win jq1 <eng> 'curl -s http://x/api | jq .'   # window auto-created
 #
 # Assumes a reverse shell is already live in tmux window <session>:<win> (default 'shell',
-# the window scripts/vm-scan.sh --win shell created for the nc listener). VM_SH overridable
+# the window scripts/vm-scan.sh --win shell created for the nc listener). With --create the
+# session/window is created if missing (lands at a shell prompt), so one call creates the
+# named window, runs the command, and returns clean output. VM_SH overridable
 # for tests. Fail-soft: prints nothing + exits 1 if the end marker never appears.
 set -uo pipefail
 VM_SH="${VM_SH:-/root/vm.sh}"
-WIN="shell"; TO=40
+WIN="shell"; TO=40; CREATE=0
 while [ $# -gt 0 ]; do
   case "${1:-}" in
     --win) WIN="${2:?--win needs a name}"; shift 2;;
     --timeout) TO="${2:?--timeout needs seconds}"; shift 2;;
+    --create) CREATE=1; shift;;
     *) break;;
   esac
 done
 SESSION="${1:?need <session>}"; shift
 CMD="$*"; : "${CMD:?need <command...>}"
+
+# --create: make vm-rsh the generic named-window executor (one call: create the
+# session/window if missing, run, return clean output). Same round-trip count as
+# one-shot SSH, but the pane stays for operator review + autocard.
+if [ "$CREATE" = 1 ]; then
+  bash "$VM_SH" "tmux has-session -t $SESSION 2>/dev/null || tmux new-session -d -s $SESSION; \
+tmux list-windows -t $SESSION -F '#{window_name}' | grep -qx -- '$WIN' || tmux new-window -t $SESSION -n '$WIN'" >/dev/null 2>&1
+fi
 
 # Fixed markers: a real command will not emit these ALONE on a line; the extractor takes the
 # LAST start-marker line and the first end-marker line after it, so a prior run's markers still
