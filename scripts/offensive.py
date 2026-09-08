@@ -1108,6 +1108,18 @@ def cmd_index(args):
 def cmd_init(args):
     vault = Path(args.vault) if args.vault else DEFAULT_VAULT
     eng = vault / "targets" / args.name
+    # re-init guard: a dir that already holds DRIVER state (.offensive.json) is a live
+    # engagement -- re-init on it historically re-scaffolded and lost live rows/blocks
+    # (observed live: a re-init cost the first state row + log block + 4b seed). A dir with
+    # only scaffolded .md files (setup/new-engagement.sh output) is the intended add-driver-
+    # state flow and stays allowed. --rebase is the explicit escape (rotated IP / repair):
+    # proceed without touching the existing state file, but DO repoint targets/active.md.
+    live_state = (eng / STATE_NAME).is_file()
+    if eng.exists() and live_state and not getattr(args, "rebase", False):
+        print("init: targets/%s already holds driver state (%s). Re-init on a live engagement "
+              "re-scaffolds over it -- refusing. To rebase (rotated IP / repair / repoint "
+              "active.md), pass --rebase." % (args.name, STATE_NAME), file=sys.stderr)
+        return 1
     eng.mkdir(parents=True, exist_ok=True)
 
     for name in TEMPLATE_FILES:
@@ -1117,7 +1129,14 @@ def cmd_init(args):
 
     state_path = eng / STATE_NAME
     if state_path.exists():
-        print("init: %s already initialised (%s untouched)" % (args.name, STATE_NAME))
+        # only reachable via --rebase (the guard above refused the plain re-init): keep the
+        # live state file, still repoint active.md so telemetry lands on THIS engagement.
+        active = vault / "targets" / "active.md"
+        prev = active.read_text().strip() if active.exists() else ""
+        if prev != args.name:
+            active.write_text(args.name + "\n")
+            print("init: targets/active.md -> %s (was: %s)" % (args.name, prev or "<none>"))
+        print("init: %s rebased (%s untouched)" % (args.name, STATE_NAME))
         return 0
 
     state = {
@@ -1152,6 +1171,8 @@ def main(argv=None):
     p_init = sub.add_parser("init", help="scaffold a new engagement under targets/<name>")
     p_init.add_argument("name", help="engagement name (creates targets/<name>)")
     p_init.add_argument("--type", choices=("pentest", "ctf", "bb"), default="pentest")
+    p_init.add_argument("--rebase", action="store_true",
+                        help="allow init over a dir holding live engagement files")
     p_init.set_defaults(fn=cmd_init)
 
     sub.add_parser("board", help="write the Approach.md 4a coverage matrix from the index").set_defaults(fn=cmd_board)

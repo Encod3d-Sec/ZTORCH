@@ -47,7 +47,9 @@ def main():
                            stdin=subprocess.DEVNULL, env=env, timeout=8)
     except Exception:
         pass
-    if not _engagement.is_solved(d):
+    solved = _engagement.is_solved(d)
+    suspended = (not solved) and _engagement.is_suspended(d)
+    if not solved and not suspended:
         # During the box: state-discipline reflex. Loot captured but Killchain.md has no chain
         # rows -> nudge to write the attack path now, not at close-out. Deduped on the loot
         # row-count (a marker) so it re-fires only when a NEW finding lands, never every Stop.
@@ -97,16 +99,46 @@ def main():
                     _telemetry.hook("close-out", action="cred-spray-nudge")
                 except Exception:
                     pass
+        # Unmarked-close reflex (the close-out root cause): substance captured, NO '## STATUS:'
+        # heading at all, last activity > 12h ago (the first Stop of a session after the box
+        # was left mid-close-out). The entire close-out chain -- eval-metrics write, walkthrough
+        # build, learn harvest -- keys on that marker; without it the box closes UNMEASURED
+        # (every closed engagement to date has an empty eval.md for exactly this reason).
+        # Deduped on the substance row-count, so it re-fires only when NEW substance lands.
+        unmarked = _engagement.unmarked_close_gap(d)
+        if unmarked:
+            umarker = os.path.join(d, ".closeout-nudged")
+            ulast = 0
+            try:
+                ulast = int((open(umarker).read().strip() or "0"))
+            except Exception:
+                ulast = 0
+            if unmarked > ulast:
+                print("Close-out UNMARKED: %d captured row(s) but state.md carries no "
+                      "'## STATUS:' heading. Append '## STATUS: SOLVED' (or '## STATUS: "
+                      "SUSPEND' if parking it) to state.md NOW -- the eval-metrics write, "
+                      "walkthrough build and learn harvest all key on it; an unmarked box "
+                      "closes unmeasured." % unmarked)
+                try:
+                    open(umarker, "w").write(str(unmarked))
+                    import _telemetry
+                    _telemetry.drift("close-out", "substance captured but no STATUS marker "
+                                                 "(box closes unmeasured)")
+                    _telemetry.hook("close-out", action="unmarked-close-nudge")
+                except Exception:
+                    pass
         return
-    # box is SOLVED: stamp the finish time once (the far end of the start->finish delta)
+    # box is SOLVED (or SUSPENDED): stamp the finish time once (the far end of the start->finish delta)
     try:
         import _telemetry
         _telemetry.stamp_once("finished_at", _telemetry.now_iso(), d=d)
     except Exception:
         pass
-    # fire the auto eval-metrics block once at close-out. Previously ONLY Skill(learn) Phase 0d ran
-    # eval_metrics, so a light close-out that skipped learn produced no eval (observed live). Bounded
-    # subprocess, fail-open, once per engagement (.eval-written marker); learn still re-runs it later.
+    # fire the auto eval-metrics block once at close-out (SOLVED or SUSPEND -- a parked box is
+    # still measured; observed live: a formally-suspended engagement closed with a blank eval).
+    # Previously ONLY Skill(learn) Phase 0d ran eval_metrics, so a light close-out that skipped
+    # learn produced no eval (observed live). Bounded subprocess, fail-open, once per engagement
+    # (.eval-written marker); learn still re-runs it later.
     try:
         import subprocess
         em_marker = os.path.join(d, ".eval-written")
@@ -118,6 +150,8 @@ def main():
             open(em_marker, "w").close()
     except Exception:
         pass
+    if not solved:
+        return          # SUSPEND: measured and parked; walkthrough/learn resume when reopened
     # Flag-accounting reflex (ctf only): SOLVED but fewer flags recorded than flags_expected,
     # or flags_expected unset -> nudge the full-FS flag sweep. Prints first but does NOT return,
     # so the evidence/walkthrough/learn chain below still surfaces. Fires each Stop while unsatisfied

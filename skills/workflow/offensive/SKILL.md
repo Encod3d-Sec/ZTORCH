@@ -31,6 +31,9 @@ execution is the fallback below 2 open assets, not the default.
 
 1. `python3 scripts/offensive.py init <name> --type pentest|ctf|bb` - scaffolds `targets/<name>/`
    (state.md, scope.md, loot.md, Killchain.md, Deadends.md, oob.md, decisions.md, Approach.md).
+   Refuses a dir that already holds driver state (`.offensive.json`) -- re-init on a live
+   engagement re-scaffolds over it; pass `--rebase` for the rotated-IP / repair flow (state
+   file untouched, `targets/active.md` repointed).
 2. `python3 scripts/offensive.py --eng <name> index` - compiles the vault routing table to `.offensive-index.json`.
    The board and gates read this cache; a stale one is refused by G9.
 3. Feed recon into `state.md` (assets/services), then

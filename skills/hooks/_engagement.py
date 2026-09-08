@@ -9,7 +9,7 @@ import json
 import os
 import re
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 
 # Self-locate: realpath resolves the ~/.claude/vault-hooks symlink to the real
 # skills/hooks dir inside whichever machine's vault. skills/hooks -> skills -> root.
@@ -583,6 +583,12 @@ def flip_oob_status(d, token, new_status, source=""):
 
 _STATUS_RE = re.compile(r"^##\s*STATUS:\s*(SOLVED|OWNED|ROOTED|COMPLETE)\b",
                         re.IGNORECASE | re.MULTILINE)
+# a parked-not-solved close-out: the box is measured (eval metrics) but its
+# walkthrough/learn chain stays dormant until it is reopened and actually solved
+_SUSPENDED_RE = re.compile(r"^##\s*STATUS:\s*(SUSPEND(?:ED)?)\b",
+                           re.IGNORECASE | re.MULTILINE)
+# ANY status heading at all -- an unmarked box closes unmeasured (see unmarked_close_gap)
+_STATUS_ANY_RE = re.compile(r"^##\s*STATUS\s*:", re.IGNORECASE | re.MULTILINE)
 
 
 def is_solved(d):
@@ -598,6 +604,75 @@ def is_solved(d):
         return bool(_STATUS_RE.search(text))
     except Exception:
         return False
+
+
+def is_suspended(d):
+    """True iff <d>/state.md carries a '## STATUS: SUSPEND' (or SUSPENDED) heading -- a
+    deliberate park. Shares is_solved's fail-open posture."""
+    if not d:
+        return False
+    p = os.path.join(d, "state.md")
+    try:
+        text = open(p, encoding="utf-8", errors="ignore").read()
+        return bool(_SUSPENDED_RE.search(text))
+    except Exception:
+        return False
+
+
+def _last_event_age_hours(d):
+    """Age in hours of the newest .events.jsonl record, or None when there is no telemetry
+    (treated as idle by the caller: work predates telemetry or was copied in)."""
+    ev = os.path.join(d, ".events.jsonl")
+    last = ""
+    with open(ev, encoding="utf-8", errors="ignore") as fh:
+        for line in fh:
+            if line.strip():
+                last = line
+    if not last:
+        return None
+    ts = (json.loads(last) or {}).get("ts", "")
+    if not ts:
+        return None
+    t = datetime.fromisoformat(ts)
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - t).total_seconds() / 3600.0
+
+
+def unmarked_close_gap(d):
+    """Close-out ROOT-CAUSE reflex: the engagement holds CAPTURED SUBSTANCE (loot.md data
+    rows, or a ctf's live '## Chain' rows inside state.md) but state.md carries NO
+    '## STATUS:' heading at all, and the last telemetry event is > 12h old (the box was
+    left across a session gap -- not mid-box). Every step of the close-out chain (the
+    eval-metrics write, the walkthrough build, the learn harvest) keys on that marker, so
+    an unmarked box closes UNMEASURED: every closed engagement to date has an empty
+    eval.md for exactly this reason. Returns the substance row count when the gap exists,
+    else 0. Fail-open (0 on any error)."""
+    if not d:
+        return 0
+    try:
+        state_p = os.path.join(d, "state.md")
+        if not os.path.isfile(state_p):
+            return 0
+        state = open(state_p, encoding="utf-8", errors="ignore").read()
+        if _STATUS_ANY_RE.search(state):
+            return 0                       # marked; solved/suspend chains own it from here
+        loot_rows = 0
+        loot_p = os.path.join(d, "loot.md")
+        if os.path.isfile(loot_p):
+            loot_rows = _table_data_rows(open(loot_p, encoding="utf-8", errors="ignore").read())
+        chain_rows = 0
+        if "## Chain" in state:
+            chain_rows = _table_data_rows(state.split("## Chain", 1)[1])
+        sub = max(loot_rows, chain_rows)
+        if sub < 1:
+            return 0
+        age = _last_event_age_hours(d)
+        if age is not None and age < 12:
+            return 0                        # live session: mid-box, do not nag
+        return sub
+    except Exception:
+        return 0
 
 
 # unfilled-template markers a scaffolded-but-untouched walkthrough.md still carries
