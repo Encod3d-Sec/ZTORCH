@@ -37,7 +37,7 @@ keep it on the main model. Re-verify any NEGATIVE a sub-agent returns before it 
 
 ## The checklist (a delegation is only as good as its checklist)
 
-Every delegation needs all six slots filled. Under-specify one and the sub-agent flails; that is the
+Every delegation needs all eight slots filled. Under-specify one and the sub-agent flails; that is the
 usual failure mode, not a weak sub-agent.
 
 - **(a) confirmed access/primitive**, spelled out; don't make the sub-agent rediscover it.
@@ -53,6 +53,13 @@ usual failure mode, not a weak sub-agent.
   not 2); if blocked, report the RAW output/errors and STOP, never guess or substitute a value and
   never invent a result. A cheap model's instinct is to quit early and guess a token/flag, forbid
   both explicitly in the prompt.
+- **(h) output-landing contract**: every load-bearing command's full request+response
+  lands in the lane's capture dir (VM `/home/tz/<eng>/<lane>/` via `tee`, or
+  `targets/<eng>/poc/<lane>/`); evidence-worthy tool runs execute inside a named tmux
+  window (`vm-scan.sh --win <lane>` / `vm-bg.sh` / `vm-rsh.sh --create --win <lane>`),
+  never foreground one-shot SSH; confirm-worthy request/response pairs are returned RAW
+  so the main agent can push them to Burp Repeater. A lane that returns only a one-line
+  verdict with no capture path is a failed lane.
 
 ## False-root/hostname guardrail (MANDATORY every delegation)
 

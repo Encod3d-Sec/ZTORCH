@@ -56,6 +56,9 @@ report contract. Every dispatch prompt additionally carries:
 - report `hostname` + `id` alongside any shell/id output.
 - the boundary: subagents never run driver commands and never write
   `targets/<eng>` files; they return raw output and evidence paths only.
+- the output-landing mandate (delegate slot h), verbatim: per-lane capture dir with
+  full request/response captures, named tmux window for evidence-worthy runs, raw
+  pairs returned for Repeater; no one-line-verdict-only returns.
 
 ## Concurrency
 
