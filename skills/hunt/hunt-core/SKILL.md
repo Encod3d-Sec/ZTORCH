@@ -161,6 +161,18 @@ injection, open redirect): use a unique 8+ char alphanumeric canary (e.g. `x4hd2
 `test`/`marker`/`evil`/`payload`. Check the baseline response for the canary BEFORE claiming
 reflection; a value already present is not proof you put it there.
 
+## Small tells (battery before the big read)
+
+Before reading a big source file / JS bundle / saved response tree end to end, run the
+curated tell battery over it: `python3 scripts/tells.py <path>` prints `path:line [class]
+snippet -> Skill(x)` for every small indicator it knows (raw-HTML sinks, command-exec
+sinks, string-built SQL, deser calls, keys/JWTs, comment hints, version banners). Read
+the hit blocks FIRST, then the full read where the read-first mandate applies
+(post-foothold source review). The pattern table is `scripts/tells.json` - the single
+machine-readable source; learned a new tell (an indicator that would have saved you
+time)? Add a row there. High precision only: a noisy tell trains the eye to ignore the
+battery. This locates, it never replaces the read.
+
 ## Wiki lookup (reference-map first, qmd on a hint)
 
 `qmd_query` is powerful but ~15-30s per call, so it is a TARGETED deepen, not a pre-attack ritual.

@@ -16,6 +16,8 @@ A systematic checklist for auditing application source to find vulnerabilities: 
 
 Almost every app bug is **tainted input reaching a sink without proper validation/encoding**. You audit by enumerating sinks (fast, with grep/[[semgrep]]) and proving the dataflow from a source ([[codeql]] taint, or by hand). One found bug -> grep the pattern for siblings (variant analysis).
 
+The machine-readable sink/tell table lives in `scripts/tells.json`; run `python3 scripts/tells.py <path>` to fire the whole battery at once (one `path:line [class] -> Skill(x)` line per hit). New tells learned on an engagement get added there; this page stays the methodology.
+
 ## Attack phases
 Exploitation / research (source-available web apps, libraries, services).
 

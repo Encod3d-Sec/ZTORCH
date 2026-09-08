@@ -1,0 +1,21 @@
+{
+  "_doc": "Small-indicator battery table. Single source of truth for regex tells (small strings that instantly signal a vuln class). Add a row when you learn one (engagement close-out, research ingest); keep patterns HIGH-PRECISION (a noisy tell trains the eye to ignore the battery). class/skill route the hit; note says what to read next.",
+  "tells": [
+    {"re": "dangerouslySetInnerHTML|\\bv-html\\b|innerHTML\\s*=|outerHTML\\s*=|document\\.write\\(|insertAdjacentHTML", "class": "xss", "skill": "hunt-xss", "note": "raw-HTML sink; read the render block + trace what feeds it"},
+    {"re": "\\beval\\(|new Function\\(|setTimeout\\(\\s*['\"]|setInterval\\(\\s*['\"]", "class": "xss", "skill": "hunt-xss", "note": "JS eval sink (client XSS); eval( in SERVER code = RCE, re-route"},
+    {"re": "child_process\\.(exec|spawn)|shell_exec|\\bsystem\\s*\\(|\\bpopen\\s*\\(|shell\\s*=\\s*True|Runtime\\.getRuntime|ProcessBuilder", "class": "rce", "skill": "hunt-rce", "note": "command-exec sink; trace the argument back to input"},
+    {"re": "\\.raw\\(|\\.extra\\(|execute\\(\\s*['\"f][^)]*['\"]\\s*\\+|(SELECT|INSERT|UPDATE|DELETE) [^'\"]{0,40}['\"][^'\"]*['\"]\\s*\\+", "class": "sqli", "skill": "hunt-sqli", "note": "string-built SQL; read the query builder + param flow"},
+    {"re": "pickle\\.loads?\\(|unserialize\\s*\\(|ObjectInputStream|Marshal\\.load|yaml\\.load\\((?!_safe)|node-serialize", "class": "deserialization", "skill": "hunt-deserialization", "note": "deser sink; identify the gadget library + who controls the blob"},
+    {"re": "curl_exec|URLConnection|requests\\.(get|post)\\(\\s*[a-z_]*(url|target|host)|fetch\\(\\s*[a-z_]*(url|target)", "class": "ssrf", "skill": "hunt-ssrf", "note": "server-side fetch; check whether the URL is user-influenced"},
+    {"re": "DocumentBuilder|SAXParser|libxml|etree\\.parse|XMLInputFactory", "class": "injection", "skill": "hunt-injection", "note": "XML parser; XXE unless entities disabled - check parser config"},
+    {"re": "render_template_string|Template\\(\\s*['\"f]|Jinja2\\(|\\{\\{[^}]*\\|\\s*safe", "class": "injection", "skill": "hunt-injection", "note": "SSTI surface; check whether template source is user-controlled"},
+    {"re": "sendFile\\(|sendRedirect\\(|redirect\\(\\s*(req|request|ctx)|res\\.redirect\\(\\s*req", "class": "open-redirect", "skill": "hunt-injection", "note": "redirect/file send on request input; traversal or open-redirect"},
+    {"re": "AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.", "class": "secrets", "skill": "hunt-secrets", "note": "hard key/JWT material; capture verbatim, test scope of use"},
+    {"re": "(api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*['\"][^'\"\\s]{8,}", "class": "secrets", "skill": "hunt-secrets", "note": "hardcoded credential-ish assignment; verify it is not a placeholder"},
+    {"re": "(DB_PASSWORD|DATABASE_URL|MONGO_URI|AWS_SECRET|PRIVATE_KEY)\\s*[:=]", "class": "secrets", "skill": "hunt-secrets", "note": "env-style secret name; read the value + where it is committed"},
+    {"re": "<!--[^>]{0,200}(TODO|FIXME|admin|internal|debug|staging|backdoor|remove (this|before))", "class": "secrets", "skill": "hunt-secrets", "note": "HTML comment hint; read the whole comment block"},
+    {"re": "Traceback \\(most recent|\\bat [\\w.$]+\\([\\w.$]+:(java|py|js):?\\d+\\)|Fatal error:|Stack trace", "class": "secrets", "skill": "hunt-secrets", "note": "stack trace in output; harvest paths/versions/SQL from it"},
+    {"re": "(Server|X-Powered-By):\\s*[A-Za-z]+/\\d", "class": "recon", "skill": "", "note": "version banner; fingerprint -> playbook.json targeted tests"},
+    {"re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV.*production|NODE_ENV.*development", "class": "recon", "skill": "", "note": "debug mode flag; debug mode = stack traces + code exec surfaces"}
+  ]
+}
