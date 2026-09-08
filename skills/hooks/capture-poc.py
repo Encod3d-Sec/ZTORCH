@@ -170,6 +170,58 @@ def _slug(binary):
     return s[:40]
 
 
+# Finding-grade signals (batch 6, late-evidence drift ~17x): a captured pair that holds a
+# CONFIRMED finding. Precision beats recall -- this ACTS (writes a poc card), so only signals
+# that are never ordinary output: a flag token, a root-shell banner, a hashcat run that
+# cracked something. Reflections/error strings deliberately do NOT qualify (the confirmation
+# gate owns those; auto-carding every echo would be noise).
+_FLAG_RE = re.compile(r"\b[A-Za-z][A-Za-z0-9_]{1,}\{[A-Za-z0-9_!@#$%&*+.-]{4,}\}")
+_ROOT_RE = re.compile(r"uid=0\(root\)|NT AUTHORITY\\SYSTEM", re.IGNORECASE)
+_CRACKED_RE = re.compile(r"Recovered\s*\.*\s*:?\s*[1-9]\d*\s*/")
+
+
+def _finding_signal(cmd, out):
+    """(kind, token) for a finding-grade signal in the captured pair, else None."""
+    m = _FLAG_RE.search(out or "")
+    if m:
+        return ("flag", m.group(0))
+    if _ROOT_RE.search(out or ""):
+        return ("root-shell", "")
+    if _CRACKED_RE.search(out or ""):
+        return ("cracked", "")
+    return None
+
+
+def _auto_card(d, tool, display, body, kind, token):
+    """Persist a finding-grade pair as poc/<N>-<kind>-auto.md (deduped on the token) and
+    return the printed advisory line, or '' when the signal was already carded. Never
+    re-executes anything: the raw pair is already in hand (full response, uncut)."""
+    import glob
+    pocdir = os.path.join(d, "poc")
+    os.makedirs(pocdir, exist_ok=True)
+    key = token or kind
+    for f in glob.glob(os.path.join(pocdir, "*-auto.md")):
+        try:
+            if key in open(f, encoding="utf-8", errors="ignore").read():
+                return ""                                # already carded
+        except OSError:
+            pass
+    n = len(glob.glob(os.path.join(pocdir, "*-auto.md"))) + 1
+    fname = "%02d-%s-auto.md" % (n, _slug(kind))
+    card = ("<!-- auto-captured finding pair (%s, %s); polish into a proper card -->\n\n"
+            "# %s (auto-captured)\n\nCommand:\n\n```\n%s\n```\n\nResponse:\n\n```\n%s\n```\n"
+            % (kind, tool, kind, display, body.rstrip()))
+    try:
+        with open(os.path.join(pocdir, fname), "w", encoding="utf-8") as fh:
+            fh.write(card)
+    except OSError:
+        return ""
+    return ("FINDING-GRADE (%s): pair auto-saved to poc/%s. Make the operator-facing card NOW "
+            "while the pane is live: `bash scripts/capture.sh cli <eng> <slug> <cmdfile>` "
+            "(or `capture.sh req ...` / `capture.sh burp ...` for the Repeater grab), and log "
+            "the finding per hunt-core FIND output." % (kind, fname))
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -209,6 +261,15 @@ def main():
         entry = "\n## %s\n\n```\n%s\n```\n\n```\n%s\n```\n" % (ts, display, body.rstrip())
         with open(os.path.join(pdir, _slug(tool) + ".md"), "a", encoding="utf-8") as fh:
             fh.write(entry)
+
+        # Finding-grade auto-capture: persist the pair as a poc card the MOMENT the finding
+        # lands (no re-execution; the curated card was skipped under momentum on every
+        # engagement to date). Deduped on the signal token.
+        sig = _finding_signal(display, out)
+        if sig:
+            line = _auto_card(d, tool, display, body, sig[0], sig[1])
+            if line:
+                print(line)
 
         # Mechanical wrong-vector tells, injected at decision time: after a curl/hashcat
         # capture lands, run the stall battery over the cmdlog (consecutive 000s against one

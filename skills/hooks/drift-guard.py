@@ -7,14 +7,19 @@ momentum the agent walked away from `offensive.py next` in 90 seconds and free-h
 box via 85 raw `bash /root/vm.sh` exploit calls. This hook pulls the agent back: on an
 exploit-shaped Bash command during an active campaign, if the agent is OFF-BOARD (running an
 exploit/scan binary the driver never emitted, and the board is NOT empty), it ESCALATES a
-counter and ADVISES the agent back to the driver. It never denies a command - the standing
-operator complaint was that a hard deny throttles legit engagements, so this hook is advisory
-only (the RTL reflex now lives in offensive.py's grind detection + recon-capture's vector-doubt
-nudges).
+counter and ADVISES the agent back to the driver.
+
+ESCALATE-TO-DENY (approach B, board-bypass drift ~17x across 2 months): advice alone was
+ignored for whole boxes, so a REPEAT PATTERN now denies. Streak 1-3 (then every 25th) stays
+advisory - a probe is not a pattern - but streak >= _DENY_STREAK exploit-shaped calls with
+ZERO driver contact is no longer a judgement call, it DENIES naming the driver step that
+clears it. Post-foothold boxes never deny (the board is a pre-foothold planning aid), and the
+shared escape hatch applies: skills/hooks/.enforce-off downgrades the deny to advisory.
 
 Policy:
-  - off_board_streak N -> INJECT an advisory warning ("run offensive.py next; N calls since"),
-    for every N (the counter is kept and reported, but never escalates to a deny)
+  - off_board_streak N -> INJECT an advisory warning ("run offensive.py next; N calls since")
+    for streak 1,2,3 then every 25th (the counter is kept and reported every time)
+  - off_board_streak >= _DENY_STREAK (and not post-foothold, and enforcing) -> DENY
   - `offensive.py next|board|done|note|init|foothold` seen in the command -> reset the streak to 0
 
 ON-BOARD (allowed, never counted) when EITHER:
@@ -60,6 +65,14 @@ except Exception:
 
 HEAVY_SCANNERS = {"ffuf", "feroxbuster", "gobuster", "wpscan", "nuclei", "dirb", "katana", "nikto"}
 _SCAN_WINDOW = 180          # seconds: a 2nd heavy scanner launched within this is "concurrent"
+_DENY_STREAK = 6            # off-board calls with zero driver contact before the deny fires
+
+
+def _enforcing():
+    """Same escape hatch as scope-guard: skills/hooks/.enforce-off downgrades the deny to
+    advisory. ENFORCE_OFF_MARKER lets parallel test workers point at a tmp file."""
+    marker = os.environ.get("ENFORCE_OFF_MARKER") or os.path.join(HERE, ".enforce-off")
+    return not os.path.exists(marker)
 # Own regex, independent of NET_BINS: dirb (and any future HEAVY_SCANNERS entry not in NET_BINS)
 # must still be caught even when it's the ONLY thing in the command (not otherwise exploit-shaped).
 _HEAVY_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, HEAVY_SCANNERS), key=len, reverse=True)) + r")\b")
@@ -290,8 +303,34 @@ def main():
     except Exception:
         pass
 
+    # ESCALATE-TO-DENY at the repeat threshold: N+ exploit-shaped calls, zero driver contact,
+    # board has open rows. Post-foothold never denies (see module docstring). With enforcement
+    # off the would-be block prints as an UN-THROTTLED advisory (the operator must see what
+    # would have been blocked), instead of being swallowed by the throttle below.
+    post_fh = _post_foothold(d)
+    at_threshold = streak >= _DENY_STREAK and not post_fh
+    if at_threshold and _enforcing():
+        try:
+            import _telemetry
+            _telemetry.hook("drift-guard", action="deny")
+        except Exception:
+            pass
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": (
+                "BLOCKED by harness enforcement:\n- off-board: %d exploit-shaped calls since "
+                "the last driver step (%s not emitted by the board). The offensive driver is "
+                "authoritative. Run `python3 scripts/offensive.py next` to get the required "
+                "row + tool (this also resets the counter), or `offensive.py note` if this is "
+                "a legitimate off-board lane, then re-run the command.\n\n(False block? "
+                "create skills/hooks/.enforce-off to downgrade enforcement to advisory.)"
+                % (streak, off)),
+        }}))
+        return
+
     # THROTTLE the context injection (the count above still fired for eval accuracy).
-    if not _should_advise(streak, _post_foothold(d)):
+    if not at_threshold and not _should_advise(streak, post_fh):
         return
 
     try:

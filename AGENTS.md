@@ -57,7 +57,7 @@ Engagement-state hooks (workspace-scoped, registered in the committed `.zcode/co
 
 - SessionStart: self-heals engagement files, injects the state summary + next-moves + OOB HITs, registers skills.
 - UserPromptSubmit: routes hunt skills from `triggers.json` (leak-safe telemetry).
-- PreToolUse: ENFORCES out-of-scope host/IP + RoE-forbidden tooling, and blind `sleep >= 10` with no poll; ADVISES on off-board drift and a client-marker-in-`session/*` warn.
+- PreToolUse: ENFORCES out-of-scope host/IP + RoE-forbidden tooling, blind `sleep >= 10` with no poll, and a repeat off-board pattern (drift-guard: >= 6 exploit-shaped calls with zero driver contact, pre-foothold); ADVISES on one-off off-board drift and a client-marker-in-`session/*` warn.
 - PostToolUse: routes tech -> hunt Skill (+ G1 wiki-first nudge), correlates OOB waiting -> HIT, captures PoC pairs + telemetry, re-indexes wiki.
 - Stop: nudges SOLVED-box close-out (flag accounting, evidence, walkthrough, learn).
 
