@@ -9,6 +9,14 @@ phase: enumerate
 
 ## OWASP ZAP: proxy, spider, fuzzer, scanner
 
+## Core usage
+
+```
+zaproxy -quickurl https://target -quickout /tmp/zap-report.html   # headless quick scan (spider+active)
+```
+
+GUI-first tool: launch `zaproxy`, set the browser proxy to `127.0.0.1:8080`, browse, then Spider > Active Scan (below). The headless quick scan is the CLI fallback for CI-style sweeps.
+
 Free/open-source web proxy, no paid-only features. Default listener `127.0.0.1:8080` (change: `Tools > Options > Network > Local Servers/Proxies`). Browser side: FoxyProxy to `127.0.0.1:8080` plus ZAP's CA cert (Options > Network > SSL, dynamic root CA export), or the HUD in a browser. ZAP auto URL-encodes request data in the background before sending.
 
 ### Spider (site tree)

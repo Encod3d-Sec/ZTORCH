@@ -67,6 +67,15 @@ bash /root/vm.sh 'nmap -sV -Pn TARGET'
   When pushing a script then running it, do BOTH in one call (write races the run otherwise).
 - **Runs as root**, `ConnectTimeout=10` (fails fast). A `Permission denied` means
   `/root/creds.txt` is stale.
+- **DNS flakiness is the host-side VMware NAT proxy, not VM config.** In a degraded window
+  EVERY resolver path dies (curl `000`, `ERR_NAME_NOT_RESOLVED`, dig timeouts to any server,
+  `getent` hanging 30-40s) and flaps back to healthy within minutes. Nothing VM-side fixes it:
+  restart `VMwareNatService` on the Windows host (elevated PowerShell:
+  `Restart-Service VMwareNatService -Force`) or reboot the VM. The steady
+  `/etc/resolv.conf` is static + hand-managed (NM reapply / resolvconf never rewrite it) and
+  carries `nameserver 192.168.23.2` + `options timeout:2 attempts:2`; after a sick-window
+  firefight check the file wasn't hand-diverted (1.1.1.1/use-vc edits) and restore it.
+  `options use-vc` is NOT a fix: TCP through the proxy measured ~12 s per lookup degraded.
 
 ## Running scans in tmux + capturing the desktop
 

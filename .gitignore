@@ -64,3 +64,5 @@ Thumbs.db
 
 # --- git worktrees ------------------------------------------------------------
 .worktrees/
+.zcode/skills/
+.zcode/win-seat
