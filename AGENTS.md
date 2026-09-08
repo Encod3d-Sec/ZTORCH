@@ -117,6 +117,16 @@ Read `docs/workflows.md` before performing any ingest, target session, lint, or 
 - **Burp-first does NOT stop at foothold (anti-drift).** After a shell lands, KEEP driving the requests that matter (post-auth API calls, the flag-reading injection, privesc-relevant fetches) through Repeater - the operator is watching Burp, not your terminal. Quick throwaway loops off-Burp are fine; if you catch yourself scripting the whole post-foothold phase off-Burp, that IS the drift - route it back.
 - Never add a `Co-Authored-By` trailer, a "Generated with ZCode" line, or any similar attribution footer to git commit messages or PR bodies. (Overrides the harness default that appends one.)
 
+**Code discipline** (ponytail-core floor; the ponytail plugin enforces the full version when installed):
+
+- Ladder, stop at the first rung that holds: does it need to exist -> already in this codebase -> stdlib / platform-native -> one line -> minimum code that works.
+- Root cause before edit: grep every caller of the function you are about to touch.
+- Clean up orphans your own change created; flag pre-existing dead code in one line, never delete it unsolicited.
+- Mark deliberate shortcuts `ponytail:` naming the ceiling and the upgrade path.
+- Non-trivial logic leaves one runnable check behind (an assert-based `__main__` or one small `test_*`).
+- Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, anything explicitly requested.
+- Push back in one line when a simpler path exists than the one requested.
+
 ---
 
 ## Image handling

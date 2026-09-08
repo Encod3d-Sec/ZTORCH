@@ -45,9 +45,10 @@ A guess wearing a checklist stays on the brain (see `Skill(delegate)`).
 ## The dispatch (checklist contract)
 
 Reuse `Skill(delegate)`'s eight-slot checklist as the prompt skeleton: confirmed
-primitive, exact copy-paste commands with real IPs/paths inline (no `$VAR`),
-egress/port constraints, false-root/hostname guardrail, fragile-box discipline,
-report contract. Every dispatch prompt additionally carries:
+primitive + assumption set, exact copy-paste commands with real IPs/paths inline
+(no `$VAR`), egress/port constraints, false-root/hostname guardrail, fragile-box
+discipline, SUCCESS criterion, report contract. Every dispatch prompt
+additionally carries:
 
 - anti-give-up/no-guess: run the FULL specified window; if blocked, report RAW
   output/errors and STOP; never guess or substitute a value, never invent a
@@ -56,6 +57,15 @@ report contract. Every dispatch prompt additionally carries:
 - report `hostname` + `id` alongside any shell/id output.
 - the boundary: subagents never run driver commands and never write
   `targets/<eng>` files; they return raw output and evidence paths only.
+- the assumption set (delegate slot a), verbatim: the lane prompt spells out
+  what must hold true for the run to make sense (access still valid, file
+  still at path, version match); a mismatch is reported, not silently absorbed.
+- the SUCCESS criterion (delegate slot f), verbatim: the brain writes
+  `SUCCESS = <exact observable>` (e.g. `hostname` = target AND `id` =
+  expected uid, plus log path) into the lane prompt before dispatch; the lane
+  returns that observable raw; on return the brain verifies the capture
+  against the criterion; a claimed success whose observable is absent from
+  the capture is a failed lane.
 - the output-landing mandate (delegate slot h), verbatim: per-lane capture dir with
   full request/response captures, named tmux window for evidence-worthy runs, raw
   pairs returned for Repeater; no one-line-verdict-only returns.

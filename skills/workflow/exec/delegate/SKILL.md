@@ -40,18 +40,29 @@ keep it on the main model. Re-verify any NEGATIVE a sub-agent returns before it 
 Every delegation needs all eight slots filled. Under-specify one and the sub-agent flails; that is the
 usual failure mode, not a weak sub-agent.
 
-- **(a) confirmed access/primitive**, spelled out; don't make the sub-agent rediscover it.
+- **(a) confirmed access/primitive**, spelled out; don't make the sub-agent rediscover it. Alongside
+  the primitive, state the assumption set: what must hold true for the run to make sense (access
+  still valid, file still at that path, version match); a wrong assumption then surfaces as a
+  reportable mismatch, not a silent miss.
 - **(b) exact copy-paste commands**, real IPs/paths inline, no `$VAR`; the sub-agent cannot watch a
-  live terminal to sanity-check a substitution.
+  live terminal to sanity-check a substitution. Each command block pairs with its expected
+  observable, step -> verify form, so drift is caught at the step, not at lane end. Lane code
+  discipline: code the lane writes is minimum-code (stdlib / platform-native first, no frameworks,
+  no scaffolding for later); the lane never improves target code beyond its checklist and flags
+  anything unrelated it notices in the report instead of acting on it.
 - **(c) egress/port constraints**, an egress-tested LPORT, not a guess at 4444.
 - **(d) the false-root guardrail** (next section), non-negotiable.
 - **(e) fragile-box discipline** if applicable: serial requests, long timeouts, no fuzzers.
 - **(f) report-back contract**: return the primitive/creds/flag plus evidence path; REVERT any state
   the run changed (a group membership added, a registry key set) before reporting back; do not pivot
-  further without the main agent.
+  further without the main agent. The main model writes `SUCCESS = <exact observable>` into the
+  prompt BEFORE dispatch (for example: `hostname` = the target AND `id` = the expected uid, plus
+  the session log path); the lane returns that observable RAW plus the capture path.
 - **(g) anti-give-up + no-guess**: run the FULL specified window (a 5-minute pspy watch is 5 minutes,
   not 2); if blocked, report the RAW output/errors and STOP, never guess or substitute a value and
-  never invent a result. A cheap model's instinct is to quit early and guess a token/flag, forbid
+  never invent a result. The lane runs until the (f) criterion holds or the specified window
+  expires, and reports raw output either way; a narrative verdict without the observable is the
+  existing forbidden guess. A cheap model's instinct is to quit early and guess a token/flag, forbid
   both explicitly in the prompt.
 - **(h) output-landing contract**: every load-bearing command's full request+response
   lands in the lane's capture dir (VM `/home/tz/<eng>/<lane>/` via `tee`, or
@@ -73,7 +84,10 @@ alongside any `id`/`whoami` output, every time, no exceptions.
 
 Keep driving the board while the sub-agent works. Dispatch ONE sub-agent at a time, serial; never
 duplicate its target in parallel. WAIT for completion before the next move. On return, persist the
-primitive/creds/flag to `state.md`/`loot.md`/`Killchain.md` before doing anything else.
+primitive/creds/flag to `state.md`/`loot.md`/`Killchain.md` before doing anything else. On return,
+verify the capture against the stated criterion; a claimed success whose criterion observable is
+absent from the capture is a failed lane (sibling of the existing one-line-verdict-without-capture
+rule in slot (h)).
 
 ## Mechanism
 
@@ -89,7 +103,7 @@ Each uses placeholder tokens only.
 **(1) Catch a meterpreter as a service account**
 Confirmed: RCE via the admin panel upload field on `<target>`. Egress-test the LPORT first (80/443
 before 4444). Start `multi/handler` on the Kali VM, then deliver an inline base64 ELF payload through
-the panel RCE. Report back `hostname` + `id` + the session log path.
+the panel RCE. SUCCESS = `hostname` = `<target>` AND `id` = the expected uid, plus the session log path.
 
 **(2) `ssh2john` -> crack -> `ssh-keygen -p` strip -> SSH chain**
 Confirmed: a private key at `<path>` protected by a passphrase. Run `ssh2john <path> > <hash-file>`,
