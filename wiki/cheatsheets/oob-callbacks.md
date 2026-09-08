@@ -43,6 +43,10 @@ interactsh-client -json -o interactions.json
 interactsh-client -v -poll-interval 5
 ```
 
+interactsh-client is long-lived and interactive: run it in a named tmux tab
+(`bash scripts/vm-scan.sh --win oob <eng> localhost 'interactsh-client ... | tee /tmp/interactsh.log'`),
+never as a foreground one-shot; a dead client silently eats every OOB callback.
+
 Use the printed domain in a payload, e.g. SSRF: `http://<id>.oast.fun`, then watch the client for `[<id>.oast.fun] Received DNS interaction`.
 
 ### Self-hosted interactsh (own domain, recommended for bug bounty)

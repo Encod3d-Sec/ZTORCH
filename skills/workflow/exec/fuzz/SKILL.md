@@ -27,6 +27,7 @@ bash scripts/wl-pick.sh params "" bb
 It prints the seclists base, the profile flags line, and the ordered absolute paths (T0 harness -> T3 fingerprint list -> T1 surface lists, size-ordered). NEVER hand-pick a list from memory and NEVER start with `directory-list-2.3-medium` (220k). The size order is already correct in the output; run top-to-bottom, stop climbing when you have enough signal.
 
 ## 3. Calibrate (native first, backstop with judgment)
+- Launch every fuzz run detached in its own tmux tab: `bash scripts/vm-scan.sh --win ffuf <eng> <target> '<cmd>'` (output stays in-pane, autocard cards it; a foreground run dies with the SSH round trip).
 - Default to ffuf `-ac`/`-acc` and feroxbuster auto-filtering.
 - If a wildcard/soft-404 fools `-ac` (everything returns 200 with varying size): fire 2-3 known-bogus random paths first, read status/size/words, then set explicit `-fs`/`-fw` on the catch-all baseline, or `-mc 200,301,302,401,403` on a clean 404.
 - Uniform catch-all (every path returns the same-size SPA index): content fuzzing is BLIND on that host; stop after calibration and mine the JS bundle for the real surface instead ([[api-testing]]).

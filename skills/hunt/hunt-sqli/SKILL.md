@@ -95,6 +95,8 @@ sqlmap -u "https://target.com/search?q=test" --level=3 --risk=2 --batch --dbs
 ```
 Over a non-TTY stdin (an ssh/VM pipe or an agent driver), sqlmap silently discards `-r` request files
 and the run false-negatives (baseline auth 401s); always add `--ignore-stdin` there. [[sqlmap]]
+Run sqlmap via `bash scripts/vm-bg.sh <eng> sqlmap-<asset> 'sqlmap ... --ignore-stdin'` and read the log back with
+`bash scripts/vm-bg.sh --read <eng> sqlmap-<asset>`; a long sqlmap over one-shot SSH dies mid-run and loses the session state.
 Retrieval stalls/corrupt dumps or a blocked 0x-cast -> rerun with `--no-cast` (or `--hex` for
 binary); login-form OR injections need `--risk=2+`; `--os-shell` over UNION returning no output
 -> retry `--technique=E`.
