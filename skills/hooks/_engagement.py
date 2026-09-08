@@ -619,25 +619,89 @@ def is_suspended(d):
         return False
 
 
+def _chain_substance_rows(text):
+    """Substance lines of a chain section. pentest/bugbounty chains are TABLES (counted by
+    _table_data_rows); a ctf's live chain in state.md is a PROSE list (`stage: what -> opens`
+    bullets), which the table counter never saw. Count real content bullets / stage lines,
+    skipping the template's guidance prose and its bare '-' placeholder."""
+    n = 0
+    for ln in text.splitlines():
+        s = ln.strip()
+        if re.match(r"^-\s+\S.{7,}$", s):                       # a real bullet with content
+            n += 1
+        elif re.match(r"^[A-Za-z][\w /-]{2,}:\s+\S", s):        # a 'stage: what happened' line
+            n += 1
+    return n
+
+
+def _append_to_section(text, heading, line):
+    """Insert `line` at the END of the `## <heading>` section (before the next `## ` heading
+    or EOF), so a draft does not land below a later section. Returns the new text."""
+    lines = text.split("\n")
+    start = None
+    for i, ln in enumerate(lines):
+        if ln.strip().lower().startswith("## " + heading.lower()):
+            start = i
+            break
+    if start is None:
+        return text + "\n" + line
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        if lines[i].startswith("## "):
+            end = i
+            break
+    lines.insert(end, line)
+    return "\n".join(lines)
+
+
 def append_draft_chain_rows(d):
-    """State auto-synthesis: loot.md holds captured rows but Killchain.md has zero chain
-    rows -> append one DRAFT chain row per un-reflected loot value (path '<type>->?',
-    status open, note says to fill stage/next-move). The standing nudge to "write the
-    chain NOW" fired and was ignored on every engagement to date, so the write now
-    happens automatically and the operator polishes the cells instead of authoring from
-    a blank file. Rows quoting an already-chained loot VALUE are skipped (idempotent).
-    Returns the number of rows appended. Fail-open (0)."""
+    """State auto-synthesis: loot.md holds captured rows but the chain has zero rows ->
+    append one DRAFT chain row per un-reflected loot value. The standing nudge to "write the
+    chain NOW" fired and was ignored on every engagement to date, so the write now happens
+    automatically and the operator polishes the cells instead of authoring from a blank file.
+    Routing is type-aware: pentest/bugbounty rows go to Killchain.md's table
+    (path '<type>->?' | draft (auto) | open); a ctf's live chain is state.md's own ## Chain
+    PROSE list, so its drafts go there as '- draft (auto): ...' lines (never a Killchain.md,
+    which ctf does not have). Rows quoting an already-chained loot VALUE are skipped
+    (idempotent). Returns the number of rows appended. Fail-open (0)."""
     if not d:
         return 0
     try:
         loot_p = os.path.join(d, "loot.md")
-        chain_p = os.path.join(d, "Killchain.md")
-        if not (os.path.isfile(loot_p) and os.path.isfile(chain_p)):
+        if not os.path.isfile(loot_p):
             return 0
         loot = open(loot_p, encoding="utf-8", errors="ignore").read()
+        rows = _table_data_lines(loot)
+        if not rows:
+            return 0
+        if engagement_type(d) == "ctf":
+            state_p = os.path.join(d, "state.md")
+            if not os.path.isfile(state_p):
+                return 0
+            state = open(state_p, encoding="utf-8", errors="ignore").read()
+            if "## Chain" not in state:
+                return 0
+            added = 0
+            for row in rows:
+                cells = [c.strip() for c in row.strip().strip("|").split("|")]
+                value = cells[1] if len(cells) >= 2 else ""
+                if not value or value in state:
+                    continue                  # already reflected in the chain
+                kind = (cells[0] if cells else "loot") or "loot"
+                state = _append_to_section(
+                    state, "Chain",
+                    "- draft (auto): %s %s captured -> trace where it reaches (fill stage + impact)"
+                    % (kind, value[:60]))
+                added += 1
+            if added:
+                open(state_p, "w", encoding="utf-8").write(state)
+            return added
+        chain_p = os.path.join(d, "Killchain.md")
+        if not os.path.isfile(chain_p):
+            return 0
         chain = open(chain_p, encoding="utf-8", errors="ignore").read()
         added = 0
-        for row in _table_data_lines(loot):
+        for row in rows:
             cells = [c.strip() for c in row.strip().strip("|").split("|")]
             value = cells[1] if len(cells) >= 2 else ""
             if not value or value in chain:
@@ -651,6 +715,121 @@ def append_draft_chain_rows(d):
         return added
     except Exception:
         return 0
+
+
+def cmdlog_entry_count(d):
+    """Captured entries across poc/cmdlog/*.md (the '## ts' blocks capture-poc appends). The
+    work record that exists even when every state file is still blank."""
+    cdir = os.path.join(d, "poc", "cmdlog")
+    n = 0
+    try:
+        for fn in os.listdir(cdir):
+            if fn.endswith(".md"):
+                try:
+                    with open(os.path.join(cdir, fn), encoding="utf-8", errors="ignore") as fh:
+                        n += fh.read().count("\n## ")
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return n
+
+
+_HOST_TELL_RE = re.compile(r"https?://([^/\s:'\"]+)|\b(\d{1,3}(?:\.\d{1,3}){3})\b")
+
+
+def append_activity_draft(d, minimum=10):
+    """Activity auto-synthesis for the webserver-lab shape: poc/cmdlog holds the whole work
+    record but every state file is still template-blank (loot rows 0, chain rows 0), so the
+    engagement carries NOTHING forward and closes unmeasured. Drafts an '## Activity
+    (auto-draft)' block into state.md: date, per-tool entry counts, hosts touched. Skipped
+    when loot/chain substance exists (those syntheses own state). Idempotent on the heading.
+    Returns 1 when drafted, 0 otherwise. Fail-open (0)."""
+    if not d:
+        return 0
+    try:
+        state_p = os.path.join(d, "state.md")
+        if not os.path.isfile(state_p):
+            return 0
+        state = open(state_p, encoding="utf-8", errors="ignore").read()
+        if "## Activity" in state:
+            return 0
+        loot_rows = 0
+        loot_p = os.path.join(d, "loot.md")
+        if os.path.isfile(loot_p):
+            loot_rows = _table_data_rows(open(loot_p, encoding="utf-8", errors="ignore").read())
+        chain_rows = 0
+        if "## Chain" in state:
+            tail = state.split("## Chain", 1)[1]
+            chain_rows = max(_table_data_rows(tail), _chain_substance_rows(tail))
+        kc_p = os.path.join(d, "Killchain.md")
+        kc_rows = _table_data_rows(open(kc_p, encoding="utf-8", errors="ignore").read()) \
+            if os.path.isfile(kc_p) else 0
+        if loot_rows >= 1 or chain_rows >= 1 or kc_rows >= 1:
+            return 0
+        cdir = os.path.join(d, "poc", "cmdlog")
+        tools, hosts, total = [], set(), 0
+        try:
+            names = sorted(fn for fn in os.listdir(cdir) if fn.endswith(".md"))
+        except OSError:
+            names = []
+        for fn in names:
+            try:
+                with open(os.path.join(cdir, fn), encoding="utf-8", errors="ignore") as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            n = text.count("\n## ")
+            if n:
+                total += n
+                tools.append("%s x%d" % (fn[:-3], n))
+            for m in _HOST_TELL_RE.finditer(text):
+                hosts.add((m.group(1) or m.group(2)).lower())
+        if total < minimum:
+            return 0
+        host_line = ", ".join(sorted(hosts)[:8]) or "?"
+        block = ("\n## Activity (auto-draft %s)\n\n%d captured command(s) live in poc/cmdlog/ "
+                 "while the state files above stayed blank. Tools: %s. Hosts touched: %s.\n"
+                 "Polish into real state rows (assets, loot, chain) or close the box:\n"
+                 "`python3 scripts/eng-close.py SOLVED|SUSPEND`.\n"
+                 % (date.today().isoformat(), total, "; ".join(tools[:10]), host_line))
+        if not state.endswith("\n"):
+            state += "\n"
+        open(state_p, "w", encoding="utf-8").write(state + block)
+        return 1
+    except Exception:
+        return 0
+
+
+# placeholder 'why exhausted' cells that carry no reusable signal (machine-read by G4)
+_PLACEHOLDER_WHY = {"", "-", "n/a", "na", "none", "no", "x", "?", "tbd", "dead", "failed",
+                    "exhausted", "nothing", "no luck", "not working", "didn't work"}
+
+
+def deadends_placeholder_rows(d):
+    """Count Deadends.md rows that pass the anti-loop gate on shape but carry no signal: a
+    placeholder 'why exhausted' cell (empty / 'exhausted' / 'failed' ...) or an exact
+    duplicate of an earlier asset x class pair. The table is machine-read (offensive.py G4
+    suppression); a row without a WHY gets re-tested later and a duplicate bloats the lookup.
+    Fail-open (0)."""
+    if not d:
+        return 0
+    try:
+        rows = _parse_table(os.path.join(d, "Deadends.md"))
+    except Exception:
+        return 0
+    bad, seen = 0, set()
+    for r in rows:
+        why = (r.get("why exhausted") or "").strip().lower()
+        if why in _PLACEHOLDER_WHY:
+            bad += 1
+            continue
+        key = ((r.get("asset") or "").strip().lower(), (r.get("class") or "").strip().lower())
+        if key != ("", "") and key in seen:
+            bad += 1                                  # exact duplicate asset x class pair
+            continue
+        seen.add(key)
+    return bad
 
 
 def _last_event_age_hours(d):
@@ -697,8 +876,11 @@ def unmarked_close_gap(d):
             loot_rows = _table_data_rows(open(loot_p, encoding="utf-8", errors="ignore").read())
         chain_rows = 0
         if "## Chain" in state:
-            chain_rows = _table_data_rows(state.split("## Chain", 1)[1])
+            tail = state.split("## Chain", 1)[1]
+            chain_rows = max(_table_data_rows(tail), _chain_substance_rows(tail))
         sub = max(loot_rows, chain_rows)
+        if sub < 1 and cmdlog_entry_count(d) >= 10:
+            sub = 1                # webserver-lab shape: work only in cmdlog, state files blank
         if sub < 1:
             return 0
         age = _last_event_age_hours(d)
@@ -835,19 +1017,28 @@ def _table_data_lines(text):
 
 def paths_write_gap(d):
     """Live state-discipline reflex: LOOT was captured (a cred/key/flag/technique row in
-    loot.md) but Killchain.md still has ZERO chain rows -- a finding landed and the attack chain
-    was never written down (the drift where Killchain.md is filled only at close-out). Returns the
-    loot data-row count when a gap exists, else 0. ctf has no Killchain.md (its live chain lives in
-    state.md's own ## Chain section instead), always clean there. Fail-open (0 on any error)."""
+    loot.md) but the chain has ZERO rows -- a finding landed and the attack path was never
+    written down (the drift where the chain is filled only at close-out). Type-aware: a
+    pentest/bugbounty chain is Killchain.md's table; a ctf's live chain is state.md's own
+    ## Chain section (prose lines count). Returns the loot data-row count when a gap exists,
+    else 0. Fail-open (0 on any error)."""
     if not d:
         return 0
     try:
-        if engagement_type(d) == "ctf":
-            return 0
         loot = open(os.path.join(d, "loot.md"), encoding="utf-8", errors="ignore").read()
-        paths = open(os.path.join(d, "Killchain.md"), encoding="utf-8", errors="ignore").read()
         loot_rows = _table_data_rows(loot)
-        if loot_rows >= 1 and _table_data_rows(paths) == 0:
+        if loot_rows < 1:
+            return 0
+        if engagement_type(d) == "ctf":
+            state = open(os.path.join(d, "state.md"), encoding="utf-8", errors="ignore").read()
+            if "## Chain" not in state:
+                return loot_rows
+            tail = state.split("## Chain", 1)[1]
+            if max(_table_data_rows(tail), _chain_substance_rows(tail)) == 0:
+                return loot_rows
+            return 0
+        paths = open(os.path.join(d, "Killchain.md"), encoding="utf-8", errors="ignore").read()
+        if _table_data_rows(paths) == 0:
             return loot_rows
         return 0
     except Exception:

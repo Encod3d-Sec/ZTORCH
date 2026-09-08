@@ -108,6 +108,37 @@ def main():
                     _telemetry.hook("close-out", action="cred-spray-nudge")
                 except Exception:
                     pass
+        # Deadends quality reflex: rows whose 'why exhausted' cell is a placeholder (or that
+        # duplicate an earlier asset x class pair) pass the anti-loop gate on shape but carry
+        # no signal -- the same vector gets re-tested later. Deduped on the bad-row count.
+        bad_rows = _engagement.deadends_placeholder_rows(d)
+        if bad_rows:
+            dmarker = os.path.join(d, ".deadends-nudged")
+            dlast = 0
+            try:
+                dlast = int((open(dmarker).read().strip() or "0"))
+            except Exception:
+                dlast = 0
+            if bad_rows > dlast:
+                print("Deadends quality: %d row(s) carry a placeholder 'why exhausted' cell or "
+                      "duplicate an earlier asset x class pair. A dead-end without a concrete "
+                      "WHY is machine-read as exhaustible-but-unknown and gets re-tested later; "
+                      "fill each 'why exhausted' cell (one sentence: what ruled it out) and drop "
+                      "duplicates NOW." % bad_rows)
+                try:
+                    open(dmarker, "w").write(str(bad_rows))
+                    import _telemetry
+                    _telemetry.drift("close-out", "placeholder/duplicate Deadends rows")
+                    _telemetry.hook("close-out", action="deadends-quality-nudge")
+                except Exception:
+                    pass
+        # Activity auto-synthesis (webserver-lab shape): every state file blank but poc/cmdlog
+        # holds the whole work record -> draft an ## Activity block so the box carries SOMETHING
+        # forward. Idempotent (quiet on the second Stop), never fires once loot/chain exist.
+        if _engagement.append_activity_draft(d):
+            print("Activity auto-draft: state files were blank while poc/cmdlog held the work; "
+                  "drafted an ## Activity block into state.md (tools, counts, hosts). Polish it "
+                  "into real state rows, or close the box with scripts/eng-close.py.")
         # Unmarked-close reflex (the close-out root cause): substance captured, NO '## STATUS:'
         # heading at all, last activity > 12h ago (the first Stop of a session after the box
         # was left mid-close-out). The entire close-out chain -- eval-metrics write, walkthrough
@@ -124,10 +155,10 @@ def main():
                 ulast = 0
             if unmarked > ulast:
                 print("Close-out UNMARKED: %d captured row(s) but state.md carries no "
-                      "'## STATUS:' heading. Append '## STATUS: SOLVED' (or '## STATUS: "
-                      "SUSPEND' if parking it) to state.md NOW -- the eval-metrics write, "
-                      "walkthrough build and learn harvest all key on it; an unmarked box "
-                      "closes unmeasured." % unmarked)
+                      "'## STATUS:' heading. Run `python3 scripts/eng-close.py SOLVED` now "
+                      "(or `python3 scripts/eng-close.py SUSPEND` to park it) -- the "
+                      "eval-metrics write, walkthrough build and learn harvest all key on "
+                      "it; an unmarked box closes unmeasured." % unmarked)
                 try:
                     open(umarker, "w").write(str(unmarked))
                     import _telemetry
