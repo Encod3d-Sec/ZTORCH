@@ -53,3 +53,17 @@ def test_list_flag_dumps_table(capsys):
     out = capsys.readouterr().out
     assert rc == 0
     assert out.count("->") >= 10
+
+
+def test_filename_rows_hit_path_not_content(tmp_path, capsys):
+    d = tmp_path / "mirror"
+    d.mkdir()
+    env = d / ".env"
+    env.write_text("nothing matching content rows here\n", encoding="utf-8")
+    key = d / "id_rsa"
+    key.write_text("zzz\n", encoding="utf-8")
+    rc = tells.main([str(d)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert ".env" in out and "FILENAME" in out
+    assert "id_rsa" in out

@@ -37,14 +37,18 @@ def load_tells(path=TABLE):
 
 def compile_tells(rows):
     """Rows -> [(compiled_re, row)], dropping un-compilable rows (warn once).
-    A bad regex in the data file must degrade that one row, never the run."""
+    A row carries `re` (content pattern) or `fname` (path pattern); either way
+    it compiles the same. A bad regex must degrade that one row, never the run."""
     out = []
     for row in rows:
+        pat = row.get("re") or row.get("fname")
+        if not pat:
+            print("tells: skipping row with no re/fname: %s" % row, file=sys.stderr)
+            continue
         try:
-            out.append((re.compile(row["re"]), row))
-        except (KeyError, re.error) as e:
-            print("tells: skipping bad row (%s): %s" % (e, row.get("re", "?")),
-                  file=sys.stderr)
+            out.append((re.compile(pat), row))
+        except re.error as e:
+            print("tells: skipping bad row (%s): %s" % (e, pat), file=sys.stderr)
     return out
 
 
@@ -59,8 +63,14 @@ def _files(paths):
 
 
 def scan(paths, table, out=print):
-    """Print one line per tell hit across paths. Binary files are skipped."""
+    """Print one line per tell hit across paths. Binary files are skipped for
+    CONTENT rows; fname rows match the path itself and always fire."""
     for f in _files(paths):
+        for rx, row in table:
+            if row.get("fname") and rx.search(str(f)):
+                skill = "Skill(%s)" % row["skill"] if row.get("skill") else "no skill"
+                out("%s  [%s] FILENAME %s  -> %s | %s"
+                    % (f, row.get("class", "?"), rx.pattern, skill, row.get("note", "")))
         try:
             if f.stat().st_size > MAX_FILE:
                 continue
@@ -71,6 +81,8 @@ def scan(paths, table, out=print):
             continue                                  # binary
         for i, line in enumerate(raw.decode("utf-8", errors="ignore").splitlines(), 1):
             for rx, row in table:
+                if row.get("fname"):
+                    continue                          # path row, already handled
                 if rx.search(line):
                     snippet = line.strip()[:SNIPPET]
                     skill = "Skill(%s)" % row["skill"] if row.get("skill") else "no skill"
@@ -84,8 +96,10 @@ def main(argv=None):
     table = compile_tells(load_tells())
     if "--list" in argv or not argv:
         for _rx, row in table:
-            print("-> [%s] /%s/ Skill(%s) | %s"
-                  % (row.get("class", "?"), row.get("re", ""),
+            kind = "FILENAME" if row.get("fname") else "CONTENT"
+            print("-> [%s] %s /%s/ Skill(%s) | %s"
+                  % (row.get("class", "?"), kind,
+                     row.get("re") or row.get("fname", ""),
                      row.get("skill", ""), row.get("note", "")))
         return 0
     scan(argv, table)

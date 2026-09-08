@@ -258,6 +258,168 @@
       "class": "xss",
       "skill": "hunt-xss",
       "note": "postMessage handler; check whether origin is validated before the data hits a sink"
+    },
+    {
+      "re": "\\$krb5asrep\\$|\\$krb5tgs\\$|\\$DCC2\\$",
+      "class": "ad",
+      "skill": "hunt-ad",
+      "note": "hashcat-ready kerberos/DCC material in a dump; crack offline, reuse on AD"
+    },
+    {
+      "re": "aad3b435b51404eeaad3b435b51404ee",
+      "class": "ad",
+      "skill": "hunt-ad",
+      "note": "NTLM dump separator; a full hash row is adjacent - harvest it"
+    },
+    {
+      "re": "\\$2[aby]\\$|\\$6\\$|\\$5\\$",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "unix hash prefix; crackstation online first, hashcat only after"
+    },
+    {
+      "re": "The specified bucket does not exist|No such app|There isn't a GitHub Pages site here|Fastly error: unknown domain|Domain not found",
+      "class": "takeover",
+      "skill": "hunt-secrets",
+      "note": "dangling-service takeover fingerprint; claim via the provider before it expires"
+    },
+    {
+      "re": "169\\.254\\.169\\.254|metadata\\.google\\.internal|169\\.254\\.170\\.2",
+      "class": "cloud",
+      "skill": "hunt-cloud",
+      "note": "metadata endpoint in source/config; SSRF here = cloud creds"
+    },
+    {
+      "re": "(mongodb(\\+srv)?|postgres(ql)?|mysql|redis|amqp)://[^/\\s:@]+:[^@\\s/]+@",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "connection string with embedded creds; capture verbatim, test each service"
+    },
+    {
+      "re": "Authorization:\\s*Basic\\s+[A-Za-z0-9+/=]{8,}",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "basic-auth header in a saved request/log; base64 -d it"
+    },
+    {
+      "re": "repositoryformatversion",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": ".git metadata mirrored onto the web root; download the repo, read history"
+    },
+    {
+      "re": "FilesMan|WSO_VERSION|c99shell|system\\s*\\(\\s*\\$_(GET|REQUEST|POST)",
+      "class": "rce",
+      "skill": "hunt-rce",
+      "note": "webshell already present; find its key, you have code exec"
+    },
+    {
+      "re": "move_uploaded_file\\s*\\(",
+      "class": "upload",
+      "skill": "hunt-upload",
+      "note": "upload sink; check extension/content validation before the move"
+    },
+    {
+      "re": "auto_prepend_file",
+      "class": "rce",
+      "skill": "hunt-rce",
+      "note": ".htaccess/php.ini backdoor lever; check who controls the file it names"
+    },
+    {
+      "re": "\\{\"alg\"\\s*:\\s*\"none\"",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "JWT alg:none token in a capture; forge claims, replay it"
+    },
+    {
+      "re": "Transfer-Encoding:\\s*chunked",
+      "class": "smuggling",
+      "skill": "hunt-smuggling",
+      "note": "chunked response; if a CL frontend sits in front, desync candidate"
+    },
+    {
+      "re": "Must provide query string",
+      "class": "api",
+      "skill": "hunt-api",
+      "note": "GraphQL/parameterless API error; introspect the schema"
+    },
+    {
+      "re": "Index of /|Directory listing for",
+      "class": "recon",
+      "skill": "",
+      "note": "open directory listing; walk it, grab backups and dotfiles"
+    },
+    {
+      "re": "\\$\\(location\\.hash\\)|\\$\\([^)]*\\)\\.html\\(",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "jQuery hash-as-selector gadget (dom-attacks); selector injection -> HTML sink"
+    },
+    {
+      "re": "srcdoc\\s*=",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "iframe srcdoc sink; anything concatenated in renders with parent origin"
+    },
+    {
+      "re": "location\\.(href|assign)[^;]{0,12}(e|evt|event)\\.data",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "postMessage straight into a redirect; javascript: URI bypass (dom-attacks)"
+    },
+    {
+      "re": "aws_access_key_id\\s*=|kind:\\s*Secret",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "aws cli config or k8s Secret manifest; read the paired value"
+    },
+    {
+      "re": "executeScript|onMessageExternal|onConnectExternal|sendNativeMessage",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "browser-extension privileged surface (browser-extension-attacks); check sender origin"
+    },
+    {
+      "fname": "(^|/)\\.env(\\.|$)",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "env file in a mirror/dump; read every line, test every cred"
+    },
+    {
+      "fname": "(\\.pem|\\.p12|\\.pfx|\\.kdbx|id_rsa|id_dsa|id_ed25519)$",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "key/keystore file on disk or in a listing; capture + try everywhere"
+    },
+    {
+      "fname": "\\.git/(config|HEAD|index)$",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "exposed git internals; config leaks deploy URLs + maybe tokens"
+    },
+    {
+      "fname": "\\.sql$|\\.dump$|\\.bak$|\\.old$",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "backup/dump file; likely contains creds + PII"
+    },
+    {
+      "fname": "wp-config\\.php$|settings\\.py$|config\\.php$|secrets\\.yml",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "app config file; read DB + secret keys first"
+    },
+    {
+      "fname": "authorized_keys$|\\.kube/config$|credentials\\.csv$",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "ssh keys / kube creds / AWS csv; direct access material"
+    },
+    {
+      "fname": "docker-compose\\.ya?ml$|Dockerfile",
+      "class": "recon",
+      "skill": "",
+      "note": "infra definition; env vars, mounted secrets, internal hostnames"
     }
   ]
 }
