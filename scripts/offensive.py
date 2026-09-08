@@ -321,6 +321,14 @@ LINUX_PRIVESC = "linux-privesc"
 # than judgment-heavy -> cmd_next nudges Skill(delegate) for these, never unconditionally.
 MECHANICAL_4B_TOOLS = {"pspy", "linpeas", "winpeas"}
 
+# Route+advise (spec 2026-09-08): G8 tool steps launch through the tmux-aware
+# drivers instead of a bare invocation (one-shot SSH loses the pane + evidence).
+# SCAN_CLASS = fire-and-forget (output lives in the named tab, autocard cards it);
+# OUTPUT_CLASS = output must come back (vm-bg log). Others keep the bare line.
+SCAN_CLASS = {"nmap", "masscan", "rustscan", "nuclei", "feroxbuster", "ffuf",
+              "whatweb", "nikto", "wpscan", "gobuster", "dirb", "dirsearch"}
+OUTPUT_CLASS = {"sqlmap", "hashcat", "john", "hydra", "medusa", "patator"}
+
 # 4b concept -> (routing class for skill+arsenal, tool). OS-picked per foothold
 # asset. A concept with no hunt class of its own borrows a sensible one
 # (hunt-windows/hunt-macos/hunt-ad) so the row is never hollow (brief rule).
@@ -726,8 +734,21 @@ def cmd_next(args):
     tool = (row.get("tool") or "").strip()
     inv = (index.get("tools") or {}).get(tool, {}).get("invocation") or (tool + " <target>")
     n = 1
-    print("  %d. run: %s        [G8: tool-first; no hand-rolled "
-          "/dev/tcp/curl/urllib loops - if no tool fits, say why in one line]" % (n, inv))
+    tl = tool.lower()
+    if tl in SCAN_CLASS:
+        print("  %d. run: bash scripts/vm-scan.sh --win %s %s %s '%s'        [G8: "
+              "tool-first, tmux-default; output stays in the named tab, autocard "
+              "cards it]" % (n, tl, eng.name, asset, inv))
+        print("     (cmd: %s)" % inv)
+    elif tl in OUTPUT_CLASS or tl in MECHANICAL_4B_TOOLS:
+        print("  %d. run: bash scripts/vm-bg.sh %s %s-%s '%s'        [G8: tool-first, "
+              "tmux-default; long run stays alive over the bridge]"
+              % (n, eng.name, tl, asset, inv))
+        print("     read: bash scripts/vm-bg.sh --read %s %s-%s" % (eng.name, tl, asset))
+        print("     (cmd: %s)" % inv)
+    else:
+        print("  %d. run: %s        [G8: tool-first; no hand-rolled "
+              "/dev/tcp/curl/urllib loops - if no tool fits, say why in one line]" % (n, inv))
     n += 1
     if cls.lower() in EXPLOIT_CLASSES:
         print("  %d. push to Burp Repeater via Skill(hunt-burp)   (load-bearing "

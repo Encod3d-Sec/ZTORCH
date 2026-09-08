@@ -143,3 +143,29 @@ def test_next_never_asks(tmp_path, capsys):
     assert "?" not in out
     low = out.lower()
     assert "choose" not in low and "which" not in low
+
+
+def test_g8_scan_class_wraps_vm_scan(tmp_path, capsys):
+    """Route+advise: scan-class tool rows emit the vm-scan.sh tmux launch, bare
+    invocation still visible."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "recon"},
+                                     arsenal="wiki/recon", skill="", tool="nmap")])
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0
+    assert "vm-scan.sh --win nmap demo web1" in out
+    assert "nmap <target>" in out            # bare invocation still visible
+
+
+def test_g8_output_class_wraps_vm_bg(tmp_path, capsys):
+    """Route+advise: output-class tool rows emit vm-bg.sh launch + read hint."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap")])
+    state = json.loads((eng / offensive.STATE_NAME).read_text())
+    (eng / ".events.jsonl").write_text(json.dumps(
+        {"tool": "Skill", "skill": "hunt-sqli", "ts": state["started_at"]}) + "\n")
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0
+    assert "vm-bg.sh demo sqlmap-web1" in out
+    assert "vm-bg.sh --read demo sqlmap-web1" in out
