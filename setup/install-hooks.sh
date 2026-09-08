@@ -146,6 +146,14 @@ if not has("PreToolUse", "zg-nudge.py"):
     add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/zg-nudge.py", "timeout": 10}]})
     print("added PreToolUse zg-nudge")
+if not has("PreToolUse", "tmux-nudge.py"):
+    add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/tmux-nudge.py", "timeout": 10}]})
+    print("added PreToolUse tmux-nudge")
+if not has("PreToolUse", "burp-nudge.py"):
+    add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/burp-nudge.py", "timeout": 10}]})
+    print("added PreToolUse burp-nudge")
 if not has("SessionStart", "session-start.sh"):
     add("SessionStart", {"hooks": [{"type": "command",
         "command": "bash ~/.claude/vault-hooks/session-start.sh"}]})
