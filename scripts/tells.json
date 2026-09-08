@@ -1,33 +1,263 @@
 {
   "_doc": "Small-indicator battery table. Single source of truth for regex tells (small strings that instantly signal a vuln class). Add a row when you learn one (engagement close-out, research ingest); keep patterns HIGH-PRECISION (a noisy tell trains the eye to ignore the battery). class/skill route the hit; note says what to read next.",
   "tells": [
-    {"re": "dangerouslySetInnerHTML|\\bv-html\\b|innerHTML\\s*=|outerHTML\\s*=|document\\.write\\(|insertAdjacentHTML", "class": "xss", "skill": "hunt-xss", "note": "raw-HTML sink; read the render block + trace what feeds it"},
-    {"re": "\\beval\\(|new Function\\(|setTimeout\\(\\s*['\"]|setInterval\\(\\s*['\"]", "class": "xss", "skill": "hunt-xss", "note": "JS eval sink (client XSS); eval( in SERVER code = RCE, re-route"},
-    {"re": "child_process\\.(exec|spawn)|shell_exec|\\bsystem\\s*\\(|\\bpopen\\s*\\(|shell\\s*=\\s*True|Runtime\\.getRuntime|ProcessBuilder", "class": "rce", "skill": "hunt-rce", "note": "command-exec sink; trace the argument back to input"},
-    {"re": "\\.raw\\(|\\.extra\\(|execute\\(\\s*['\"f][^)]*['\"]\\s*\\+|(SELECT|INSERT|UPDATE|DELETE) [^'\"]{0,40}['\"][^'\"]*['\"]\\s*\\+", "class": "sqli", "skill": "hunt-sqli", "note": "string-built SQL; read the query builder + param flow"},
-    {"re": "pickle\\.loads?\\(|unserialize\\s*\\(|ObjectInputStream|Marshal\\.load|yaml\\.load\\((?!_safe)|node-serialize", "class": "deserialization", "skill": "hunt-deserialization", "note": "deser sink; identify the gadget library + who controls the blob"},
-    {"re": "curl_exec|URLConnection|requests\\.(get|post)\\(\\s*[a-z_]*(url|target|host)|fetch\\(\\s*[a-z_]*(url|target)", "class": "ssrf", "skill": "hunt-ssrf", "note": "server-side fetch; check whether the URL is user-influenced"},
-    {"re": "DocumentBuilder|SAXParser|libxml|etree\\.parse|XMLInputFactory", "class": "injection", "skill": "hunt-injection", "note": "XML parser; XXE unless entities disabled - check parser config"},
-    {"re": "render_template_string|Template\\(\\s*['\"f]|Jinja2\\(|\\{\\{[^}]*\\|\\s*safe", "class": "injection", "skill": "hunt-injection", "note": "SSTI surface; check whether template source is user-controlled"},
-    {"re": "sendFile\\(|sendRedirect\\(|redirect\\(\\s*(req|request|ctx)|res\\.redirect\\(\\s*req", "class": "open-redirect", "skill": "hunt-injection", "note": "redirect/file send on request input; traversal or open-redirect"},
-    {"re": "AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.", "class": "secrets", "skill": "hunt-secrets", "note": "hard key/JWT material; capture verbatim, test scope of use"},
-    {"re": "(api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*['\"][^'\"\\s]{8,}", "class": "secrets", "skill": "hunt-secrets", "note": "hardcoded credential-ish assignment; verify it is not a placeholder"},
-    {"re": "(DB_PASSWORD|DATABASE_URL|MONGO_URI|AWS_SECRET|PRIVATE_KEY)\\s*[:=]", "class": "secrets", "skill": "hunt-secrets", "note": "env-style secret name; read the value + where it is committed"},
-    {"re": "<!--[^>]{0,200}(TODO|FIXME|admin|internal|debug|staging|backdoor|remove (this|before))", "class": "secrets", "skill": "hunt-secrets", "note": "HTML comment hint; read the whole comment block"},
-    {"re": "Traceback \\(most recent|\\bat [\\w.$]+\\([\\w.$]+:(java|py|js):?\\d+\\)|Fatal error:|Stack trace", "class": "secrets", "skill": "hunt-secrets", "note": "stack trace in output; harvest paths/versions/SQL from it"},
-    {"re": "(Server|X-Powered-By):\\s*[A-Za-z]+/\\d", "class": "recon", "skill": "", "note": "version banner; fingerprint -> playbook.json targeted tests"},
-    {"re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV.*production|NODE_ENV.*development", "class": "recon", "skill": "", "note": "debug mode flag; debug mode = stack traces + code exec surfaces"},
-    {"re": "bypassSecurityTrust|\\[innerHTML\\]|\\$sce\\.trustAs|ng-bind-html|<%=\\s*raw\\s*\\(|\\{\\{[^}]*\\|\\s*safe|\\|\\s*safe\\s*\\}\\}", "class": "xss", "skill": "hunt-xss", "note": "framework raw-HTML/sanitizer-bypass sink (Angular/Jinja/Rails); trace the bound value"},
-    {"re": "(include|require)(_once)?\\s*\\(?\\s*\\$_(GET|POST|REQUEST)|eval\\s*\\(\\s*(base64_decode|gzinflate|str_rot13)", "class": "rce", "skill": "hunt-rce", "note": "PHP RFI/LFI on request input, or a webshell signature; read the include path"},
-    {"re": "\\bpassthru\\s*\\(|\\bproc_open\\s*\\(|pcntl_exec|os/exec\\.Command|exec\\.Command\\(", "class": "rce", "skill": "hunt-rce", "note": "PHP/Go command-exec sink; trace the argument back to input"},
-    {"re": "sequelize\\.literal|knex\\.raw|\\.whereRaw\\(|rawQuery\\(|executeQuery\\s*\\(\\s*[\"'][^\"']*\\+|createQuery\\([^)]*\\+", "class": "sqli", "skill": "hunt-sqli", "note": "ORM-raw or string-built SQL (Node/Java); read the query builder + param flow"},
-    {"re": "algorithms\\s*[:=]\\s*\\[\\s*[\"']none[\"']|[\"']?verify[\"']?\\s*[=:]\\s*False|ignoreExpiration\\s*=\\s*True|jwt\\.decode\\(\\s*[^,]+,\\s*None", "class": "auth", "skill": "hunt-auth", "note": "weak JWT verification config; forge/bypass path"},
-    {"re": "ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|glpat-[A-Za-z0-9_-]{20,}", "class": "secrets", "skill": "hunt-secrets", "note": "vendor token SHAPE (GitHub/Slack/Stripe/Google/GitLab); capture verbatim, test its scope"},
-    {"re": "pull_request_target|workflow_run", "class": "cicd", "skill": "hunt-cicd", "note": "fork-trigger workflow; does it check out the fork HEAD near secrets?"},
-    {"re": "\\$\\{\\{\\s*github\\.event\\.|id-token:\\s*write", "class": "cicd", "skill": "hunt-cicd", "note": "untrusted template context / OIDC write in a workflow; workflow-injection surface"},
-    {"re": "\\bphar://|XMLDecoder|readObject\\s*\\(", "class": "deserialization", "skill": "hunt-deserialization", "note": "PHP phar / Java XMLDecoder-readObject deser sink; who controls the input"},
-    {"re": "MessageDigest\\.getInstance\\(\\s*\"(MD5|SHA-1)\"|hashlib\\.(md5|sha1)\\s*\\(", "class": "auth", "skill": "hunt-auth", "note": "weak hash over creds/sessions; offline-crack path"},
-    {"re": "getHeader\\(\\s*\"X-Forwarded-For\"|\\[[\"']X-Forwarded-For[\"']\\]", "class": "auth", "skill": "hunt-auth", "note": "CODE trusts XFF (only meaningful in source, not saved requests); IP-spoof/auth-bypass surface"},
-    {"re": "Access-Control-Allow-Origin:\\s*\\*", "class": "recon", "skill": "", "note": "wildcard CORS; check Allow-Credentials + what the endpoint reflects"}
+    {
+      "re": "dangerouslySetInnerHTML|\\bv-html\\b|innerHTML\\s*=|outerHTML\\s*=|document\\.write\\(|insertAdjacentHTML",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "raw-HTML sink; read the render block + trace what feeds it"
+    },
+    {
+      "re": "\\beval\\(|new Function\\(|setTimeout\\(\\s*['\"]|setInterval\\(\\s*['\"]",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "JS eval sink (client XSS); eval( in SERVER code = RCE, re-route"
+    },
+    {
+      "re": "child_process\\.(exec|spawn)|shell_exec|\\bsystem\\s*\\(|\\bpopen\\s*\\(|shell\\s*=\\s*True|Runtime\\.getRuntime|ProcessBuilder",
+      "class": "rce",
+      "skill": "hunt-rce",
+      "note": "command-exec sink; trace the argument back to input"
+    },
+    {
+      "re": "\\.raw\\(|\\.extra\\(|execute\\(\\s*['\"f][^)]*['\"]\\s*\\+|(SELECT|INSERT|UPDATE|DELETE) [^'\"]{0,40}['\"][^'\"]*['\"]\\s*\\+",
+      "class": "sqli",
+      "skill": "hunt-sqli",
+      "note": "string-built SQL; read the query builder + param flow"
+    },
+    {
+      "re": "pickle\\.loads?\\(|unserialize\\s*\\(|ObjectInputStream|Marshal\\.load|yaml\\.load\\((?!_safe)|node-serialize",
+      "class": "deserialization",
+      "skill": "hunt-deserialization",
+      "note": "deser sink; identify the gadget library + who controls the blob"
+    },
+    {
+      "re": "curl_exec|URLConnection|requests\\.(get|post)\\(\\s*[a-z_]*(url|target|host)|fetch\\(\\s*[a-z_]*(url|target)",
+      "class": "ssrf",
+      "skill": "hunt-ssrf",
+      "note": "server-side fetch; check whether the URL is user-influenced"
+    },
+    {
+      "re": "DocumentBuilder|SAXParser|libxml|etree\\.parse|XMLInputFactory",
+      "class": "injection",
+      "skill": "hunt-injection",
+      "note": "XML parser; XXE unless entities disabled - check parser config"
+    },
+    {
+      "re": "render_template_string|Template\\(\\s*['\"f]|Jinja2\\(|\\{\\{[^}]*\\|\\s*safe",
+      "class": "injection",
+      "skill": "hunt-injection",
+      "note": "SSTI surface; check whether template source is user-controlled"
+    },
+    {
+      "re": "sendFile\\(|sendRedirect\\(|redirect\\(\\s*(req|request|ctx)|res\\.redirect\\(\\s*req",
+      "class": "open-redirect",
+      "skill": "hunt-injection",
+      "note": "redirect/file send on request input; traversal or open-redirect"
+    },
+    {
+      "re": "AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "hard key/JWT material; capture verbatim, test scope of use"
+    },
+    {
+      "re": "(api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*['\"][^'\"\\s]{8,}",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "hardcoded credential-ish assignment; verify it is not a placeholder"
+    },
+    {
+      "re": "(DB_PASSWORD|DATABASE_URL|MONGO_URI|AWS_SECRET|PRIVATE_KEY)\\s*[:=]",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "env-style secret name; read the value + where it is committed"
+    },
+    {
+      "re": "<!--[^>]{0,200}(TODO|FIXME|admin|internal|debug|staging|backdoor|remove (this|before))",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "HTML comment hint; read the whole comment block"
+    },
+    {
+      "re": "Traceback \\(most recent|\\bat [\\w.$]+\\([\\w.$]+:(java|py|js):?\\d+\\)|Fatal error:|Stack trace",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "stack trace in output; harvest paths/versions/SQL from it"
+    },
+    {
+      "re": "(Server|X-Powered-By):\\s*[A-Za-z]+/\\d",
+      "class": "recon",
+      "skill": "",
+      "note": "version banner; fingerprint -> playbook.json targeted tests"
+    },
+    {
+      "re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV.*production|NODE_ENV.*development",
+      "class": "recon",
+      "skill": "",
+      "note": "debug mode flag; debug mode = stack traces + code exec surfaces"
+    },
+    {
+      "re": "bypassSecurityTrust|\\[innerHTML\\]|\\$sce\\.trustAs|ng-bind-html|<%=\\s*raw\\s*\\(|\\{\\{[^}]*\\|\\s*safe|\\|\\s*safe\\s*\\}\\}",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "framework raw-HTML/sanitizer-bypass sink (Angular/Jinja/Rails); trace the bound value"
+    },
+    {
+      "re": "(include|require)(_once)?\\s*\\(?\\s*\\$_(GET|POST|REQUEST)|eval\\s*\\(\\s*(base64_decode|gzinflate|str_rot13)",
+      "class": "rce",
+      "skill": "hunt-rce",
+      "note": "PHP RFI/LFI on request input, or a webshell signature; read the include path"
+    },
+    {
+      "re": "\\bpassthru\\s*\\(|\\bproc_open\\s*\\(|pcntl_exec|os/exec\\.Command|exec\\.Command\\(",
+      "class": "rce",
+      "skill": "hunt-rce",
+      "note": "PHP/Go command-exec sink; trace the argument back to input"
+    },
+    {
+      "re": "sequelize\\.literal|knex\\.raw|\\.whereRaw\\(|rawQuery\\(|executeQuery\\s*\\(\\s*[\"'][^\"']*\\+|createQuery\\([^)]*\\+",
+      "class": "sqli",
+      "skill": "hunt-sqli",
+      "note": "ORM-raw or string-built SQL (Node/Java); read the query builder + param flow"
+    },
+    {
+      "re": "algorithms\\s*[:=]\\s*\\[\\s*[\"']none[\"']|[\"']?verify[\"']?\\s*[=:]\\s*False|ignoreExpiration\\s*=\\s*True|jwt\\.decode\\(\\s*[^,]+,\\s*None",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "weak JWT verification config; forge/bypass path"
+    },
+    {
+      "re": "ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|glpat-[A-Za-z0-9_-]{20,}",
+      "class": "secrets",
+      "skill": "hunt-secrets",
+      "note": "vendor token SHAPE (GitHub/Slack/Stripe/Google/GitLab); capture verbatim, test its scope"
+    },
+    {
+      "re": "pull_request_target|workflow_run",
+      "class": "cicd",
+      "skill": "hunt-cicd",
+      "note": "fork-trigger workflow; does it check out the fork HEAD near secrets?"
+    },
+    {
+      "re": "\\$\\{\\{\\s*github\\.event\\.|id-token:\\s*write",
+      "class": "cicd",
+      "skill": "hunt-cicd",
+      "note": "untrusted template context / OIDC write in a workflow; workflow-injection surface"
+    },
+    {
+      "re": "\\bphar://|XMLDecoder|readObject\\s*\\(",
+      "class": "deserialization",
+      "skill": "hunt-deserialization",
+      "note": "PHP phar / Java XMLDecoder-readObject deser sink; who controls the input"
+    },
+    {
+      "re": "MessageDigest\\.getInstance\\(\\s*\"(MD5|SHA-1)\"|hashlib\\.(md5|sha1)\\s*\\(",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "weak hash over creds/sessions; offline-crack path"
+    },
+    {
+      "re": "getHeader\\(\\s*\"X-Forwarded-For\"|\\[[\"']X-Forwarded-For[\"']\\]",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "CODE trusts XFF (only meaningful in source, not saved requests); IP-spoof/auth-bypass surface"
+    },
+    {
+      "re": "Access-Control-Allow-Origin:\\s*\\*",
+      "class": "recon",
+      "skill": "",
+      "note": "wildcard CORS; check Allow-Credentials + what the endpoint reflects"
+    },
+    {
+      "re": "You have an error in your SQL syntax|SQLSTATE\\[|ORA-\\d{5}|syntax error at or near|unclosed quotation|Microsoft OLE DB Provider for SQL|Microsoft\\[ODBC",
+      "class": "sqli",
+      "skill": "hunt-sqli",
+      "note": "SQL error oracle in a saved response; the error confirms injectable context - map quote/column shape"
+    },
+    {
+      "re": "MongoError|BSONError|BSON.*(error|exception)",
+      "class": "sqli",
+      "skill": "hunt-sqli",
+      "note": "NoSQL/Mongo error oracle; operator-injection surface"
+    },
+    {
+      "re": "LDAP: error code|Invalid XPath|XPathException|XPath syntax",
+      "class": "injection",
+      "skill": "hunt-injection",
+      "note": "LDAP/XPath error oracle; filter-injection surface"
+    },
+    {
+      "re": "TemplateSyntaxError|jinja2\\.exceptions|Twig_Error|freemarker\\.core",
+      "class": "injection",
+      "skill": "hunt-injection",
+      "note": "template-engine parse error; SSTI - echo a template expression and watch it evaluate"
+    },
+    {
+      "re": "SAXParseException",
+      "class": "injection",
+      "skill": "hunt-injection",
+      "note": "XML parser error; XXE candidate - check whether entities resolve"
+    },
+    {
+      "re": "StreamCorruptedException|InvalidClassException",
+      "class": "deserialization",
+      "skill": "hunt-deserialization",
+      "note": "Java deser runtime error; your bytes ARE reaching the parser - gadget-confirm"
+    },
+    {
+      "re": "(?i)x-cache(-status)?:\\s*(miss|hit)|x-served-by:|x-varnish:|age: \\d+",
+      "class": "cache",
+      "skill": "hunt-cache",
+      "note": "cache layer present; probe unkeyed headers (X-Forwarded-Host etc.) for poisoning"
+    },
+    {
+      "re": "(Jenkins|Grafana|Kibana|Confluence|GitLab|Jira|Nexus|Airflow)[ /]v?[0-9]+\\.[0-9]",
+      "class": "recon",
+      "skill": "",
+      "note": "product + version banner; straight to known-CVE lookup (context7/wiki) before novel hunting"
+    },
+    {
+      "re": "swagger\\.ui|openapi\\.(json|yaml)|api-docs",
+      "class": "api",
+      "skill": "hunt-api",
+      "note": "API schema exposure; enumerate every endpoint then BOLA/BFLA the object ids"
+    },
+    {
+      "re": "Set-Cookie:[^\\n]*eyJ[A-Za-z0-9_-]+\\.",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "JWT session in a cookie; decode it, check alg + claims (role swap, user id)"
+    },
+    {
+      "re": "SeImpersonatePrivilege|SeAssignPrimaryTokenPrivilege",
+      "class": "windows",
+      "skill": "hunt-windows",
+      "note": "potato-family privesc rights; saved whoami /all output confirms it"
+    },
+    {
+      "re": "AlwaysInstallElevated",
+      "class": "windows",
+      "skill": "hunt-windows",
+      "note": "MSI install as SYSTEM; check both HKLM+HKCU registry values are 1, then msiexec the payload"
+    },
+    {
+      "re": "NOPASSWD",
+      "class": "linux-privesc",
+      "skill": "",
+      "note": "sudoers NOPASSWD entry; GTFOBins the allowed binary for a shell"
+    },
+    {
+      "re": "msDS-AllowedToDelegateTo|does not require preauth|DontRequirePreauth",
+      "class": "ad",
+      "skill": "hunt-ad",
+      "note": "delegation/AS-REP material in enum output; constrained-delegation abuse or roast the account"
+    },
+    {
+      "re": "addEventListener\\(\\s*['\"]message['\"]",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "postMessage handler; check whether origin is validated before the data hits a sink"
+    }
   ]
 }
