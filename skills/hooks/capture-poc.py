@@ -209,6 +209,31 @@ def main():
         entry = "\n## %s\n\n```\n%s\n```\n\n```\n%s\n```\n" % (ts, display, body.rstrip())
         with open(os.path.join(pdir, _slug(tool) + ".md"), "a", encoding="utf-8") as fh:
             fh.write(entry)
+
+        # Mechanical wrong-vector tells, injected at decision time: after a curl/hashcat
+        # capture lands, run the stall battery over the cmdlog (consecutive 000s against one
+        # host = target starvation; repeated Exhausted-with-0-cracked = stop cracking). The
+        # prose version of these rules sat in hunt-core and was ignored under momentum.
+        # Deduped to one verdict per 30 min so a starved loop surfaces, not spams.
+        if tool in ("curl", "hashcat"):
+            import subprocess, time
+            smarker = os.path.join(d, ".stall-nudged")
+            fresh = True
+            try:
+                if time.time() - os.path.getmtime(smarker) < 1800:
+                    fresh = False
+            except OSError:
+                pass                     # no marker yet
+            if fresh:
+                sc = os.path.join(_engagement.VAULT, "scripts", "stallcheck.py")
+                try:
+                    r = subprocess.run(["python3", sc, d], capture_output=True, text=True,
+                                       timeout=5, stdin=subprocess.DEVNULL)
+                    if r.stdout.strip():
+                        print(r.stdout.strip())
+                        open(smarker, "w").close()
+                except Exception:
+                    pass
     except Exception:
         pass
 

@@ -64,10 +64,19 @@ def main():
             except Exception:
                 last = 0
             if gap > last:
-                print("State-discipline: loot.md has %d finding(s) but Killchain.md has no chain "
-                      "rows. Write the attack path NOW (one row per hop: what -> stage -> "
-                      "status) so the chain persists across sessions -- do not defer it to "
-                      "close-out." % gap)
+                # cheap-path fix: the nudge alone fired-and-was-ignored on every engagement
+                # to date, so the draft rows are WRITTEN here automatically and the nudge
+                # becomes "polish the drafts", not "author from blank"
+                drafted = _engagement.append_draft_chain_rows(d)
+                if drafted:
+                    print("State-discipline: %d draft chain row(s) AUTO-APPENDED to "
+                          "Killchain.md from loot.md. Polish them NOW (fill stage + next-move "
+                          "per hop) so the chain persists across sessions." % drafted)
+                else:
+                    print("State-discipline: loot.md has %d finding(s) but Killchain.md has no chain "
+                          "rows. Write the attack path NOW (one row per hop: what -> stage -> "
+                          "status) so the chain persists across sessions -- do not defer it to "
+                          "close-out." % gap)
                 try:
                     open(marker, "w").write(str(gap))
                     import _telemetry

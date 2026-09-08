@@ -619,6 +619,40 @@ def is_suspended(d):
         return False
 
 
+def append_draft_chain_rows(d):
+    """State auto-synthesis: loot.md holds captured rows but Killchain.md has zero chain
+    rows -> append one DRAFT chain row per un-reflected loot value (path '<type>->?',
+    status open, note says to fill stage/next-move). The standing nudge to "write the
+    chain NOW" fired and was ignored on every engagement to date, so the write now
+    happens automatically and the operator polishes the cells instead of authoring from
+    a blank file. Rows quoting an already-chained loot VALUE are skipped (idempotent).
+    Returns the number of rows appended. Fail-open (0)."""
+    if not d:
+        return 0
+    try:
+        loot_p = os.path.join(d, "loot.md")
+        chain_p = os.path.join(d, "Killchain.md")
+        if not (os.path.isfile(loot_p) and os.path.isfile(chain_p)):
+            return 0
+        loot = open(loot_p, encoding="utf-8", errors="ignore").read()
+        chain = open(chain_p, encoding="utf-8", errors="ignore").read()
+        added = 0
+        for row in _table_data_lines(loot):
+            cells = [c.strip() for c in row.strip().strip("|").split("|")]
+            value = cells[1] if len(cells) >= 2 else ""
+            if not value or value in chain:
+                continue                      # already reflected in the chain
+            kind = (cells[0] if cells else "loot") or "loot"
+            chain += "| %s->? | draft (auto) | open | fill stage + impact | trace where %s reaches |\n" \
+                % (kind, value[:60])
+            added += 1
+        if added:
+            open(chain_p, "w", encoding="utf-8").write(chain)
+        return added
+    except Exception:
+        return 0
+
+
 def _last_event_age_hours(d):
     """Age in hours of the newest .events.jsonl record, or None when there is no telemetry
     (treated as idle by the caller: work predates telemetry or was copied in)."""
@@ -777,10 +811,26 @@ def _table_data_rows(text):
         first = s.strip("|").split("|", 1)[0].strip()
         if not first or set(first) <= set("-: "):          # empty leading cell or a --- separator
             continue
-        if first.lower() in ("item", "path", "target", "host", "asset", "flag", "scope"):
+        if first.lower() in ("item", "path", "target", "host", "asset", "flag", "scope", "type", "what", "kind"):
             continue                                        # header row
         rows += 1
     return rows
+
+
+def _table_data_lines(text):
+    """The DATA rows _table_data_rows counts, as their line text (same skip rules)."""
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s.startswith("|"):
+            continue
+        first = s.strip("|").split("|", 1)[0].strip()
+        if not first or set(first) <= set("-: "):
+            continue
+        if first.lower() in ("item", "path", "target", "host", "asset", "flag", "scope", "type", "what", "kind"):
+            continue
+        out.append(s)
+    return out
 
 
 def paths_write_gap(d):
