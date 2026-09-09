@@ -124,3 +124,23 @@ else:
 - [[binary-exploitation]] — BOF protections, ROP chains, heap exploitation
 - [[seh-exploitation]] — Windows SEH; uses xdbg instead of GDB for Windows targets
 - [[exploit-development]] — full pwntools exploit templates
+
+## Pwn forensics recipes (shipped-libc targets)
+
+Debugging a pwn challenge that ships its own libc (Dockerfile/libc.so.6 in the challenge files): debug the binary under the SHIPPED libc so symbol offsets match the remote, never the host libc.
+
+```sh
+gdb -q -batch \
+  -ex "set disable-randomization on" \
+  -ex "set exec-wrapper env LD_PRELOAD=/path/to/challenge/libc.so.6" \
+  -ex "b main" -ex "run < /tmp/input.txt" \
+  /path/to/challenge/binary
+```
+
+- `set exec-wrapper env LD_PRELOAD=<libc>` works for PIE binaries; wrapping with the shipped `./ld-linux` loader instead breaks PIE breakpoint relocation (breakpoints placed pre-run never bind).
+- On PIE, set libc-symbol breakpoints only AFTER `main` hits (the interpreter is relocated by then); a `b *__printf_arginfo_table` style target placed pre-run lands on the wrong base.
+- Gotchas that cost an hour each if unknown:
+  - a gadget that reaches `posix_spawn`/`clone3` under gdb deadlocks with `set detach-on-fork off` + `catch syscall execve`; use `set follow-fork-mode child` and let the parent go.
+  - one_gadget output lists constraints (`rbp-0x78 writable`, `[rsp+0x40] == NULL`, `rsp % 16 == 0`); verify them at the REAL call site instead of trial-firing: break on the indirect call, capture `rbp`/`rsp`/stack qwords, then rank every gadget against the captured state. On a vfprintf-internal call site `rbp` is often 0 and entry `rsp % 16` is structurally 8 (a `call` pushes 8 onto a 16-aligned stack), which kills whole gadget families in one look; the survivor is then proven with a single fire, not a dozen.
+
+<!-- promoted-slug: gdb-pwn-forensics -->

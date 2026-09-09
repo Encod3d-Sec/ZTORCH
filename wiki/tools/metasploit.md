@@ -444,3 +444,13 @@ Notes:
   noisy product searches.
 
 <!-- promoted-slug: msf-search-refinement -->
+
+## Console gotcha: `set` swallows semicolons
+
+`set LPORT 80; run -j` sets LPORT to the literal string `80; run -j` and never runs the job
+(silently accepted; the handler just binds the wrong thing or nothing). Inside msfconsole,
+`set` takes the rest of the line as the value: send `set LPORT 80` and `run -j` as separate
+console commands. (The one-liner form `msfconsole -x 'set A b; set C d; run -j'` DOES split
+on semicolons; the split happens in the `-x` parser, not in `set`.)
+
+<!-- promoted-slug: msf-set-semicolon -->
