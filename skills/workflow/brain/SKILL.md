@@ -70,6 +70,19 @@ additionally carries:
   full request/response captures, named tmux window for evidence-worthy runs, raw
   pairs returned for Repeater; no one-line-verdict-only returns.
 
+Two fleet rules (prompt-cache + uniform returns):
+
+- Frozen shared prefix: author the shared contract body ONCE per phase - slots
+  a, c, d, e, g plus the mandates above, byte-identical in every lane prompt;
+  only the trailing LANE DIRECTIVE (slot b commands, slot f SUCCESS criterion,
+  target/paths) differs per lane. No dynamic content in the shared section;
+  any per-lane fact lives in the directive. Concurrent lanes then share one
+  cached prefix instead of each re-paying a fresh one.
+- Fixed return envelope: every lane returns Scope (what was attempted) /
+  Result (verdict + the raw SUCCESS observable) / Key files (capture-dir
+  paths) / Issues (blockers + what was ruled out). Slot h's
+  no-one-line-verdict rule applies inside Result.
+
 ## Concurrency
 
 - Up to 3 concurrent subagents, disjoint targets or vectors only; never two
@@ -78,8 +91,12 @@ additionally carries:
 - One scanner at a time on the Kali VM; parallel lanes must be genuinely
   independent (a watch window + a read-only source pass + drafting).
 - While agents run, the brain keeps driving the board, wiki, and next-row prep.
-- Integrate results in return order; persist to `state.md`/`loot.md` before the
-  next dependent move.
+- Few long lanes beat many short forks: prefer a lane that owns a whole vector
+  over a fresh subagent per step (every fresh dispatch re-pays the prompt
+  prefix); re-dispatch only on stall/refusal, per Failure handling.
+- Lane completions arrive as notifications; never poll a running lane. Integrate
+  in return order; persist to `state.md`/`loot.md` before the next dependent
+  move.
 
 ## Offensive integration (brain mode over the driver)
 
@@ -87,7 +104,8 @@ additionally carries:
 2. Fire the mapped `Skill(hunt-*)` in the MAIN session (G2 telemetry + doctrine).
 3. Distill the action plus the loaded skill's mandates into a checklist; dispatch
    at the tier from the table above.
-4. The subagent returns raw output, evidence path, and `hostname`+`id` where
+4. The lane returns the envelope (Scope / Result / Key files / Issues): raw
+   output and evidence path land in Result, `hostname`+`id` where
    shell-shaped.
 5. The brain verifies the result (re-verify any negative before it becomes a
    Deadend), records `note`/`done`/`foothold` on the driver, re-runs `next`.

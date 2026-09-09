@@ -55,7 +55,9 @@ usual failure mode, not a weak sub-agent.
 - **(e) fragile-box discipline** if applicable: serial requests, long timeouts, no fuzzers.
 - **(f) report-back contract**: return the primitive/creds/flag plus evidence path; REVERT any state
   the run changed (a group membership added, a registry key set) before reporting back; do not pivot
-  further without the main agent. The main model writes `SUCCESS = <exact observable>` into the
+  further without the main agent. Structure the return as the lane envelope: Scope (what was
+  attempted) / Result (verdict + the raw observable) / Key files (capture paths) / Issues
+  (blockers). The main model writes `SUCCESS = <exact observable>` into the
   prompt BEFORE dispatch (for example: `hostname` = the target AND `id` = the expected uid, plus
   the session log path); the lane returns that observable RAW plus the capture path.
 - **(g) anti-give-up + no-guess**: run the FULL specified window (a 5-minute pspy watch is 5 minutes,
@@ -71,6 +73,8 @@ usual failure mode, not a weak sub-agent.
   never foreground one-shot SSH; confirm-worthy request/response pairs are returned RAW
   so the main agent can push them to Burp Repeater. A lane that returns only a one-line
   verdict with no capture path is a failed lane.
+
+Every delegation prompt also carries the read-first mandate verbatim: `cat each file in full, zg/grep only to locate`. A cheap model grep-mines by default; the prompt is its only law.
 
 ## False-root/hostname guardrail (MANDATORY every delegation)
 
