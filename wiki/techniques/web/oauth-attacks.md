@@ -4,7 +4,7 @@ type: technique
 tags: [authentication, exploitation, h1, oauth, thm, web]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-07-02
+date_updated: 2026-09-10
 sources: [thm-adv-oauth-vulns, h1-scraped-oauth-attacks, payloadsallthethings-oauth, git-portswigger-all-labs, oauth21-dpop-par-rfcs, descope-noauth, semperis-noauth]
 ---
 
@@ -341,6 +341,21 @@ https://auth-server.com/authorize
 | nOAuth cross-tenant ATO | App keys identity on the mutable, unverified Entra `email` claim; attacker sets a victim's email in their own tenant and merges into the victim's account |
 
 **Scope manipulation**: attempt to add additional scopes beyond what was originally granted in the authorization request — some servers honour expanded scopes without re-prompting the user.
+
+### PKCE downgrade (routine check on every SSO integration)
+
+Two probes, both cheap; run them on any authorization-code flow, even (especially) where the client is confidential:
+
+1. **Drop the challenge entirely.** Remove `code_challenge` + `code_challenge_method` from the authorize request (keep everything else), complete the login, then exchange the code WITHOUT a `code_verifier`:
+```sh
+curl -s "https://AUTH/authorize?response_type=code&client_id=CLIENT&redirect_uri=REDIR&state=x"
+# -> code; then the exchange that should fail:
+curl -s -X POST "https://AUTH/token" -d "grant_type=authorization_code&code=CODE&client_id=CLIENT&redirect_uri=REDIR"
+# 200 + access_token here = PKCE not enforced (token endpoint never demanded the verifier)
+```
+2. **Method downgrade.** Replace `code_challenge_method=S256` with `plain` and send the raw verifier as the challenge. If the server accepts it, an attacker who sees the challenge (referrer/request log) sees the verifier too, defeating PKCE's purpose.
+
+Verdict: probe 1 succeeding is a real finding (code interception becomes practical; chain with a leaked/intercepted code). Probe 2 alone is a downgrade weakness, usually informational-to-low unless code exposure exists.
 
 ## Real-World Examples (HackerOne — paid reports)
 

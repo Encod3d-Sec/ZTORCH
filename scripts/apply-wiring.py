@@ -187,6 +187,13 @@ def main():
         for w in warn:
             print("  -", w)
 
+    # edit-time drift catch: validate the edited routing data through the load-time check
+    import subprocess
+    rc = subprocess.call([sys.executable, os.path.join(ROOT, "scripts", "check-routing.py")])
+    if rc:
+        print("apply-wiring: routing validation FAILED - fix the violations above before committing")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

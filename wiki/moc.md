@@ -24,7 +24,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[network-moc|Network]] (18)
 - [[osint-moc|Osint]] (8)
 - [[red-team-moc|Red Team]] (15)
-- [[web-moc|Web]] (84)
+- [[web-moc|Web]] (85)
 
 ## Reference
 
