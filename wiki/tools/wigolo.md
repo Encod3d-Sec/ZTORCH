@@ -35,6 +35,11 @@ npx wigolo init          # local engine: browser engine + on-device models (~1.5
 npx wigolo doctor        # component health check anytime
 ```
 
+If `init`/`doctor` reports `chromium missing (on disk but will not launch)`, the binary is
+present but its SYSTEM libraries are not: `npx playwright install-deps chromium` fixes it.
+The doctor probe can stay pessimistic after the fix while the fetch pool actually works;
+trust a real `npx wigolo search "<q>" --json` over the probe line.
+
 MCP registration (stdio): `{"command": "npx", "args": ["-y", "wigolo"]}`.
 
 ## Tools

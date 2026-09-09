@@ -29,6 +29,20 @@ writes it for you). Workspace config lives at `<vault>/.zcode/config.json` (comm
 Manage/inspect via Settings -> MCP in ZCode.
 Rebuild index: `qmd update && qmd embed` (run from vault root after bulk wiki changes; embed refreshes semantic vectors)
 
+### wigolo (local web intelligence)
+
+Keyless local-first search/fetch/crawl/cache MCP (Node >= 20; engine + on-device models
+under `~/.wigolo/`, ~1.5 GB via `npx wigolo init`). Replaces metered WebSearch round-trips
+for OSINT/vuln research and keeps every fetched page in a queryable local cache. Full tool
+table + gotchas: `wiki/tools/wigolo.md`.
+
+```json
+"wigolo": { "command": "npx", "args": ["-y", "wigolo"] }
+```
+
+Registered in `~/.claude.json` top-level `mcpServers` (user scope, all projects). If the
+browser component reports missing: `npx playwright install-deps chromium`.
+
 ### obsidian-vault (removed)
 
 Previously used `mcp-obsidian` (Obsidian Local REST API). Removed because:

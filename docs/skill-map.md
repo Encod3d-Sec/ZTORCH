@@ -15,6 +15,7 @@ organizational only.
 | About to claim done                           | `superpowers:verification-before-completion` (optional), else re-run the checks you claim pass |
 | Write/edit vault `.md`                        | `obsidian:obsidian-markdown` (optional plugin), else follow `docs/page-types.md` conventions |
 | Fetch URL for ingest                          | `WebFetch` tool                                                                        |
+| Web search / OSINT / vuln research (keyless, cached) | `wigolo` MCP (`search`/`fetch`/`crawl`/`research`); see `wiki/tools/wigolo.md`  |
 | Read vault file                               | `Read` tool with machine path (see AGENTS.md / `AGENTS.local.md`)                      |
 | Search vault (wiki semantic/keyword)          | `qmd_query` (semantic) or `qmd_search` (keyword) via `wiki-search` MCP                 |
 | Search workspace files (vault, targets/, raw/git) | `zg` first: `zvec_grep_search` MCP or `zg query --human "..."`; grep only inside one file |
