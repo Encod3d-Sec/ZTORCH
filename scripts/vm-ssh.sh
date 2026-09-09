@@ -13,9 +13,14 @@ if [ -f "$KEY" ] && [ -n "$HOST" ] && \
        -o StrictHostKeyChecking=accept-new "root@$HOST" true 2>/dev/null; then
   B64="$(printf '%s' "$CMD" | base64 -w0)"
   if [ -f "$ECON" ] && [ "${OUTPUT_ECON:-1}" != "0" ] && command -v python3 >/dev/null; then
+    # RC frame (pass 10): the remote echoes __ZT_RC=$?__ as the LAST line; econ
+    # strips it and a missing trailer means the transport died mid-stream (a
+    # truncated response used to pass through as complete-looking output).
+    # Only on this path - the raw exec path below has nobody to strip the marker.
     ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR \
       -o StrictHostKeyChecking=accept-new "root@$HOST" \
-      "bash -c \"\$(printf %s '$B64' | base64 -d)\"" | python3 "$ECON" "$CMD"
+      "bash -c \"\$(printf %s '$B64' | base64 -d)\"; echo __ZT_RC=\$?__" \
+      | ZT_FRAME=1 python3 "$ECON" "$CMD"
     exit $?
   fi
   exec ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR \

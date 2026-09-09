@@ -29,10 +29,32 @@ sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
 import _engagement  # noqa: E402
 
 _PB_PATH = os.path.join(VAULT, "scripts", "playbook.json")
+
+
+def _no_dup_keys(pairs):
+    """json object_pairs_hook: a duplicate fingerprint key in playbook.json means
+    the second entry SILENTLY replaces the first (json keeps the last) - the
+    playbook author intended two routings and one just vanished. Die loud with
+    the offending key instead of running a lobotomized fingerprint table."""
+    seen, out = set(), {}
+    for k, v in pairs:
+        if k in seen:
+            sys.stderr.write("next_move: playbook.json has DUPLICATE fingerprint "
+                             "'%s' - the second entry silently replaces the first; "
+                             "merge them or rename one\n" % k)
+            sys.exit(2)
+        seen.add(k)
+        out[k] = v
+    return out
+
+
 try:
-    PLAYBOOK = json.load(open(_PB_PATH, encoding="utf-8"))["fingerprints"]
+    PLAYBOOK = json.load(open(_PB_PATH, encoding="utf-8"),
+                         object_pairs_hook=_no_dup_keys)["fingerprints"]
 except FileNotFoundError:
     PLAYBOOK = {}   # absent (e.g. fresh clone) -> silent, fingerprint moves just off
+except SystemExit:
+    raise            # duplicate-key verdict above must not be swallowed below
 except Exception as _e:
     PLAYBOOK = {}
     sys.stderr.write(f"next_move: playbook.json unreadable ({_e}); fingerprint moves disabled\n")

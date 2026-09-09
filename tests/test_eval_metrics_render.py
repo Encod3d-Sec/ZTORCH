@@ -75,3 +75,19 @@ def test_render_carries_bench_lines():
     c["bench"] = ["**Bench vs expected (ps-demo):** coverage 50.0% -- sqli=1"]
     out = eval_metrics.render("demo", c)
     assert "Bench vs expected (ps-demo)" in out
+
+
+def test_cost_is_4term_cache_aware(tmp_path):
+    """est. cost (pass 10): 1M input + 1M output + 1M cache-read on the sonnet
+    tier -> $3.00 + $15.00 + $0.30 = $18.30. Collapsing the three input
+    flavors into one $3 rate would report $33.00 (~2x) or worse."""
+    tp = tmp_path / "tr.jsonl"
+    tp.write_text(json.dumps({"message": {"model": "claude-sonnet-5", "usage": {
+        "input_tokens": 1_000_000, "output_tokens": 1_000_000,
+        "cache_read_input_tokens": 1_000_000, "cache_creation_input_tokens": 0}},
+        "timestamp": datetime.now(timezone.utc).isoformat()}) + "\n", encoding="utf-8")
+    tk = eval_metrics.tokens_in_window([str(tp)], None, None)
+    assert abs(tk["cost"] - 18.30) < 1e-9
+    assert tk["tiers"] == "sonnet"
+    out = eval_metrics.render("demo", {**_fake_collected(), "tokens": tk})
+    assert "$18.30" in out and "sonnet tier" in out

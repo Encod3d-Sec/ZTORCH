@@ -60,9 +60,29 @@ def read_metrics(d):
         return {}
 
 
+# $/Mtok, 4-term cache-aware (clone pattern: cache_read is 0.1x input, cache_creation
+# 1.25x - collapsing the three input flavors into one number misprices ~10x). Keyed by
+# model substring; anything unrecognized prices at the default tier and the rendered
+# row names which tier was used, so the number is checkable, never silently wrong.
+USD_PER_MTOK = {
+    "default": {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_creation": 3.75},
+    "sonnet":  {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_creation": 3.75},
+}
+
+
+def _rates(model):
+    m = (model or "").lower()
+    for k in USD_PER_MTOK:
+        if k != "default" and k in m:
+            return USD_PER_MTOK[k], k
+    return USD_PER_MTOK["default"], "default"
+
+
 def tokens_in_window(transcripts, start, end):
-    """Sum usage across assistant turns whose timestamp falls in [start, end]."""
+    """Sum usage (and est. USD) across assistant turns whose timestamp falls in
+    [start, end]."""
     tot = Counter()
+    tiers = set()
     for tp in transcripts:
         if not tp or not os.path.isfile(tp):
             continue
@@ -71,7 +91,8 @@ def tokens_in_window(transcripts, start, end):
                 e = json.loads(line)
             except Exception:
                 continue
-            u = (e.get("message") or {}).get("usage") or {}
+            msg = e.get("message") or {}
+            u = msg.get("usage") or {}
             if not u:
                 continue
             t = parse_ts(e.get("timestamp"))
@@ -79,11 +100,18 @@ def tokens_in_window(transcripts, start, end):
                 continue
             if end and t and t > end:
                 continue
+            r, tier = _rates(msg.get("model"))
+            tiers.add(tier)
             tot["output"] += u.get("output_tokens", 0) or 0
             tot["input"] += u.get("input_tokens", 0) or 0
             tot["cache_read"] += u.get("cache_read_input_tokens", 0) or 0
             tot["cache_creation"] += u.get("cache_creation_input_tokens", 0) or 0
+            tot["cost"] += (u.get("input_tokens", 0) * r["input"]
+                            + u.get("output_tokens", 0) * r["output"]
+                            + u.get("cache_read_input_tokens", 0) * r["cache_read"]
+                            + u.get("cache_creation_input_tokens", 0) * r["cache_creation"]) / 1e6
             tot["turns"] += 1
+    tot["tiers"] = "+".join(sorted(tiers))
     return tot
 
 
@@ -183,6 +211,10 @@ def render(name, c):
          "| cache-read tokens | {:,} |".format(tk.get("cache_read", 0)),
          "| cache-creation tokens | {:,} |".format(tk.get("cache_creation", 0)),
          "| assistant turns | {:,} |".format(tk.get("turns", 0)),
+         # est. cost, 4-term cache-aware (collapsing input flavors misprices ~10x).
+         # The tier names the rate table used - "default" prices unknown models.
+         "| est. cost | ${:.2f} ({} tier: $3/$15/$0.30/$3.75 per Mtok in/out/cache-r/cache-w) |".format(
+             tk.get("cost", 0.0), tk.get("tiers", "default")),
          # cache hit-rate: share of input served from cache. Low (<~70%) across a long
          # box = context churn (compactions / re-reading fresh context every turn).
          "| cache hit-rate | {:.0f}% |".format(

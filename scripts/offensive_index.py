@@ -169,6 +169,7 @@ def _lint_routing_table(vault_root):
         return
     section = _section(_read(path), "routing table")
     rel = _rel(path, vault_root)
+    seen = set()
     for line in section.splitlines():
         line = line.strip()
         if not line.startswith("|"):
@@ -176,6 +177,14 @@ def _lint_routing_table(vault_root):
         cells = line.strip("|").split("|")
         if len(cells) != 5:
             _die("%s: routing row has %d columns, expected 5" % (rel, len(cells)))
+        fp = cells[0].strip().strip("`")
+        if fp in ("fingerprint", "") or set(fp) <= set("-: "):
+            continue
+        if fp in seen:
+            _die("%s: duplicate routing fingerprint '%s' - parse_routing_table "
+                 "keeps only the last one; the first route silently vanishes. "
+                 "Merge them or make one more specific" % (rel, fp))
+        seen.add(fp)
 
 
 def _lint_hunt_methods(vault_root, routing):

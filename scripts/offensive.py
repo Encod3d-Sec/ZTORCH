@@ -118,7 +118,7 @@ def _parse_table(path):
     if not p.is_file():
         return []
     rows, header = [], None
-    for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+    for lineno, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
         line = line.strip()
         if not line.startswith("|"):
             if header is not None:
@@ -132,8 +132,37 @@ def _parse_table(path):
             continue
         if not any(cells):
             continue
+        _warn_ragged(p.name, lineno, header, cells)
         rows.append(dict(zip(header, cells)))
     return rows
+
+
+# Ragged-row surface (pass 10): dict(zip(header, cells)) silently truncates a short
+# row and shifts every later cell of an over-long one (an unescaped | in a cell); an
+# unrecognized status cell ([X] uppercase, [x) typo) makes the row INVISIBLE to
+# open/closed accounting - which once printed a false "board exhausted". Parsers
+# stay best-effort (read paths never brick); they just announce the damage here,
+# and cmd_board/cmd_next drain it. The clone's filterInvalidPermissionRules
+# coerce+warn pattern: one bad member never poisons the file silently.
+BOARD_WARNINGS = []
+_STATUS_CELLS = ("[ ]", "[~]", "[x]", "[?]", "[!]")
+
+
+def _warn_ragged(src, lineno, header, cells):
+    if len(cells) != len(header):
+        BOARD_WARNINGS.append("%s:%d: %d cells vs %d header columns - later cells "
+                              "shifted (unescaped | in a cell?)" % (src, lineno, len(cells), len(header)))
+    if "status" in header:
+        st = dict(zip(header, cells)).get("status", "").strip()
+        if st and st not in _STATUS_CELLS:
+            BOARD_WARNINGS.append("%s:%d: status cell %r not recognized - row is "
+                                  "invisible to open/closed accounting" % (src, lineno, st))
+
+
+def _drain_board_warnings():
+    out = list(BOARD_WARNINGS)
+    BOARD_WARNINGS.clear()
+    return out
 
 
 def _deadend_pairs(eng):
@@ -280,15 +309,15 @@ def cmd_board(args):
     if eng is None or not eng.is_dir():
         print("error: --eng <name|path> required for `board`")
         return 2
-    try:
-        state = json.loads((eng / STATE_NAME).read_text())
-    except FileNotFoundError:
-        print("error: %s missing - run `init` first" % STATE_NAME)
+    state = _load_state(eng)
+    if state is None:
         return 2
     etype = state.get("type", "pentest")
     index = load_index(eng)
 
     existing = read_board(eng)
+    for w in _drain_board_warnings():
+        print("BOARD (parsed best-effort): %s" % w)
     have = {((r.get("asset") or "").lower(), (r.get("vuln class") or "").lower())
             for r in existing}
     nid = _next_board_id(existing)
@@ -417,7 +446,7 @@ def _parse_table_text(text):
     Text-scoped twin of _parse_table (which reads a whole file); used to parse
     the 4b table out of a slice of Approach.md."""
     rows, header = [], None
-    for line in text.splitlines():
+    for lineno, line in enumerate(text.splitlines(), 1):
         line = line.strip()
         if not line.startswith("|"):
             if header is not None:
@@ -431,6 +460,7 @@ def _parse_table_text(text):
             continue
         if not any(cells):
             continue
+        _warn_ragged("Approach.md(4b)", lineno, header, cells)
         rows.append(dict(zip(header, cells)))
     return rows
 
@@ -739,6 +769,7 @@ def _next_json_payload(eng, state, vault):
             out["warnings"].append("G4: %d hand-revived row(s) match a Deadends.md "
                                    "pair - suppressed" % len(zombie))
         rows = [r for r in rows if _low(r) not in dead]
+    out["warnings"].extend("board: %s" % w for w in _drain_board_warnings())
     out["board"] = {
         "open_assets": len(_open_assets(rows)),
         "open": sum(1 for r in rows if _status_of(r) in ("[ ]", "[~]")),
@@ -797,17 +828,18 @@ def cmd_next(args):
     if eng is None or not eng.is_dir():
         print("error: --eng <name|path> required for `next`")
         return 2
-    try:
-        state = json.loads((eng / STATE_NAME).read_text())
-    except FileNotFoundError:
-        print("error: %s missing - run `init` first" % STATE_NAME)
+    state = _load_state(eng)
+    if state is None:
         return 2
     if getattr(args, "json", False):
         # machine-readable cursor+gate payload (brain lanes / steering). Same
         # walk + state writes as the human path below - keep the two in sync;
-        # tests/test_next.py pins the field contract.
-        print(json.dumps(_next_json_payload(eng, state, vault), ensure_ascii=False))
-        return 0
+        # tests/test_next.py pins the field contract. stale-index exits 2 to
+        # match the text path's _die (a wrapper branching on the exit code
+        # must not silently proceed on a broken index).
+        payload = _next_json_payload(eng, state, vault)
+        print(json.dumps(payload, ensure_ascii=False))
+        return 2 if payload.get("terminal") == "stale-index" else 0
 
     # G9: index freshness FIRST. A silent misread of a stale routing table is
     # how a whole campaign runs the wrong checklist - refuse, non-zero.
@@ -851,6 +883,8 @@ def cmd_next(args):
                   "back?) - suppressed: %s" % (len(zombie),
                   ", ".join((r.get("id") or "?") for r in zombie)))
         rows = [r for r in rows if _low(r) not in dead]
+    for w in _drain_board_warnings():
+        print("BOARD (parsed best-effort): %s" % w)
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
@@ -1002,16 +1036,36 @@ def cmd_next(args):
 # a row advances the loop with no state write here (G7 no-ask).
 
 
+def _load_state(eng):
+    """Shared .offensive.json load with clean failure. A truncated write (crash
+    mid-write on /mnt/c) used to surface as a raw JSONDecodeError traceback; a
+    wrong-typed file as AttributeError - both now name the fix, including the
+    shadow-git recovery path (_ckpt keeps one commit per driver mutation)."""
+    try:
+        state = json.loads((eng / STATE_NAME).read_text())
+    except FileNotFoundError:
+        print("error: %s missing - run `init` first" % STATE_NAME)
+        return None
+    except ValueError as e:
+        print("error: %s corrupt (%s) - restore the last checkpoint: "
+              "git -C %s log --oneline (pick the pre-corruption commit), then "
+              "git -C %s checkout <commit> -- %s" % (STATE_NAME, e, eng, eng, STATE_NAME))
+        return None
+    if not isinstance(state, dict):
+        print("error: %s is a %s, expected a JSON object (the driver state map) - "
+              "restore as above" % (STATE_NAME, type(state).__name__))
+        return None
+    return state
+
+
 def _eng_state(args, cmd):
     """(eng, state) or (None, None) after printing an error. Shared preamble."""
     eng = _resolve_eng(args.eng)
     if eng is None or not eng.is_dir():
         print("error: --eng <name|path> required for `%s`" % cmd)
         return None, None
-    try:
-        state = json.loads((eng / STATE_NAME).read_text())
-    except FileNotFoundError:
-        print("error: %s missing - run `init` first" % STATE_NAME)
+    state = _load_state(eng)
+    if state is None:
         return None, None
     return eng, state
 

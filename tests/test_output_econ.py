@@ -6,6 +6,9 @@ pull pipes `vm-ssh.sh 'base64 -w0 f.png' | base64 -d` onward and needs exact byt
 import os
 import sys
 import time
+from types import SimpleNamespace
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                 "scripts"))
@@ -64,3 +67,56 @@ def test_low_context_stamp_tightens_cap(tmp_path, monkeypatch):
     old = time.time() - 1800
     os.utime(stamp, (old, old))
     assert oe.econ(data, "nmap t", None) == data + b"\n"      # stale: back to normal
+
+
+# --- RC frame (pass 10): vm-ssh.sh appends `echo __ZT_RC=$?__` and pipes with ZT_FRAME=1.
+# pipefail carries ssh 255, but a TRUNCATED stream still looks complete - the trailer
+# is the completeness signal. Unframed callers (tests above) never send one.
+
+def test_rc0_trailer_stripped_from_clean_output(monkeypatch):
+    monkeypatch.setenv("ZT_FRAME", "1")
+    assert oe.econ(b"ok\n__ZT_RC=0__\n", "cmd", None) == b"ok\n"
+
+
+def test_nonzero_rc_prefixes_remote_exit(monkeypatch):
+    monkeypatch.setenv("ZT_FRAME", "1")
+    assert oe.econ(b"boom\n__ZT_RC=2__\n", "cmd", None) == b"[remote exit 2]\nboom\n"
+
+
+def test_truncated_framed_stream_flagged(monkeypatch):
+    monkeypatch.setenv("ZT_FRAME", "1")
+    out = oe.econ(b"partial out\n", "cmd", None)   # framed, no trailer: transport died
+    assert out.startswith(b"[bridge: truncated")
+    assert b"partial out" in out
+
+
+def test_empty_framed_no_trailer_is_bridge_failure(monkeypatch):
+    monkeypatch.setenv("ZT_FRAME", "1")
+    assert oe.econ(b"  \n", "cmd", None) == b"(bridge failed: no output and no exit trailer)\n"
+
+
+def test_unframed_empty_still_plain_marker(monkeypatch):
+    monkeypatch.delenv("ZT_FRAME", raising=False)
+    assert oe.econ(b"  \n", "cmd", None) == b"(no output)\n"
+
+
+def test_bypass_pipe_gets_clean_bytes_trailer_stripped(monkeypatch):
+    monkeypatch.setenv("ZT_FRAME", "1")
+    blob = b"iVBORw0KGgoAAAANSUhEUg\n"               # a base64 image pull
+    assert oe.econ(blob + b"__ZT_RC=0__\n", "base64 -w0 /tmp/shot.png", None) == blob
+
+
+def test_main_exits_1_on_dead_bridge(monkeypatch):
+    """Framed + empty + no trailer -> SystemExit(1): vm-ssh.sh's pipefail reports
+    the dead bridge instead of a clean-looking 0 with '(no output)'."""
+    monkeypatch.setenv("ZT_FRAME", "1")
+    monkeypatch.setattr(sys, "argv", ["output_econ.py", "nmap t"])
+    # patch at the sys-module level: pytest's stdin/stdout replacement objects
+    # expose .buffer as a read-only property
+    monkeypatch.setattr(sys, "stdin", SimpleNamespace(
+        buffer=SimpleNamespace(read=lambda: b"")))
+    monkeypatch.setattr(sys, "stdout", SimpleNamespace(
+        buffer=type("W", (), {"write": staticmethod(lambda d: None)})()))
+    with pytest.raises(SystemExit) as ex:
+        oe.main()
+    assert ex.value.code == 1

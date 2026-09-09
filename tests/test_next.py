@@ -351,3 +351,60 @@ def test_autonomy_subcommand_rewrites_scope_and_logs(tmp_path, capsys):
                and e.get("from") in ("L0", "L1", "L2", "L3") for e in evs)
     with pytest.raises(SystemExit):             # unknown level refused
         offensive.main(["--vault", str(vault), "--eng", str(eng), "autonomy", "L9"])
+
+
+def test_next_json_stale_index_exits_2(tmp_path, capsys):
+    """The JSON path carries the text path's refusal semantics (G9): a wrapper
+    branching on the exit code must not silently proceed on a broken index."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     arsenal="a", skill="hunt-ssrf", tool="nuclei")])
+    fut = time.time() + 600
+    os.utime(vault / "skills" / "hunt" / "hunt-core" / "SKILL.md", (fut, fut))
+    rc, payload = _next_json(capsys, vault, eng)
+    assert rc == 2
+    assert payload["terminal"] == "stale-index"
+    assert payload["row"] is None and payload["invocation"] is None
+
+
+def test_next_corrupt_state_names_checkpoint_restore(tmp_path, capsys):
+    """A truncated .offensive.json (crash mid-write) used to surface as a raw
+    JSONDecodeError traceback; now it names the shadow-git recovery path."""
+    vault, eng = _setup(tmp_path)
+    (eng / offensive.STATE_NAME).write_text('{"started_at": "2026-0', encoding="utf-8")
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "next"])
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "corrupt" in out and "git -C" in out and "checkout" in out
+    assert "Traceback" not in out
+
+
+def test_next_wrong_typed_state_refused(tmp_path, capsys):
+    vault, eng = _setup(tmp_path)
+    (eng / offensive.STATE_NAME).write_text('["not", "a", "map"]', encoding="utf-8")
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "next"])
+    assert rc == 2
+    assert "expected a JSON object" in capsys.readouterr().out
+
+
+def test_board_malformed_rows_warned_best_effort(tmp_path, capsys):
+    """A hand-edited [X] status cell (invisible to open/closed accounting, once
+    printed a false 'board exhausted') and an over-long row (pipe in a cell,
+    shifting later cells) must be ANNOUNCED on both the text and JSON paths,
+    never silently mis-accounted - the clone's coerce+warn pattern."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     arsenal="a", skill="hunt-ssrf", tool="nuclei")])
+    ap = eng / "Approach.md"
+    ap.write_text(ap.read_text(encoding="utf-8") +
+                  "| 4a:7 | web1 | ssrf | a | s | t | [X] |  |  |\n"          # uppercase status
+                  "| 4a:8 | web1 | ssrf | a | s | t | [ ] |  |  | oops |\n",   # extra cell
+                  encoding="utf-8")
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0                                        # parse stays best-effort
+    assert "BOARD (parsed best-effort)" in out
+    assert "status cell '[X]' not recognized" in out
+    assert "10 cells vs 9 header columns" in out
+    _, payload = _next_json(capsys, vault, eng)           # re-read regenerates them
+    assert any("status cell" in w for w in payload["warnings"])
+    assert any("shifted" in w for w in payload["warnings"])

@@ -24,6 +24,19 @@ BYPASS_LEAD = re.compile(r"^\s*(?:sudo |env |nohup |nice |time )*base64\d?\b")
 
 LOW_CTX_THRESH = 10_000          # context was <=25% free in the last 15 min: tighten hard
 
+RC_FRAME = re.compile(rb"__ZT_RC=(\d+)__[ \t]*\n?\s*$")   # bridge exit trailer (last line)
+
+
+def split_frame(data):
+    """(payload, rc). vm-ssh.sh appends `echo __ZT_RC=$?__` to every framed
+    command; econ strips it here so pipe consumers (base64 pulls included)
+    never see it. rc None = no trailer: on a framed stream (ZT_FRAME=1) that
+    means the transport died mid-stream, not 'empty output'."""
+    m = RC_FRAME.search(data)
+    if not m:
+        return data, None
+    return data[:m.start()].rstrip(b"\n") + b"\n", int(m.group(1))
+
 
 # ponytail: single-engagement active.md; multi-file active sets are not a thing yet
 def _ingest_dir():
@@ -67,10 +80,19 @@ def stub(data, path, thresh):
 
 
 def econ(data, cmd, path, thresh=None):
+    framed = os.environ.get("ZT_FRAME") == "1"
+    data, rc = split_frame(data)             # unframed callers never send a trailer
     if not data.strip():
+        if framed and rc is None:
+            return b"(bridge failed: no output and no exit trailer)\n"
         return b"(no output)\n"
-    if BYPASS_LEAD.match(cmd or ""):
-        return data
+    bypass = BYPASS_LEAD.match(cmd or "")
+    if bypass:
+        return data                          # byte-exact for pipe consumers (trailer stripped above)
+    if framed and rc is None:
+        data = b"[bridge: truncated - no exit trailer, transport died mid-stream]\n" + data
+    elif rc not in (None, 0):
+        data = b"[remote exit %d]\n" % rc + data
     data = ANSI.sub(b"", data) if ANSI.search(data) else data
     if thresh is None:
         thresh = _thresh()
@@ -87,14 +109,21 @@ def main():
         sys.stdout.buffer.write(data)
         return
     t = _thresh()
+    framed = os.environ.get("ZT_FRAME") == "1"
+    payload, rc = split_frame(data)
     path = None
-    if len(data) > t and not BYPASS_LEAD.match(cmd or ""):
+    if len(payload) > t and not BYPASS_LEAD.match(cmd or ""):
         d = _ingest_dir()
         if d:
             path = os.path.join(d, "%s-%d.txt" % (
                 re.sub(r"[^a-z0-9]+", "-", (cmd.split() or ["out"])[0].split("/")[-1])[:24].strip("-"),
                 int(time.time())))
-    sys.stdout.buffer.write(econ(data, cmd, path, t))
+    out = econ(data, cmd, path, t)
+    sys.stdout.buffer.write(out)
+    # a framed stream with no trailer = the bridge itself died (ssh drop mid-stream);
+    # exit 1 so `set -o pipefail` in vm-ssh.sh reports it instead of a clean-looking 0
+    if framed and rc is None and not data.strip():
+        sys.exit(1)
 
 
 if __name__ == "__main__":

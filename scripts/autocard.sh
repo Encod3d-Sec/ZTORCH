@@ -49,11 +49,15 @@ while IFS= read -r tab <&3; do
   # finished? the pane's last non-empty line is a shell prompt (kali `└─#`, or a trailing #/$).
   # AUTOCARD_ALL (close-out sweep) skips this gate so still-running / listener tabs are still carded.
   if [ -z "$ALL" ]; then
-    last=$($TO bash "$VM_SH" "tmux capture-pane -t '$ENG:$tab' -p 2>/dev/null | grep -vE '^[[:space:]]*$' | tail -1" 2>/dev/null </dev/null)
-    printf '%s' "$last" | grep -qE '└─#|[#$][[:space:]]*$' || continue   # still running -> next round
+    last=$($TO bash "$VM_SH" "tmux capture-pane -t '$ENG:$tab' -p 2>/dev/null | grep -vE '^[[:space:]]*$' | tail -3" 2>/dev/null </dev/null)
+    printf '%s' "$last" | tail -1 | grep -qE '└─#|[#$][[:space:]]*$' || continue   # still running -> next round
+    # vm-scan.sh tabs end with `echo __ZT_RC=$?__`: a nonzero exit goes into the card
+    # slug so a died scan reads as died in recon/, not as a clean finish.
+    rc=$(printf '%s' "$last" | grep -oE '__ZT_RC=[0-9]+' | tail -1 | grep -oE '[0-9]+$')
+    [ -n "$rc" ] && [ "$rc" != "0" ] && extra="-x$rc" || extra=""
   fi
   slug=$(printf '%s' "$tab" | tr -cd 'A-Za-z0-9-' | cut -c1-24)
-  if $TO bash "$CAP" recon "$ENG" "auto-$slug" "$tab" >/dev/null 2>&1 </dev/null; then
+  if $TO bash "$CAP" recon "$ENG" "auto-$slug$extra" "$tab" >/dev/null 2>&1 </dev/null; then
     printf '%s\n' "$tab" >> "$CARDED"
     n=$((n+1))
   fi

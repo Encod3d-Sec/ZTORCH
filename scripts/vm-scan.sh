@@ -34,7 +34,9 @@ tmux resize-window -t $SESSION -x 220 -y 50 2>/dev/null
 WID="\$(tmux list-windows -t '$SESSION' -F '#{window_id} #{window_name}' | awk '\$2=="$NAME"{print \$1; exit}')"
 REUSED=1
 if [ -z "\$WID" ]; then WID="\$(tmux new-window -t '$SESSION' -P -F '#{window_id}' -n '$NAME')"; REUSED=0; fi
-tmux send-keys -t "\$WID" '$SCAN' C-m
+# the __ZT_RC=$?__ echo lands in the pane as the scan's last output line: autocard
+# greps it so a finished tab cards as exit=N (a died scan is visible, not just "done")
+tmux send-keys -t "\$WID" '$SCAN' '; echo __ZT_RC=\$?__' C-m
 echo "window=\$WID name=$NAME session=$SESSION reused=\$REUSED"
 EOF
 
