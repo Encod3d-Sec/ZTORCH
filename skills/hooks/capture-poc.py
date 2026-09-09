@@ -234,6 +234,28 @@ def main():
         return
     out = _response_text(data)
     if not out.strip():
+        # Empty tool output is SIGNAL, not noise (docs/shell-interaction.md:43-58):
+        # count the streak; >= 2 in a row -> whoami-probe advisory. Never a cmdlog
+        # entry (nothing to show), just the counter + one-shot nudge.
+        import _engagement as _e
+        d_empty = _e.active_dir()
+        if d_empty and not _META_RE.search(cmd):
+            m = os.path.join(d_empty, ".empty-streak")
+            try:
+                n = int(open(m).read().strip() or 0) + 1
+            except OSError:
+                n = 1
+            if n >= 2:
+                print("EMPTY OUTPUT x%d: probe with a bare `whoami` before anything else - "
+                      "a username = the shell is alive and the empty result was real; "
+                      "nothing = stuck; a non-username = the shell died back to your own "
+                      "prompt (false-RCE trap, re-pop it). See docs/shell-interaction.md."
+                      % n)
+                n = 0            # advisory fired; start a fresh streak
+            try:
+                open(m, "w").write(str(n))
+            except OSError:
+                pass
         return
 
     # Show the REAL command, not the raw issued line: unwrap the vm.sh/rsh transport, decode
@@ -247,6 +269,10 @@ def main():
     d = _engagement.active_dir()
     if not d:
         return
+    try:                          # a real output resets the empty-output streak
+        open(os.path.join(d, ".empty-streak"), "w").write("0")
+    except OSError:
+        pass
 
     bins = _binaries(display.replace("\n", " ; ")) or []
     # first binary that is not a pure wrapper/transport is the meaningful tool
@@ -271,12 +297,14 @@ def main():
             if line:
                 print(line)
 
-        # Mechanical wrong-vector tells, injected at decision time: after a curl/hashcat
-        # capture lands, run the stall battery over the cmdlog (consecutive 000s against one
-        # host = target starvation; repeated Exhausted-with-0-cracked = stop cracking). The
-        # prose version of these rules sat in hunt-core and was ignored under momentum.
+        # Mechanical wrong-vector tells, injected at decision time: after any scan/probe/
+        # crack capture lands, run the stall battery over the WHOLE cmdlog (consecutive
+        # failures against one host = target starvation, any connectivity tool; repeated
+        # Exhausted-with-0-cracked = stop cracking; scanner zero-yield; frozen vm-bg log).
+        # The prose version of these rules sat in hunt-core and was ignored under momentum.
         # Deduped to one verdict per 30 min so a starved loop surfaces, not spams.
-        if tool in ("curl", "hashcat"):
+        if tool in ("curl", "hashcat", "nmap", "nc", "nxc", "netexec", "ssh",
+                    "hydra", "nuclei", "ffuf", "feroxbuster", "vm-bg"):
             import subprocess, time
             smarker = os.path.join(d, ".stall-nudged")
             fresh = True
@@ -293,6 +321,28 @@ def main():
                     if r.stdout.strip():
                         print(r.stdout.strip())
                         open(smarker, "w").close()
+                        # A starvation/zero-yield verdict on the row the driver last
+                        # served is doom-loop closure: the driver itself said try this;
+                        # the data says it can never land. Close it --dead so the cursor
+                        # advances (G4 suppression) instead of the row re-serializing.
+                        # (done --dead skips G1/G2 by design: a dead-end needs no
+                        # evidence, so this close can never be gate-blocked.)
+                        state_p = os.path.join(d, ".offensive.json")
+                        try:
+                            st = json.loads(open(state_p, encoding="utf-8").read())
+                            rid = ((st.get("last_move") or {}).get("row") or "").strip()
+                        except Exception:
+                            rid = ""
+                        if rid and "STALL SIGNAL" in r.stdout:
+                            try:
+                                subprocess.run(
+                                    ["python3", os.path.join(_engagement.VAULT, "scripts",
+                                     "offensive.py"), "--eng", d, "done", rid,
+                                     "--dead", "auto-stall: cmdlog stall verdict"],
+                                    capture_output=True, timeout=10,
+                                    stdin=subprocess.DEVNULL)
+                            except Exception:
+                                pass
                 except Exception:
                     pass
     except Exception:

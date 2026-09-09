@@ -83,6 +83,20 @@ def _binaries(cmd):
     return out[:8]
 
 
+def _out_bytes(data):
+    """Response size in bytes (output-economy metric: how much tool output each call
+    pulled into context). A number only -- leak-safe by construction."""
+    r = data.get("tool_response")
+    if isinstance(r, str):
+        return len(r)
+    if isinstance(r, dict):
+        for k in ("stdout", "output", "content", "stderr"):
+            v = r.get(k)
+            if isinstance(v, str):
+                return len(v)
+    return None
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -115,7 +129,8 @@ def main():
         except Exception:
             wiki = None
     bins = _binaries(ti.get("command")) if tool == "Bash" else None
-    _telemetry.log_event("tool", d=d, tool=tool, skill=skill, wiki=wiki, bins=bins or None)
+    _telemetry.log_event("tool", d=d, tool=tool, skill=skill, wiki=wiki, bins=bins or None,
+                         out_bytes=_out_bytes(data))
     _telemetry.stamp_once("started_at", _telemetry.now_iso(), d=d)
     _telemetry.add_transcript(data.get("transcript_path"), d=d)
 

@@ -154,6 +154,7 @@ def collect(d, extra_transcript=None):
         "skill_calls": sum(skills.values()), "skills": skills,
         "hook_fires": sum(hooks.values()), "hooks": hooks,
         "drift_count": len(drifts), "drifts": drifts,
+        "tool_out": sum(e.get("out_bytes") or 0 for e in events if e.get("kind") == "tool"),
         "bench": bench_lines(d),
         "transcripts": [t for t in transcripts if os.path.isfile(t)],
     }
@@ -182,6 +183,13 @@ def render(name, c):
          "| cache-read tokens | {:,} |".format(tk.get("cache_read", 0)),
          "| cache-creation tokens | {:,} |".format(tk.get("cache_creation", 0)),
          "| assistant turns | {:,} |".format(tk.get("turns", 0)),
+         # cache hit-rate: share of input served from cache. Low (<~70%) across a long
+         # box = context churn (compactions / re-reading fresh context every turn).
+         "| cache hit-rate | {:.0f}% |".format(
+             100.0 * tk.get("cache_read", 0) / max(1, tk.get("input", 0)
+                                                   + tk.get("cache_read", 0)
+                                                   + tk.get("cache_creation", 0))),
+         "| tool output into context | {:,} KB |".format(c.get("tool_out", 0) // 1024),
          "| tool calls | {:,} |".format(c["tool_calls"]),
          "| skill calls | %d |" % c["skill_calls"],
          "| hook fires | %d |" % c["hook_fires"],

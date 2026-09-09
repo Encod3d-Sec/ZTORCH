@@ -69,6 +69,61 @@ def test_capture_poc_wires_stallcheck():
     assert "stallcheck" in src and ".stall-nudged" in src
 
 
+# ---- generalized rules (pass 7: per-tool starvation, scanner zero-yield, frozen bg log) ----
+
+def test_starvation_fires_for_ssh_and_names_the_tool(tmp_path):
+    d = _write_cmdlog(tmp_path, "ssh.md",
+                      [_entry("ssh root@10.10.10.7 id", "ssh: connect to host 10.10.10.7 "
+                              "port 22: Connection refused")] * 6)
+    vs = stallcheck.check(d)
+    assert any("starvation" in v.lower() and "10.10.10.7" in v and "ssh" in v for v in vs)
+
+
+def test_scan_zero_fires_on_four_empty_nmaps_one_host(tmp_path):
+    e = _entry("nmap -p- 10.10.10.9", "All 1000 scanned ports on 10.10.10.9 are closed")
+    d = _write_cmdlog(tmp_path, "nmap.md", [e] * 4)
+    assert any("zero-yield" in v and "10.10.10.9" in v for v in stallcheck.check(d))
+
+
+def test_scan_zero_quiet_when_nmap_finds_ports(tmp_path):
+    e = _entry("nmap -p- 10.10.10.9", "22/tcp open ssh")
+    d = _write_cmdlog(tmp_path, "nmap.md", [e] * 4)
+    assert not stallcheck.check(d)
+
+
+def test_scan_zero_fires_on_nuclei_runs_without_hits(tmp_path):
+    e = _entry("nuclei -u http://10.10.10.9", "[INF] No results found")
+    d = _write_cmdlog(tmp_path, "nuclei.md", [e] * 4)
+    assert any("zero-yield" in v for v in stallcheck.check(d))
+
+
+def test_scan_zero_quiet_on_nuclei_error_not_a_zero_result(tmp_path):
+    # an errored run is NOT evidence the surface is empty
+    e = _entry("nuclei -u http://10.10.10.9", "[FTL] no templates found")
+    d = _write_cmdlog(tmp_path, "nuclei.md", [e] * 4)
+    assert not stallcheck.check(d)
+
+
+def test_bg_read_stalled_on_two_identical_reads(tmp_path):
+    d = _write_cmdlog(tmp_path, "vm-bg.md", [
+        _entry("vm-bg.sh --read eng win", "[*] 40% ..."),
+        _entry("vm-bg.sh --read eng win", "[*] 40% ...")])
+    assert any("frozen" in v.lower() for v in stallcheck.check(d))
+
+
+def test_bg_read_quiet_when_log_growing(tmp_path):
+    d = _write_cmdlog(tmp_path, "vm-bg.md", [
+        _entry("vm-bg.sh --read eng win", "[*] 40% ..."),
+        _entry("vm-bg.sh --read eng win", "[*] 55% ...")])
+    assert not stallcheck.check(d)
+
+
+def test_capture_poc_wires_empty_streak_and_auto_dead():
+    src = (ROOT / "skills" / "hooks" / "capture-poc.py").read_text(encoding="utf-8")
+    assert ".empty-streak" in src and "whoami" in src       # empty-output advisory
+    assert "auto-stall" in src and "last_move" in src       # doom-loop auto-close
+
+
 def test_append_draft_chain_rows_synthesizes_and_dedupes(tmp_path):
     d = tmp_path
     (d / "loot.md").write_text(

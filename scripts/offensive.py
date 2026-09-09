@@ -543,6 +543,43 @@ def autonomy_of(eng):
     return AUTONOMY_DEFAULT, "scope.md has no autonomy: field, assumed %s" % AUTONOMY_DEFAULT
 
 
+def cmd_autonomy(args):
+    """Mid-session envelope change (set_permission_mode pattern): rewrite
+    scope.md's autonomy: line, append an autonomy_change event to
+    .events.jsonl for the audit trail. Still advisory-only - the RoE flags
+    stay enforced by the scope-guard hook."""
+    eng, state = _eng_state(args, "autonomy")
+    if eng is None:
+        return 2
+    lvl = _AUTONOMY_MAP.get(args.level.lower(), "")
+    if not lvl:
+        _die("level must be one of %s (got %r)" % ("/".join(AUTONOMY_LEVELS), args.level))
+    p = eng / "scope.md"
+    if not p.is_file():
+        _die("scope.md missing - the autonomy envelope lives in its frontmatter")
+    prev, _note = autonomy_of(eng)
+    text = p.read_text(encoding="utf-8")
+    new_line = "autonomy: %s" % lvl
+    if re.search(r"(?m)^\s*autonomy:\s*.*$", text):
+        text = re.sub(r"(?m)^(\s*)autonomy:\s*.*$", new_line, text, count=1)
+    else:
+        close = text.find("---", 3)      # frontmatter close, not the opener at 0
+        if close == -1:
+            _die("scope.md has no frontmatter to hold an autonomy: field")
+        text = text[:close] + new_line + "\n" + text[close:]
+    p.write_text(text, encoding="utf-8")
+    ev = {"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+          "event": "autonomy_change", "from": prev, "to": lvl,
+          "reason": args.reason or ""}
+    with open(eng / ".events.jsonl", "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(ev) + "\n")
+    print("AUTONOMY %s -> %s: %s" % (prev, lvl, AUTONOMY_DESC[lvl]))
+    if args.reason:
+        print("  reason: %s" % args.reason)
+    print("advisory layer only (RoE flags stay hook-enforced); scope.md + .events.jsonl updated")
+    return 0
+
+
 def _events(eng):
     """Parsed .events.jsonl rows, or None if the telemetry file is absent (G2
     then fails open - the skill is emitted)."""
@@ -667,6 +704,93 @@ def _active_row(rows, asset):
     return None
 
 
+def _next_json_payload(eng, state, vault):
+    """cmd_next's cursor+gate walk as one dict (`next --json`). Consumers:
+    brain-lane dispatchers + programmatic steering. Gates in walk order:
+    gates_remaining holds 'arsenal' then 'skill' until released; terminal is
+    null while a move is servable, else stale-index|wall-break|walled|exhausted."""
+    out = {"eng": eng.name, "pass": state.get("pass", 0), "asset": None,
+           "row": None, "class": None, "skill": None, "tool": None,
+           "invocation": None, "board": {}, "gates_remaining": [],
+           "autonomy": autonomy_of(eng)[0], "warnings": [], "terminal": None}
+    if index_stale(eng, vault):
+        out["terminal"] = "stale-index"
+        out["warnings"].append("run: offensive.py --eng %s index" % eng.name)
+        return out
+    index = load_index(eng)
+    threshold = WALLBREAK_THRESHOLD.get(state.get("type"), 3)
+    if state.get("dry_streak", 0) >= threshold:
+        state["dry_streak"] = 0
+        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        out["terminal"] = "wall-break"
+        out["skill"] = "redteamlead"
+        out["warnings"].append("dry_streak hit %d - wrong vector, ask redteamlead "
+                               "for a re-plan" % threshold)
+        return out
+    rows = read_board(eng)
+    if state.get("foothold"):
+        rows = rows + read_board_4b(eng)
+    dead = _deadend_pairs(eng)
+    if dead:
+        _low = lambda r: ((r.get("asset") or "").strip().lower(),
+                          (r.get("vuln class") or "").strip().lower())
+        zombie = [r for r in rows if _status_of(r) in ("[ ]", "[~]") and _low(r) in dead]
+        if zombie:
+            out["warnings"].append("G4: %d hand-revived row(s) match a Deadends.md "
+                                   "pair - suppressed" % len(zombie))
+        rows = [r for r in rows if _low(r) not in dead]
+    out["board"] = {
+        "open_assets": len(_open_assets(rows)),
+        "open": sum(1 for r in rows if _status_of(r) in ("[ ]", "[~]")),
+        "closed": sum(1 for r in rows if _status_of(r) == "[x]"),
+        "stuck": sum(1 for r in rows if _status_of(r) in ("[?]", "[!]")),
+    }
+    asset = _cursor_asset(rows, state)
+    row = _active_row(rows, asset) if asset else None
+    if not asset or not row:
+        out["terminal"] = "walled" if (out["board"]["closed"] == 0
+                                       and out["board"]["stuck"]) else "exhausted"
+        if out["terminal"] == "walled":
+            out["skill"] = "redteamlead"
+        return out
+    rid = (row.get("id") or "").strip()
+    cls = (row.get("vuln class") or "").strip()
+    skill = (row.get("skill") or "").strip()
+    tool = (row.get("tool") or "").strip()
+    out.update({"asset": asset, "row": rid, "class": cls,
+                "skill": skill or None, "tool": tool or None})
+    out["pass"] = state.get("pass", 0) + 1
+    state["pass"] = out["pass"]
+    state["asset_cursor"] = asset
+    sc = state.setdefault("serve_count", {})
+    sc[rid] = sc.get(rid, 0) + 1
+    state["last_move"] = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "asset": asset, "row": rid, "class": cls, "skill": skill, "tool": tool,
+    }
+    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    if sc[rid] >= 3:
+        out["warnings"].append("RE-SERVE %dx: row %s served %d times with no "
+                               "disposition - redteamlead / done --dead / change "
+                               "one variable" % (sc[rid], rid, sc[rid]))
+    if out["autonomy"] in ("L0", "L1") and cls.lower() in EXPLOIT_CLASSES:
+        out["warnings"].append("AUTONOMY %s advisory: exploit-class row under a "
+                               "restricted scope" % out["autonomy"])
+    if not (row.get("arsenal") or "").strip():
+        out["gates_remaining"].append("arsenal")
+        return out
+    if skill and not _skill_fired(eng, skill, _row_since(state, asset, cls)):
+        if _events(eng) is None:
+            out["warnings"].append("G2 advisory: .events.jsonl absent, skill-fired "
+                                   "unverifiable")
+        else:
+            out["gates_remaining"].append("skill")
+            return out
+    out["invocation"] = ((index.get("tools") or {}).get(tool, {})
+                         .get("invocation") or (tool + " <target>"))
+    return out
+
+
 def cmd_next(args):
     vault = Path(args.vault) if args.vault else DEFAULT_VAULT
     eng = _resolve_eng(args.eng)
@@ -678,6 +802,12 @@ def cmd_next(args):
     except FileNotFoundError:
         print("error: %s missing - run `init` first" % STATE_NAME)
         return 2
+    if getattr(args, "json", False):
+        # machine-readable cursor+gate payload (brain lanes / steering). Same
+        # walk + state writes as the human path below - keep the two in sync;
+        # tests/test_next.py pins the field contract.
+        print(json.dumps(_next_json_payload(eng, state, vault), ensure_ascii=False))
+        return 0
 
     # G9: index freshness FIRST. A silent misread of a stale routing table is
     # how a whole campaign runs the wrong checklist - refuse, non-zero.
@@ -1280,7 +1410,10 @@ def main(argv=None):
     p_init.set_defaults(fn=cmd_init)
 
     sub.add_parser("board", help="write the Approach.md 4a coverage matrix from the index").set_defaults(fn=cmd_board)
-    sub.add_parser("next", help="print the next action (cursor + gate walk)").set_defaults(fn=cmd_next)
+    p_next = sub.add_parser("next", help="print the next action (cursor + gate walk)")
+    p_next.add_argument("--json", action="store_true",
+                        help="machine-readable cursor+gate payload (brain lanes / steering)")
+    p_next.set_defaults(fn=cmd_next)
     sub.add_parser("coverage", help="per-asset untested vuln-class gaps (no [x] row)").set_defaults(fn=cmd_coverage)
     sub.add_parser("closeout", help="print the per-type close-out Skill chain").set_defaults(fn=cmd_closeout)
 
@@ -1301,6 +1434,10 @@ def main(argv=None):
                         "row's asset + seed the 4b post-ex board")
     p_done.set_defaults(fn=cmd_done)
 
+    p_auto = sub.add_parser("autonomy", help="change the advisory autonomy envelope (scope.md + audit event)")
+    p_auto.add_argument("level", help="L0|L1|L2|L3")
+    p_auto.add_argument("--reason", help="one-line why (recorded in the audit event)")
+    p_auto.set_defaults(fn=cmd_autonomy)
     p_foot = sub.add_parser("foothold", help="record a foothold (tmux --win) + seed the 4b post-ex board")
     p_foot.add_argument("asset", nargs="?", help="asset that was owned (default: cursor asset)")
     p_foot.add_argument("--win", required=True, help="tmux window running the shell")

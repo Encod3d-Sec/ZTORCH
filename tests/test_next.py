@@ -291,3 +291,63 @@ def test_read_board_ignores_table_above_4a(tmp_path):
     p.write_text("# Approach\n\n" + decoy + p.read_text(), encoding="utf-8")
     rows = offensive.read_board(eng)
     assert len(rows) == 1 and rows[0].get("id") == "4a:1"
+
+
+def _next_json(capsys, vault, eng):
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "next", "--json"])
+    # the buffer may carry earlier prints (init/banner); the payload is the last line
+    return rc, json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+
+
+def test_next_json_gates_in_walk_order(tmp_path, capsys):
+    """`next --json` mirrors the gate walk: arsenal withheld -> skill withheld
+    -> invocation served; same state writes (pass, serve_count, last_move)."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="", skill="hunt-sqli", tool="sqlmap")])
+    rc, p = _next_json(capsys, vault, eng)
+    assert rc == 0
+    assert p["row"] == "4a:1" and p["class"] == "sqli" and p["tool"] == "sqlmap"
+    assert p["gates_remaining"] == ["arsenal"] and p["terminal"] is None
+    assert p["invocation"] is None and p["autonomy"] in ("L0", "L1", "L2", "L3")
+    st = json.loads((eng / offensive.STATE_NAME).read_text())
+    assert st["pass"] == 1 and st["last_move"]["row"] == "4a:1"
+    # release G1, oracle present but skill unfired -> skill gate
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli",
+                                     tool="sqlmap", status="[~]")])
+    (eng / ".events.jsonl").write_text("")
+    _, p = _next_json(capsys, vault, eng)
+    assert p["gates_remaining"] == ["skill"] and p["invocation"] is None
+    # fire the skill -> invocation served
+    state = json.loads((eng / offensive.STATE_NAME).read_text())
+    (eng / ".events.jsonl").write_text(json.dumps(
+        {"tool": "Skill", "skill": "hunt-sqli", "ts": state["started_at"]}) + "\n")
+    _, p = _next_json(capsys, vault, eng)
+    assert p["gates_remaining"] == [] and "sqlmap" in (p["invocation"] or "")
+
+
+def test_next_json_terminal_states(tmp_path, capsys):
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [])          # no rows at all -> exhausted (not walled)
+    _, p = _next_json(capsys, vault, eng)
+    assert p["terminal"] == "exhausted" and p["row"] is None
+    # walled: only parked/dead rows, zero closed
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", status="[?]",
+                                     **{"vuln class": "ssrf"})])
+    _, p = _next_json(capsys, vault, eng)
+    assert p["terminal"] == "walled" and p["skill"] == "redteamlead"
+
+
+def test_autonomy_subcommand_rewrites_scope_and_logs(tmp_path, capsys):
+    vault, eng = _setup(tmp_path)
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng),
+                         "autonomy", "L3", "--reason", "operator approved chained ops"])
+    assert rc == 0
+    lvl, note = offensive.autonomy_of(eng)
+    assert lvl == "L3" and note == ""
+    evs = [json.loads(l) for l in (eng / ".events.jsonl").read_text().splitlines()]
+    assert any(e.get("event") == "autonomy_change" and e.get("to") == "L3"
+               and e.get("from") in ("L0", "L1", "L2", "L3") for e in evs)
+    with pytest.raises(SystemExit):             # unknown level refused
+        offensive.main(["--vault", str(vault), "--eng", str(eng), "autonomy", "L9"])

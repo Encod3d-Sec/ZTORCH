@@ -98,11 +98,13 @@ alongside any `id`/`whoami` output, every time, no exceptions.
 
 Keep driving the board while the sub-agent works. Dispatch ONE sub-agent at a time, serial; never
 duplicate its target in parallel. Before dispatch, append one lane line to `targets/<eng>/log.md`
-(`- lane <name> in flight: SUCCESS = <observable> | tmux win <win> | capture <dir>`) so a
-compaction mid-lane re-surfaces it via the log's newest block; on return, close the line with the
+(`- lane <name> in flight: SUCCESS = <observable> | tmux win <win> | capture <dir> | handle <agent-id>`)
+so a compaction mid-lane re-surfaces it via the log's newest block AND the lane's agent handle
+survives the compaction (the `Resume with context` rule needs it); on return, close the line with the
 result. WAIT for completion before the next move. On return, persist the
 primitive/creds/flag to `state.md`/`loot.md`/`Killchain.md` before doing anything else. On return,
-verify the capture against the stated criterion; a claimed success whose criterion observable is
+verify the capture against the stated criterion (`python3 scripts/lane_validate.py <eng>` runs the
+check mechanically); a claimed success whose criterion observable is
 absent from the capture is a failed lane (sibling of the existing one-line-verdict-without-capture
 rule in slot (h)).
 
