@@ -29,12 +29,35 @@ for ln in lines:
     else:
         cur.append(ln)
 KEEP = 3
+changed = False
 if len(entries) > KEEP:
-    old, new = entries[:-KEEP], entries[-KEEP:]
     with open(arch, "a", encoding="utf-8") as f:
-        f.writelines("".join(e) for e in old)
+        f.writelines("".join(e) for e in entries[:-KEEP])
+    entries = entries[-KEEP:]
+    changed = True
+# dual cap: one monster entry (a long session summary) alone can blow the KEEP=3 budget,
+# so cap the file at MAXL lines / MAXB bytes too -- drop oldest kept entries first, then
+# hard-trim a single oversized entry, leaving a self-describing marker line.
+MAXL, MAXB = 200, 25 * 1024
+while len(entries) > 1 and (
+        len(pre) + sum(len(e) for e in entries) > MAXL
+        or len("".join(pre)) + sum(len("".join(e)) for e in entries) > MAXB):
+    with open(arch, "a", encoding="utf-8") as f:
+        f.writelines("".join(entries.pop(0)))    # dropped-by-cap entries are archived too
+    changed = True
+if entries:
+    blob = "".join(pre) + "".join("".join(e) for e in entries)
+    if len(blob.splitlines()) > MAXL or len(blob) > MAXB:
+        e = entries[0]
+        room = max(0, MAXL - len(pre) - 4)
+        with open(arch, "a", encoding="utf-8") as f:
+            f.writelines(e[room:])              # the trimmed tail is archived, never lost
+        entries[0] = ([e[0]] + e[1:room]
+                      + ["<!-- hot-cache cap: entry exceeded %d lines / %dKB; tail trimmed to fit (trimmed part archived) -->\n" % (MAXL, MAXB // 1024)])
+        changed = True
+if changed:
     with open(hot, "w", encoding="utf-8") as f:
-        f.writelines(pre + ["".join(e) for e in new])
+        f.writelines(pre + ["".join(e) for e in entries])
 PYEOF
   cat "$HOT"
 fi

@@ -115,3 +115,46 @@ def test_pure_meta_command_still_exempt(tmp_path):
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
     assert st["off_board_streak"] == 5
 
+
+
+# --- pass-6 additions: identical-retry ring (doom-loop break) --------------------------
+
+def test_identical_retry_three_times_denies_as_doom_loop(tmp_path):
+    """Same unchanged command 3x: the retry deny fires at streak 3 (< 6), proving the
+    loop-break trigger is independent of the streak pattern trigger."""
+    v = _mk(tmp_path, streak=0)
+    _run(v)
+    _run(v)
+    r = _run(v)
+    out = _decoded(r)["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "deny"
+    assert "doom-loop" in out.get("permissionDecisionReason", "")
+    assert "dead" in out.get("permissionDecisionReason", "")     # names the close-the-row way out
+
+
+def test_changed_command_avoids_retry_deny(tmp_path):
+    """The deny's named way out (change one variable) works: a different script name never
+    accumulates on the first key."""
+    v = _mk(tmp_path, streak=0)
+    _run(v, cmd="bash /root/vm.sh 'python3 /tmp/exp.py'")
+    _run(v, cmd="bash /root/vm.sh 'python3 /tmp/exp.py'")
+    r = _run(v, cmd="bash /root/vm.sh 'python3 /tmp/exp2.py'")
+    out = _decoded(r).get("hookSpecificOutput", {})
+    assert out.get("permissionDecision") is None
+
+
+def test_driver_contact_clears_retry_ring(tmp_path):
+    v = _mk(tmp_path, streak=0)
+    _run(v)
+    _run(v)
+    _run(v, cmd="python3 scripts/offensive.py next")
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert not st.get("retry_counts")             # a re-plan makes later re-runs new attempts
+
+
+def test_second_identical_run_warns_of_imminent_block(tmp_path):
+    v = _mk(tmp_path, streak=0)
+    _run(v)
+    r = _run(v)
+    out = _decoded(r)["hookSpecificOutput"]
+    assert "one more identical run is BLOCKED" in out.get("additionalContext", "")

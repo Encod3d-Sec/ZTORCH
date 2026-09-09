@@ -20,6 +20,10 @@ Policy:
   - off_board_streak N -> INJECT an advisory warning ("run offensive.py next; N calls since")
     for streak 1,2,3 then every 25th (the counter is kept and reported every time)
   - off_board_streak >= _DENY_STREAK (and not post-foothold, and enforcing) -> DENY
+  - identical off-board command re-run >= _RETRY_DENY times (retry ring, reset by driver
+    contact) -> DENY (loop-break): change one variable / close the row dead / run the driver
+  - every _DENY_TOTAL_ESCALATE cumulative denies the deny message grows a Skill(redteamlead)
+    escalation (repeating the same lane that keeps denying is the doom loop)
   - `offensive.py next|board|done|note|init|foothold` seen in the command -> reset the streak to 0
 
 ON-BOARD (allowed, never counted) when EITHER:
@@ -39,6 +43,7 @@ SAFETY (this hook only advises, but stays fail-open anyway - never let a hook bu
   - pass >= 5 gate: only fires once the board is actually driving (passes 0-4 are pre-board recon
     where free exploration is expected).
 """
+import hashlib
 import json
 import os
 import re
@@ -66,6 +71,8 @@ except Exception:
 HEAVY_SCANNERS = {"ffuf", "feroxbuster", "gobuster", "wpscan", "nuclei", "dirb", "katana", "nikto"}
 _SCAN_WINDOW = 180          # seconds: a 2nd heavy scanner launched within this is "concurrent"
 _DENY_STREAK = 6            # off-board calls with zero driver contact before the deny fires
+_RETRY_DENY = 3             # identical off-board command re-runs before the loop-break deny
+_DENY_TOTAL_ESCALATE = 20   # cumulative denies before the message names a way out (RTL)
 
 
 def _enforcing():
@@ -109,6 +116,19 @@ except Exception:
 # python interpreter (`python3 scripts/offensive.py next`). A command merely MENTIONING
 # the driver (`echo run offensive.py next`) starts with echo/... and is not driver contact.
 _DRV_LEAD = re.compile(r"^(?:(?:sudo|env|time|nice|nohup)\s+)*(?:.*/)?(?:offensive\.py|python3?)\b")
+
+
+def _retry_key(active):
+    """Stable hash of the whitespace-squeezed normalized command (segment order kept).
+    Feeds the identical-retry detector: same key 3x = the model is re-firing one
+    command, which no amount of advice fixes - it needs the loop-break deny."""
+    norm = " ".join(" ".join(active.split()).split())
+    if _cmdnorm is not None:
+        try:
+            norm = " ".join(_cmdnorm.segments(active))
+        except Exception:
+            pass
+    return hashlib.sha1(norm.encode("utf-8", "ignore")).hexdigest()[:12]
 
 
 def _driver_called(cmd):
@@ -265,8 +285,10 @@ def main():
     # A driver call resets the streak (the agent came back to the board). Command-position
     # only (_driver_called): an echo/grep string mentioning the driver is not contact.
     if _driver_called(cmd):
-        if st.get("off_board_streak"):
+        if st.get("off_board_streak") or st.get("retry_counts"):
             st["off_board_streak"] = 0
+            st["retry_counts"] = {}            # driver contact = a re-plan; identical re-runs
+                                               # after it are new attempts, not the same loop
             try:
                 json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
             except Exception:
@@ -331,6 +353,16 @@ def main():
     # OFF-BOARD: escalate.
     streak = int(st.get("off_board_streak", 0) or 0) + 1
     st["off_board_streak"] = streak
+
+    # Identical-retry ring (doom-loop break): re-firing the SAME unchanged command is a loop,
+    # not exploration, and no advisory fixes it. Count per normalized key (MRU-ordered dict,
+    # pruned to 32); >= _RETRY_DENY identical fires -> the loop-break deny below.
+    rk = _retry_key(active)
+    ring = st.get("retry_counts") or {}
+    ring[rk] = ring.pop(rk, 0) + 1
+    while len(ring) > 32:
+        ring.pop(next(iter(ring)))
+    st["retry_counts"] = ring
     try:
         json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
     except Exception:
@@ -343,34 +375,62 @@ def main():
     except Exception:
         pass
 
-    # ESCALATE-TO-DENY at the repeat threshold: N+ exploit-shaped calls, zero driver contact,
-    # board has open rows. Post-foothold never denies (see module docstring). With enforcement
-    # off the would-be block prints as an UN-THROTTLED advisory (the operator must see what
-    # would have been blocked), instead of being swallowed by the throttle below.
+    # ESCALATE-TO-DENY, most specific trigger first:
+    #   1. IDENTICAL-RETRY (loop-break): the same unchanged command fired >= _RETRY_DENY
+    #      times. Names the exact loop and the three ways out.
+    #   2. REPEAT PATTERN: streak >= _DENY_STREAK exploit-shaped calls, zero driver contact,
+    #      board has open rows.
+    # Post-foothold never denies (see module docstring). With enforcement off a would-be
+    # block prints as an UN-THROTTLED advisory (the operator must see what would have been
+    # blocked), instead of being swallowed by the throttle below.
     post_fh = _post_foothold(d)
-    at_threshold = streak >= _DENY_STREAK and not post_fh
-    if at_threshold and _enforcing():
+    retries = int(ring.get(rk, 0) or 0)
+    deny_wanted = not post_fh and (retries >= _RETRY_DENY or streak >= _DENY_STREAK)
+
+    def _deny(reason):
+        st["deny_total"] = int(st.get("deny_total", 0) or 0) + 1
+        try:
+            json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
+        except Exception:
+            pass
         try:
             import _telemetry
             _telemetry.hook("drift-guard", action="deny")
         except Exception:
             pass
+        if st["deny_total"] % _DENY_TOTAL_ESCALATE == 0:
+            reason += ("\n\nThis is deny %d with no lane change - stop iterating solo: call "
+                       "`Skill(redteamlead)` for a ranked re-plan." % st["deny_total"])
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
-            "permissionDecisionReason": (
+            "permissionDecisionReason": reason,
+        }}))
+
+    if deny_wanted and _enforcing():
+        if retries >= _RETRY_DENY:
+            _deny(
+                "BLOCKED by harness enforcement (doom-loop break):\n"
+                "- this exact command has now been run %d times unchanged. Re-running it "
+                "identically cannot produce a different result.\n"
+                "- do NOT re-attempt the exact same call. Change one variable, close the row "
+                "dead (`Deadends.md` line + `python3 scripts/offensive.py done <row> --dead`), "
+                "or run `python3 scripts/offensive.py next` to switch vector.\n\n"
+                "(False block? create skills/hooks/.enforce-off to downgrade enforcement to "
+                "advisory.)" % retries)
+        else:
+            _deny(
                 "BLOCKED by harness enforcement:\n- off-board: %d exploit-shaped calls since "
                 "the last driver step (%s not emitted by the board). The offensive driver is "
                 "authoritative. Run `python3 scripts/offensive.py next` to get the required "
                 "row + tool (this also resets the counter), or `offensive.py note` if this is "
-                "a legitimate off-board lane, then re-run the command.\n\n(False block? "
-                "create skills/hooks/.enforce-off to downgrade enforcement to advisory.)"
-                % (streak, off)),
-        }}))
+                "a legitimate off-board lane, then re-run the command.\n\n"
+                "(False block? create skills/hooks/.enforce-off to downgrade enforcement to "
+                "advisory.)" % (streak, off))
         return
 
     # THROTTLE the context injection (the count above still fired for eval accuracy).
-    if not at_threshold and not _should_advise(streak, post_fh):
+    if not deny_wanted and not _should_advise(streak, post_fh):
         return
 
     try:
@@ -379,13 +439,16 @@ def main():
     except Exception:
         pass
 
+    warn = (" This exact command has been run %d times; one more identical run is BLOCKED - "
+            "change a variable or close the row dead." % retries
+            ) if retries == _RETRY_DENY - 1 else ""
     print(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "additionalContext": (
             "DRIFT (off-board, streak %d): %d exploit-shaped call(s) since the last driver step "
             "(%s not emitted by the board). The offensive driver is authoritative - run "
             "`python3 scripts/offensive.py next` to get the required row + tool before "
-            "continuing, and `done` each row as it lands." % (streak, streak, off)),
+            "continuing, and `done` each row as it lands.%s" % (streak, streak, off, warn)),
     }}))
 
 

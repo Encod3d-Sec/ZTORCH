@@ -125,3 +125,22 @@ def test_bridge_inner_quoted_mention_still_exempt():
     assert scope_guard.ip_out_of_scope(
         'bash /root/vm.sh \'echo "10.0.0.5 is oos"\'', sc) == []
 
+
+
+def test_ip_in_dotted_hostname_not_matched():
+    """Pass-2: the DNS-rebind-shaped token `10.5.0.9.evil.com` is a HOSTNAME, not the IP
+    10.5.0.9. The old \\b-boundary regex matched the leading octets as an in-scope-looking
+    IP (masking the real out-of-scope host). Boundary lookarounds close it."""
+    assert scope_guard.IP_RE.search("dig axfr @10.5.0.9.evil.com corp.local") is None
+
+
+def test_bare_ip_still_matched_everywhere():
+    assert scope_guard.IP_RE.search("nmap -sV 10.5.0.9") is not None
+    assert scope_guard.IP_RE.search("curl http://10.5.0.9:8080/x") is not None
+    assert scope_guard.IP_RE.search("ssh root@10.5.0.9") is not None
+
+
+def test_dotted_hostname_yields_no_ip_candidates():
+    """Functional: the rebind token produces ZERO ip candidates, so the hostname arm owns it."""
+    assert scope_guard.ip_out_of_scope("dig axfr @10.5.0.9.evil.com corp.local",
+                                       {"out_of_scope": ["10.5.0.9.evil.com"]}) == []

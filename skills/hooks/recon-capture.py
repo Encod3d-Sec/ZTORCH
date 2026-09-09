@@ -558,20 +558,22 @@ def _active_and_not_meta(d, eng, cmd):
     return bool(d and eng and not _is_framework_meta(cmd))
 
 
-def _emit(blocks):
-    if not blocks:
+def _emit(blocks, system=None):
+    if not blocks and not system:
         return
     try:
         import _telemetry
         _telemetry.hook("recon-capture", action="route")
     except Exception:
         pass
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
-            "additionalContext": "\n\n".join(blocks),
-        }
-    }))
+    out = {"hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": "\n\n".join(blocks),
+    }}
+    if system:
+        out["systemMessage"] = system        # operator-visible ONLY (excluded from the API
+                                             # payload): alert without model-context cost
+    print(json.dumps(out))
 
 
 def _is_exploit_cmd(cmd):
@@ -943,6 +945,7 @@ def main():
         d = None
 
     blocks = []
+    sysmsg = None
 
     # 0. OOB callback auto-correlation: flip a waiting oob.md row to HIT when its token
     #    appears in this command's output. Runs on EVERY command, INCLUDING a cat/grep/rg
@@ -964,6 +967,8 @@ def main():
                 "OOB HIT auto-correlated -- callback landed for: " + "; ".join(flipped[:4])
                 + ". Gate passed: scaffold + validate the FIND now (oob.md row is HIT)."
             )
+            sysmsg = ("[OOB HIT] " + "; ".join(flipped[:4])
+                      + " -- blind-bug callback landed; oob.md row flipped to HIT.")
 
     # GATE 1 nudge (fire-once per engagement, advisory, fail-open): an exploit-shaped command
     # while Approach.md Weaponize shows no progress means jumping to exploitation without the
@@ -1384,7 +1389,7 @@ def main():
                     except Exception:
                         pass
 
-    _emit(blocks)
+    _emit(blocks, sysmsg)
 
 
 if __name__ == "__main__":

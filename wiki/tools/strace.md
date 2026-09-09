@@ -8,6 +8,12 @@ sources: []
 phase: exploit
 ---
 
+## Core usage
+
+```sh
+strace -f -e trace=execve,clone,clone3,fork,vfork -o /tmp/trace.txt ./service-binary
+```
+
 ## Fork-tree forensics: diagnosing "the exploit fired but no shell"
 
 When a memory-corruption exploit fires (service crashes, or a child spawns and instantly dies) and the output channel is silent, strace the WHOLE service tree instead of guessing. Run the service under strace in front of its socket listener (a local socat mirror of the target works):

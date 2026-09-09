@@ -60,6 +60,16 @@ usual failure mode, not a weak sub-agent.
   (blockers). The main model writes `SUCCESS = <exact observable>` into the
   prompt BEFORE dispatch (for example: `hostname` = the target AND `id` = the expected uid, plus
   the session log path); the lane returns that observable RAW plus the capture path.
+  For investigation (not fully-specified-run) dispatches, the prompt also carries a
+  REQUIRED-OUTPUT list naming which commands' full output the envelope must append, and a
+  claim budget (Result verdict <= 150 words) so the claim cannot bury the evidence. Stats in
+  the envelope (commands run, duration) are computed by the MAIN agent from the capture dir,
+  never self-reported by the lane. A lane that produced nothing returns an explicit
+  `no output captured` marker, never silence. Terminal-status-first: the lane writes its
+  status + raw output into the capture dir BEFORE any post-processing, so a lane killed
+  mid-analysis still leaves the raw evidence on disk. Lane ownership: a lane NEVER edits a
+  shared file (state.md, a wiki page) in place; a change to a shared file comes back as a
+  paste-able diff block in the envelope that the main agent reviews and applies.
 - **(g) anti-give-up + no-guess**: run the FULL specified window (a 5-minute pspy watch is 5 minutes,
   not 2); if blocked, report the RAW output/errors and STOP, never guess or substitute a value and
   never invent a result. The lane runs until the (f) criterion holds or the specified window
@@ -95,6 +105,24 @@ primitive/creds/flag to `state.md`/`loot.md`/`Killchain.md` before doing anythin
 verify the capture against the stated criterion; a claimed success whose criterion observable is
 absent from the capture is a failed lane (sibling of the existing one-line-verdict-without-capture
 rule in slot (h)).
+
+Returned-lane processing (in order):
+
+- **Verdict above the claim, always.** Your verification one-liner (`VERIFIED: <capture ref>`
+  or `NOT VERIFIED: <why>`) is written into the log line ABOVE the lane's own claim; a lane
+  claim filed with no verdict of your own is the over-claim leak-through (sub-agent claims are
+  hypotheses until you check the raw capture).
+- **A pending lane is status, not guess.** While in flight the lane line says `in flight`;
+  never record a silent lane as failed, and never peek at its partial output to guess progress.
+- **Partial results are recovered, not discarded.** A killed/errored lane still returns its
+  commands + raw output + `KILLED/FAILED at step N`; that partial capture dir is referenced in
+  the Deadends line (a half-run often names the actual blocker) instead of vanishing.
+- **Resume with context, not a respawn.** A follow-up on the same lane re-enters the SAME
+  agent (its handle/id) carrying the prior raw output, so it continues from what it proved;
+  a fresh respawn redoes discovery and re-fires the same dead ends.
+- **Three same-class failures on one lane = switch, not a fourth.** Route the lane's row
+  through `offensive.py next` for a different vector; grinding a 4th attempt of the same
+  class is the doom-loop the driver exists to break.
 
 ## Mechanism
 

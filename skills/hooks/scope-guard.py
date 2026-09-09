@@ -35,7 +35,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+# Token-boundary IPv4: NOT preceded/followed by a word char or dot, so `10.5.0.9.evil.com`
+# is a HOSTNAME (the DNS-rebind trick) for HOST_RE to check, not a false in-scope IP 10.5.0.9
+# (the false-allow). A bare or delimited IP (`nmap 10.5.0.9`, `http://10.5.0.9/`, `:80`) still matches.
+IP_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 # permissive IPv6 grab (>=2 colons); every candidate is validated with ipaddress.ip_address,
 # so a hex-ish false grab (git sha, MAC, HH:MM:SS) is rejected. IP_RE is IPv4-only, so without
 # this an out_of_scope IPv6 CIDR was never enforced (the under-block).

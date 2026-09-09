@@ -103,6 +103,26 @@ Safe to run any time ZCode is not actively running.
 
 ## Hooks
 
+### Hook JSON output contract (verified against host client internals, 2026-09-10)
+
+When multiple hooks run on one event, or a hook mixes JSON with legacy fields:
+
+- **Precedence across hooks: `deny` > `ask` > `allow`.** One denying hook blocks the call
+  even if every other hook allows it.
+- **JSON beats legacy fields.** A hook printing a JSON `hookSpecificOutput` object has its
+  exit code and plain stdout ignored for decisions; write decisions in JSON only.
+- **`permissionDecision: "deny"` blocks; `"ask"` is the third tier** (prompts the operator)
+  between allow and deny. Our guards use deny (deterministic enforcement) and plain
+  additionalContext (advisory); `ask` is available if a future guard needs a human call.
+- **`additionalContext` is model-visible; `systemMessage` is operator-visible ONLY**
+  (excluded from the API payload). Use systemMessage for operator alerts that would cost
+  model context (recon-capture emits one on an OOB HIT correlation).
+- **PostToolUse/Stop plain stdout is NEVER model-visible**; only `additionalContext` (or
+  exit 2 + stderr, which surfaces as an error) reaches the model.
+- Unused-but-available for future guards: `updatedInput` (rewrite tool input without
+  denying), `async`/`asyncRewake` (deferred checks), `suppressOutput`, and `if`
+  prefilters in config (skip a hook entirely on matcher).
+
 ### SessionStart - context7 lock cleanup
 
 Stale context7 PID lock files can crash the plugin on startup. The registered
