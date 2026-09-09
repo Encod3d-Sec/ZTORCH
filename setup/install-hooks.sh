@@ -160,12 +160,24 @@ if not has("PreToolUse", "big-read.py"):
     print("added PreToolUse big-read")
 if not has("SessionStart", "session-start.sh"):
     add("SessionStart", {"hooks": [{"type": "command",
-        "command": "bash ~/.claude/vault-hooks/session-start.sh"}]})
+        "command": "bash ~/.claude/vault-hooks/session-start.sh", "timeout": 30}]})
     print("added SessionStart session-start")
+# idempotent: session-start runs install-skills.sh (unbounded) - cap it (failure-path
+# audit: no timeout meant the 10-minute default)
+for g in h.get("SessionStart", []):
+    for hk in g.get("hooks", []):
+        if "session-start.sh" in hk.get("command", "") and hk.get("timeout", 0) < 30:
+            hk["timeout"] = 30
+            print("bumped session-start timeout -> 30")
 if not has("PreCompact", "pre-compact.sh"):
     add("PreCompact", {"hooks": [{"type": "command",
-        "command": "bash ~/.claude/vault-hooks/pre-compact.sh"}]})
+        "command": "bash ~/.claude/vault-hooks/pre-compact.sh", "timeout": 10}]})
     print("added PreCompact pre-compact")
+for g in h.get("PreCompact", []):
+    for hk in g.get("hooks", []):
+        if "pre-compact.sh" in hk.get("command", "") and hk.get("timeout", 0) < 10:
+            hk["timeout"] = 10
+            print("bumped pre-compact timeout -> 10")
 if not has("Stop", "close-out.py"):
     add("Stop", {"hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/close-out.py", "timeout": 10}]})

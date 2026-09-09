@@ -66,6 +66,43 @@ def test_note_sets_arsenal(tmp_path):
     assert row["arsenal"] == "payloads/sqli"       # G1 now satisfied
 
 
+def _seed_serves(eng, n):
+    state = json.loads((eng / offensive.STATE_NAME).read_text())
+    state["serve_count"] = {"4a:1": n}
+    (eng / offensive.STATE_NAME).write_text(json.dumps(state))
+
+
+def test_note_refuses_same_arsenal_rearm_after_three_serves(tmp_path, capsys):
+    """RE-SERVE enforcement: the banner says 'change one variable'; after 3 serves,
+    re-arming the SAME slug is the byte-identical retry the clone never issues."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1",
+                                     **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli",
+                                     tool="sqlmap")])
+    _seed_serves(eng, 3)
+    with pytest.raises(SystemExit) as ex:
+        _run(["--vault", str(vault), "--eng", str(eng), "note", "4a:1",
+              "--arsenal", "payloads/sqli"])
+    assert ex.value.code != 0
+    assert "change one variable" in capsys.readouterr().err.lower()
+
+
+def test_note_allows_rearm_below_threshold_or_with_new_slug(tmp_path):
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1",
+                                     **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli",
+                                     tool="sqlmap")])
+    _seed_serves(eng, 2)                           # below threshold: same slug fine
+    assert _run(["--vault", str(vault), "--eng", str(eng), "note", "4a:1",
+                 "--arsenal", "payloads/sqli"]) == 0
+    _seed_serves(eng, 4)                           # past it: a CHANGED slug still fine
+    assert _run(["--vault", str(vault), "--eng", str(eng), "note", "4a:1",
+                 "--arsenal", "payloads/sqli-blind"]) == 0
+    assert offensive.read_board(eng)[0]["arsenal"] == "payloads/sqli-blind"
+
+
 # --------------------------------------------------------------------------- G1
 
 def test_done_refused_without_arsenal(tmp_path):

@@ -58,6 +58,22 @@ def test_open_lane_listed_with_tail_cells():
     assert "@21:40" in opens[0][1]
 
 
+def test_open_lane_with_dispatch_handle_cell_is_open():
+    """The delegate dispatch format ENDS the in-flight line with `| handle <agent-id>`;
+    a handle-only tail is still an open lane (result gets appended after it on close)."""
+    text = NEWLINE % ("h", "10.10.10.9", "uid=33", "h", " | handle ag-77")
+    opens = lv.open_lanes_from_text(text)
+    assert [n for n, _ in opens] == ["h"]
+    # and it is skipped by the closed-lane validator (status, not guess)
+    assert lv.lanes_from_text(text) == []
+
+
+def test_closed_lane_with_handle_is_not_open():
+    text = NEWLINE % ("i", "10.10.10.9", "uid=33", "i", " | handle ag-77 -> VERIFIED: shell")
+    assert lv.open_lanes_from_text(text) == []
+    assert [n for n, _, _ in lv.lanes_from_text(text)] == ["i"]
+
+
 def test_closed_lane_not_listed_open():
     text = (NEWLINE % ("e", "10.10.10.9", "uid=33", "e", " -> VERIFIED: shell")
             + NEWLINE % ("f", "10.10.10.9", "uid=33", "f", ""))

@@ -5,6 +5,7 @@ newline-aligned preview). Empty -> marker. base64-headed commands BYPASS (the sc
 pull pipes `vm-ssh.sh 'base64 -w0 f.png' | base64 -d` onward and needs exact bytes)."""
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                 "scripts"))
@@ -44,3 +45,22 @@ def test_preview_cut_is_newline_aligned():
     prev = prev.rsplit(b"\n[", 1)[0]
     assert not prev.endswith(b"y\n") or prev.endswith(b"\n")   # cut on a line boundary
     assert prev.endswith(b"\n") or len(prev) <= oe.PREVIEW
+
+
+def test_low_context_stamp_tightens_cap(tmp_path, monkeypatch):
+    """Fresh .ctx-low-stamp (tool-telemetry fired: window <=25% free) -> 10KB tier, so
+    a 15KB dump stubs instead of passing through. Absent or stale stamp -> normal cap.
+    The stub is lossless either way (full output still saved to ingest/)."""
+    ing = tmp_path / "ingest"
+    ing.mkdir()
+    monkeypatch.setattr(oe, "_ingest_dir", lambda: str(ing))
+    data = b"x" * 15_000
+    assert oe.econ(data, "nmap t", None) == data + b"\n"      # no stamp: 30KB cap, passthrough
+    stamp = tmp_path / ".ctx-low-stamp"
+    stamp.write_text("")
+    out = oe.econ(data, "nmap t", "/ingest/nmap-1.txt")       # fresh stamp: 10KB tier
+    assert b"[output economy]" in out and b"/ingest/nmap-1.txt" in out
+    assert b"10000" in out                                   # names the tightened cap
+    old = time.time() - 1800
+    os.utime(stamp, (old, old))
+    assert oe.econ(data, "nmap t", None) == data + b"\n"      # stale: back to normal

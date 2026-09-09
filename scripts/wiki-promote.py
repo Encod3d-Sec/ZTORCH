@@ -221,6 +221,16 @@ def reindex(vault):
         pass
 
 
+_USAGE_FENCE = re.compile(r"##\s+(?:core usage|usage|syntax|commands)\s*\n[^\n]*\n*```",
+                          re.I)
+
+
+def _has_usage_fence(text):
+    """True when the text carries a usage-section fenced command (the contract
+    offensive_index._lint_tool_index enforces on every wiki/tools page)."""
+    return bool(_USAGE_FENCE.search(text or ""))
+
+
 def promote_one(path, fm, body, inbox, vault):
     """Returns 'promoted' | 'refused' | 'skipped'."""
     slug = fm.get("slug") or os.path.basename(path)[:-3]
@@ -243,6 +253,20 @@ def promote_one(path, fm, body, inbox, vault):
     if kind not in KINDS:
         print("  %s: unknown kind '%s' -> REFUSED" % (slug, kind))
         return "refused"
+    # wiki/tools contract: every page needs a runnable usage fence or the offensive
+    # driver's tool-index lint dies at the next index build (the strace/wigolo repeat).
+    # Pass when EITHER the page or the staged body carries one (a body section merge
+    # can be exactly the thing adding it).
+    if target_rel.startswith("tools/"):
+        try:
+            page = open(target_path, encoding="utf-8", errors="ignore").read()
+        except OSError:
+            page = ""
+        if not (_has_usage_fence(page) or _has_usage_fence(body)):
+            print("  %s: wiki/tools page carries no '## Core usage' fenced command -> "
+                  "REFUSED (offensive_index dies without one; add the fence to the "
+                  "staged body or the page first)" % slug)
+            return "refused"
     ok, report = leak_check(body, vault, fm.get("source_eng", ""))
     if not ok:
         print("  %s: LEAK-GATE REFUSED (not written to wiki):" % slug)

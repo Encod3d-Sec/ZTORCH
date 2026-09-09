@@ -75,6 +75,22 @@ _RETRY_DENY = 3             # identical off-board command re-runs before the loo
 _DENY_TOTAL_ESCALATE = 20   # cumulative denies before the message names a way out (RTL)
 
 
+def _save_state(sp, st):
+    """Atomic save (tmp + os.replace): the old truncate-then-write, killed mid-write
+    on /mnt/c, left .offensive.json unparseable -- which silently disabled this guard
+    (every later run exits at the json.load) for the rest of the engagement."""
+    tmp = sp + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(st, fh, indent=1)
+        os.replace(tmp, sp)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
 def _enforcing():
     """Same escape hatch as scope-guard: skills/hooks/.enforce-off downgrades the deny to
     advisory. ENFORCE_OFF_MARKER lets parallel test workers point at a tmp file."""
@@ -301,10 +317,7 @@ def main():
                 st["retry_counts"] = {}            # board advanced = a re-plan; identical
                                                    # re-runs after it are new attempts
             st["_driver_row"] = new_row
-            try:
-                json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
-            except Exception:
-                pass
+            _save_state(sp, st)
         return
 
     # Framework/dev commands are not engagement drift -- but only per-SEGMENT: in a mixed
@@ -375,10 +388,7 @@ def main():
     while len(ring) > 32:
         ring.pop(next(iter(ring)))
     st["retry_counts"] = ring
-    try:
-        json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
-    except Exception:
-        pass
+    _save_state(sp, st)
 
     off = ", ".join(sorted(cmd_bins)) or "hand-rolled request loop"
     try:
@@ -401,10 +411,7 @@ def main():
 
     def _deny(reason):
         st["deny_total"] = int(st.get("deny_total", 0) or 0) + 1
-        try:
-            json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
-        except Exception:
-            pass
+        _save_state(sp, st)
         try:
             import _telemetry
             _telemetry.hook("drift-guard", action="deny")

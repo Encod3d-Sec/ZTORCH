@@ -20,6 +20,63 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 
+def inflight_signals(d):
+    """Work still in flight at Stop, as a list of short strings: open lanes (aged by
+    status.lane_lines), the driver's last-served row never dispositioned, pending
+    ingest files, waiting OOB sinks. Open lanes and the undisposed serve have NO
+    other surface anywhere (lane state lives in log.md text; last_move is never
+    re-checked); ingest/OOB do re-surface at SessionStart, this adds turn-end
+    visibility for the operator watching the session end."""
+    parts = []
+    try:                                       # open lanes (age/STALE via status.py)
+        import importlib.util
+        import _engagement
+        spec = importlib.util.spec_from_file_location(
+            "status", os.path.join(_engagement.VAULT, "scripts", "status.py"))
+        st = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(st)
+        parts += [ln.strip() for ln in st.lane_lines(d)]
+    except Exception:
+        pass
+    try:                                       # served move with no disposition
+        import json
+        lm = (json.loads(open(os.path.join(d, ".offensive.json"),
+                              encoding="utf-8", errors="ignore").read())
+              .get("last_move") or {})
+        rid = (lm.get("row") or "").strip()
+        if rid:
+            for line in open(os.path.join(d, "Approach.md"),
+                             encoding="utf-8", errors="ignore").read().splitlines():
+                s = line.strip()
+                if s.startswith("|") and rid in s:
+                    if "[ ]" in s or "[~]" in s:
+                        parts.append("served %s @%s not disposed (done/note the row)"
+                                     % (rid, lm.get("ts", "?")))
+                    break
+    except Exception:
+        pass
+    try:                                       # pending ingest (SessionStart repeats it)
+        ing = os.path.join(d, "ingest")
+        n = [f for f in os.listdir(ing) if not f.startswith(("_", "."))]
+        if n:
+            parts.append("%d ingest file(s) pending (ingest skill)" % len(n))
+    except Exception:
+        pass
+    try:                                       # planted OOB tokens still waiting
+        oob = os.path.join(d, "oob.md")
+        if os.path.isfile(oob):
+            w = 0
+            for line in open(oob, encoding="utf-8", errors="ignore").read().splitlines():
+                cells = [c.strip() for c in line.strip().strip("|").split("|")]
+                if len(cells) >= 5 and cells[4].lower() == "waiting":
+                    w += 1
+            if w:
+                parts.append("%d OOB sink(s) waiting (callback still owed)" % w)
+    except Exception:
+        pass
+    return parts
+
+
 def main():
     try:
         import _engagement
@@ -167,6 +224,17 @@ def main():
                     _telemetry.hook("close-out", action="unmarked-close-nudge")
                 except Exception:
                     pass
+        # In-flight surface (turn-end): the signals whose only other visibility is the
+        # next SessionStart -- or nothing at all, for open lanes and a served move that
+        # was never dispositioned.
+        parts = inflight_signals(d)
+        if parts:
+            print("In flight at Stop: " + " | ".join(parts))
+            try:
+                import _telemetry
+                _telemetry.hook("close-out", action="inflight-surface")
+            except Exception:
+                pass
         return
     # box is SOLVED (or SUSPENDED): stamp the finish time once (the far end of the start->finish delta)
     try:
@@ -184,10 +252,12 @@ def main():
         em_marker = os.path.join(d, ".eval-written")
         em = os.path.join(_engagement.VAULT, "scripts", "eval_metrics.py")
         if not os.path.exists(em_marker) and os.path.isfile(em):
-            subprocess.run(["python3", em, os.path.basename(d), "--write"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           stdin=subprocess.DEVNULL, timeout=15)
-            open(em_marker, "w").close()
+            r = subprocess.run(["python3", em, os.path.basename(d), "--write"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               stdin=subprocess.DEVNULL, timeout=15)
+            # only mark done on success: a crashed eval marked done is never re-run
+            if r.returncode == 0:
+                open(em_marker, "w").close()
     except Exception:
         pass
     if not solved:

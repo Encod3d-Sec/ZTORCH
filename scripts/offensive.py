@@ -1054,6 +1054,18 @@ def cmd_note(args):
     rows, row, writer = _find_row_any(eng, args.row)
     if not row:
         _die("no such row: %s" % args.row)
+    # RE-SERVE enforcement (driver audit, 2026-09-10): the RE-SERVE banner says
+    # "change one variable"; this makes that checkable at the one boundary the
+    # driver owns. After 3+ serves, re-arming the SAME arsenal slug is the
+    # byte-identical retry the clone never issues (withRetry mutates context
+    # before every retry). Refuse it: different slug, or dispose of the row.
+    prev = (row.get("arsenal") or "").strip()
+    rid = (row.get("id") or args.row).strip()
+    sc = (state.get("serve_count") or {}).get(rid, 0)
+    if prev and args.arsenal.strip() == prev and sc >= 3:
+        _die("RE-SERVE %dx on %s: re-arming the same arsenal '%s' unchanged. Change "
+             "one variable (a different --arsenal slug) or dispose of the row "
+             "(`done %s --dead '<why>'` or `--park '<why>'`)" % (sc, rid, prev, rid))
     row["arsenal"] = args.arsenal
     if _status_of(row) == "[ ]":
         row["status"] = "[~]"

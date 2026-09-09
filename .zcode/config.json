@@ -16,7 +16,8 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/session-start.sh\""
+              "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/session-start.sh\"",
+              "timeout": 30
             }
           ]
         }
@@ -141,7 +142,8 @@
           "hooks": [
             {
               "type": "command",
-              "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/pre-compact.sh\""
+              "command": "bash \"${ZCODE_PROJECT_DIR}/skills/hooks/pre-compact.sh\"",
+              "timeout": 10
             }
           ]
         }

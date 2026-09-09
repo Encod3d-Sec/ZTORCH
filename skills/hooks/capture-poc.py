@@ -47,12 +47,17 @@ _META_RE = re.compile(_SHARED_DEV_META.pattern + r"|capture\.sh|\beval_metrics\b
 try:
     from tool_telemetry import _binaries
 except Exception:
-    import importlib.util
-    _spec = importlib.util.spec_from_file_location(
-        "tool_telemetry", os.path.join(HERE, "tool-telemetry.py"))
-    _tt = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_tt)
-    _binaries = _tt._binaries
+    try:
+        import importlib.util
+        _spec = importlib.util.spec_from_file_location(
+            "tool_telemetry", os.path.join(HERE, "tool-telemetry.py"))
+        _tt = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_tt)
+        _binaries = _tt._binaries
+    except Exception:
+        # fail open: no grouping, but the hook lives (an import-time crash here killed
+        # capture entirely - hook failure-path audit, 2026-09-10)
+        _binaries = lambda *_a, **_k: []
 
 
 def _response_text(data):

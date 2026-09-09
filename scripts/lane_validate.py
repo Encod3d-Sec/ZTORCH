@@ -19,11 +19,23 @@ import sys
 
 # `- lane <name> in flight: SUCCESS = <observable> | ... | capture <dir>` (delegate skill);
 # on return the line is CLOSED by appending the result after the capture cell, so "in flight"
-# stays in the text - a line with NOTHING after the capture dir is the still-open one.
+# stays in the text. The dispatch-time format also carries a trailing `| handle <agent-id>`
+# cell, so a line with NOTHING (or only the handle cell) after the capture dir is the
+# still-open one - anything else after it is the appended result.
 _LANE_RE = re.compile(
     r"^- lane (\S+)(.*): SUCCESS = ([^|]+)\|\s*tmux win \S+\s*\|\s*capture (\S+)(.*)$",
     re.MULTILINE)
+_HANDLE_ONLY = re.compile(r"^\|?\s*handle\s+\S+\s*$")
 _MAX_FILE = 2 * 1024 * 1024      # ponytail: caps per-file read; a capture >2MB is raw log noise
+
+
+def _still_open(tail, rest):
+    """True when the line is 'in flight' with no result appended yet: after the
+    capture cell there is nothing, or only the dispatch-time handle cell."""
+    if "in flight" not in tail:
+        return False
+    r = rest.strip()
+    return not r or bool(_HANDLE_ONLY.match(r))
 
 
 def lanes_from_text(text):
@@ -31,7 +43,7 @@ def lanes_from_text(text):
     out = []
     for m in _LANE_RE.finditer(text):
         name, _tail, obs, cap, rest = m.groups()
-        if "in flight" in _tail and not rest.strip():
+        if _still_open(_tail, rest):
             continue                       # opened, never closed; status, not guess
         out.append((name, obs.strip(), cap.strip()))
     return out
@@ -44,7 +56,7 @@ def open_lanes_from_text(text):
     out = []
     for m in _LANE_RE.finditer(text):
         name, tail, _obs, _cap, rest = m.groups()
-        if "in flight" in tail and not rest.strip():
+        if _still_open(tail, rest):
             out.append((name, tail.strip()))
     return out
 

@@ -59,6 +59,8 @@ if changed:
     with open(hot, "w", encoding="utf-8") as f:
         f.writelines(pre + ["".join(e) for e in entries])
 PYEOF
-  cat "$HOT"
+  # byte-cap the injection directly: if the rotation python above failed, the dual
+  # cap inside it never ran and cat would inject the whole file (failure-path audit)
+  head -c 25600 "$HOT"
 fi
 exit 0   # fail open: never let a missing hot.md make the SessionStart hook exit non-zero
