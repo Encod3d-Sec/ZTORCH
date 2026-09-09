@@ -35,7 +35,35 @@ Previously used `mcp-obsidian` (Obsidian Local REST API). Removed because:
 - Requires Obsidian app to be running on Windows - breaks if closed
 - Not needed: ZCode's `Read` tool accesses vault files directly via WSL path
 
-**Replacement:** `Read /mnt/c/Users/{user}/Documents/ObsidianVaults/ZTorch/<relative-path>` (see machine usernames above)
+**Replacement:** `Read /mnt/c/Users/{user}/Documents/ObisidianVaults/ZTorch/<relative-path>` (see machine usernames above)
+
+### MCP protocol rules (distilled from host client internals, 2026-09-09)
+
+Transport wiring:
+- A URL-based server needs its transport set EXPLICITLY (`http` for streamable-HTTP,
+  `sse` for legacy SSE) - there is no runtime fallback chain between them; a mis-set
+  transport just fails. stdio is the default when `type` is omitted.
+- Timeouts to expect: ~30s connect, 60s per HTTP request (long-lived GET event streams
+  are exempt), tool calls effectively unbounded. 3 consecutive terminal errors
+  (ECONNRESET/ETIMEDOUT/EPIPE/REFUSED...) close the transport and force a reconnect on
+  the next call; an HTTP session-expiry retries ONCE with a fresh session; a connect-time
+  401 parks the server in needs-auth (~15 min) instead of probing.
+- Budgets: server `instructions` and each tool description truncate at ~2k chars - keep
+  our own MCP-facing descriptions short; endpoint docs belong in a file, not a
+  description.
+
+Big-output discipline (the protocol our own MCP-adjacent scripts must follow too):
+- Oversized tool results (~25k tokens) are persisted to a file with instructions
+  (path, size, shape) - read them SEQUENTIALLY in chunks (offset/limit), grep/jq to
+  locate, and STATE what portion you read before summarizing. Never summarize a blob
+  you have not verifiably read.
+- An `[OUTPUT TRUNCATED ...]` notice means re-query with the server's filter/pagination
+  parameters (or a tighter query) - never summarize from the truncated dump.
+- Binary/base64 payloads come back as a one-line "saved to <path>" pointer; follow the
+  path, do not re-request raw.
+- Our equivalents: big recon/tool dumps go to `targets/<eng>/raw/` or the ingest dir
+  (`scripts/capture.sh`), never pasted into context; `zg --limit N` keeps result pages
+  bounded.
 
 ---
 
