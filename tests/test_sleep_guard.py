@@ -46,3 +46,20 @@ def test_for_loop_poll_now_exempt():
     same as while/until -- previously only while/until were recognized."""
     assert sleep_guard.blind_sleeps(
         'for i in $(seq 1 5); do curl -s http://10.10.10.5/ && break; sleep 30; done') == []
+
+
+def test_loop_does_not_exempt_trailing_sibling_sleep():
+    """Regression (host-internals pass 1): the poll-loop exemption was whole-command, so
+    `for ...; do true; done; sleep 300` passed fully exempt -- the loop exempted a blind
+    sleep AFTER it. Exemption is per-segment (with opener->done depth) now: it covers the
+    loop's own body only."""
+    assert sleep_guard.blind_sleeps("for i in $(seq 1 5); do true; done; sleep 300") == ["300"]
+    assert sleep_guard.blind_sleeps("until nc -z h 443; do sleep 5; done; sleep 120") == ["120"]
+
+
+def test_multiline_loop_body_still_exempt():
+    """A loop written across lines (opener / do / body / done on separate lines) keeps its
+    body exempt: the depth counter tracks opener -> done across segments, so the bare
+    `sleep 30` body line is NOT a new blind sleep."""
+    assert sleep_guard.blind_sleeps("while true\ndo\n  sleep 30\ndone\n") == []
+

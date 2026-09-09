@@ -100,6 +100,36 @@ except Exception:
         r"scripts/(?:offensive|check|tool|playbook|wiki|gen_|build_|lint|eval_|status|next_move)|"
         r"tests/|skills/hooks|setup/", re.IGNORECASE)
 
+try:
+    import _cmdnorm
+except Exception:
+    _cmdnorm = None
+
+# Command-position lead-in for the driver: `<path>/offensive.py ...` itself or its
+# python interpreter (`python3 scripts/offensive.py next`). A command merely MENTIONING
+# the driver (`echo run offensive.py next`) starts with echo/... and is not driver contact.
+_DRV_LEAD = re.compile(r"^(?:(?:sudo|env|time|nice|nohup)\s+)*(?:.*/)?(?:offensive\.py|python3?)\b")
+
+
+def _driver_called(cmd):
+    """True when a normalized SEGMENT invokes the driver in command position. The old
+    whole-string `_DRIVER_RE.search(cmd)` let an echo/grep string mentioning
+    `offensive.py next` reset the off-board streak without any real driver contact."""
+    if _cmdnorm is None:
+        return bool(_DRIVER_RE.search(cmd))
+    return any(_DRV_LEAD.match(s) and _DRIVER_RE.search(s)
+               for s in _cmdnorm.segments(cmd))
+
+
+def _active_segs(cmd):
+    """Segments that are NOT framework-meta. The old whole-string `_META_RE` early-return
+    exempted MIXED commands entirely (`git status && nmap <target>` never counted the
+    nmap); per-segment, only the meta part is exempt and engagement work still counts.
+    Returns None on _cmdnorm absence (caller falls back to whole-string behavior)."""
+    if _cmdnorm is None:
+        return None
+    return [s for s in _cmdnorm.segments(cmd) if not _META_RE.search(s)]
+
 
 def _bins_in(cmd):
     """Exploit/scan binaries mentioned anywhere in the command string (whole-string search, so a
@@ -232,8 +262,9 @@ def main():
     except Exception:
         return
 
-    # A driver call resets the streak (the agent came back to the board).
-    if _DRIVER_RE.search(cmd):
+    # A driver call resets the streak (the agent came back to the board). Command-position
+    # only (_driver_called): an echo/grep string mentioning the driver is not contact.
+    if _driver_called(cmd):
         if st.get("off_board_streak"):
             st["off_board_streak"] = 0
             try:
@@ -242,16 +273,25 @@ def main():
                 pass
         return
 
-    if _META_RE.search(cmd):
-        return                                    # framework/dev command, not engagement drift
+    # Framework/dev commands are not engagement drift -- but only per-SEGMENT: in a mixed
+    # command (`git status && nmap <target>`) the nmap segment still counts.
+    act = _active_segs(cmd)
+    if act is not None:
+        if not act:
+            return                                # every segment is framework-meta
+        active = "\n".join(act)
+    else:
+        if _META_RE.search(cmd):
+            return                                # framework/dev command, not engagement drift
+        active = cmd
     if st.get("pass", 0) < 5:
         return                                    # pre-board recon: free exploration expected
 
     if _STATUS_RE.search(_state_text(d)):
         return                                    # A2: engagement SOLVED -> board is moot, stay silent
 
-    cmd_bins = _bins_in(cmd)
-    exploit_shaped = bool(cmd_bins) or _handroll_classify(cmd)[0] or bool(_INTERP_RE.search(cmd))
+    cmd_bins = _bins_in(active)
+    exploit_shaped = bool(cmd_bins) or _handroll_classify(active)[0] or bool(_INTERP_RE.search(active))
 
     # Scanner-cap runs on ANY heavy-scanner mention, independent of exploit_shaped/NET_BINS, so a
     # bare `dirb ...` (not in NET_BINS, and not otherwise exploit-shaped) still hits it.

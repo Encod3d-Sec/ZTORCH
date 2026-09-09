@@ -60,6 +60,25 @@ def _strip_noise(cmd):
     option-assigned targets (`--url=<host>`, unquoted or bare)."""
     stripped = _QUERY_FRAG.sub("", _DATA_FLAG.sub(" ", cmd))
     return _QUOTED.sub(lambda m: " " * len(m.group(0)), stripped)
+
+
+try:
+    import _cmdnorm
+except Exception:
+    _cmdnorm = None
+
+
+def _scan_text(cmd):
+    """Noise-stripped text of EVERY command that will run: quote-aware segments
+    (split on ;|&&||/newline) plus unwrapped inner commands (vm.sh/ssh/-c/heredoc
+    bridges), env-var prefixes and sudo/env/timeout-style wrappers peeled, then
+    per-segment noise stripping. Without this, a target or RoE-forbidden tool
+    inside a wrapper's quoted argument (`bash vm.sh 'nmap <ip>'`) was blanked away
+    with the quotes and never matched. Fail-open: _cmdnorm missing -> whole-string
+    behavior."""
+    if _cmdnorm is None:
+        return _strip_noise(cmd)
+    return "\n".join(_strip_noise(s) for s in _cmdnorm.segments(cmd))
 HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
 # file extensions that HOST_RE would otherwise match as "hosts" (config.yml, app.py...)
 FILE_EXT = {"json", "yml", "yaml", "md", "sh", "py", "txt", "js", "ts", "go", "rs",
@@ -93,7 +112,7 @@ def ip_out_of_scope(cmd, sc):
             pass
     if not cidrs:
         return []
-    scan = _strip_noise(cmd)
+    scan = _scan_text(cmd)
     hits = []
     for tok in IP_RE.findall(scan) + IP6_RE.findall(scan):
         try:
@@ -113,7 +132,7 @@ def host_out_of_scope(cmd, sc, out_of_scope_match):
     AD domain suffix and must never be silently treated as a filename). FILE_EXT only
     filters the residual (real filenames were never in out_of_scope)."""
     flagged = set()
-    for host in HOST_RE.findall(_strip_noise(cmd)):
+    for host in HOST_RE.findall(_scan_text(cmd)):
         if out_of_scope_match(host, sc):
             flagged.add(host)
             continue
@@ -161,7 +180,7 @@ def main():
                             + " which match an OUT-OF-SCOPE entry in scope.md")
             # RoE tooling (same noise-stripped text as the scope match above, so a tool name
             # merely mentioned in a quoted echo/grep string is never flagged)
-            scan_cmd = _strip_noise(cmd)
+            scan_cmd = _scan_text(cmd)
             if sc.get("no_bruteforce") and BRUTEFORCE.search(scan_cmd):
                 deny.append("RoE no_bruteforce: command uses brute-force tooling")
             if sc.get("no_dos") and DOS.search(scan_cmd):

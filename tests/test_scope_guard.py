@@ -88,3 +88,40 @@ def test_bruteforce_nxc_single_cred_not_flagged():
     brute-force -- this is nxc's overwhelmingly common use case."""
     cmd = "nxc smb 10.10.10.5 -u administrator -p 'Password123!' --shares"
     assert not scope_guard.BRUTEFORCE.search(scope_guard._strip_noise(cmd))
+
+
+def test_bridge_inner_out_of_scope_ip_flagged():
+    """Regression (host-internals pass 1): _QUOTED blanking hid everything inside a
+    wrapper's quoted argument, so `bash vm.sh 'nmap <oos-ip>'` never matched. The scan
+    is per-segment over unwrapped inner commands now (_cmdnorm.segments)."""
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope("bash /root/vm.sh 'nmap -sV 10.0.0.5'", sc) == ["10.0.0.5"]
+
+
+def test_wrapper_peeled_target_still_flagged():
+    """Env-var prefixes and sudo/env/timeout-style wrappers are transport, not command:
+    the target underneath is still matched."""
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope(
+        "FOO=bar sudo timeout 30 curl http://10.0.0.5/admin", sc) == ["10.0.0.5"]
+
+
+def test_env_assignment_value_not_scanned():
+    """`TOKEN=10.0.0.5 nmap localhost` targets localhost; the env VALUE is not a target
+    (peeled as an assignment prefix before scanning)."""
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope("TOKEN=10.0.0.5 nmap localhost", sc) == []
+
+
+def test_second_segment_target_flagged():
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope("echo ok && curl -s http://10.0.0.5/x", sc) == ["10.0.0.5"]
+
+
+def test_bridge_inner_quoted_mention_still_exempt():
+    """The W2-8 exemption survives the segment rewrite: an OOS IP that is only TEXT inside
+    the bridged command's own quoted string stays exempt."""
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope(
+        'bash /root/vm.sh \'echo "10.0.0.5 is oos"\'', sc) == []
+

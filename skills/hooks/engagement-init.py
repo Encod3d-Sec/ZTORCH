@@ -15,6 +15,7 @@
 Plain stdout is added to context, alongside the other SessionStart hooks
 (hot.md). Non-fatal: any error exits 0 silent.
 """
+import json
 import os
 import re
 import subprocess
@@ -295,11 +296,47 @@ def write_stamp(fp):
         pass
 
 
+def _compact_restore():
+    """SessionStart(source=='compact') addition: after compaction the context holds the
+    summary plus capped attachments, and this hook's normal output re-injects counts and
+    next-moves -- but not the board itself. The board is the one artifact the next
+    context must hold EXACTLY (the driver re-ranks from it; a paraphrased row loses the
+    tool/asset/status cells), so re-inject the open rows VERBATIM (capped)."""
+    try:
+        import _engagement
+        d = _engagement.active_dir()
+        if not d:
+            return None
+        lines = open(os.path.join(d, "Approach.md"), encoding="utf-8",
+                     errors="ignore").read().splitlines()
+        rows = [ln.rstrip() for ln in lines if "[ ]" in ln or "[~]" in ln][:40]
+        if not rows:
+            return None
+        return ("restored post-compact (Approach.md open rows, verbatim; re-run "
+                "`offensive.py next` before acting):\n" + "\n".join(rows))
+    except Exception:
+        return None
+
+
 def main():
     try:
         import _engagement
     except Exception:
         return
+
+    # Post-compact SessionStart fires with stdin {"source": "compact"}: beyond the normal
+    # state summary, re-inject the open board rows verbatim (see _compact_restore). The
+    # isatty guard keeps manual/terminal runs non-blocking (no piped stdin to read).
+    if not sys.stdin.isatty():
+        try:
+            src = (json.loads(sys.stdin.read()) or {}).get("source", "")
+        except Exception:
+            src = ""
+        if src == "compact":
+            cr = _compact_restore()
+            if cr:
+                print(cr)
+                print()
 
     out = []
     created = _engagement.ensure_state_files()

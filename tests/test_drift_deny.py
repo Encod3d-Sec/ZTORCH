@@ -82,3 +82,36 @@ def test_driver_call_resets_streak(tmp_path):
     _run(v, cmd="python3 scripts/offensive.py next")
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
     assert st["off_board_streak"] == 0
+
+
+def test_driver_mention_does_not_reset_streak(tmp_path):
+    """Regression (host-internals pass 1): the reset was a whole-string regex, so a
+    command merely MENTIONING the driver (echo/grep text) cleared the off-board streak
+    without any real driver contact. Command-position only now (_driver_called)."""
+    v = _mk(tmp_path, streak=5)
+    r = _run(v, cmd="echo run offensive.py next")
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert r.stdout.strip() == ""                 # framework-meta: silent either way
+    assert st["off_board_streak"] == 5            # a mention is not contact
+
+
+def test_mixed_meta_and_exploit_counts(tmp_path):
+    """Regression (host-internals pass 1): _META_RE matched whole-string, so
+    `git status && nmap <target>` was fully exempt (the nmap never counted toward the
+    streak). Meta is per-segment now: only the meta part is exempt."""
+    v = _mk(tmp_path, streak=5)
+    r = _run(v, cmd="git status && nmap -sV 10.0.0.5")
+    out = _decoded(r)["hookSpecificOutput"]
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert out.get("permissionDecision") == "deny"
+    assert st["off_board_streak"] > 5             # the nmap segment counted
+
+
+def test_pure_meta_command_still_exempt(tmp_path):
+    """A whole-command framework/dev call keeps its old silent exemption."""
+    v = _mk(tmp_path, streak=5)
+    r = _run(v, cmd="git status")
+    assert r.stdout.strip() == ""
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert st["off_board_streak"] == 5
+

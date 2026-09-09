@@ -39,6 +39,15 @@ def _blank_quotes(s):
 
 
 _LOOP_RE = re.compile(r"(?<![\w-])(while|until|\bfor\b)(?![\w-])")
+# loop-body opener (the `do`/`then` after a loop/branch opener) and the matching closers;
+# used per-SEGMENT so a loop exempts its own body but never a trailing sibling command
+_BODY_PREFIX = re.compile(r"^(do|then)\b", re.I)
+_END_KW = re.compile(r"^(done|fi|esac)\b", re.I)
+
+try:
+    import _cmdnorm
+except Exception:
+    _cmdnorm = None
 
 
 def has_poll_loop(cmd):
@@ -51,16 +60,38 @@ def has_poll_loop(cmd):
 
 
 def blind_sleeps(cmd):
-    """Total seconds of sleeps in `cmd` that exceed THRESHOLD (list of the offending values).
-    [] if a poll loop is present (see has_poll_loop). Quote-blanked first so a
-    merely-mentioned "sleep N" inside a string is never flagged."""
-    if has_poll_loop(cmd):
-        return []
+    """Sleeps >= THRESHOLD with no poll loop around THEM (list of the offending values).
+    Per-SEGMENT: a loop keyword exempts only the loop's own segments, not a trailing
+    sibling command (`for i in $(seq 1 5); do true; done; sleep 300` was FULLY exempt
+    when the loop test was whole-command -- the bypass). A depth counter tracks loop
+    opener -> done across segments, so a multi-line `while .../do/sleep 15/done` body
+    stays exempt. Quote-blanked per segment so a merely-mentioned "sleep N" inside a
+    string is never flagged."""
+    if _cmdnorm is None:
+        # fail-open to the historical whole-command behavior
+        if has_poll_loop(cmd):
+            return []
+        segs = [cmd]
+        depth = None  # sentinel: no depth tracking without segmentation
+    else:
+        segs = _cmdnorm.segments(cmd)
+        depth = 0
     hits = []
-    for m in SLEEP_RE.finditer(_blank_quotes(cmd)):
-        secs = float(m.group(1)) * MULT[m.group(2).lower()]
-        if secs >= THRESHOLD:
-            hits.append(m.group(0).split()[-1])
+    for seg in segs:
+        blank = _blank_quotes(seg)
+        if depth is not None and _END_KW.match(blank):
+            depth = max(0, depth - 1)
+            continue
+        opens = bool(_LOOP_RE.search(blank))
+        in_loop = opens or (depth is not None and (depth > 0 or _BODY_PREFIX.match(blank)))
+        if opens and depth is not None:
+            depth += 1
+        if in_loop or has_poll_loop(seg):
+            continue
+        for m in SLEEP_RE.finditer(blank):
+            secs = float(m.group(1)) * MULT[m.group(2).lower()]
+            if secs >= THRESHOLD:
+                hits.append(m.group(0).split()[-1])
     return hits
 
 
