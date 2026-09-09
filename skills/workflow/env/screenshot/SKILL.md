@@ -1,6 +1,6 @@
 ---
 name: screenshot
-description: Capture web-page / PoC screenshots into the engagement evidence (targets/<eng>/poc/) and embed them in walkthrough.md. Live pages + authenticated/exploited states (post-login dashboard, the flag page, an SSTI/cmdi render). Runs chromium on the Kali tooling host (VPN path to targets); hands off to the evidence skill for redaction before a real report. Use when building PoC evidence or asked to "take a screenshot / capture the PoC".
+description: Capture web/PoC screenshots into targets/<eng>/poc/ and embed them in walkthrough.md - live pages, authed/exploited states, rendered cards. Use when building PoC evidence or asked to "take a screenshot" / "capture the PoC".
 ---
 
 # Screenshot: visual PoC capture

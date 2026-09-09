@@ -1,6 +1,6 @@
 ---
 name: research
-description: Vulnerability-research loop toward a novel CVE. Target triage -> attack-surface map -> ranked hypotheses -> investigate (RE / fuzz / audit) -> a finding deepens the loop, a dead-end pivots to a new approach. Uses the full wiki + hunt skillset. Scaffolds and persists state under raw/research/<project>/. Triggers - "research", "find a cve", "analyze this binary/library", "audit this code for vulns".
+description: Vuln-research loop toward a novel CVE - triage, surface map, ranked hypotheses, investigate (RE/fuzz/audit); findings deepen, dead-ends pivot. Use for "research", "find a cve", "analyze this binary", "audit this code for vulns".
 ---
 
 # Research: CVE Discovery Loop

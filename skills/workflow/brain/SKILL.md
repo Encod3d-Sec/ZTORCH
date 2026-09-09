@@ -1,6 +1,6 @@
 ---
 name: brain
-description: Brain mode - the main chat (glm-5.3) stays the strategist brain while all execution runs in subagents (haiku = glm-5.3-flash for fully-specified mechanical runs, sonnet = glm-5.3 when the run needs in-run judgement), 2-3 concurrent disjoint agents. The DEFAULT execution posture for any engagement with 2+ open assets (engage/offensive route here; `offensive.py next` prints the PARALLEL line), not just /brain. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain", or whenever the board has 2+ open assets.
+description: Brain mode - main chat keeps strategy/driver/triage, 2-3 concurrent subagents execute. DEFAULT posture once the board has 2+ open assets. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
 ---
 
 # brain

@@ -1,6 +1,6 @@
 ---
 name: hunt-bizlogic
-description: Business-logic flaw hunting - workflow/state bypass, price/quantity tampering, negative/overflow values, coupon/refund abuse, mass assignment, and logic races. The top-paying bug class with no scanner coverage. Wiki-first, FIND schema output.
+description: Business-logic hunting - workflow/state bypass, price tampering, negative values, coupon abuse, mass assignment, logic races. Top-paying class, no scanner coverage. Wiki-first, FIND output.
 ---
 
 # Hunt: Business Logic

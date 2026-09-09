@@ -1,6 +1,6 @@
 ---
 name: hunt-m365
-description: Microsoft 365 / Entra ID attack - tenant discovery, user enumeration via OneDrive differential (2026 verified), AADSTS code reference, Smart Lockout math (hard cap 1-2 attempts/user), ROPC validation, Conditional Access mapping. Wiki-first, FIND schema output.
+description: Microsoft 365 / Entra ID attack - tenant discovery, OneDrive-differential user enum, AADSTS code reference, Smart Lockout math (hard cap 1-2 attempts/user), ROPC validation, Conditional Access mapping. Wiki-first, FIND output.
 ---
 
 # Hunt: M365 / Entra ID

@@ -1,6 +1,6 @@
 ---
 name: hunt-secrets
-description: Exposed-secrets hunting - .git/ dir + history mining, exposed .env/config files, hardcoded keys in JS bundles + source maps, S3/blob exposure, public-repo secret search, CI/CD leakage. Live-validation mandatory. Wiki-first, FIND schema output.
+description: Exposed-secrets hunting - .git history mining, .env/config exposure, keys in JS bundles + source maps, S3/blob leaks, CI/CD leakage. Live validation mandatory. Wiki-first, FIND output.
 ---
 
 # Hunt: Exposed Secrets / Credential Exposure

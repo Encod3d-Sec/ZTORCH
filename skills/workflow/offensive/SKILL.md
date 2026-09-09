@@ -1,6 +1,6 @@
 ---
 name: offensive
-description: Autonomous offensive-engagement driver. Runs a pentest, bug-bounty programme, or CTF box end to end with no operator approvals - the deterministic driver (scripts/offensive.py) owns the coverage board, enforces the gates, and prints the exact next action (which Skill + which tool) every turn. Use when starting or resuming any offensive engagement, "work this target", "work this scope/CIDR", "root this box", "hunt this program", "own this host", or when handed a scope/IP/domain to reach an objective. Single agent, wiki-first, tool-first. Flavor is a --type pentest|ctf|bb flag.
+description: Autonomous offensive driver - offensive.py owns the board, gates, and exact next action every turn. Use to start/resume any engagement, "work this target", "root this box", "hunt this program", or when handed a scope/IP/domain.
 ---
 
 # offensive

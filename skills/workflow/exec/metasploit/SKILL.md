@@ -1,6 +1,6 @@
 ---
 name: metasploit
-description: Drive msfconsole across the workflow - DB-backed recon (db_nmap, auxiliary scanners), version->exploit search/check/run, multi/handler reverse shells (meterpreter-first, plain shell_reverse_tcp backup for Windows/EDR), sessions + local_exploit_suggester + post modules, and autoroute/portfwd/socks pivoting. Points to the metasploit cheatsheet for syntax. Use for "metasploit", "msfconsole", "msfvenom", "meterpreter", "multi/handler", or driving an exploit/reverse-shell through msf.
+description: Drive msfconsole end to end - DB-backed recon, version->exploit search/check/run, multi/handler reverse shells (meterpreter-first), post-exploit, pivoting. Use for "metasploit", "msfconsole", "msfvenom", "meterpreter", "multi/handler".
 ---
 
 # Metasploit: framework driver

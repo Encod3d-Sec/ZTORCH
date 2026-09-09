@@ -1,6 +1,6 @@
 ---
 name: nightmare
-description: Recompiled Windows LPE arsenal (Nightmare_Eclipse PoCs) for CTF/lab privilege escalation. Build triage from the target Windows version, pull binaries from the PRIVATE Encod3d-Sec/Nightmare repo, run per the interactive-session test protocol, record Defender verdicts. Use when a standard-user Windows foothold needs a kernel/LPE shortcut on a CTF box, or when asked to test/update the nightmare arsenal.
+description: Recompiled Windows LPE arsenal (Nightmare_Eclipse PoCs) for CTF/lab privesc - build triage, pull from the private repo, record Defender verdicts. Use when a standard-user Windows foothold needs a kernel/LPE shortcut on a CTF box.
 ---
 
 # Nightmare Arsenal (Windows LPE, CTF)

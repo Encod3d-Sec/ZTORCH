@@ -1,6 +1,6 @@
 ---
 name: walkthrough
-description: Assemble a report-ready walkthrough.md for a SOLVED engagement - populate the Evidence gallery from the poc/ images captured during the engagement, and draft the step-by-step reproduction from state/loot/log (Killchain.md for pentest/bugbounty, state.md's Chain/Status for ctf) without fabricating. Use when asked to "write the walkthrough", "assemble the walkthrough", "close out the box/engagement", or at close-out once an engagement is marked SOLVED.
+description: Assemble walkthrough.md for a SOLVED engagement - Evidence gallery from poc/ images, repro steps drafted from state/loot/log, never fabricated. Use for "write the walkthrough", "assemble the walkthrough", "close out the box".
 ---
 
 # Walkthrough auto-assembly

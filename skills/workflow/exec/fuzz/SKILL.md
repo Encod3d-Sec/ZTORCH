@@ -1,6 +1,6 @@
 ---
 name: fuzz
-description: Adaptive, targeted web fuzzing - deterministic wordlist selection (wl-pick.sh) plus judgment. Picks the right SecLists list per surface (content/vhost/api/params/artifacts) smallest-first, calibrates filters against soft-404s, recurses, escalates T0 harness -> T1 seclists -> T2 cewl -> T3 app-specific on signal, pivots to hidden-param fuzzing, and detects/handles WAF/Cloudflare/throttle (backoff, origin-bypass, or hard STOP on the DoS tell). Engagement-type aware (ctf loud, pt calibrated, bb stealth). Use for "fuzz", "content discovery", "directory brute", "vhost fuzz", "find hidden params", "which wordlist", "gobuster/ffuf/feroxbuster/cewl/arjun".
+description: Adaptive web fuzzing - deterministic wordlist pick (wl-pick.sh), tier climbing, WAF handling. Use for "fuzz", "content discovery", "directory brute", "vhost fuzz", "find hidden params", "which wordlist", "gobuster/ffuf/feroxbuster".
 ---
 
 # fuzz - adaptive web fuzzing

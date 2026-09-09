@@ -61,3 +61,24 @@ scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,
 `research/`, `disclosure/`. `agents-md-improver/` is the offline
 instruction-file reviewer (the ZCode counterpart of the old `claude-md-improver`).
 MCP/hook/plugin troubleshooting: `skills/skills-setup.md`.
+
+## SKILL.md frontmatter (authoring reference)
+
+Semantics verified against the host skill loader (2026-09-09, host-internals pass 5):
+
+- `name` -- display only; the directory basename is the real invocation name. Keep them equal.
+- `description` -- the listing/discovery gate (what the `/` picker and trigger routing weigh).
+  Keep it under ~240 chars with trigger phrases front-loaded: the host truncates listing
+  entries at ~250.
+- `allowed-tools` -- absent means NONE are pre-allowed (not "all"); list what the skill needs.
+- `user-invocable` -- defaults true; `false` hides it from the picker.
+- `paths` -- NOT USED here, deliberately: a `paths:` skill is parked OUT of the command list
+  until a matching file is touched (file-read activation). Our skills are prompt-routed
+  (triggers.json -> `Skill(<name>)`), not file-triggered, so parking would break routing.
+- `context: fork` -- NOT USED here: heavy skills (brain, wiki-arsenal deep) already manage
+  their own subagent fleets; a fork-wrapped skill that also dispatches double-forks.
+
+Editorial rule (compaction): an invoked SKILL.md re-attaches after a compact HEAD-TRUNCATED
+at ~5k tokens (with a "read the path for full text" marker). Load-bearing rules -- gates,
+guardrails, the output contract -- must live in the FIRST 5k tokens of the file body;
+put worked examples and background after.

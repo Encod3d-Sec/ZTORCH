@@ -1,6 +1,6 @@
 ---
 name: screenshot-burp
-description: Capture a Burp Suite Repeater request/response as a PoC image (targets/<eng>/poc/) by driving the Burp MCP + the Kali GUI. Replays a request in a Repeater tab, sends it, and grabs the request+response panes - a Burp-native PoC (client report / CTF writeup). Use when you want the evidence to come from Burp rather than a curl/terminal card, or whenever you drive a target through Burp and need the images. Pairs with hunt-burp.
+description: Capture a Burp Repeater request/response as a PoC image (targets/<eng>/poc/) by driving the Burp MCP + Kali GUI. Use when the evidence should come from Burp rather than a curl/terminal card; pairs with hunt-burp.
 ---
 
 # Screenshot: Burp Repeater request/response PoC

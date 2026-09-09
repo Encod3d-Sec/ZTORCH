@@ -1,6 +1,6 @@
 ---
 name: ctf-box
-description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF box, "get user.txt+root.txt", "root the box", "foothold to root"). Enforces basic-tool recon (nmap, nc, ffuf, nuclei, dig) before anything custom, wiki-first lookups, and ALWAYS pspy + linpeas/winpeas for privesc. Use when handed a box/IP to own end-to-end.
+description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF) - basic-tool recon first, wiki-first, pspy + linpeas/winpeas always. Use when handed a box/IP to own end-to-end, "root the box", "get user.txt+root.txt".
 ---
 
 # CTF / Boot-to-Root Box

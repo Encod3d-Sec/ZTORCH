@@ -1,6 +1,6 @@
 ---
 name: redteamlead
-description: On-demand senior red-team lead advisor. Call at a decision point or obstacle to get wiki-grounded direction instead of hammering blindly. Dispatches a fresh RTL subagent that reads the engagement state + evidence + wiki and returns ranked directions with an explicit STOP. Use for "redteamlead", "RTL", "I'm stuck", "where do I go", "what next", "which vector", "should I keep hammering this".
+description: Senior red-team lead advisor - a fresh subagent reads state + evidence + wiki, returns ranked directions with an explicit STOP. Use for "redteamlead", "RTL", "I'm stuck", "which vector", "should I keep hammering this".
 ---
 
 # RedTeamLead (RTL)

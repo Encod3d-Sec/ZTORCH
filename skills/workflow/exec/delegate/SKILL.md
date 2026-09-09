@@ -1,6 +1,6 @@
 ---
 name: delegate
-description: Autonomous sub-agent hand-off for a fiddly, fully-specified exploit-compile / escalation RUN - the main agent stays on strategy and the board while a cheap sub-agent runs an exact copy-paste checklist behind a false-root/hostname guardrail. Use for "delegate", "offload", "hand this to a sub-agent", "spin a flash" (or "spin a haiku" / "spin glm-5.3-flash"), or the moment a foothold plus a working escalation vector is identified. Main agent dispatches, waits (no parallel duplicate), integrates the result.
+description: Sub-agent hand-off for a fully-specified exploit/escalation run, behind a false-root guardrail, main agent stays on strategy. Use for "delegate", "hand this to a sub-agent", "spin a flash", or foothold + working vector found.
 ---
 
 # Delegate: sub-agent exploit-run
@@ -87,7 +87,10 @@ alongside any `id`/`whoami` output, every time, no exceptions.
 ## Main-agent discipline
 
 Keep driving the board while the sub-agent works. Dispatch ONE sub-agent at a time, serial; never
-duplicate its target in parallel. WAIT for completion before the next move. On return, persist the
+duplicate its target in parallel. Before dispatch, append one lane line to `targets/<eng>/log.md`
+(`- lane <name> in flight: SUCCESS = <observable> | tmux win <win> | capture <dir>`) so a
+compaction mid-lane re-surfaces it via the log's newest block; on return, close the line with the
+result. WAIT for completion before the next move. On return, persist the
 primitive/creds/flag to `state.md`/`loot.md`/`Killchain.md` before doing anything else. On return,
 verify the capture against the stated criterion; a claimed success whose criterion observable is
 absent from the capture is a failed lane (sibling of the existing one-line-verdict-without-capture

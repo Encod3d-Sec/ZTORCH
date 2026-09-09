@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Post-engagement knowledge harvest AND harness retrospective - after a box/bugbounty/pentest/CTF is completed, first diff how the engagement was EXECUTED against the skills/hooks that governed it (what discipline was skipped) and improve the harness, then sweep the whole engagement for GENERIC reusable knowledge NOT already in wiki/ and land it via the leak-gated stage->promote pipeline. Use at close-out or when asked to "extract learnings", "what did we learn", "harvest lessons into wiki", "distill this engagement", "post-mortem into the wiki", "what did we do wrong", "improve the harness from this box".
+description: Close-out harvest - harness retro (diff execution vs skills/hooks) then generic wiki delta via the leak gate. Use at close-out or for "extract learnings", "what did we learn", "post-mortem into the wiki", "improve the harness".
 ---
 
 # Learn: harness retrospective + wiki knowledge harvest

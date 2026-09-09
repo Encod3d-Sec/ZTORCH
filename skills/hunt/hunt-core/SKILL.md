@@ -1,13 +1,6 @@
 ---
 name: hunt-core
-description: >
-  Shared discipline for every hunt-* skill: scope and authorization gating, the two-account rule,
-  the confirmation gate that separates a real finding from a false positive, enumeration limits,
-  stop conditions, marker discipline, wiki-first query and self-heal, FIND output, Deadends, and
-  wiki distillation. ALWAYS LOADED alongside any hunt skill. Also trigger directly on "is this in
-  scope", "is this a real bug", "how do I confirm this", "should I keep going", "how many IDs
-  should I test", "what severity", "how do I report this", "I got someone else's data". Every
-  hunt-* skill assumes this file; without it they run without their safety and quality layer.
+description: Shared discipline always loaded alongside any hunt-* skill - scope gate, confirmation gate, enum limits, stop conditions, FIND output. Trigger on "is this in scope", "is this a real bug", "how do I confirm this", "what severity".
 ---
 
 # Hunt: Core

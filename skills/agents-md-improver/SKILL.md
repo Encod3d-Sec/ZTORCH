@@ -1,6 +1,6 @@
 ---
 name: agents-md-improver
-description: Offline instruction-file reviewer for AGENTS.md (ZCode's project context file). Audit and improve AGENTS.md files - scan for AGENTS.md files, evaluate quality against templates, output a report, then make targeted updates. Invoke explicitly (/agents-md-improver) when the plugin is unavailable.
+description: Offline reviewer for AGENTS.md - scan for AGENTS.md files, score quality against templates, report, then apply targeted updates on approval. Invoke explicitly (/agents-md-improver) when the plugin is unavailable.
 disable-model-invocation: true
 tools: Read, Glob, Grep, Bash, Edit
 ---

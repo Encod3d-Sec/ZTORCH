@@ -1,6 +1,6 @@
 ---
 name: chrome-devtools-browser
-description: Bring up a REAL, visible, interactive chromium on the Kali VM that the operator logs into (Smart-ID / Mobile-ID / any manual auth or MFA/CAPTCHA), while the agent drives and observes it live through the chrome-devtools MCP (navigate, DOM snapshot, network capture, screenshots, console, evaluate). Use whenever a target needs a MANUAL login the agent cannot complete headlessly, when you need to capture an authenticated session / the real API calls a page makes, or to confirm/screenshot a DOM-XSS. Triggers - "open a browser", "log in manually", "smart-id / mobile-id / national id login", "mfa / 2fa login", "solve the captcha", "drive the browser", "capture the authenticated session / network".
+description: Visible chromium on the Kali VM for MANUAL login (MFA/CAPTCHA/Smart-ID), driven live via chrome-devtools MCP; captures authed sessions/API calls. Use for "open a browser", "log in manually", "mfa / 2fa login", "solve the captcha".
 ---
 
 # chrome-devtools-browser

@@ -1,6 +1,6 @@
 ---
 name: hunt-windows
-description: Local Windows privilege escalation on a STANDALONE / workgroup host, or a local shell on a domain member - foothold to SYSTEM. Token privileges (SeImpersonate/Potato), service misconfig (weak perms / unquoted path / writable binary), registry autologon creds, scheduled-task + writable-script abuse, DLL hijack, AlwaysInstallElevated, UAC bypass, credential loot. For DOMAIN escalation (kerberoast/DCSync/ADCS/BloodHound) use hunt-ad instead. Wiki-first, FIND schema output.
+description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or local shell on a member) - Potato/SeImpersonate, services, autologon, scheduled tasks, DLL hijack, cred loot. Domain escalation (kerberoast/ADCS/DCSync) is hunt-ad.
 ---
 
 # Hunt: Windows (local privilege escalation)

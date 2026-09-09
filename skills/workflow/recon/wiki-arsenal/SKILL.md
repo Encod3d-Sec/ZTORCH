@@ -1,6 +1,6 @@
 ---
 name: wiki-arsenal
-description: Fast PARALLEL wiki lookup engine over wiki/techniques + wiki/payloads + wiki/tools + wiki/cheatsheets for a surface/service/vuln-class. Two modes - quick (one qmd search, cheap, fire constantly) and deep (4 parallel subagents, one per area, merged ready-to-use arsenal card, cached). The hunt-* skills each inline their own qmd_query and can hand off here for a parallel lookup. Use for "what do I use against <surface>", "arsenal for <X>", "deep/full arsenal", "tool + payload + technique + cheatsheet for <X>", "fast wiki lookup", "parallel wiki search", any "how do I attack/exploit <service|vuln-class>" where you want the documented tooling + payloads before hand-rolling.
+description: Parallel wiki lookup for a surface/vuln-class across techniques/payloads/tools/cheatsheets; quick (one qmd search) or deep (4 parallel subagents). Use for "what do I use against <X>", "arsenal for <X>", "deep/full arsenal".
 ---
 
 # wiki-arsenal

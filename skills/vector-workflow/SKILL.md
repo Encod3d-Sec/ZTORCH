@@ -1,6 +1,6 @@
 ---
 name: vector-workflow
-description: Documents the vector-workflow board-seeding pipeline in scripts/offensive.py's derive_rows() - the OSINT pre-pass plus per-asset web/ad_windows/linux vector-baseline classes (VECTOR_PRIORITY order) with narrow fingerprint-gated exceptions, that seeds the 4a coverage board. Not manually invoked - `board` runs this automatically. Use for "vector workflow", "osint to web pipeline", "board seeding order", "which vector applies", "why is this row on the board", "vector baseline classes", "VECTOR_PRIORITY".
+description: Docs the derive_rows() board-seeding order in offensive.py (OSINT pre-pass, web/ad_windows/linux vector baselines). Use for "vector workflow", "board seeding order", "why is this row on the board", "VECTOR_PRIORITY".
 ---
 
 # vector-workflow

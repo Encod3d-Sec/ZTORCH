@@ -1,6 +1,6 @@
 ---
 name: disclosure
-description: Drive responsible disclosure of a proven finding to a CVE. Package the report, find the vendor contact, report privately, coordinate a timeline, request the CVE (vendor CNA / GitHub / MITRE), and publish an advisory. Closes the research loop. Triggers - "disclose", "request a cve", "report this to the vendor".
+description: Responsible disclosure to a CVE - package the report, find the vendor contact, report privately, coordinate a timeline, request the CVE, publish the advisory. Triggers "disclose", "request a cve", "report this to the vendor".
 ---
 
 # Disclosure: Finding -> CVE

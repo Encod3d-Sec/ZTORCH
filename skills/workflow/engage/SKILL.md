@@ -1,12 +1,6 @@
 ---
 name: engage
-description: >
-  Orchestrator and skill router for any engagement: the single situation -> Skill(name) map
-  across the whole library. Picks the offensive driver (Skill(offensive)), routes every
-  fingerprint to the right hunt-* skill, and surfaces the process skills (ingest, wiki-arsenal,
-  redteamlead, delegate, fuzz, metasploit, kali-seat, ...) at the
-  phase they belong. Load FIRST in every session and consult whenever between phases or unsure
-  which skill is next. Pure router: owns no methodology itself.
+description: Orchestrator and skill router - the single situation -> Skill(name) map across the whole library (driver, hunt-*, process skills). Load FIRST in every session; consult whenever between phases or unsure which skill is next.
 ---
 
 # engage

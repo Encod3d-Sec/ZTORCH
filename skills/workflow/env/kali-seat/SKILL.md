@@ -1,6 +1,6 @@
 ---
 name: kali-seat
-description: Operating procedure for the WSL/Kali attack seat on this machine - the seat chain (Windows ZCode -> wsl.exe -> WSL kali -> SSH -> VMware Kali VM), which side runs what, vm.sh usage rules, tmux-on-VM convention, and the vault's three path forms. Use when working the VM, running target tooling, driving tmux/reverse shells on the VM, when the user says "work from WSL", "use vm.sh", "kali seat", "the VM", or before any offensive command against an in-scope target.
+description: WSL/Kali attack-seat procedure - the Windows -> WSL -> VMware VM chain, vm.sh rules, tmux-on-VM convention. Use for "kali seat", "the VM", "work from WSL", or before any offensive command against an in-scope target.
 ---
 
 # Kali seat: Windows host -> WSL kali -> VMware Kali VM

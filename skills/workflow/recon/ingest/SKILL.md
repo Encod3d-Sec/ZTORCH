@@ -1,6 +1,6 @@
 ---
 name: ingest
-description: Synthesize raw recon/test output into engagement state. Reads everything dropped in targets/<active>/ingest/, extracts hosts/assets/creds/paths, merges into state.md/loot.md/Killchain.md, logs it, archives the raw files. Works for pentest, bugbounty, and ctf. Use when asked to "ingest", "synthesize findings", "process recon", or after dropping tool output in the ingest folder.
+description: Synthesize raw recon/test output from targets/<active>/ingest/ into state.md/loot.md/Killchain.md, log + archive it. Use for "ingest", "synthesize findings", "process recon", or after dropping tool output in the ingest folder.
 ---
 
 # Ingest

@@ -1,6 +1,6 @@
 ---
 name: hunt-burp
-description: Drive Burp Suite over its MCP server as an AI triage + attack layer - review proxy history for signals, replay via Repeater/send, OOB-gate blind bugs with Collaborator, fuzz via Intruder (RoE-safe), then hand off to the matching vuln-class hunt. Wiki-first, FIND schema output.
+description: Drive Burp Suite over its MCP server - triage proxy history, replay via Repeater, OOB-gate blind bugs with Collaborator, fuzz via Intruder, then hand off to the matching hunt. Use when Burp runs with the MCP Server BApp.
 ---
 
 # Hunt: Burp Suite via MCP
