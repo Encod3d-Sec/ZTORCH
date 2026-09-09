@@ -5,6 +5,7 @@ tags: [engagement, scope, roe]
 no_bruteforce: false
 no_dos: false
 passive_only: false
+autonomy: L2
 target_severity: HIGH
 sources: []
 ---

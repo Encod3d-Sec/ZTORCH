@@ -102,6 +102,11 @@ No approvals, ever. The driver is deterministic and self-directing: run `next`, 
 prints, record with `note`/`done`/`foothold`/`park`, repeat. Any decision you cannot make on the spot
 is parked to `decisions.md` (G7) and the loop continues - you do not block on the operator.
 
+The scope.md frontmatter carries a CAI-style `autonomy:` envelope (L0 passive-only, L1 active
+non-destructive, L2 exploit attempts allowed, L3 full; missing = L2). It is advisory: `next` prints
+the level in its banner and, at L0/L1 on an exploit-class row, one advisory line. It never blocks -
+the RoE flags (`no_bruteforce`/`no_dos`/`passive_only`) remain the enforcement layer.
+
 ## OPERATING REQUIREMENT (G2 depends on this)
 
 G2 (skill-first) is only ENFORCED when two conditions hold:

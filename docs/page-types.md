@@ -98,7 +98,7 @@ One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engag
 
 | File | Purpose |
 |------|---------|
-| `scope.md` | In/out-of-scope + RoE flags (`no_bruteforce`/`no_dos`/`passive_only`); read before any action |
+| `scope.md` | In/out-of-scope + RoE flags (`no_bruteforce`/`no_dos`/`passive_only`) + CAI-style `autonomy:` envelope (L0-L3, missing = L2, advisory); read before any action |
 | `state.md` | Host/service/access table (per-type entity columns); the primary target map |
 | `loot.md` | Captured credentials + reuse map |
 | `Killchain.md` | The evolving kill-chain: attack-path rows (chain notation) built from findings + the Confirmed-chain header (pentest/bugbounty core; a ctf's live chain lives in `state.md`'s `## Chain`/`## Status` sections instead) |

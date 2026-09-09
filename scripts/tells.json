@@ -420,6 +420,78 @@
       "class": "recon",
       "skill": "",
       "note": "infra definition; env vars, mounted secrets, internal hostnames"
+    },
+    {
+      "re": "mcpServers|modelcontextprotocol|mcp-remote",
+      "class": "mcp",
+      "skill": "hunt-mcp",
+      "note": "MCP config/manifest content; enumerate every mcpServers entry, read each command/args/URL before trusting it"
+    },
+    {
+      "re": "https?://[^\\s'\"<>]+/(mcp|sse)\\b",
+      "class": "mcp",
+      "skill": "hunt-mcp",
+      "note": "remote MCP/SSE endpoint; pull the tool manifest (tools/list) and scan it before any client trusts it"
+    },
+    {
+      "re": "<IMPORTANT>",
+      "class": "mcp",
+      "skill": "hunt-mcp",
+      "note": "canonical tool-poisoning wrapper (Invariant Labs); read the FULL description + every param description, then prove client-side execution"
+    },
+    {
+      "re": "[​-‏⁠﻿󠀀-󠁿]",
+      "class": "mcp",
+      "skill": "hunt-mcp",
+      "note": "zero-width/tag chars in a description = hidden text; hexdump the line, decode what is smuggled"
+    },
+    {
+      "fname": "mcp\\.json$|claude_desktop_config\\.json$",
+      "class": "mcp",
+      "skill": "hunt-mcp",
+      "note": "MCP client config on disk; read every server entry, then mcp-scan/agent-scan it"
+    },
+    {
+      "fname": "(^|/)skills/[^/]+/SKILL\\.md$",
+      "class": "mcp",
+      "skill": "hunt-mcp",
+      "note": "agent skill file; snyk-agent-scan the skill dir (prompt injection / malware / credential risks)"
+    },
+    {
+      "re": "chat/completions|/v1/completions|api\\.openai\\.com|OPENAI_API_KEY",
+      "class": "llm",
+      "skill": "hunt-llm",
+      "note": "LLM endpoint/key in shipped JS or source; app fronts a model, read the call site + route the chat surface"
+    },
+    {
+      "re": "system_prompt|systemPrompt|initial_prompt",
+      "class": "llm",
+      "skill": "hunt-llm",
+      "note": "client-visible system-prompt param; read the block around it for the real instructions or an injection sink"
+    },
+    {
+      "re": "<INFORMATION>",
+      "class": "injection",
+      "skill": "hunt-llm",
+      "note": "AgentDojo important_instructions injection letter; in source = planted payload, echoed in model output = the model ingested it"
+    },
+    {
+      "re": "###\\(system_message\\)",
+      "class": "injection",
+      "skill": "hunt-llm",
+      "note": "fake system-message callout (agentdojo system_message attack); find the channel that carried it"
+    },
+    {
+      "re": "SAFETY MODULE FAILED TO LOAD|CONFIG CORRUPTED|ERR_CODE: 0x[0-9A-Fa-f]{4}_",
+      "class": "injection",
+      "skill": "hunt-llm",
+      "note": "prompt-probing core-dump framing; system-prompt extraction probe, not a real system error"
+    },
+    {
+      "re": "EMERGENCY_OVERRIDE_AUTH|LEGAL_DISCOVERY_ORDER|\\[CRITICAL_ALERT\\]",
+      "class": "injection",
+      "skill": "hunt-llm",
+      "note": "system-override fake-crisis framing; urgency forgery attached to a request = jailbreak attempt"
     }
   ]
 }

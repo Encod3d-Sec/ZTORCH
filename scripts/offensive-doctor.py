@@ -14,7 +14,8 @@ Checks (each a PASS/WARN/FAIL line; exit 1 if any FAIL):
   5. tool-telemetry.py hook present (G2 depends on it) - WARN if absent (G2 fails open).
   6. 4b privesc not hollow: each OS route (windows/macos/ad) has its class with a non-empty
      arsenal - WARN if missing.
-  7. live smoke test: init->index->board->next on a throwaway copy of tests/fixtures/offensive.
+  7. live smoke test: init->index->board->next on a throwaway copy of tests/fixtures/offensive,
+     including the scope.md `autonomy:` envelope parse (WARN when absent/invalid).
 
 WARN never fails the run. Exit 0 = all green (warns allowed); 1 = at least one FAIL.
 """
@@ -157,7 +158,7 @@ def _zg():
 
 # --------------------------------------------------------------------------- 7. live smoke test
 
-def _smoke():
+def _smoke(off):
     if not check("fixture present for smoke test", os.path.isdir(FIX)):
         return
     tmp = tempfile.mkdtemp(prefix="offensive-doctor-")
@@ -179,6 +180,10 @@ def _smoke():
         m = re.search(r"board:\s*(\d+)\s*rows", r.stdout)
         check("smoke: board writes rows", r.returncode == 0 and bool(m) and int(m.group(1)) > 0,
               (r.stderr or r.stdout).strip()[:80])
+        if off is not None:
+            lvl, note = off.autonomy_of(eng)
+            check("smoke: scope.md autonomy parses (%s)" % lvl,
+                  lvl in off.AUTONOMY_LEVELS and not note, note, warn=True)
         r = O("--eng", eng, "next")
         check("smoke: next prints an action block",
               r.returncode == 0 and "REQUIRED, in order:" in r.stdout,
@@ -195,7 +200,7 @@ def main(argv):
         _tools(off)
     _skill_and_hook()
     _zg()
-    _smoke()
+    _smoke(off)
 
     fails = [r for r in RESULTS if r[1] == "FAIL"]
     warns = [r for r in RESULTS if r[1] == "WARN"]

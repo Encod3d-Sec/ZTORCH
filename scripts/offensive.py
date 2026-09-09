@@ -499,6 +499,40 @@ VISUAL_CLASSES = {
     "xss", "dom-xss", "csrf", "open-redirect", "clickjacking", "cors",
 }
 
+# CAI-style autonomy envelope (scope.md frontmatter `autonomy:`). ADVISORY only:
+# the driver carries the level in the `next` banner and advises on exploit-class
+# rows at L0/L1; it never hard-denies (the RoE flags stay enforced by the
+# scope-guard hook). Missing field = L2 (back-compat: old engagements keep working).
+AUTONOMY_LEVELS = ("L0", "L1", "L2", "L3")
+AUTONOMY_DEFAULT = "L2"
+_AUTONOMY_MAP = {"l0": "L0", "l1": "L1", "l2": "L2", "l3": "L3", "full": "L3"}
+AUTONOMY_DESC = {
+    "L0": "passive-only (no active packets beyond fetches, no payload delivery)",
+    "L1": "active non-destructive (scans/probing/fuzz within rate limits)",
+    "L2": "exploit attempts allowed",
+    "L3": "full (chained ops, anything short of forbidden RoE classes)",
+}
+
+
+def autonomy_of(eng):
+    """scope.md frontmatter `autonomy:` -> (level, note). Level is always one of
+    AUTONOMY_LEVELS: a clean value maps through _AUTONOMY_MAP (case-insensitive;
+    legacy `full` -> L3), a missing or unknown value assumes AUTONOMY_DEFAULT and
+    note carries the one-line reason ("" when clean; the doctor surfaces it)."""
+    p = Path(eng) / "scope.md"
+    raw = ""
+    if p.is_file():
+        m = re.search(r"(?m)^\s*autonomy:\s*(.+?)\s*$",
+                      p.read_text(encoding="utf-8", errors="ignore"))
+        if m:
+            raw = m.group(1).strip()
+    lvl = _AUTONOMY_MAP.get(raw.lower(), "")
+    if lvl:
+        return lvl, ""
+    if raw:
+        return AUTONOMY_DEFAULT, "scope.md autonomy=%s unknown, assumed %s" % (raw, AUTONOMY_DEFAULT)
+    return AUTONOMY_DEFAULT, "scope.md has no autonomy: field, assumed %s" % AUTONOMY_DEFAULT
+
 
 def _events(eng):
     """Parsed .events.jsonl rows, or None if the telemetry file is absent (G2
@@ -677,7 +711,16 @@ def cmd_next(args):
     rid = (row.get("id") or "").strip()
     cls = (row.get("vuln class") or "").strip()
     skill = (row.get("skill") or "").strip()
-    print("PASS %s | ASSET %s | ROW %s %s" % (state.get("pass", 0), asset, rid, cls))
+    lvl, _lvl_note = autonomy_of(eng)
+    print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s"
+          % (state.get("pass", 0), asset, rid, cls, lvl))
+
+    # Autonomy envelope (advisory, never a gate): an exploit-class row served
+    # under an L0/L1 scope -> say so in one line; the operator/agent decides.
+    if lvl in ("L0", "L1") and cls.lower() in EXPLOIT_CLASSES:
+        print("AUTONOMY %s advisory: %s is an exploit-class row but scope.md sets "
+              "%s (%s) - advisory only, not a gate; park the row or raise the "
+              "envelope" % (lvl, cls, lvl, AUTONOMY_DESC[lvl]))
 
     # Default posture (2026-09-08): 2+ open assets -> run the loop under Skill(brain)
     # (main = strategy/board/triage, execution in 2-3 concurrent disjoint lanes).

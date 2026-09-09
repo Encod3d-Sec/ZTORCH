@@ -13,7 +13,12 @@ passive_only: false
 tunnel_safe: false
 # Campaign-driver envelope (required by offensive.py init). Defaults suit an autonomous CTF/lab run;
 # TIGHTEN for a real client pentest (autonomy, write_policy, scanners, rate_per_host) before testing.
-autonomy: full
+# autonomy envelope (CAI-style; the driver surfaces the level on `next`, advisory only):
+#   L0 passive-only - read-only recon, OOB registered but no payload delivery
+#   L1 active non-destructive - scans/probing/fuzz within rate limits
+#   L2 exploit attempts allowed (default; missing field = L2)
+#   L3 full - chained ops, anything short of forbidden RoE classes
+autonomy: L2
 enum_cap: 50
 write_policy: full
 oob_allowed: true

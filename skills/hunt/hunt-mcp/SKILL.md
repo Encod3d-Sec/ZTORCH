@@ -16,6 +16,18 @@ Anchors: [[llm-attacks]], [[adversarial-ml]]
 qmd_query "MCP server tool poisoning indirect prompt injection rug pull cross-tool shadowing excessive agency lethal trifecta" via wiki-search MCP — ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
+## Tooling
+
+Scanner-first once an MCP surface is on the board (a `.mcp.json` / `claude_desktop_config.json`
+manifest, an `/mcp` or `/sse` endpoint): `uvx mcp-scan@latest <config>` for description poisoning /
+rug pull / cross-origin shadowing, then `uvx snyk-agent-scan@latest <config|skill-dir>` (SNYK_TOKEN)
+for scored risks incl. SKILL.md skill poisoning - pages: [[mcp-scan]], [[agent-scan]]. Both scanners
+CONNECT to (and may execute) the configured servers; consent-prompt per stdio server. A scanner flag
+is a LEAD, never confirmation: read the FULL flagged description, then prove execution via the client
+per the Confirmation gate below. Any exfil claim needs an operator OOB callback ([[oob-callbacks]]);
+blind claims go to Deadends. Replay the poisoned/shadowed call through Burp ([[burp-mcp]]) per the
+Burp-first rule.
+
 ## Attack surface
 
 **APPROACH:** Enumerate every tool's FULL description/docstring + param schema + permissions, map the lethal trifecta (secret access + untrusted input + outbound channel) across tools, then test poisoning (hidden `<IMPORTANT>` instructions), cross-tool shadowing, indirect injection via tool output, and rug-pull.

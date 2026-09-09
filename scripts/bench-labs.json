@@ -1,0 +1,53 @@
+{
+  "_comment": "Starter expected-coverage manifest for scripts/bench.py: scenario id -> {name, source, expected_classes}. expected_classes use scripts/coverage-classes.json vocabulary (the same class names the Approach.md 4a board and the hunt routing table use; e.g. auth not auth-bypass, race-condition not race-conditions). This is a starter set of 10 PortSwigger Web Security Academy labs across distinct classes -- extend it by adding scenario ids; keep class names from coverage-classes.json so the board match works. Scored with: python3 scripts/bench.py --eng targets/<name>",
+  "ps-sqli-union-columns": {
+    "name": "SQL injection UNION attack, determining the number of columns returned by an applicable query",
+    "source": "https://portswigger.net/web-security/sql-injection/union-attacks/lab-determine-number-of-columns",
+    "expected_classes": ["sqli"]
+  },
+  "ps-xss-reflected-html": {
+    "name": "Reflected XSS into HTML context with nothing encoded",
+    "source": "https://portswigger.net/web-security/cross-site-scripting/reflected/lab-html-context-nothing-encoded",
+    "expected_classes": ["xss"]
+  },
+  "ps-ssrf-local": {
+    "name": "Basic SSRF against the local server",
+    "source": "https://portswigger.net/web-security/ssrf/lab-basic-ssrf-against-localhost",
+    "expected_classes": ["ssrf"]
+  },
+  "ps-idor": {
+    "name": "Insecure Direct Object References",
+    "source": "https://portswigger.net/web-security/access-control/lab-insecure-direct-object-references",
+    "expected_classes": ["idor"]
+  },
+  "ps-auth-username-enum": {
+    "name": "Username enumeration via different responses",
+    "source": "https://portswigger.net/web-security/authentication/password-based/lab-username-enumeration-via-different-responses",
+    "expected_classes": ["auth"]
+  },
+  "ps-session-stay-logged-in": {
+    "name": "Brute-forcing a stay-logged-in cookie",
+    "source": "https://portswigger.net/web-security/authentication/other-mechanisms/lab-brute-forcing-a-stay-logged-in-cookie",
+    "expected_classes": ["session"]
+  },
+  "ps-race-limit-overrun": {
+    "name": "Limit overrun race conditions",
+    "source": "https://portswigger.net/web-security/race-conditions/lab-race-conditions-limit-overrun",
+    "expected_classes": ["race-condition"]
+  },
+  "ps-deser-php-object-injection": {
+    "name": "Arbitrary object injection in PHP",
+    "source": "https://portswigger.net/web-security/deserialization/exploiting/lab-deserialization-arbitrary-object-injection-in-php",
+    "expected_classes": ["deserialization"]
+  },
+  "ps-upload-web-shell": {
+    "name": "Remote code execution via web shell upload",
+    "source": "https://portswigger.net/web-security/file-upload/lab-file-upload-remote-code-execution-via-web-shell-upload",
+    "expected_classes": ["file-upload"]
+  },
+  "ps-rce-command-injection": {
+    "name": "OS command injection, simple case",
+    "source": "https://portswigger.net/web-security/os-command-injection/lab-simple",
+    "expected_classes": ["rce"]
+  }
+}
