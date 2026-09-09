@@ -30,9 +30,12 @@ def _mk(tmp_path, last_move=None, ingest_files=0):
     return tmp_path
 
 
-def _run(vault, source):
+def _run(vault, source, sid=None):
+    payload = {"source": source}
+    if sid:
+        payload["session_id"] = sid
     env = dict(os.environ, ZTORCH_VAULT=str(vault))
-    return subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"source": source}),
+    return subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload),
                           capture_output=True, text=True, timeout=120, env=env)
 
 
@@ -64,3 +67,27 @@ def test_pending_ingest_surfaced(tmp_path):
 def test_no_ingest_line_when_clean(tmp_path):
     r = _run(_mk(tmp_path, ingest_files=0), "startup")
     assert "ingest pending" not in r.stdout
+
+
+def test_session_lineage_appended(tmp_path):
+    """Session lineage: each FRESH session appends one `## ... session <id8> start`
+    line to log.md -- the evidence timeline (which sessions touched the box)."""
+    v = _mk(tmp_path)
+    _run(v, "startup", sid="aa11bb22-cc33-4d5e-9f60-112233445566")
+    log = (v / "targets" / "engc" / "log.md").read_text(encoding="utf-8")
+    assert "session aa11bb22 start" in log
+
+
+def test_session_lineage_idempotent_same_sid(tmp_path):
+    v = _mk(tmp_path)
+    _run(v, "startup", sid="aa11bb22-cc33-4d5e-9f60-112233445566")
+    _run(v, "startup", sid="aa11bb22-cc33-4d5e-9f60-112233445566")   # resume re-fire
+    log = (v / "targets" / "engc" / "log.md").read_text(encoding="utf-8")
+    assert log.count("session aa11bb22 start") == 1
+
+
+def test_compact_refire_no_lineage(tmp_path):
+    v = _mk(tmp_path)
+    _run(v, "compact", sid="aa11bb22-cc33-4d5e-9f60-112233445566")
+    log = (v / "targets" / "engc" / "log.md")
+    assert not log.exists() or "session aa11bb22 start" not in log.read_text(encoding="utf-8")

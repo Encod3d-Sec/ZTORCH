@@ -20,6 +20,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -340,16 +341,36 @@ def main():
     # Post-compact SessionStart fires with stdin {"source": "compact"}: beyond the normal
     # state summary, re-inject the open board rows verbatim (see _compact_restore). The
     # isatty guard keeps manual/terminal runs non-blocking (no piped stdin to read).
+    payload = {}
     if not sys.stdin.isatty():
         try:
-            src = (json.loads(sys.stdin.read()) or {}).get("source", "")
+            payload = json.loads(sys.stdin.read()) or {}
         except Exception:
-            src = ""
-        if src == "compact":
+            payload = {}
+        if payload.get("source") == "compact":
             cr = _compact_restore()
             if cr:
                 print(cr)
                 print()
+
+    # Session lineage: the host passes session_id on every SessionStart fire; one line
+    # per FRESH session in log.md is the evidence timeline (which sessions touched this
+    # engagement, grep-able). Same-session re-fires (resume, source=compact) never
+    # duplicate; no active engagement or no id -> silent.
+    try:
+        sid = str(payload.get("session_id") or "")
+        if sid and payload.get("source") != "compact":
+            _d = _engagement.active_dir()
+            lp = os.path.join(_d, "log.md") if _d else None
+            if lp:
+                old = open(lp, encoding="utf-8", errors="ignore").read() if \
+                    os.path.isfile(lp) else ""
+                if sid[:8] not in old:
+                    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    with open(lp, "a", encoding="utf-8") as fh:
+                        fh.write("\n## %s - session %s start\n" % (ts, sid[:8]))
+    except Exception:
+        pass
 
     out = []
     created = _engagement.ensure_state_files()

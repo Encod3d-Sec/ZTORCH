@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import re
+import sys
 from collections import Counter
 from datetime import datetime, timedelta
 
@@ -86,6 +87,28 @@ def tokens_in_window(transcripts, start, end):
     return tot
 
 
+def bench_lines(d):
+    """Expected-coverage line for practice engagements: the engagement is NAMED after
+    its scenario id in scripts/bench-labs.json (that naming convention IS the link,
+    no extra state), so the close-out auto block carries the bench score for free.
+    [] when the engagement name matches no scenario -- client engagements never do."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import bench
+        manifest = json.loads(bench.DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+        name = os.path.basename(os.path.normpath(d))
+        spec = manifest.get(name)
+        if not isinstance(spec, dict):
+            return []
+        res = bench.score_engagement(d, {name: spec})
+        classes = res["scenarios"][0]["classes"] if res["scenarios"] else {}
+        det = ", ".join("%s=%d" % kv for kv in classes.items()) or "no expected classes"
+        return ["**Bench vs expected (%s):** coverage %.1f%% -- %s"
+                % (name, res["coverage_pct"], det)]
+    except Exception:
+        return []          # bench is an add-on; never break the metrics write
+
+
 def active_time(events):
     ts = sorted(t for t in (parse_ts(e.get("ts")) for e in events) if t)
     total = timedelta(0)
@@ -131,6 +154,7 @@ def collect(d, extra_transcript=None):
         "skill_calls": sum(skills.values()), "skills": skills,
         "hook_fires": sum(hooks.values()), "hooks": hooks,
         "drift_count": len(drifts), "drifts": drifts,
+        "bench": bench_lines(d),
         "transcripts": [t for t in transcripts if os.path.isfile(t)],
     }
 
@@ -163,6 +187,8 @@ def render(name, c):
          "| hook fires | %d |" % c["hook_fires"],
          "| drift signals | %d |" % c["drift_count"],
          ""]
+    if c.get("bench"):
+        L += c["bench"] + [""]
     if c["skills"]:
         L += ["**Skills:** " + ", ".join("%s x%d" % kv for kv in c["skills"].most_common()), ""]
     if c["hooks"]:
