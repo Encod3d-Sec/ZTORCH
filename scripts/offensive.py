@@ -1016,6 +1016,33 @@ def _eng_state(args, cmd):
     return eng, state
 
 
+def _ckpt(eng, msg):
+    """Shadow-git checkpoint of the engagement dir: one commit per driver
+    mutation (note/done/park) so a post-compaction / post-mistake restore point
+    always exists (the board, state, deadends at EVERY step - clone mining pass
+    8: compaction + a bad re-entry otherwise lose the pre-drift board). The
+    nested repo sits under gitignored targets/, so the vault repo never sees it
+    (client-data boundary holds: engagement data stays inside targets/<eng>/).
+    Fail-open silent; no-op when nothing changed."""
+    import subprocess
+    if "tests" in eng.parts:   # fixtures: never shadow-init repos inside the tracked tree
+        return
+    try:
+        def git(*a):
+            return subprocess.run(["git", "-C", str(eng), *a],
+                                  capture_output=True, text=True, timeout=15)
+        if not (eng / ".git").exists():
+            if git("init", "-q").returncode != 0:
+                return
+        git("add", "-A")
+        if git("diff", "--cached", "--quiet").returncode == 0:
+            return   # nothing changed since the last checkpoint
+        git("-c", "user.name=ztorch", "-c", "user.email=ztorch@local",
+            "commit", "-q", "-m", msg)
+    except Exception:
+        pass
+
+
 def cmd_note(args):
     """G1 release: set the row's arsenal cell (the consulted wiki-arsenal card
     slug) and write the board. Flips a fresh [ ] row to [~] (in-progress).
@@ -1038,6 +1065,7 @@ def cmd_note(args):
         (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
     writer(eng, rows)
     print("note: %s arsenal=%s (G1 released; row [~])" % (args.row, args.arsenal))
+    _ckpt(eng, "note %s" % args.row)
     return 0
 
 
@@ -1058,6 +1086,7 @@ def cmd_park(eng, state, rows, row, reason, writer=write_board):
     print("done: %s parked (status set for later revisit) -> decisions.md; "
           "loop advances with no operator prompt (dry_streak=%d)"
           % ((row.get("id") or "").strip(), state["dry_streak"]))
+    _ckpt(eng, "park %s" % (row.get("id") or "").strip())
     return 0
 
 
@@ -1170,6 +1199,7 @@ def cmd_done(args):
         (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
         print("done: %s dead [!] (dry_streak=%d) -> Deadends.md (loop advances)"
               % (args.row, state["dry_streak"]))
+        _ckpt(eng, "dead %s" % args.row)
         return 0
 
     # --poc: the evidence path, behind all three gates.
@@ -1229,6 +1259,7 @@ def cmd_done(args):
         added = seed_4b(eng, load_index(eng), state.get("type", "pentest"), state)
         print("  foothold recorded on %s (tmux %s%s); 4b: %d post-ex rows"
               % (asset, args.win, "" if matched else ", no state.md row", added))
+    _ckpt(eng, "done %s poc" % args.row)
     return 0
 
 

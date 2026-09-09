@@ -179,16 +179,24 @@ def _lint_routing_table(vault_root):
 
 
 def _lint_hunt_methods(vault_root, routing):
-    """Every hunt-skill dir referenced by the routing table must carry a
-    non-empty `## Wiki` section (the routing/method contract next/board rely
-    on)."""
+    """Every hunt-skill dir referenced by the routing table must EXIST (an unknown
+    name would silently drop its method block, so G2 re-serves `Skill(<bad>)`
+    forever - the harness then answers `Unknown skill` and works from memory)
+    and carry a non-empty `## Wiki` section (the routing/method contract
+    next/board rely on)."""
+    import difflib
+    hdir = Path(vault_root) / "skills" / "hunt"
+    installed = sorted(d.name for d in hdir.iterdir()
+                       if d.is_dir() and (d / "SKILL.md").exists()) if hdir.is_dir() else []
     for row in routing.values():
         skill = row.get("skill")
         if not skill:
             continue
-        skill_md = Path(vault_root) / "skills" / "hunt" / skill / "SKILL.md"
+        skill_md = hdir / skill / "SKILL.md"
         if not skill_md.exists():
-            continue
+            near = difflib.get_close_matches(skill, installed, n=1)
+            _die("routing table: unknown skill '%s'%s (installed: skills/hunt/*/SKILL.md)"
+                 % (skill, "; did you mean '%s'?" % near[0] if near else ""))
         if not _section(_read(skill_md), "wiki"):
             _die("%s: missing required '## Wiki' section" % _rel(skill_md, vault_root))
 

@@ -74,6 +74,13 @@ grep/head it instead of re-running the scan.
   When pushing a script then running it, do BOTH in one call (write races the run otherwise).
 - **Runs as root**, `ConnectTimeout=10` (fails fast). A `Permission denied` means
   `/root/creds.txt` is stale.
+- **A half-dead bridge fails in ~15s, not ~2 min.** `vm.sh` carries
+  `ServerAliveInterval=5 ServerAliveCountMax=3`, so a VM that goes down mid-session (suspend,
+  network flap) drops the connection after 3 missed keepalives instead of hanging each call to
+  the TCP timeout. The rsh drivers also self-abort: `vm-rsh.sh`/`win-rsh.sh` stop polling after
+  3 consecutive failed transport calls (window kept for recovery) rather than burning their
+  whole poll budget on a dead VM. Stale ControlPersist sockets can still fool one first call;
+  the next one dials fresh.
 - **DNS flakiness is the host-side VMware NAT proxy, not VM config.** In a degraded window
   EVERY resolver path dies (curl `000`, `ERR_NAME_NOT_RESOLVED`, dig timeouts to any server,
   `getent` hanging 30-40s) and flaps back to healthy within minutes. Nothing VM-side fixes it:

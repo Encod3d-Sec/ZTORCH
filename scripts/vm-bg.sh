@@ -8,7 +8,8 @@
 #   vm-bg.sh --read   <eng> <win>              cat the log
 #   vm-bg.sh --tail   <eng> <win> [n=40]       last n lines of the log
 #   vm-bg.sh --status <eng> <win> [idle=180]   'done exit=<c>' | running (Xs since last output) | hung?
-#   vm-bg.sh --wait   <eng> <win> [secs=120]   poll $LOG.done up to secs, then cat the log
+#   vm-bg.sh --wait   <eng> <win> [secs=120] [idle=180]  poll $LOG.done up to secs (abort early
+#                                                if the log went silent for idle), then cat the log
 #   vm-bg.sh --kill   <eng> <win>              C-c the window, kill it, drop log + marker
 #   vm-bg.sh --dry-run <eng> <win> '<cmd>'     print the plan, run nothing
 set -uo pipefail
@@ -40,8 +41,13 @@ else echo 'no log yet'; fi"
   exit 0
 fi
 if [ "$MODE" = wait ]; then
-  SECS="${3:-120}"
-  bash "$VM_SH" "t=0; until [ -f '$LOG.done' ] || [ \$t -ge $SECS ]; do sleep 5; t=\$((t+5)); done; \
+  SECS="${3:-120}"; IDLE="${4:-180}"
+  # idle-watchdog: a log that stopped growing surfaces as hung? instead of sleeping out the
+  # full budget (--status's hung condition, re-checked every poll; partial log still catted).
+  bash "$VM_SH" "t=0; until [ -f '$LOG.done' ] || [ \$t -ge $SECS ]; do \
+if [ -f '$LOG' ]; then age=\$(( \$(date +%s) - \$(stat -c %Y '$LOG') )); \
+if [ \$age -ge $IDLE ]; then echo \"hung? no output for \${age}s\"; break; fi; fi; \
+sleep 5; t=\$((t+5)); done; \
 [ -f '$LOG.done' ] && echo \"done \$(cat '$LOG.done')\"; \
 cat '$LOG' 2>/dev/null || echo '(no log: $LOG)'"
   exit 0

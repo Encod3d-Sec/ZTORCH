@@ -43,6 +43,7 @@ EXPECTED_HOOKS = [
     ("PreToolUse", "zg-nudge.py"),
     ("PreToolUse", "tmux-nudge.py"),
     ("PreToolUse", "burp-nudge.py"),
+    ("PreToolUse", "big-read.py"),
     ("PreCompact", "pre-compact.sh"),
     ("Stop", "close-out.py"),
 ]

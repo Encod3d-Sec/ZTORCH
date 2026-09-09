@@ -80,6 +80,41 @@ def board_phase(d):
     return where, open_n, dead_n
 
 
+def lane_lines(d, stale_min=45):
+    """Open (in-flight) lane lines from log.md, aged off the @HH:MM cell. A lane open
+    past stale_min was likely lost (compaction ate it or the subagent died) - surfaced
+    as resume-or-close instead of the driver silently re-serving its work forever."""
+    import importlib.util
+    from datetime import datetime
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "lane_validate", os.path.join(HERE, "lane_validate.py"))
+        lv = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lv)
+        text = open(os.path.join(d, "log.md"), encoding="utf-8", errors="ignore").read()
+    except Exception:
+        return []
+    now = datetime.now()
+    out = []
+    for name, tail in lv.open_lanes_from_text(text):
+        age = ""
+        m = re.search(r"@(\d{1,2}:\d{2})", tail)
+        if m:
+            try:
+                t = datetime.strptime(m.group(1), "%H:%M").replace(
+                    year=now.year, month=now.month, day=now.day)
+                mins = int((now - t).total_seconds() // 60)
+                if mins < 0:
+                    mins += 1440                     # opened before midnight
+                age = " (%dmin)" % mins
+                if mins >= stale_min:
+                    age += " STALE - resume via its handle or close the lane line"
+            except ValueError:
+                pass
+        out.append("  - lane %s %s%s" % (name, tail, age))
+    return out
+
+
 def render_coverage(base, assets, tested_by_asset):
     """Pure formatter -> the full asset x vuln-class coverage grid (x=tested . =untested),
     UNCAPPED (unlike next_move's top-5 per-asset shortlist), so the coverage skill sees every
@@ -120,7 +155,7 @@ def coverage_data(d, etype):
     return base, assets, tested_by_asset
 
 
-def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text):
+def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=()):
     """Pure formatter -> the dashboard string. All inputs are precomputed (testable)."""
     head = "=== %s (%s)%s ===" % (name, etype, "  STATUS: SOLVED" if solved else "")
     lines = [head]
@@ -134,6 +169,9 @@ def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_tex
     if cards:
         ev += "%d card(s), " % cards
     lines.append(ev + "%d recon card(s)" % recon)
+    if lanes:
+        lines.append("open lanes:")
+        lines += list(lanes)
     if deads:
         lines.append("recent deadends:")
         lines += ["  - " + x for x in deads]
@@ -171,7 +209,8 @@ def main():
         moves_text = r.stdout or ""
     except Exception:
         pass
-    print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text))
+    print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text,
+                 lane_lines(d)))
     return 0
 
 

@@ -37,6 +37,18 @@ def lanes_from_text(text):
     return out
 
 
+def open_lanes_from_text(text):
+    """[(name, tail)] for every still-OPEN lane line ('in flight', no result appended
+    yet). tail is the raw mid-line remainder (carries the `(<asset>)` + `@<HH:MM>`
+    cells when the delegate format includes them). status.py ages these."""
+    out = []
+    for m in _LANE_RE.finditer(text):
+        name, tail, _obs, _cap, rest = m.groups()
+        if "in flight" in tail and not rest.strip():
+            out.append((name, tail.strip()))
+    return out
+
+
 def _search(dirpath, needle):
     """True when needle appears in any file under dirpath (recursive, fail-open False)."""
     if not os.path.isdir(dirpath):

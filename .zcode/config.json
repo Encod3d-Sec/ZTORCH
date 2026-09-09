@@ -77,6 +77,16 @@
               "timeout": 10
             }
           ]
+        },
+        {
+          "matcher": "Read",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/big-read.py\"",
+              "timeout": 10
+            }
+          ]
         }
       ],
       "PostToolUse": [

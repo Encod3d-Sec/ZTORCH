@@ -154,6 +154,10 @@ if not has("PreToolUse", "burp-nudge.py"):
     add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/burp-nudge.py", "timeout": 10}]})
     print("added PreToolUse burp-nudge")
+if not has("PreToolUse", "big-read.py"):
+    add("PreToolUse", {"matcher": "Read", "hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/big-read.py", "timeout": 10}]})
+    print("added PreToolUse big-read")
 if not has("SessionStart", "session-start.sh"):
     add("SessionStart", {"hooks": [{"type": "command",
         "command": "bash ~/.claude/vault-hooks/session-start.sh"}]})

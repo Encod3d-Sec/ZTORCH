@@ -97,6 +97,41 @@ def _out_bytes(data):
     return None
 
 
+def _context_low(transcript, d):
+    """Percent remaining when the last transcript usage row exceeds 75% of the model
+    window, else None (clone formula: input + cache_read + cache_creation + output,
+    walked backwards off the transcript tail). The transcript is the store - nothing
+    is persisted. Deduped to one advisory per 15 min (.ctx-low-stamp, nudge-hook
+    pattern); post-compaction the next usage row is small again, so it self-clears."""
+    try:
+        import time as _t
+        stamp = os.path.join(d, ".ctx-low-stamp")
+        if os.path.exists(stamp) and _t.time() - os.path.getmtime(stamp) < 900:
+            return None
+        window = int(os.environ.get("ZT_CONTEXT_WINDOW", "200000"))
+        # ponytail: one env window knob; per-model detection if multi-model seats matter
+        with open(transcript, "rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - 65536))
+            tail = fh.read().decode("utf-8", "ignore")
+        for line in reversed(tail.splitlines()):
+            try:
+                u = (json.loads(line).get("message") or {}).get("usage") or {}
+            except Exception:
+                continue
+            if not u:
+                continue
+            used = (u.get("input_tokens", 0) + (u.get("cache_read_input_tokens") or 0)
+                    + (u.get("cache_creation_input_tokens") or 0)
+                    + u.get("output_tokens", 0))
+            if used > window * 0.75:
+                return max(0, round(100 * (1 - used / window)))
+            return None
+    except Exception:
+        return None
+    return None
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -133,6 +168,22 @@ def main():
                          out_bytes=_out_bytes(data))
     _telemetry.stamp_once("started_at", _telemetry.now_iso(), d=d)
     _telemetry.add_transcript(data.get("transcript_path"), d=d)
+    # context-remainder advisory (the one thing telemetry is positioned to see: it holds
+    # the transcript path every call). Silent on the healthy ~75% of the window.
+    low = _context_low(data.get("transcript_path"), d)
+    if low is not None:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "additionalContext":
+                "Context low (~%d%% remaining) - prefer narrow reads (offset/limit), let "
+                "output_econ stub anything >30KB, and finish the served move before the "
+                "next compaction (last_move survives it)." % low,
+        }}))
+        try:
+            open(os.path.join(d, ".ctx-low-stamp"), "w").close()
+            _telemetry.drift("context-low", "~%d%% context remaining" % low, d=d)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

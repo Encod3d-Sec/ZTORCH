@@ -164,7 +164,10 @@ def harness_maintenance():
         if stale:
             tags.append("stale-hook: " + ",".join(stale) + " (install-hooks.sh)")
         if _ch.missing_skills():
-            tags.append("skill-drift (install-skills.sh)")
+            # name them: a vault-valid skill can still be Unknown on THIS seat
+            # (symlink not installed); the name is what routes the fix
+            tags.append("skill-drift: " + ",".join(_ch.missing_skills())
+                        + " (install-skills.sh)")
     except Exception:
         pass
     # T4.1 driver-staleness: warn when the framework repo is meaningfully behind its upstream, so a

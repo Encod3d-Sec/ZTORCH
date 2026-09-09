@@ -46,10 +46,21 @@ CMD_ESC="$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/`/\\`/g; s/\$/\\$/g; s/"/\\"
 bash "$VM_SH" "tmux clear-history -t $SESSION:$WIN 2>/dev/null; tmux send-keys -t $SESSION:$WIN \"$CMD_ESC\" Enter" >/dev/null 2>&1
 
 # Poll until the shell prints its next prompt AND the pane is stable (command finished).
-prev=""; pane=""; stable=0; i=0
+# Circuit-breaker (vm-rsh.sh pattern): 3 CONSECUTIVE transport failures abort the poll instead
+# of burning the whole TO budget; a success resets. Window kept for recovery.
+prev=""; pane=""; stable=0; i=0; fails=0
 while [ "$i" -lt "$TO" ]; do
   sleep 2; i=$((i+2))
-  pane="$(capture)"
+  pane="$(capture)"; RC=$?
+  if [ "$RC" -ne 0 ]; then
+    fails=$((fails+1))
+    if [ "$fails" -ge 3 ]; then
+      echo "win-rsh: bridge failed ${fails}x during poll (VM down?); aborting - window $SESSION:$WIN kept for recovery" >&2
+      exit 1
+    fi
+  else
+    fails=0
+  fi
   if printf '%s' "$pane" | grep -qE "$PROMPT_RE"; then
     if [ "$pane" = "$prev" ]; then stable=1; break; fi
   fi

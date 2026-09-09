@@ -144,6 +144,11 @@ def test_tool_without_usage_exits_nonzero(tmp_path, capsys):
         "|---|---|---|---|---|",
         "| ssrf | ssrf | hunt-ssrf | ssrf | payloads/ssrf |",
     ]))
+    # the routing-referenced skill must be installed (the unknown-skill lint fires
+    # before the tool-index lint, so a bare fixture never reaches the tool check)
+    ssrf_dir = vault / "skills" / "hunt" / "hunt-ssrf"
+    ssrf_dir.mkdir(parents=True)
+    (ssrf_dir / "SKILL.md").write_text("---\nname: hunt-ssrf\n---\n\n## Wiki\n\n[[ssrf]]\n")
     tdir = vault / "wiki" / "tools"
     tdir.mkdir(parents=True)
     # no '## Core usage' fence

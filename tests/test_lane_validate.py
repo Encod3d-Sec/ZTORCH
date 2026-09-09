@@ -44,3 +44,39 @@ def test_missing_capture_dir_is_not_verified(tmp_path, capsys):
     log.write_text(LINE % ("c", "x", "c", " -> claim"), encoding="utf-8")
     lv.main([str(tmp_path)])                       # poc/c never created
     assert "lane c: NOT VERIFIED" in capsys.readouterr().out
+
+
+# --- open_lanes_from_text (status.py's open-lane printer) -------------------------------
+
+NEWLINE = ("- lane %s (%s) in flight @21:40: SUCCESS = %s | tmux win w1 | capture poc/%s%s\n")
+
+
+def test_open_lane_listed_with_tail_cells():
+    text = NEWLINE % ("d", "10.10.10.9", "uid=33", "d", "")
+    opens = lv.open_lanes_from_text(text)
+    assert len(opens) == 1 and opens[0][0] == "d" and "10.10.10.9" in opens[0][1]
+    assert "@21:40" in opens[0][1]
+
+
+def test_closed_lane_not_listed_open():
+    text = (NEWLINE % ("e", "10.10.10.9", "uid=33", "e", " -> VERIFIED: shell")
+            + NEWLINE % ("f", "10.10.10.9", "uid=33", "f", ""))
+    assert [n for n, _ in lv.open_lanes_from_text(text)] == ["f"]
+
+
+def test_status_lane_lines_ages_and_flags_stale(tmp_path):
+    import importlib.util
+    from datetime import datetime, timedelta
+    _spec2 = importlib.util.spec_from_file_location("status", ROOT / "scripts" / "status.py")
+    st = importlib.util.module_from_spec(_spec2)
+    _spec2.loader.exec_module(st)
+    stale = (datetime.now() - timedelta(minutes=90)).strftime("%H:%M")
+    fresh = (datetime.now() - timedelta(minutes=2)).strftime("%H:%M")
+    old_ln = (NEWLINE % ("old", "10.10.10.9", "uid=33", "old", "")).replace("@21:40", "@" + stale)
+    new_ln = (NEWLINE % ("new", "10.10.10.9", "uid=33", "new", "")).replace("@21:40", "@" + fresh)
+    (tmp_path / "log.md").write_text(old_ln + new_ln, encoding="utf-8")
+    lines = st.lane_lines(str(tmp_path))
+    joined = "\n".join(lines)
+    assert len(lines) == 2
+    assert "STALE" in joined.split("new")[0]        # the 90min-old lane is flagged
+    assert "lane new" in joined and "STALE" not in joined.split("lane new")[1]

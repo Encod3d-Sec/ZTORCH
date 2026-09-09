@@ -52,10 +52,22 @@ SEND="echo $START; echo $B64 | base64 -d | bash 2>&1; echo $END"
 # send the wrapped command into the shell tab
 bash "$VM_SH" "tmux send-keys -t $SESSION:$WIN '$SEND' Enter" >/dev/null 2>&1
 
-# poll the pane until the end marker shows up (or timeout)
-PANE=""
+# poll the pane until the end marker shows up (or timeout). Circuit-breaker: 3 CONSECUTIVE
+# transport failures (vm.sh nonzero - VM down/half-dead bridge) abort the poll instead of
+# burning the whole TO budget on blind retries; a successful poll resets the count. The
+# window is kept so a recovered bridge resumes where it left off.
+PANE=""; FAILS=0
 for _ in $(seq 1 "$TO"); do
-  PANE="$(bash "$VM_SH" "tmux capture-pane -pS -600 -t $SESSION:$WIN" 2>/dev/null)"
+  PANE="$(bash "$VM_SH" "tmux capture-pane -pS -600 -t $SESSION:$WIN" 2>/dev/null)"; RC=$?
+  if [ "$RC" -ne 0 ]; then
+    FAILS=$((FAILS+1))
+    if [ "$FAILS" -ge 3 ]; then
+      echo "vm-rsh: bridge failed ${FAILS}x during poll (VM down?); aborting - window $SESSION:$WIN kept for recovery" >&2
+      exit 1
+    fi
+  else
+    FAILS=0
+  fi
   # break only on the EXECUTED end marker (alone on its line); an echo-on PTY also shows the
   # marker embedded in the echoed command line, which must not end the poll before output lands.
   printf '%s\n' "$PANE" | grep -qE "^ *$END *$" && break
