@@ -6,12 +6,12 @@
 set -uo pipefail
 CMD="${1:?need a command}"
 KEY="${VM_KEY:-/root/.ssh/ztorch_vm}"
+ECON="$(dirname "$(readlink -f "$0")")/output_econ.py"
 HOST="$(awk -v h=IP '$0 ~ "^# *"h" *$"{f=1;next} f&&NF{print;exit}' /root/creds.txt 2>/dev/null)"
 if [ -f "$KEY" ] && [ -n "$HOST" ] && \
    ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=5 -o LogLevel=ERROR \
        -o StrictHostKeyChecking=accept-new "root@$HOST" true 2>/dev/null; then
   B64="$(printf '%s' "$CMD" | base64 -w0)"
-  ECON="$(dirname "$(readlink -f "$0")")/output_econ.py"
   if [ -f "$ECON" ] && [ "${OUTPUT_ECON:-1}" != "0" ] && command -v python3 >/dev/null; then
     ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR \
       -o StrictHostKeyChecking=accept-new "root@$HOST" \
@@ -21,5 +21,10 @@ if [ -f "$KEY" ] && [ -n "$HOST" ] && \
   exec ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR \
     -o StrictHostKeyChecking=accept-new "root@$HOST" \
     "bash -c \"\$(printf %s '$B64' | base64 -d)\""
+fi
+# fallback password path gets the same output economy as the key path above
+if [ -f "$ECON" ] && [ "${OUTPUT_ECON:-1}" != "0" ] && command -v python3 >/dev/null; then
+  bash "${VM_SH:-/root/vm.sh}" "$CMD" | python3 "$ECON" "$CMD"
+  exit $?
 fi
 exec bash "${VM_SH:-/root/vm.sh}" "$CMD"
