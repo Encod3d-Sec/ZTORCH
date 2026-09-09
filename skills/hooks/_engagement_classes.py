@@ -16,6 +16,7 @@ from _engagement import VAULT, _parse_table, entity, _frontmatter
 # as TESTED when they appear in a finding title/slug or a Deadends.md line. Keep
 # additions specific -- a false positive silences a coverage-gap reminder early.
 CLASS_ALIASES = {
+    "lfi": ["local file inclusion", "path traversal", "directory traversal", "lfi"],
     "sqli": ["sql injection", "sql-injection", "sqlmap", "union select", "blind sql"],
     "xss": ["cross-site scripting", "cross site scripting", "stored xss", "reflected xss", "dom xss"],
     "ssrf": ["server-side request forgery", "server side request forgery"],

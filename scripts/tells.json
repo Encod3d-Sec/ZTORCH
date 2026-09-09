@@ -14,7 +14,7 @@
       "note": "JS eval sink (client XSS); eval( in SERVER code = RCE, re-route"
     },
     {
-      "re": "child_process\\.(exec|spawn)|shell_exec|\\bsystem\\s*\\(|\\bpopen\\s*\\(|shell\\s*=\\s*True|Runtime\\.getRuntime|ProcessBuilder",
+      "re": "child_process\\.(exec|spawn)|shell_exec|\\bsystem\\s*\\(|\\bpopen\\s*\\(|shell\\s*=\\s*True|Runtime\\.getRuntime\\(\\)\\s*\\.exec|new\\s+ProcessBuilder",
       "class": "rce",
       "skill": "hunt-rce",
       "note": "command-exec sink; trace the argument back to input"
@@ -32,7 +32,7 @@
       "note": "deser sink; identify the gadget library + who controls the blob"
     },
     {
-      "re": "curl_exec|URLConnection|requests\\.(get|post)\\(\\s*[a-z_]*(url|target|host)|fetch\\(\\s*[a-z_]*(url|target)",
+      "re": "curl_exec|requests\\.(get|post)\\(\\s*(?:url\\s*=\\s*)?(?:req(?:uest)?|args|form|data|params|body|searchParams|query|event)[\\w.'\"\\\\\\]\\[()]*(?:url|target|host|dest)\\b|fetch\\(\\s*(?:req(?:uest)?|params|query|searchParams|event)[\\w.'\"\\\\\\]\\[()]*(?:url|target|host|dest)\\b",
       "class": "ssrf",
       "skill": "hunt-ssrf",
       "note": "server-side fetch; check whether the URL is user-influenced"
@@ -56,13 +56,13 @@
       "note": "redirect/file send on request input; traversal or open-redirect"
     },
     {
-      "re": "AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.",
+      "re": "AKIA(?![0-9A-Z]*EXAMPLE)[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "hard key/JWT material; capture verbatim, test scope of use"
     },
     {
-      "re": "(api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*['\"][^'\"\\s]{8,}",
+      "re": "(api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*['\"](?![^'\"]*(?i:your|insert|replace|enter|change_?me|example|sample|dummy|redacted|placeholder|todo|\\.\\.\\.|<))(?=[^'\"]*[0-9])[^'\"\\s]{8,}",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "hardcoded credential-ish assignment; verify it is not a placeholder"
@@ -368,7 +368,7 @@
       "note": "postMessage straight into a redirect; javascript: URI bypass (dom-attacks)"
     },
     {
-      "re": "aws_access_key_id\\s*=|kind:\\s*Secret",
+      "re": "aws_access_key_id\\s*[:=]\\s*['\"]?(?![A-Z0-9]*EXAMPLE)(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ABIA|ACCA)[0-9A-Z]{16}\\b|(?![A-Z0-9]*EXAMPLE)\\b(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ABIA|ACCA)[0-9A-Z]{16}\\b|^\\s+[A-Za-z0-9_.-]+:\\s*[A-Za-z0-9+/]{24,}={0,2}\\s*$",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "aws cli config or k8s Secret manifest; read the paired value"

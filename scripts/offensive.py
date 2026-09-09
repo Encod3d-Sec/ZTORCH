@@ -493,7 +493,8 @@ def seed_4b(eng, index, etype, st):
 # Repeater push so the operator watches the exploit live (CLAUDE.md Burp-first).
 EXPLOIT_CLASSES = {
     "rce", "sqli", "ssrf", "ssti", "xxe", "idor", "bola", "injection", "xss",
-    "deserialization", "auth", "upload", "file-upload", "api", "cache",
+    "deserialization", "auth", "upload", "file-upload", "lfi",
+    "api", "cache",
     "federation", "oauth-saml", "request-smuggling", "smuggling", "graphql",
     "business-logic", "bizlogic", "csrf", "cors", "jwt", "open-redirect",
     "host-header", "web-cache", "prototype-pollution", "session",
