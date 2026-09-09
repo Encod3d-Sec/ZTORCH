@@ -204,3 +204,90 @@ def test_next_parallel_hint_on_two_open_assets(tmp_path, capsys):
                                      arsenal="wiki/recon", skill="", tool="nmap")])
     _, out1 = _next_out(capsys, vault, eng)
     assert "Skill(brain)" not in out1
+
+
+# ---- serve accounting + G4 serve-path + walled board (driver audit, 2026-09-10) ----
+
+def test_pass_increments_and_reServe_warns(tmp_path, capsys):
+    """`pass` = serves (drift-guard arms at >= 5; it read 0 forever) and the 3rd
+    unchanged serve of one row prints the RE-SERVE redirection."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     arsenal="x", skill="", tool="nuclei")])
+    st_p = eng / ".offensive.json"
+    for i in (1, 2, 3):
+        rc, out = _next_out(capsys, vault, eng)
+        st = json.loads(st_p.read_text())
+        assert st["pass"] == i
+        assert st["serve_count"]["4a:1"] == i
+    assert i == 3 and "RE-SERVE 3x" in out and "Skill(redteamlead)" in out
+
+
+def test_park_feeds_wallbreak_streak(tmp_path, capsys):
+    """--park is a no-find outcome: it must bump dry_streak like --dead, else a
+    park-everything loop never triggers redirection."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     skill="hunt-ssrf", tool="nuclei")])
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng),
+                         "done", "4a:1", "--park", "needs judgment"])
+    assert rc == 0
+    st = json.loads((eng / ".offensive.json").read_text())
+    assert st["dry_streak"] == 1
+
+
+def test_deadend_pair_suppresses_hand_revived_row(tmp_path, capsys):
+    """G4 on the serve path: a [!] -> [ ] hand-edit must not resurrect a dead
+    (asset, class); the suppression is named, not silent."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     status="[ ]", skill="", tool="nuclei")])
+    (eng / "Deadends.md").write_text(
+        "| asset | class | why | status | date | source |\n|---|---|---|---|---|---|\n"
+        "| web1 | ssrf | burned | exhausted | 2026-09-10 | |\n", encoding="utf-8")
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0
+    assert "G4: 1 open row(s) match a Deadends.md pair" in out
+    assert "4a:1" in out
+    assert "Skill(wiki-arsenal)" not in out   # suppressed row is not served
+
+
+def test_walled_board_gets_redteamlead_not_closeout(tmp_path, capsys):
+    """All parked/dead + zero finds must NOT print the closeout chain."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     status="[?]", skill="", tool="nuclei")])
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0
+    assert "NO closed rows" in out and "redteamlead" in out
+    assert "closeout is for a SOLVED board" in out
+    assert "run the closeout chain" not in out
+
+
+def test_note_restamps_row_opened_at(tmp_path, capsys):
+    """A hand-revived row keeps its old stamp; the [ ] -> [~] flip re-stamps so a
+    stale weeks-old Skill(x) fire cannot satisfy G2 for the reopened vector."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     skill="hunt-ssrf", tool="nuclei")])
+    st_p = eng / ".offensive.json"
+    st = json.loads(st_p.read_text())
+    st["row_opened_at"] = {"web1|ssrf": "2020-01-01T00:00:00+00:00"}
+    st_p.write_text(json.dumps(st))
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng),
+                         "note", "4a:1", "--arsenal", "s"])
+    assert rc == 0
+    st = json.loads(st_p.read_text())
+    assert st["row_opened_at"]["web1|ssrf"] > "2020-01-01"
+
+
+def test_read_board_ignores_table_above_4a(tmp_path):
+    """An agent-added table higher in Approach.md must not become the board."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
+                                     status="[ ]", skill="", tool="nuclei")])
+    p = eng / "Approach.md"
+    decoy = "| id | note |\n|---|---|\n| 99 | decoy above the section |\n\n"
+    p.write_text("# Approach\n\n" + decoy + p.read_text(), encoding="utf-8")
+    rows = offensive.read_board(eng)
+    assert len(rows) == 1 and rows[0].get("id") == "4a:1"

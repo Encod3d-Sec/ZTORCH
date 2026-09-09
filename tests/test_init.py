@@ -28,7 +28,8 @@ def test_init_scaffolds_files_and_state(tmp_path):
     assert state["pass"] == 0
     assert state["asset_cursor"] is None
     assert state["dry_streak"] == 0
-    assert state["cmd_ledger"] == {}
-    assert state["req_count"] == 0
+    # cmd_ledger/req_count were init-only dead fields (never read/written anywhere)
+    # - removed 2026-09-10; `pass` now increments per serve instead of staying 0.
+    assert "cmd_ledger" not in state and "req_count" not in state
     assert state["foothold"] is False
     assert "started_at" in state and state["started_at"]

@@ -158,3 +158,32 @@ def test_second_identical_run_warns_of_imminent_block(tmp_path):
     r = _run(v)
     out = _decoded(r)["hookSpecificOutput"]
     assert "one more identical run is BLOCKED" in out.get("additionalContext", "")
+
+
+# ---- ring laundering: same-row re-serve does not clear the retry ring (driver audit) ----
+
+DRIVER_CMD = "python3 scripts/offensive.py --eng engd next"
+
+def _mk_ring(tmp_path, retry_counts, driver_row, last_row):
+    t = _mk(tmp_path, streak=0)
+    sp = t / "targets" / "engd" / ".offensive.json"
+    st = json.loads(sp.read_text())
+    st.update({"retry_counts": retry_counts, "_driver_row": driver_row,
+               "last_move": {"row": last_row}})
+    sp.write_text(json.dumps(st))
+    return t
+
+def test_same_row_reserve_keeps_ring(tmp_path):
+    """tool -> next(same row) -> tool must still accumulate to the 3x deny."""
+    v = _mk_ring(tmp_path, {"abc123": 2}, "4a:1", "4a:1")
+    r = _run(v, cmd=DRIVER_CMD)
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert st["off_board_streak"] == 0            # driver contact still resets streak
+    assert st["retry_counts"] == {"abc123": 2}    # ring survives a same-row re-serve
+
+def test_new_row_serve_clears_ring(tmp_path):
+    v = _mk_ring(tmp_path, {"abc123": 2}, "4a:1", "4a:2")
+    r = _run(v, cmd=DRIVER_CMD)
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert st["retry_counts"] == {}               # board advanced = genuine re-plan
+    assert st["_driver_row"] == "4a:2"

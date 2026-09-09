@@ -85,7 +85,9 @@ def _enforcing():
 _HEAVY_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, HEAVY_SCANNERS), key=len, reverse=True)) + r")\b")
 
 _BIN_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, NET_BINS), key=len, reverse=True)) + r")\b")
-_DRIVER_RE = re.compile(r"offensive\.py\s+(?:next|board|done|note|init|foothold)\b")
+_DRIVER_RE = re.compile(
+    r"offensive\.py\s+(?:-{1,2}[\w-]+(?:\s+[^\s-][^\s]*)?\s+)*"
+    r"(?:next|board|done|note|init|foothold)\b")
 # A HAND-WRITTEN exploit run as a script/interpreter, or an interactive reverse-shell driver:
 # exploit-shaped even though it touches no NET_BIN (the exact gap the post-mortem free-handed
 # through - `bash /root/vm.sh 'python3 exp.py'`). Deliberately does NOT match the `bash /root/vm.sh`
@@ -284,11 +286,21 @@ def main():
 
     # A driver call resets the streak (the agent came back to the board). Command-position
     # only (_driver_called): an echo/grep string mentioning the driver is not contact.
+    # The retry RING is only cleared when the driver moved the board (a different row
+    # served than last contact): `tool -> next(same row) -> tool` launders the ring on
+    # every serve cycle, so an identical grind never accumulates to the 3x deny
+    # (driver audit, 2026-09-10).
     if _driver_called(cmd):
-        if st.get("off_board_streak") or st.get("retry_counts"):
+        new_row = (st.get("last_move") or {}).get("row")
+        same_row = new_row is not None and new_row == st.get("_driver_row")
+        changed = bool(st.get("off_board_streak")) or bool(st.get("retry_counts")) \
+            or (st.get("_driver_row") or "") != (new_row or "")
+        if changed:
             st["off_board_streak"] = 0
-            st["retry_counts"] = {}            # driver contact = a re-plan; identical re-runs
-                                               # after it are new attempts, not the same loop
+            if not same_row:
+                st["retry_counts"] = {}            # board advanced = a re-plan; identical
+                                                   # re-runs after it are new attempts
+            st["_driver_row"] = new_row
             try:
                 json.dump(st, open(sp, "w", encoding="utf-8"), indent=1)
             except Exception:

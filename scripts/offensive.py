@@ -148,8 +148,16 @@ def _deadend_pairs(eng):
 
 
 def read_board(eng):
-    """List of 4a row dicts (lowercased keys) from Approach.md. [] if none."""
-    return _parse_table(Path(eng) / "Approach.md")
+    """List of 4a row dicts (lowercased keys) from Approach.md's `### 4a` section.
+    Slicing from the heading (like read_board_4b) instead of taking the FIRST table
+    keeps an agent-added table higher in the file from silently becoming the board
+    (blank status/class cells -> empty cursor -> permanent 'board exhausted')."""
+    p = Path(eng) / "Approach.md"
+    if not p.is_file():
+        return []
+    text = p.read_text(encoding="utf-8", errors="ignore")
+    idx = text.find("### 4a")
+    return _parse_table_text(text[idx:]) if idx >= 0 else []
 
 
 def _fmt_row(r):
@@ -698,17 +706,48 @@ def cmd_next(args):
     rows = read_board(eng)
     if state.get("foothold"):
         rows = rows + read_board_4b(eng)
+    # G4 on the SERVE path too: a hand-edited status cell ([!] -> [ ]) resurrects a
+    # dead (asset, class) pair the derivation path would suppress. Drop any open
+    # row whose pair sits in Deadends.md, naming it, so the edit is visible instead
+    # of silently re-serving a vector that was already exhausted.
+    dead = _deadend_pairs(eng)
+    if dead:
+        _low = lambda r: ((r.get("asset") or "").strip().lower(),
+                          (r.get("vuln class") or "").strip().lower())
+        zombie = [r for r in rows if _status_of(r) in ("[ ]", "[~]") and _low(r) in dead]
+        if zombie:
+            print("G4: %d open row(s) match a Deadends.md pair (status cell hand-edited "
+                  "back?) - suppressed: %s" % (len(zombie),
+                  ", ".join((r.get("id") or "?") for r in zombie)))
+        rows = [r for r in rows if _low(r) not in dead]
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
-        # G7: terminal state, never a question.
-        print("board exhausted: no open rows. run the closeout chain.")
+        # G7: terminal state, never a question. Differentiate a SOLVED board
+        # (closeout is right) from a WALLED one (all parked/dead, zero finds) --
+        # the closeout chain on an unsolved board is the wrong instruction.
+        closed = sum(1 for r in rows if _status_of(r) == "[x]")
+        stuck = sum(1 for r in rows if _status_of(r) in ("[?]", "[!]"))
+        if closed == 0 and stuck:
+            print("board exhausted with NO closed rows: %d parked/dead, 0 finds. Run "
+                  "Skill(redteamlead) for a ranked re-plan or `coverage` for untested "
+                  "classes; closeout is for a SOLVED board." % stuck)
+        else:
+            print("board exhausted: no open rows. run the closeout chain.")
         return 0
 
     rid = (row.get("id") or "").strip()
     cls = (row.get("vuln class") or "").strip()
     skill = (row.get("skill") or "").strip()
     state["asset_cursor"] = asset
+    # Serve accounting (driver audit, 2026-09-10). `pass` = serves this engagement:
+    # drift-guard arms its off-board enforcement at pass >= 5, and the banner had
+    # read 0 forever because nothing incremented it. serve_count per row catches the
+    # sticky-[~] loop drift-guard's ring cannot see -- a `next` between identical
+    # tool fires launders the ring, but the driver knows the same row was re-served.
+    state["pass"] = state.get("pass", 0) + 1
+    sc = state.setdefault("serve_count", {})
+    sc[rid] = sc.get(rid, 0) + 1
     # Compact-boundary discipline (pass 4): the printed plan used to live only in
     # context. Persist the served move so pre-compact steering has a durable source
     # and engagement-init's source=="compact" restore re-injects it verbatim.
@@ -721,6 +760,11 @@ def cmd_next(args):
     lvl, _lvl_note = autonomy_of(eng)
     print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s"
           % (state.get("pass", 0), asset, rid, cls, lvl))
+    if sc[rid] >= 3:
+        print("RE-SERVE %dx: row %s has now been served %d times with no disposition - "
+              "the tool is not landing. Run Skill(redteamlead) for a ranked re-plan, "
+              "close the row (`done %s --dead '<why>'` or `--park`), or change one "
+              "variable in the invocation." % (sc[rid], rid, sc[rid], rid))
 
     # Autonomy envelope (advisory, never a gate): an exploit-class row served
     # under an L0/L1 scope -> say so in one line; the operator/agent decides.
@@ -855,6 +899,12 @@ def cmd_note(args):
     row["arsenal"] = args.arsenal
     if _status_of(row) == "[ ]":
         row["status"] = "[~]"
+        # Re-stamp the row's open time: a hand-revived ([!] -> [ ]) row keeps its
+        # original stamp, so a weeks-old Skill(x) fire would satisfy G2 for the
+        # reopened vector. The [ ] -> [~] flip is when work on this row really
+        # starts (driver audit, 2026-09-10).
+        _stamp_row_opened(state, row.get("asset"), row.get("vuln class"))
+        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
     writer(eng, rows)
     print("note: %s arsenal=%s (G1 released; row [~])" % (args.row, args.arsenal))
     return 0
@@ -869,9 +919,14 @@ def cmd_park(eng, state, rows, row, reason, writer=write_board):
     dec = eng / "decisions.md"
     _append_line(dec, "| %s | %s | parked | %s |"
                  % ((row.get("id") or "").strip(), reason, _today()))
+    # A park is a no-find outcome: feed the WALL-BREAK streak exactly like --dead
+    # does, else a park-everything loop empties the board without ever triggering
+    # the redteamlead redirection (driver audit, 2026-09-10).
+    state["dry_streak"] = state.get("dry_streak", 0) + 1
+    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
     print("done: %s parked (status set for later revisit) -> decisions.md; "
-          "loop advances with no operator prompt"
-          % (row.get("id") or "").strip())
+          "loop advances with no operator prompt (dry_streak=%d)"
+          % ((row.get("id") or "").strip(), state["dry_streak"]))
     return 0
 
 
@@ -1194,8 +1249,6 @@ def cmd_init(args):
         "pass": 0,
         "asset_cursor": None,
         "dry_streak": 0,
-        "cmd_ledger": {},
-        "req_count": 0,
         "foothold": False,
         "started_at": datetime.now(timezone.utc).isoformat(),
     }

@@ -57,6 +57,12 @@ Do not add instrumentation to diagnose the tooling. Send a single cheap command 
 Only re-run the original command if it was read-only. Never blindly repeat a command that creates,
 deletes, writes, or changes state - probe first, then decide.
 
+**A `[output economy]` stub is NOT truncation-in-transit.** The vm-ssh.sh/win-vm.sh drivers
+persist any over-30KB result to `targets/<eng>/ingest/<tool>-<epoch>.txt` and return a
+preview stub naming that path; the full output already arrived safely. Do NOT re-run the
+command to "get the whole thing" - grep/head the saved file instead (re-running a scan is
+the exact doom-loop the drift-guard retry-ring denies).
+
 ## Killing background procs over the bridge: never `pkill -f <pattern>` that matches your own command
 
 `bash /root/vm.sh '<cmd>'` runs `<cmd>` on the VM, and the bridge's own process carries the full
