@@ -82,3 +82,7 @@ Editorial rule (compaction): an invoked SKILL.md re-attaches after a compact HEA
 at ~5k tokens (with a "read the path for full text" marker). Load-bearing rules -- gates,
 guardrails, the output contract -- must live in the FIRST 5k tokens of the file body;
 put worked examples and background after.
+
+Editorial rule (prompt cache): the skill list is part of the cached prefix; editing a live
+skill's description or AGENTS.md mid-session invalidates a ~20-70k-token cache write.
+Batch those edits between sessions.

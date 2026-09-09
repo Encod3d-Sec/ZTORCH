@@ -65,6 +65,19 @@ Big-output discipline (the protocol our own MCP-adjacent scripts must follow too
   (`scripts/capture.sh`), never pasted into context; `zg --limit N` keeps result pages
   bounded.
 
+Client retry ladder (what the host does to OUR MCP servers when they misbehave):
+- Retryable: 408/409/429/529/5xx + connection errors; backoff 500ms doubling to a 32s cap
+  with 0-25% jitter, ~10 attempts total; a server-sent `Retry-After` overrides the backoff
+  schedule; a context-overflow 400 is retried once with a recomputed max_tokens.
+- Server-side implication for zg/qmd/Burp bridges: on overload return 429 WITH a
+  `Retry-After` (the client honors it instead of hammering), keep tool calls idempotent
+  (a retry re-sends the same arguments), and prefer one terminal error over repeated
+  flappy 5xx (3 consecutive terminal errors make the client close the transport).
+- Prompt-cache discipline (authoring side): the system prompt (AGENTS.md), the skill/tool
+  list, model, and beta headers are cache invalidators -- editing a live skill's
+  description or AGENTS.md mid-engagement busts a ~20-70k-token prefix for a one-line
+  change. Batch such edits between sessions, not during one.
+
 ---
 
 ## Plugin Troubleshooting
