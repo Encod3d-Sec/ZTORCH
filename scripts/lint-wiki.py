@@ -111,13 +111,13 @@ def check_dead_scriptrefs():
 
 
 def _skill_exists(repo, name):
-    """True if a skill dir <name> exists anywhere under skills/ (skills/<name>,
-    skills/hunt/<name>, skills/burp/<name>, ...)."""
+    """True if a skill dir <name> exists at ANY depth under skills/ (nesting is
+    organizational only per docs/skill-map.md: skills/<name>, skills/hunt/<name>,
+    skills/workflow/exec/<name>, ...)."""
     sk = os.path.join(repo, "skills")
-    if os.path.isdir(os.path.join(sk, name)):
-        return True
-    return any(os.path.isdir(os.path.join(sk, sub, name))
-               for sub in (os.listdir(sk) if os.path.isdir(sk) else []))
+    return os.path.isdir(sk) and any(
+        os.path.isdir(os.path.join(root, name))
+        for root, _, _ in os.walk(sk))
 
 
 def check_playbook(have, repo):

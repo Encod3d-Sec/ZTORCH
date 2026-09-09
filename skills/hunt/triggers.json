@@ -48,6 +48,10 @@
     "api endpoint|rest api|api docs|swagger ui": "hunt-api",
     "graphql playground|graphi?ql endpoint": "hunt-injection",
     "comment field|feedback form|contact form|markdown render": "hunt-xss",
-    "fuzz|vhost|hidden param|content discovery|dir bust(ing)?|directory brute": "fuzz"
+    "fuzz|vhost|hidden param|content discovery|dir bust(ing)?|directory brute": "fuzz",
+    "mcp config|model context protocol|mcpServers|\\.mcp\\.json|claude_desktop_config|mcp manifest": "hunt-mcp",
+    "llm endpoint|llm feature|chatbot|chat widget|ai assistant|ai chat": "hunt-llm",
+    "agent skill|skill poisoning|agent tool list": "hunt-mcp",
+    "system prompt|system-prompt leak": "hunt-llm"
   }
 }

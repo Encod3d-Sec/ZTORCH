@@ -77,7 +77,7 @@ Prompt contains the keyword (case-insensitive) -> that skill is suggested. Multi
 | ingest, synthesize findings/recon/output, process recon | ingest |
 | coverage, what haven't we tested, test gaps, are we thorough, untested | offensive.py coverage |
 
-52 triggers total (42 vuln-type + 10 attack-surface). xxe/ssti/graphql route to hunt-injection (no separate skills). azure ad -> hunt-m365 (not hunt-cloud) by design. (Counts drift as `triggers.json` grows; recount with `python3 -c "import json;d=json.load(open('skills/hunt/triggers.json'));print(len(d['triggers']),len(d['surface_triggers']))"`.)
+51 triggers total (37 vuln-type + 14 attack-surface). xxe/ssti/graphql route to hunt-injection (no separate skills). azure ad -> hunt-m365 (not hunt-cloud) by design. (Counts drift as `triggers.json` grows; recount with `python3 -c "import json;d=json.load(open('skills/hunt/triggers.json'));print(len(d['triggers']),len(d['surface_triggers']))"`.)
 
 ---
 

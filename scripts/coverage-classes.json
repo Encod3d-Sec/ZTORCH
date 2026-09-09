@@ -4,7 +4,7 @@
                 "idor", "oauth-saml", "request-smuggling", "jwt", "graphql",
                 "file-upload", "business-logic", "prototype-pollution", "xss",
                 "csrf", "cors", "web-cache", "host-header", "open-redirect",
-                "subdomain-takeover", "session", "race-condition", "mcp",
+                "subdomain-takeover", "session", "race-condition", "mcp", "llm",
                 "cicd", "recon"],
   "pentest": ["adcs", "signing-relay", "kerberoast", "asreproast", "default-creds",
               "privesc", "lateral", "shares", "enum"],

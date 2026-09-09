@@ -23,6 +23,7 @@ CLASS_ALIASES = {
     "rce": ["remote code execution", "command injection", "os command", "code execution", "webshell"],
     "ssti": ["template injection", "server-side template"],
     "xxe": ["xml external entity", "xml entity"],
+    "llm": ["large language model", "prompt injection"],
     "csrf": ["cross-site request forgery", "cross site request forgery"],
     "oauth-saml": ["oauth", "saml", "openid", "single sign-on", "federation"],
     "auth": ["authentication bypass", "auth bypass", "broken authentication", "login bypass"],
