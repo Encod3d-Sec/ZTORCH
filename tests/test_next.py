@@ -52,6 +52,21 @@ def test_g1_withholds_when_arsenal_empty(tmp_path, capsys):
     assert "Skill(hunt-" not in out     # hunt skill withheld
 
 
+def test_next_persists_last_move(tmp_path, capsys):
+    """Compact-boundary discipline (pass 4): the served move is written to
+    .offensive.json (row/class/skill/tool/ts) so the pre-compact steer and the
+    SessionStart(compact) restore have a durable source, not just context."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:2", asset="web1", **{"vuln class": "ssrf"},
+                                     arsenal="x", skill="hunt-ssrf", tool="nuclei")])
+    _next_out(capsys, vault, eng)
+    st = json.loads((eng / ".offensive.json").read_text())
+    lm = st.get("last_move")
+    assert lm and lm["row"] == "4a:2" and lm["asset"] == "web1"
+    assert lm["skill"] == "hunt-ssrf" and lm["tool"] == "nuclei" and lm["ts"]
+
+
+
 def test_g2_emits_hunt_skill_when_arsenal_set(tmp_path, capsys):
     vault, eng = _setup(tmp_path)
     offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},

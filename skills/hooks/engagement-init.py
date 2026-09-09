@@ -310,10 +310,23 @@ def _compact_restore():
         lines = open(os.path.join(d, "Approach.md"), encoding="utf-8",
                      errors="ignore").read().splitlines()
         rows = [ln.rstrip() for ln in lines if "[ ]" in ln or "[~]" in ln][:40]
-        if not rows:
+        # the driver's served move, persisted by cmd_next (pass 4): the printed plan
+        # is otherwise context-only and a mid-loop compaction loses it.
+        lm = ""
+        try:
+            st = json.load(open(os.path.join(d, ".offensive.json"), encoding="utf-8"))
+            m = st.get("last_move")
+            if m:
+                lm = ("\ndriver last move (%s): asset %s row %s %s -> Skill(%s) / %s"
+                      % (m.get("ts", "?"), m.get("asset", "?"), m.get("row", "?"),
+                         m.get("class", ""), m.get("skill", ""), m.get("tool", "")))
+        except Exception:
+            pass
+        if not rows and not lm:
             return None
-        return ("restored post-compact (Approach.md open rows, verbatim; re-run "
-                "`offensive.py next` before acting):\n" + "\n".join(rows))
+        head = ("restored post-compact (Approach.md open rows, verbatim; re-run "
+                "`offensive.py next` before acting):\n")
+        return head + "\n".join(rows) + lm
     except Exception:
         return None
 
@@ -386,6 +399,23 @@ def main():
             sinks = "; ".join((h.get("sink") or h.get("token") or "?") for h in hits[:4])
             out.append(f"OOB HIT: {len(hits)} callback(s) landed ({sinks}) -> scaffold + "
                        "validate the FIND(s), then mark the oob.md row 'actioned'.")
+    except Exception:
+        pass
+
+    # Pending ingest is invisible after compaction/restart: SessionStart never looked at
+    # ingest/ before this. Safe to surface every time -- the archive-at-end design makes
+    # an ingest re-run idempotent (already-processed files are under _processed/).
+    try:
+        _d = _engagement.active_dir()
+        ing = os.path.join(_d, "ingest") if _d else None
+        if ing and os.path.isdir(ing):
+            pend = [f for f in os.listdir(ing)
+                    if not f.startswith(("_", "."))
+                    and os.path.isfile(os.path.join(ing, f))]
+            if pend:
+                out.append(f"ingest pending: {len(pend)} file(s) in targets/"
+                           f"{os.path.basename(_d)}/ingest/ - re-run Skill(ingest) "
+                           "(re-runs are idempotent: processed files archive to _processed/)")
     except Exception:
         pass
 

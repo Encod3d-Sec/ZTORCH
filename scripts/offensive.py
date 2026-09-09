@@ -705,12 +705,19 @@ def cmd_next(args):
         print("board exhausted: no open rows. run the closeout chain.")
         return 0
 
-    state["asset_cursor"] = asset
-    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
-
     rid = (row.get("id") or "").strip()
     cls = (row.get("vuln class") or "").strip()
     skill = (row.get("skill") or "").strip()
+    state["asset_cursor"] = asset
+    # Compact-boundary discipline (pass 4): the printed plan used to live only in
+    # context. Persist the served move so pre-compact steering has a durable source
+    # and engagement-init's source=="compact" restore re-injects it verbatim.
+    state["last_move"] = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "asset": asset, "row": rid, "class": cls, "skill": skill,
+        "tool": (row.get("tool") or "").strip(),
+    }
+    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
     lvl, _lvl_note = autonomy_of(eng)
     print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s"
           % (state.get("pass", 0), asset, rid, cls, lvl))
