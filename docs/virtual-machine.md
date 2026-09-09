@@ -52,6 +52,13 @@ bash /root/vm.sh '<remote bash command>'   # runs as root on the VM, output stre
 bash /root/vm.sh 'nmap -sV -Pn TARGET'
 ```
 
+**Output economy (vm-ssh.sh / win-vm.sh, 2026-09-10):** a command returning more than 30 KB
+(nmap/ferox/linpeas dumps) does NOT flood your context; the FULL output is persisted to
+`targets/<eng>/ingest/<tool>-<epoch>.txt` and you get a stub (byte counts, saved path, first
+2 KB preview, "re-run narrow" hint). `base64`-headed commands (screenshot pulls) bypass for
+exact bytes; `OUTPUT_ECON=0` disables for a session. The saved file is the source of truth:
+grep/head it instead of re-running the scan.
+
 ## Gotchas
 
 - **No stdin is forwarded.** `local-cmd | vm.sh 'cat > f'` writes an EMPTY file. Push a
