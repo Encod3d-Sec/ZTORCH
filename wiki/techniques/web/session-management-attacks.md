@@ -4,8 +4,8 @@ type: technique
 tags: [authentication, exploitation, thm, web]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-07-02
-sources: [thm-adv-session-management, portswigger-cookie-sandwich, portswigger-cookie-chaos, portswigger-phantom-version-cookie]
+date_updated: 2026-09-10
+sources: [thm-adv-session-management, portswigger-cookie-sandwich, portswigger-cookie-chaos, portswigger-phantom-version-cookie, hacktricks-web]
 ---
 
 ## What it is
@@ -142,6 +142,15 @@ GET /api/user/profile?id=1002 HTTP/1.1
 Cookie: session=YOUR_SESSION_TOKEN
 # Change id from your own (1001) to victim's (1002)
 ```
+
+## Cookie tossing, jar overflow, empty-name
+
+More session-integrity primitives living in the browser/server cookie-parsing gap. Precondition for tossing (and for the prefix/sandwich attacks below): the attacker controls a subdomain or has XSS on one.
+
+- Cookie tossing: from a subdomain set `document.cookie="session=...; domain=.example.com; Path=/specific"`. A more-specific Path or an older cookie is sent first; most apps read only the first value, letting you fixate a session/CSRF-token or hijack an OAuth flow on chosen paths.
+- Cookie jar overflow: browsers cap cookies per domain; overflow the jar to evict the legit (even HttpOnly) cookie, then set your own. Used to bypass "reject two same-name cookies" defenses and to overwrite HttpOnly cookies.
+- Empty-name cookie (`document.cookie="=a=b"`) lets you inject/overwrite another cookie server-side.
+- The Burp bambda `CookiePrefixBypass` automates the prefix probes; cross-test browsers (Safari blocks multibyte whitespace but allows U+0085/U+00A0).
 
 ## Cookie Sandwich (HttpOnly leak via legacy parsing)
 

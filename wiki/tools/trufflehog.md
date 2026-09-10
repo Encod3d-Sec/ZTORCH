@@ -42,11 +42,11 @@ trufflehog filesystem ./js-dump --only-verified
 - `--only-verified` is the killer feature: it turns "maybe a key" into "confirmed working key" and slashes false positives.
 - Scans minified JS and old commits, where live keys often hide.
 - For fast static regex-only sweeps `gitleaks` is quicker; TruffleHog wins on verification.
-- Report only verified, in-scope keys; a live key is proof, an unverified match is a lead. See [[secret-hunting]] / [[hardcoded-secrets-enumeration]].
+- Report only verified, in-scope keys; a live key is proof, an unverified match is a lead. See [[secret-hunting]].
 
 ## Related techniques
 
-[[secret-hunting]], [[hardcoded-secrets-enumeration]], [[git-exposure]]
+[[secret-hunting]], [[git-exposure]]
 
 ## Sources
 

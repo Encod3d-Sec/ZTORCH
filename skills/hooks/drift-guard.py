@@ -258,6 +258,39 @@ def _selfkill_advisory(cmd):
             "the next command hangs or drops to the attacker prompt, the shell died - re-pop it.")
 
 
+# P15 (clone pattern: reservedShortcuts.ts DOA table): commands the transport structurally
+# kills, checked BEFORE the fire instead of discovered after a timeout. A long foreground
+# scan through the direct vm.sh/vm-ssh.sh bridge is dropped at ~2min (exit 255, no output),
+# burning the call and reading as a dead target. Detached forms (vm-scan.sh tmux tab /
+# nohup / background &) are the sanctioned paths and never fire.
+_BRIDGE_RE = re.compile(r"\b(?:vm|vm-ssh|win-vm)\.sh\b")
+_DETACHED_RE = re.compile(r"\b(?:nohup|tmux|disown|vm-scan\.sh|vm-rsh\.sh|win-rsh\.sh)\b")
+# single `&` that is a background operator (not `&&`, not `2>&1`/`&>` fd plumbing)
+_BG_RE = re.compile(r"(?<!&)&(?!&)(?![>)\d])")
+# nmap only counts with a slow-shape marker (a `nmap -sV -p 80` finishes in seconds); the
+# rest are slow essentially always on real wordlists/rules.
+_SLOW_RE = re.compile(
+    r"\b(?:feroxbuster|ffuf|nuclei|hashcat|john|sqlmap|gobuster|dirb|wpscan|nikto|amass|"
+    r"subfinder|masscan|crackmapexec|nxc)\b"
+    r"|nmap[^|;&\n]*?(?:-p-|-p\s+1-|-sU|--min-rate|-T5)")
+
+
+def _bridge_doa_advisory(cmd):
+    """Advisory string when a long FOREGROUND command goes through the direct VM bridge
+    (the transport drops it at ~2min), else None. Advisory-only: a deliberate foreground
+    run of a fast-enough scan is the operator's call."""
+    c = cmd or ""
+    if not _BRIDGE_RE.search(c) or _DETACHED_RE.search(c) or _BG_RE.search(c):
+        return None
+    if not _SLOW_RE.search(c):
+        return None
+    return ("TRANSPORT DOA (advisory): a long foreground command through the direct "
+            "vm.sh/vm-ssh.sh bridge is dropped at ~2min (exit 255, no output) - the scan "
+            "never completes and the empty output reads as a dead target. Run it detached: "
+            "`bash scripts/vm-scan.sh <eng> <target> '<cmd>'` (named tmux tab, gets a recon "
+            "card) or `nohup <cmd> >/tmp/out 2>&1 &` + poll for the DONE marker.")
+
+
 # --- advisory throttle (A1/A2/A3): a legitimately off-board run (writeup-driven, or post-foothold
 #     manual exploitation the driver can't plan) was getting the SAME nudge injected on every call
 #     (observed: 184 identical fires in one box = pure token noise). The streak is still COUNTED
@@ -312,6 +345,11 @@ def main():
         if _sk:
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                   "additionalContext": _sk}}))
+            return
+        _doa = _bridge_doa_advisory(cmd)
+        if _doa:
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                  "additionalContext": _doa}}))
             return
 
     import _engagement

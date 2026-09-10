@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, authentication, bypass, 2fa, web]
 sources: [hacktricks-web]
 date_created: 2026-06-16
-date_updated: 2026-07-14
+date_updated: 2026-09-10
 ---
 
 # Payloads: Authentication Bypass
@@ -27,9 +27,8 @@ admin:admin  admin:password  root:root  admin:<blank>  guest:guest
 ```
 {"success":false}  -> {"success":true}        # tamper the auth response
 HTTP 302 -> read the body of the "denied" 200; force 200 with X-Forwarded-* 
-remove the MFA step / replay the pre-MFA session cookie
-2FA: brute 000000-999999 (no rate limit); reuse one OTP; null/empty code; race the verify
 ```
+MFA step removal, pre-MFA cookie replay, and 2FA code brute -> [[payloads/mfa-bypass]].
 
 ## Authorization bypass (403/401 -> 200)
 ```

@@ -43,7 +43,7 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
     - [[cicd-circleci|Circle CI]]
     - [[cicd-drone-ci|Drone CI]]
     - [[cicd-buildkite|BuildKite]]
-- [[hardcoded-secrets-enumeration|Hardcoded Secrets Enumeration]]
+- [[secret-hunting|Secret Hunting]]
 - [[package-managers-and-build-files|Package Managers and Build Files]]
 - [References](#references)
 

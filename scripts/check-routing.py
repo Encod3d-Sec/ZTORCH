@@ -27,6 +27,7 @@ import sys
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, VAULT)
 sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
+sys.path.insert(0, os.path.join(VAULT, "scripts"))   # `import offensive` below: this file's own dir
 
 # lint-wiki.py has a hyphen in its name; import by path (test_zcode_config_hooks
 # precedent for importing hyphenated scripts).

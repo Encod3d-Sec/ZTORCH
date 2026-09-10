@@ -4,7 +4,7 @@ type: technique
 tags: [authentication, brute-force, enumeration, exploitation, h1, portswigger, thm, web]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-05-13
+date_updated: 2026-09-10
 sources: [ps-general-concepts, ps-indepth-attacks, ps-labs-auth, thm-adv-auth-bruteforce, h1-scraped-authentication-attacks, git-portswigger-all-labs]
 ---
 
@@ -143,60 +143,9 @@ The password change form can be abused to brute-force the current password witho
 
 **Exploit:** Always send two different new passwords. The server validates the current password first — if it's correct, it moves on and checks the mismatch. Use Burp Intruder (Sniper) on the `current-password` field with `new-password-1` ≠ `new-password-2`. Grep for `New passwords do not match` to identify the hit. Change the username parameter to target another user's account if the username is embedded in the form as a hidden field.
 
-### 7. 2FA Simple Bypass
+### 7. MFA Bypass
 
-After completing step 1 of login (correct password), navigate directly to an authenticated page (e.g., `/my-account`) without completing the 2FA step. If the application grants access, 2FA is not enforced server-side before granting session state.
-
-### 8. 2FA Broken Logic (Account Cookie Manipulation)
-
-Observe the multi-step login flow:
-
-```http
-POST /login-steps/first
-username=carlos&password=qwerty
-
-→ HTTP/1.1 200 OK
-Set-Cookie: account=carlos
-
-POST /login-steps/second
-Cookie: account=victim-user
-verification-code=§000000§
-```
-
-Log in with your own credentials to obtain the session, then change the `account` cookie (or equivalent) to the target username when submitting the verification code. Brute-force the 4–6 digit code with Burp Intruder (Sniper, numeric brute force 000000–999999).
-
-Alternative with ffuf (no Burp Pro required):
-
-```sh
-ffuf -X POST -u "https://TARGET/login2" \
-  -H "Cookie: verify=carlos; session=SESSION_TOKEN" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "mfa-code=FUZZ" \
-  -w /path/to/numbers.txt \
-  -fc 400,401,200
-```
-
-Generate a numbers wordlist (0000–9999) for fuzzing:
-
-```sh
-seq -w 0 9999 > numbers.txt
-```
-
-### 9. 2FA Brute-Force with CSRF Token Rotation (Expert)
-
-When the 2FA endpoint uses CSRF tokens that change with each request, a standard Intruder attack fails because every request after the first will have a stale token. Use Burp Suite session handling macros to refresh tokens automatically:
-
-1. Go to **Project Options → Sessions → Session Handling Rules → Add**.
-2. Set the rule to run a **macro** before every Intruder request.
-3. Record the macro using these requests in order:
-   - `GET /login` — fetch fresh CSRF token
-   - `POST /login` — submit valid credentials (re-authenticate)
-   - `GET /login2` — load the 2FA page (establishes fresh 2FA session state)
-4. Configure the macro to extract the CSRF token from `GET /login` and inject it into subsequent requests.
-5. Send `POST /login2` to Intruder; set the `mfa-code` parameter as the payload position.
-6. Set payload type to **Numbers**, range `0000–9999`, step `1`, min/max integer digits `4`, fraction digits `0`.
-7. Set **Maximum Concurrent Requests** to `1` (ensures macro runs before each request in sequence).
-8. Look for a `302` response; use "Show response in browser" immediately (CSRF token expires quickly).
+MFA bypass (2FA step-skip, account-cookie logic) -> [[mfa-bypass]].
 
 ## Key Payloads / Examples
 
@@ -308,10 +257,6 @@ SSH certificates issued for certain GitHub contexts were accepted by `gist.githu
 
 Send username wordlist in Burp Intruder (Sniper). The valid username returns a different error message (`Incorrect password` vs `Invalid username or password`) or a different response length. Switch to brute-forcing the password once the username is confirmed; look for a `302` redirect.
 
-### Lab 2 — 2FA simple bypass (Apprentice)
-
-Log in with the target's credentials (step 1). When redirected to the 2FA page, manually navigate to `/my-account` instead of completing 2FA. Access is granted because the server issues a session cookie after step 1 without enforcing step 2.
-
 ### Lab 3 — Password reset broken logic (Apprentice)
 
 Trigger a password reset for your own account, intercept the `POST /forgot-password` submission. Delete the `token` parameter value entirely and change `username` to the target. The server resets the target's password without validating the token.
@@ -356,15 +301,6 @@ Send 5 null payload requests (identical repeated requests) for each candidate us
 ### Lab 8 — 2FA broken logic (Practitioner)
 
 Log in with your own credentials. Intercept the `POST /login2` request and change the `verify` cookie to the target username. Brute-force the 4-digit MFA code with Burp Intruder (Sniper, numeric 0000–9999). Look for a `302`.
-
-Alternative with ffuf (no Burp Pro):
-
-```sh
-ffuf -X POST -u "https://TARGET/login2" \
-  -H "Cookie: verify=carlos; session=SESSION" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "mfa-code=FUZZ" -w numbers.txt -fc 200
-```
 
 ### Lab 9 — Brute-forcing a stay-logged-in cookie (Practitioner)
 
@@ -418,20 +354,6 @@ The login endpoint accepts JSON. Rate limiting fires after 3 failed attempts reg
 ```
 
 Send in Burp Repeater. A `302` response indicates the correct password was found in the array. Use "Show response in browser" to obtain the authenticated session.
-
-### Lab 14 — 2FA bypass using a brute-force attack (Expert)
-
-The 2FA endpoint uses per-request CSRF tokens, making raw Intruder attacks fail after the first request. Solve with Burp session handling macros:
-
-1. **Project Options → Sessions → Session Handling Rules → Add**
-2. Set rule action to **Run a macro**
-3. Record macro: `GET /login` → `POST /login` → `GET /login2`
-4. Configure macro to extract CSRF token from `GET /login` and propagate it
-5. Add all lab URLs to Burp scope (required for macro to trigger on Intruder requests)
-6. Send `POST /login2` to Intruder; mark `mfa-code` as payload position
-7. Payload: Numbers, 0000–9999, min/max digits = 4, fraction digits = 0
-8. Resource pool: max 1 concurrent request
-9. Look for `302`; show response in browser immediately (tokens expire fast)
 
 ## Timing side-channel behind a content-identical anti-enumeration control
 

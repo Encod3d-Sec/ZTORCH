@@ -37,3 +37,24 @@ def test_match_classes_still_works_through_engagement(tmp_path):
 def test_confirmed_findings_still_works_through_engagement(tmp_path):
     """No Vuln-index.md -> [] (error-safe path), reachable through the _engagement re-export."""
     assert _engagement.confirmed_findings(str(tmp_path)) == []
+
+
+def test_4a_row_spelling_variant_credits_both(tmp_path):
+    """D-D2 (pass 15): a 4a row closed under the driver spelling (`upload`) must credit
+    the coverage-classes.json spelling (`file-upload`) too - else next_move's [gap] floor
+    re-emits the class forever no matter how the row closes."""
+    (tmp_path / "Approach.md").write_text(
+        "| asset | vuln class | status |\n|---|---|---|\n| web01 | upload | [x] |\n",
+        encoding="utf-8")
+    per_asset, _ = _engagement.tested_classes(str(tmp_path), "bugbounty", {"file-upload"})
+    assert "file-upload" in per_asset.get("web01", set())
+
+
+def test_4a_row_json_spelling_credits_driver_spelling(tmp_path):
+    """Reverse direction: a hand-written row using the JSON spelling must credit the
+    driver spelling, so cmd_coverage (BASE_CLASSES, driver spellings) clears too."""
+    (tmp_path / "Approach.md").write_text(
+        "| asset | vuln class | status |\n|---|---|---|\n| web01 | file-upload | done |\n",
+        encoding="utf-8")
+    per_asset, _ = _engagement.tested_classes(str(tmp_path), "bugbounty", {"upload"})
+    assert "upload" in per_asset.get("web01", set())
