@@ -1959,10 +1959,6 @@ Gotcha: a by-name copy ignores extra symlinks with new names - you must replace 
 
 <!-- promoted-slug: cron-cp-byname-symlink-deref -->
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## GTFOBins pager escapes need a real pty
 
 `sudo less <file>` through a pipe (msf command shell, `ssh host cmd`, captured output) sees a
@@ -1971,10 +1967,6 @@ the outer shell as command-not-found. Stabilize first (`script -qc /bin/bash /de
 the pager and its `!` escape interactively.
 
 <!-- promoted-slug: gtfobins-pager-pty-trap -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ## systemd Environment=PATH hijack + the exec-bit ownership trap
 

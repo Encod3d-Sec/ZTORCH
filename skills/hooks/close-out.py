@@ -30,9 +30,41 @@ def inflight_signals(d):
     parts = []
     try:                                       # open lanes (age/STALE via lane_validate)
         import _engagement
-        sys.path.insert(0, os.path.join(_engagement.VAULT, "scripts"))
+        # anchor to the vault the HOOK ships in, not _engagement.VAULT: a
+        # ZTORCH_VAULT override pointing at a bare test tree has no scripts/ and
+        # the import (this whole lane surface) would silently vanish. Same fix
+        # as engagement-init's post-compact restore.
+        sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "..", "scripts")))
         import lane_validate
         parts += [ln.strip() for ln in lane_validate.lane_lines(d)]
+        # closed-lane verdict sweep (pass 13): a returned lane whose SUCCESS criterion is
+        # absent from its capture is an over-claim that already poisoned loot/Killchain
+        # (append_draft_chain_rows trusts loot lines). The verdict surface otherwise runs
+        # ONLY when the main agent remembers the delegate-skill prose. Deduped on the
+        # bad-count marker so it re-fires only when a NEW bad lane lands.
+        try:
+            _log = open(os.path.join(d, "log.md"), encoding="utf-8",
+                        errors="ignore").read()
+            _bad = []
+            for _n, _obs, _cap in lane_validate.lanes_from_text(_log):
+                _cd = _cap if os.path.isabs(_cap) else os.path.normpath(
+                    os.path.join(d, _cap))
+                if not lane_validate.criterion_met(_cd, _obs):
+                    _bad.append(_n)
+            if _bad:
+                vm = os.path.join(d, ".lane-verify-nudged")
+                last = 0
+                try:
+                    last = int((open(vm).read().strip() or "0"))
+                except Exception:
+                    last = 0
+                if len(_bad) > last:
+                    parts.append("lane NOT VERIFIED (over-claim): " + ", ".join(sorted(set(_bad)))
+                                 + " - criterion absent from capture; treat the claim as a "
+                                   "hypothesis, check or strike it")
+                    open(vm, "w").write(str(len(_bad)))
+        except Exception:
+            pass
     except Exception:
         pass
     try:                                       # served move with no disposition
@@ -257,6 +289,33 @@ def main():
         _telemetry.stamp_once("finished_at", _telemetry.now_iso(), d=d)
     except Exception:
         pass
+    # nudges FIRST (pass 13 reorder): the STEP prints are the close-out chain's only
+    # voice; they used to print AFTER two 15s subprocesses (eval transcript scan +
+    # build), so a slow scan blew the hook's 10s budget and killed the chain silently.
+    _stale = _engagement.walkthrough_stale(d)
+    _pend = _engagement.learn_pending(d)
+    if not _pend:
+        # .learn-done is gameable by a bare touch: the eval-judgement gate lived only in
+        # skill prose -> enforce in code (fresh marker + blank judgement = still pending).
+        try:
+            _ep = os.path.join(d, "eval.md")
+            sys.path.insert(0, os.path.join(_engagement.VAULT, "scripts"))
+            import eval_metrics
+            _pend = not eval_metrics.judgement_filled(
+                open(_ep, encoding="utf-8", errors="ignore").read()
+                if os.path.isfile(_ep) else "")
+        except Exception:
+            pass
+    if _stale:
+        print("CLOSE-OUT (mandatory, auto-chain) [STEP 1/2]: engagement is SOLVED. Run "
+              "Skill(walkthrough) NOW to draft the narrative (scaffold + Evidence gallery "
+              "auto-build each Stop), THEN Skill(learn). This chain is not optional - a "
+              "SOLVED box always runs walkthrough then learn before you end the session.")
+    elif _pend:
+        print("CLOSE-OUT (mandatory, auto-chain) [STEP 2/2]: walkthrough assembled -> run "
+              "Skill(learn) NOW to EXTRACT DELTAS to wiki/ (the qmd-dedup -> stage -> "
+              "promote harvest) + the harness retrospective. Not optional; every SOLVED "
+              "box harvests its deltas automatically.")
     # fire the auto eval-metrics block once at close-out (SOLVED or SUSPEND -- a parked box is
     # still measured; observed live: a formally-suspended engagement closed with a blank eval).
     # Previously ONLY Skill(learn) Phase 0d ran eval_metrics, so a light close-out that skipped
@@ -311,16 +370,27 @@ def main():
                            stdin=subprocess.DEVNULL, timeout=15)
     except Exception:
         pass
-    if _engagement.walkthrough_stale(d):
-        print("CLOSE-OUT (mandatory, auto-chain) [STEP 1/2]: engagement is SOLVED. Run "
-              "Skill(walkthrough) NOW to draft the narrative (scaffold + Evidence gallery already "
-              "auto-built), THEN Skill(learn). This chain is not optional - a SOLVED box always "
-              "runs walkthrough then learn before you end the session.")
-    elif _engagement.learn_pending(d):
-        print("CLOSE-OUT (mandatory, auto-chain) [STEP 2/2]: walkthrough assembled -> run "
-              "Skill(learn) NOW to EXTRACT DELTAS to wiki/ (the qmd-dedup -> stage -> promote "
-              "harvest) + the harness retrospective. Not optional; every SOLVED box harvests its "
-              "deltas automatically.")
+    # chain observability (pass 13): triage/evidence (pentest/bb) had NO done-artifact
+    # check anywhere - half the printed chain was phantom steps a SOLVED box could skip
+    # with zero signal. Cheap existence-grade gates only (find-lint/redaction stay in the
+    # skills): triage = a FIND in Vulns/Completed/; evidence = poc/ non-empty.
+    try:
+        import json
+        _et = (json.load(open(os.path.join(d, ".offensive.json"),
+                              encoding="utf-8")).get("type") or "")
+        if _et in ("pentest", "bugbounty"):
+            _vc = os.path.join(d, "Vulns", "Completed")
+            _tri = os.path.isdir(_vc) and any(
+                f.endswith(".md") for f in os.listdir(_vc))
+            _pd = os.path.join(d, "poc")
+            _ev = os.path.isdir(_pd) and bool(os.listdir(_pd))
+            print("Close-out chain [%s]: triage [%s] | evidence [%s] | walkthrough [%s] "
+                  "| learn [%s]  (triage gate: FIND in Vulns/Completed/; evidence gate: "
+                  "poc/ non-empty)" % (_et, "x" if _tri else " ",
+                                       "x" if _ev else " ", "x" if not _stale else " ",
+                                       "x" if not _pend else " "))
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

@@ -65,7 +65,10 @@ additionally carries:
   expected uid, plus log path) into the lane prompt before dispatch; the lane
   returns that observable raw; on return the brain verifies the capture
   against the criterion; a claimed success whose observable is absent from
-  the capture is a failed lane.
+  the capture is a failed lane. Append the lane line to
+  `targets/<eng>/log.md` before dispatch (format per Skill(delegate)) and
+  CLOSE it on return by appending the verdict to that same line; the log
+  line is the lane's only durable state across compaction.
 - the output-landing mandate (delegate slot h), verbatim: per-lane capture dir with
   full request/response captures, named tmux window for evidence-worthy runs, raw
   pairs returned for Repeater; no one-line-verdict-only returns.

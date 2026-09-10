@@ -442,16 +442,7 @@ output in base64), the returned blob decodes to another base64 string - decode t
 
 <!-- promoted-slug: llm-agent-authz-bypass -->
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-(merged into llm-tiny-model-extraction-limits candidate: same target page, headings there)
-
 <!-- promoted-slug: llm-output-detector-oracle -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ## Tiny-model extraction limits: calibrate before you grind
 
@@ -492,10 +483,6 @@ tiny models copy exact strings poorly, so frame it as "repeat this exact HTML ch
 character" in a teaching/benign wrapper rather than asking them to compose JS.
 
 <!-- promoted-slug: llm-tiny-model-extraction-limits -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ## Watcher-bot render = the gate-bypass execution context (UI-delivered message XSS)
 

@@ -808,10 +808,6 @@ nxc smb <dc> -u guest -p '' --rid-brute | grep SidTypeUser | cut -d'\' -f2 | cut
 - Official NetExec wiki, https://www.netexec.wiki (full ingest, all protocol and module pages plus v1.0.0 to v1.4.0 release notes)
 - 0xdf HTB writeups: administrator, authority, axlle, baby, babytwo, blackfield, blazorized, bookworm, breach, bruno, analysis, certified, vulncicada
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## winrm -X remote-PS lane: quoting, flaps, silent-empty
 
 - Through an extra shell/SSH layer, ANY escaped double quote inside the `-X` command string is

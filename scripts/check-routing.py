@@ -58,6 +58,12 @@ def class_vocab():
     return {c.lower() for c in vocab}
 
 
+def _tool_slugs_fn():
+    return {f[:-3] for f in os.listdir(os.path.join(VAULT, "wiki", "tools"))
+            if f.endswith(".md")}
+_tool_slugs = _tool_slugs_fn()
+
+
 def _skill_names():
     """All skill dir names at any depth (for did-you-mean suggestions)."""
     out = set()
@@ -97,6 +103,23 @@ def violations(repo=VAULT):
         tools = fp.get("tools", [])
         if not isinstance(tools, list) or any(not isinstance(t, str) for t in tools):
             bad.append(("playbook [%s]" % key, "tools must be a list of strings"))
+        for t in (tools if isinstance(tools, list) else []):
+            if t not in _tool_slugs:
+                bad.append(("playbook [%s]" % key,
+                            "tool slug %r has no wiki/tools/ page (G8 serves a "
+                            "generic '%s <target>' line and nothing catches it)" % (t, t)))
+
+    # reverse direction (pass 13): CLASS_TOOL values must also resolve. A dangle
+    # here is silent at runtime (the fallback invocation prints, no warning) and
+    # every bb engagement emits the mcp/llm rows.
+    try:
+        import offensive
+        for cls, slug in offensive.CLASS_TOOL.items():
+            if slug not in _tool_slugs:
+                bad.append(("offensive.py CLASS_TOOL",
+                            "%s -> %r has no wiki/tools/ page" % (cls, slug)))
+    except Exception as e:
+        bad.append(("offensive.py", "CLASS_TOOL import failed: %s" % e))
 
     # -- chains: the whole file is unvalidated today
     vocab = class_vocab()

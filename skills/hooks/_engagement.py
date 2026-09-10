@@ -18,6 +18,8 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 # ZTORCH_VAULT / OBSIDIAN_VAULT override the self-located vault root (used by
 # tests to point at a fixture vault). CLAUDEBRAIN_VAULT kept as a legacy alias.
 # Unset in normal use -> self-locate via the symlinked path.
+_BW = None
+
 VAULT = (os.environ.get("ZTORCH_VAULT") or os.environ.get("OBSIDIAN_VAULT")
          or os.environ.get("CLAUDEBRAIN_VAULT")
          or os.path.dirname(os.path.dirname(HERE)))
@@ -919,6 +921,21 @@ def walkthrough_stale(d):
         section = m.group(1) if m else ""
         if "![](" not in section:
             return True
+        # repro-command floor (pass 13): stubs cleared + one image can still be an
+        # images-only gallery that cannot reproduce the box. Reuse build-walkthrough's
+        # own counter (the check its WARNING prints, previously swallowed under DEVNULL
+        # in the hook path). Cached module-level; any import error -> skipped (fail-open).
+        global _BW
+        try:
+            if _BW is None:
+                import importlib.util as _ilu
+                _sp = _ilu.spec_from_file_location("bw", os.path.join(VAULT, "scripts", "build-walkthrough.py"))
+                _BW = _ilu.module_from_spec(_sp)
+                _sp.loader.exec_module(_BW)
+            if _BW.reproduction_command_count(text) == 0:
+                return True
+        except Exception:
+            pass
         return False
     except Exception:
         return False

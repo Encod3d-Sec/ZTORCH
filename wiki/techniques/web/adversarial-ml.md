@@ -39,10 +39,6 @@ When a target exposes an ML endpoint: enumerate the model type and output verbos
 - HackTricks (AI): adversarial-ML taxonomy (evasion, poisoning, transfer-learning backdoor, inversion, membership inference, extraction, output integrity, weight poisoning).
 - Related: [[llm-attacks]], [[ml-model-deserialization]], [[supply-chain-attacks]].
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## Fine-tuned LLM secret extraction (weights-buried flag)
 
 A challenge hands you a local fine-tuned chat model (safetensors/GGUF, Qwen2-class 0.5B is the common size) with a flag or secret trained into its weights. Sequence that extracts it:

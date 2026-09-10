@@ -310,10 +310,6 @@ current process' group set omits (`lxd`, `disk`, `adm`) after a setuid-only foot
 
 <!-- promoted-slug: docker-group-newgrp-acquire -->
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## docker.sock via raw HTTP over socat (no docker CLI, ancient curl)
 
 When a container exposes `/var/run/docker.sock` but has no docker CLI, no python, no nc, and a curl too old for `--unix-socket` (pre-7.40, e.g. Debian 8), socat speaks the REST API directly if present:
@@ -328,10 +324,6 @@ printf 'GET /version HTTP/1.0\r\nHost: localhost\r\n\r\n' | socat -t 8 - UNIX-CO
 - Clean up with `DELETE /containers/{id}?force=1`.
 
 <!-- promoted-slug: docker-sock-socat-raw-api -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ### The throwaway container as a HOST-recon primitive
 

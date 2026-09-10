@@ -515,10 +515,6 @@ duplicate of a *privileged username*.
 
 <!-- promoted-slug: sql-truncation-dup-account -->
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## Webmail backed by dovecot PAM = system-account login
 
 Roundcube/SOGo/Horde authenticate against the mail backend, so valid logins depend on the mail

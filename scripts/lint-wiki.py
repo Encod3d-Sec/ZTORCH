@@ -253,6 +253,41 @@ def check_placeholder_tools():
     return bad
 
 
+def check_scaffold_residue():
+    """Wiki pages still carrying the unedited wiki-stage scaffold (pass 13: 18 such
+    sections had already been promoted verbatim and had to be stripped by hand)."""
+    bad = []
+    for path in wiki_md(skip_generated=True):
+        text = open(path, encoding="utf-8", errors="ignore").read()
+        if "## <Heading>" in text or "<generic technique steps" in text:
+            bad.append(os.path.relpath(path, VAULT))
+    return bad
+
+
+def check_moc_coverage():
+    """Every techniques/<domain>/*.md basename must appear in <domain>-moc.md. True
+    today only because build_moc.py regenerates the MOCs; nothing failed when a new
+    page skipped the re-run, so lock the invariant in (pass 13)."""
+    bad = []
+    tdir = os.path.join(VAULT, "wiki", "techniques")
+    for dom in sorted(os.listdir(tdir)):
+        d = os.path.join(tdir, dom)
+        if not os.path.isdir(d):
+            continue
+        moc = os.path.join(d, dom + "-moc.md")
+        if not os.path.isfile(moc):
+            bad.append("wiki/techniques/%s/: no %s-moc.md" % (dom, dom))
+            continue
+        mtext = open(moc, encoding="utf-8", errors="ignore").read()
+        for f in sorted(os.listdir(d)):
+            if not f.endswith(".md") or f == dom + "-moc.md" or f == "index.md":
+                continue
+            if f[:-3] not in mtext:
+                bad.append("wiki/techniques/%s/%s not linked from %s-moc.md"
+                           % (dom, f, dom))
+    return bad
+
+
 def check_image_embeds():
     """Wiki pages embedding an image (vault rule: wiki pages must be image-free; soft)."""
     bad = []
@@ -278,6 +313,8 @@ def collect():
         "lean": lean_areas(),
         "emdash": check_emdash(),
         "placeholder_tools": check_placeholder_tools(),
+        "scaffold": check_scaffold_residue(),
+        "moc": check_moc_coverage(),
         "images": check_image_embeds(),
     }
 
@@ -346,6 +383,18 @@ def main():
         print(f"placeholder tools: {len(ph)} page(s) still carry the [[tool]] stub (soft) - populate or delete the Tools section")
         if verbose:
             for p in sorted(ph)[:20]:
+                print(f"    {p}")
+    sc = r["scaffold"]
+    if sc:
+        print(f"scaffold residue : {len(sc)} page(s) carry the unedited wiki-stage stub (soft) - replace the placeholder section")
+        if verbose:
+            for p in sorted(sc)[:20]:
+                print(f"    {p}")
+    moc = r["moc"]
+    if moc:
+        print(f"moc coverage     : {len(moc)} issue(s) (soft) - run scripts/build_moc.py to relink domain MOCs")
+        if verbose:
+            for p in sorted(moc)[:20]:
                 print(f"    {p}")
     img = r["images"]
     if img:

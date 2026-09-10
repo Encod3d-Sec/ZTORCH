@@ -321,8 +321,6 @@ Key evasion principles:
 
 - CPTS File Transfer module (Windows, Linux, Miscellaneous, LOLBins, Detection, Evading Detection)
 
-
-
 ## Exfil off a Windows workstation (lane ranking)
 
 Pulling a large bundle OFF a Windows box when you hold only a local account (even one in Administrators):
@@ -338,10 +336,6 @@ wget http://<target-ip>:<port>/<bundle>.zip
 - If the http.server belongs to the environment or another user, never kill or restart it to change its root; find a path it already serves.
 
 <!-- promoted-slug: exfil-off-windows -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ## Push exfil lane: uploadserver + curl.exe (when pull lanes are blocked)
 

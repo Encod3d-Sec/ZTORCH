@@ -103,7 +103,11 @@ so a compaction mid-lane re-surfaces it via the log's newest block AND the lane'
 survives the compaction (the `Resume with context` rule needs it); the `<asset>` + `@<HH:MM>` cells
 let `scripts/status.py` age open lanes and flag a RE-SERVE against the driver's last move. On
 return, close the line with the
-result. WAIT for completion before the next move. On return, persist the
+result: APPEND the verdict to the lane line itself (`... | handle <agent-id> -> VERIFIED: <capture ref>`
+or `-> NOT VERIFIED: <why>`) and drop `in flight`. A verdict written only as a separate line above
+leaves the lane line reading `in flight` forever (the lane regex keys on the appended verdict, so
+SessionStart's post-compact re-inject and close-out's sweep would keep re-surfacing a closed lane).
+WAIT for completion before the next move. On return, persist the
 primitive/creds/flag to `state.md`/`loot.md`/`Killchain.md` before doing anything else. On return,
 verify the capture against the stated criterion (`python3 scripts/lane_validate.py <eng>` runs the
 check mechanically); a claimed success whose criterion observable is

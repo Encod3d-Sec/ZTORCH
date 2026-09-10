@@ -209,10 +209,6 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[information-disclosure]]
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## Dead-domain developer attribution (CT log dates + repo-search API)
 
 When a domain's hosting is gone (every name NXDOMAIN) and the task is to find WHO built it: certificate transparency keeps the historical issuance dates, and the distinctive domain word (the part before the TLD) in the REPOSITORY search API finds the developer's own repo where the USER search API returns nothing (usernames rarely contain the domain word, repo names/descriptions often do).

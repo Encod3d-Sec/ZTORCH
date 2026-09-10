@@ -69,7 +69,7 @@ CLASS_TOOL = {
     "cicd": "trufflehog", "api": "nuclei", "injection": "nuclei",
     "federation": "burp-suite", "cloud": "pacu", "secrets": "trufflehog",
     "smuggling": "nuclei", "upload": "nuclei", "vpn": "nmap",
-    "windows": "peass", "ad": "netexec", "m365": "netexec",
+    "windows": "winpeas", "ad": "netexec", "m365": "netexec",
     "macos": "linpeas", "llm": "curl", "bizlogic": "burp-suite",
     "cache": "nuclei", "pwn": "pwntools",
 }
@@ -416,7 +416,7 @@ def derive_privesc_rows(eng, index, etype, st):
         # privesc skill+arsenal by OS; linux/unknown default has no hunt class.
         if is_win:
             pv_skill, pv_arsenal, auto_tool, man_tool = (
-                *info.get("windows", ("", "")), "peass", "peass")
+                *info.get("windows", ("", "")), "winpeas", "winpeas")
         elif is_mac:
             pv_skill, pv_arsenal, auto_tool, man_tool = (
                 *info.get("macos", ("", "")), "pspy", "linpeas")

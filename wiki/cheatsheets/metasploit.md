@@ -188,10 +188,6 @@ set PROXIES HTTP:127.0.0.1:8080
 
 See [[metasploit]] for full tool page.
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## Handler console gotchas
 
 - Launch with `set ExitOnSession false; run -j`. Under `msfconsole -x`, a bare `run` BLOCKS the

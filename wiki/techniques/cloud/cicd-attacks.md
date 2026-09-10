@@ -37,14 +37,14 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
 
 - [Tools](#tools)
 - [CI/CD Products](#summary)
-    - [GitHub Actions](./cicd-github-actions)
-    - [Gitlab CI](./cicd-gitlab-ci)
-    - [Azure Pipelines (Azure DevOps)](./cicd-azure-devops)
-    - [Circle CI](./cicd-circle-ci)
-    - [Drone CI](./cicd-drone-ci)
-    - [BuildKite](./cicd-buildkite)
-- [Hardcoded Secrets Enumeration](./secrets-enumeration)
-- [Package Managers and Build Files](./package-managers)
+    - [[cicd-github-actions|GitHub Actions]]
+    - [[cicd-gitlab-ci|Gitlab CI]]
+    - [[cicd-azure-devops|Azure Pipelines (Azure DevOps)]]
+    - [[cicd-circleci|Circle CI]]
+    - [[cicd-drone-ci|Drone CI]]
+    - [[cicd-buildkite|BuildKite]]
+- [[hardcoded-secrets-enumeration|Hardcoded Secrets Enumeration]]
+- [[package-managers-and-build-files|Package Managers and Build Files]]
 - [References](#references)
 
 ## Tools
@@ -73,9 +73,6 @@ Enumerate case-specific bypasses inside the methodologies above when upstream do
 
 Apply vendor baselines for logging, least privilege, patch cadence, and segmentation. Map signals to SOC playbooks relevant to each platform referenced in this page.
 
-## Tools
-
-- [[wiki/tools/john]]
 
 ## Sources
 

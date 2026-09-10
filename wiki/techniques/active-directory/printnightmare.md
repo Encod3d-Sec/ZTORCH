@@ -160,10 +160,6 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 
 - Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## Detecting a mimispool-class PrintNightmare from host artefacts
 
 The exploit cleans its registry footprint (no rogue driver under

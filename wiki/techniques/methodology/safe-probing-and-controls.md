@@ -179,7 +179,6 @@ Fix: gate the auto-recon trigger on the URL/host actually being the target of a 
 network request, and separately hard-check the candidate host against the written scope list before
 launching anything, do not rely on a general scope filter alone if a different code path can bypass it.
 
-
 ## Test a suspected disclosure endpoint with an empty input to rule out an echo
 
 A response that appears to disclose server configuration (an install directory, a resolved file
@@ -211,10 +210,6 @@ one read.
 <!-- promoted-slug: automated-recon-scan-hooks-must-trigger-only-on-hosts-actual -->
 
 <!-- promoted-slug: an-endpoint-that-appears-to-disclose-a-server-side-configura -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ## An unobservable exfil channel produces false negatives
 

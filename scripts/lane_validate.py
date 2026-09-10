@@ -110,6 +110,14 @@ def _search(dirpath, needle):
     return False
 
 
+def criterion_met(cap, obs):
+    """True when EVERY AND-separated fragment of the criterion appears in the capture.
+    The delegate skill teaches compound criteria (`hostname` = x AND `id` = y); a
+    whole-string substring would never match an honest compound -> NOT VERIFIED noise
+    that trains the agent to ignore the validator."""
+    return all(_search(cap, frag.strip()) for frag in obs.split(" AND ") if frag.strip())
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
@@ -129,7 +137,7 @@ def main(argv=None):
         if not os.path.isdir(capdir):
             print("lane %s: NOT VERIFIED - no capture dir at %s" % (name, cap))
             n_fail += 1
-        elif _search(capdir, obs):
+        elif criterion_met(capdir, obs):
             print("lane %s: VERIFIED (\"%s\" present in %s)" % (name, obs, cap))
             n_ok += 1
         else:

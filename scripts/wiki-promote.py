@@ -253,6 +253,13 @@ def promote_one(path, fm, body, inbox, vault):
     if kind not in KINDS:
         print("  %s: unknown kind '%s' -> REFUSED" % (slug, kind))
         return "refused"
+    # unedited scaffold guard (pass 13): wiki-stage writes a placeholder body the
+    # caller is supposed to replace; promoting it verbatim is how 18 stub sections
+    # landed in the wiki. Refuse, same family as the leak gate.
+    if "## <Heading>" in body or "<generic technique steps" in body:
+        print("  %s: staged body is the UNEDITED wiki-stage scaffold -> REFUSED "
+              "(replace the placeholder section with the real generic body first)" % slug)
+        return "refused"
     # wiki/tools contract: every page needs a runnable usage fence or the offensive
     # driver's tool-index lint dies at the next index build (the strace/wigolo repeat).
     # Pass when EITHER the page or the staged body carries one (a body section merge

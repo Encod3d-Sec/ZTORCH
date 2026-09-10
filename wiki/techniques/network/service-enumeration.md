@@ -734,10 +734,6 @@ prips 93.184.216.0/24 | hakoriginfinder -h https://example.com:443/foo
 - [[ad-cheatsheet|Active Directory cheatsheet]] — LDAP, SMB, WinRM, and RDP one-liners in AD context
 - [[wiki/cheatsheets/recon]] — passive recon techniques that precede service enumeration
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## Drop-box write-exec: planted file executed by the server-side processor
 
 Anon-FTP write access matters only when something server-side PROCESSES the drop dir. A

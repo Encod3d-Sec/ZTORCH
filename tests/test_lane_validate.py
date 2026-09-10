@@ -96,3 +96,32 @@ def test_status_lane_lines_ages_and_flags_stale(tmp_path):
     assert len(lines) == 2
     assert "STALE" in joined.split("new")[0]        # the 90min-old lane is flagged
     assert "lane new" in joined and "STALE" not in joined.split("lane new")[1]
+
+
+def test_compound_criterion_and_split(tmp_path):
+    """pass 13: a compound criterion (`x AND y`) must match when BOTH fragments appear
+    in the capture, not only when the whole literal string does - the delegate skill
+    teaches compound criteria, and a whole-string match would NEVER fire for an honest
+    compound, training the agent to ignore NOT VERIFIED."""
+    obs = "target-vm AND uid=0(root)"          # the observable form log.md carries
+    cap = tmp_path / "poc" / "and1"
+    cap.mkdir(parents=True)
+    (cap / "shell.txt").write_text("$ hostname\ntarget-vm\n$ id\nuid=0(root) gid=0(root)\n",
+                                   encoding="utf-8")
+    assert lv.criterion_met(str(cap), obs) is True         # whole-string match never fires
+    # one fragment missing -> not met
+    (cap / "shell.txt").write_text("target-vm\nnothing else\n", encoding="utf-8")
+    assert lv.criterion_met(str(cap), obs) is False
+
+
+def test_compound_criterion_and_split_end_to_end(tmp_path, capsys):
+    log = tmp_path / "log.md"
+    log.write_text(LINE % ("c", "target-vm AND uid=0(root)", "c",
+                           " -> VERIFIED: shell"), encoding="utf-8")
+    cap = tmp_path / "poc" / "c"
+    cap.mkdir(parents=True)
+    (cap / "shell.txt").write_text("$ hostname\ntarget-vm\n$ id\nuid=0(root)\n",
+                                   encoding="utf-8")
+    lv.main([str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "lane c: VERIFIED" in out

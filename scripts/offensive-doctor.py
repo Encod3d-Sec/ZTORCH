@@ -140,6 +140,46 @@ def _skill_and_hook():
               "keystrokes could re-enter a LIVE pane and clobber a running scan", warn=True)
 
 
+# ------------------------------------------------- 5b. eval_metrics -> bench seam
+
+def _bench():
+    """close-out's auto Metrics block imports bench for lab scoring under a bare
+    `except: return []` (eval_metrics.py bench_lines) - a broken seam loses practice-lab
+    scores with zero signal anywhere, and nothing tests the eval->bench direction. Check
+    it in-process against the TEST fixture pair (no client data; doctor never globs
+    targets/), plus the manifest's dangling class refs (bench warns these only when run
+    by hand)."""
+    fx = os.path.join(VAULT, "tests", "fixtures")
+    if not (os.path.isfile(os.path.join(fx, "bench-manifest.json"))
+            and os.path.isdir(os.path.join(fx, "bench-eng"))):
+        check("bench fixture pair present (in-process score)", False,
+              "tests/fixtures/bench-manifest.json + bench-eng/ missing")
+        return
+    try:
+        sys.path.insert(0, os.path.join(VAULT, "scripts"))
+        import bench
+        man = json.load(open(os.path.join(fx, "bench-manifest.json"), encoding="utf-8"))
+        d = bench.score_engagement(os.path.join(fx, "bench-eng"), man)
+        check("bench.score_engagement scores (eval_metrics seam live)",
+              isinstance(d.get("total"), int) and "coverage_pct" in d,
+              "the close-out auto Metrics block would silently lose lab scores")
+    except Exception as e:
+        check("bench.score_engagement scores (eval_metrics seam live)", False, str(e)[:80])
+        return
+    try:
+        labs = json.load(open(os.path.join(VAULT, "scripts", "bench-labs.json"),
+                              encoding="utf-8"))
+        known = bench._known_classes() or set()
+        dangling = sorted({c for k, v in labs.items()
+                           if not k.startswith("_") and isinstance(v, dict)
+                           for c in (v.get("expected_classes") or []) if c not in known})
+        check("bench-labs.json expected_classes all resolve (coverage-classes.json)",
+              not dangling, "dangling: " + ", ".join(dangling))
+    except Exception as e:
+        check("bench-labs.json expected_classes all resolve (coverage-classes.json)",
+              False, str(e)[:80])
+
+
 # --------------------------------------------------------------------------- 6. zg (zvec-grep) search layer
 
 def _zg():
@@ -213,6 +253,7 @@ def main(argv):
         _routing(off)
         _tools(off)
     _skill_and_hook()
+    _bench()
     _zg()
     _smoke(off)
 

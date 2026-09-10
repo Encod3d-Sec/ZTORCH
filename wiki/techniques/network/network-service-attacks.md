@@ -1605,7 +1605,6 @@ static upload and reach PHP without touching 9000 directly.
 
 ---
 
-
 ## Oracle TNS Listener enumeration and DB code execution (port 1521)
 
 Oracle DB fronts its RDBMS with the TNS Listener, usually on 1521/TCP (secondary listeners land on 1522-1529). The listener leaks version, can be brute-forced for the SID (database name), and once you have a SID plus valid creds the DB itself gives file read/write and OS command execution. `odat` (Oracle Database Attacking Tool) automates the whole chain; `tnscmd10g` and nmap NSE do the light-touch banner and version work.
@@ -2927,10 +2926,6 @@ the external nmap never saw them.
 
 <!-- promoted-slug: mongo-localhost-postfoothold-loot -->
 
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
-
 ## InfluxDB 1.x JWT auth-bypass gotchas (CVE-2019-20933 in practice)
 
 - The forged token must ride the `Authorization: Bearer <jwt>` header. Passing it as the `u=<user>&p=<jwt>` query params takes the PASSWORD path and always returns `authorization failed` - the error is identical to a bad signature, so it silently misleads.
@@ -2948,10 +2943,6 @@ print(h+'.'+p+'.'+sig)
 ```
 
 <!-- promoted-slug: influxdb-jwt-auth-gotchas -->
-
-## <Heading>
-
-<generic technique steps; no client host/IP/domain>
 
 ### ssh_enumusers false-positive abort (CVE-2018-15473)
 
