@@ -93,11 +93,31 @@ def _cooled_down():
     return True
 
 
+def _driver_served(cmd):
+    """True when this command invokes the tool the offensive driver last served
+    (.offensive.json last_move.tool of the ACTIVE engagement): the run IS the driver's
+    emitted action, and nudging it into a tmux driver second-guesses the board the
+    driver already shaped (audit 2026-09-10)."""
+    try:
+        eng = open(os.path.join(VAULT, "targets", "active.md"),
+                   encoding="utf-8").read().split()[0]
+        st = json.load(open(os.path.join(VAULT, "targets", eng, ".offensive.json"),
+                            encoding="utf-8"))
+        tool = str((st.get("last_move") or {}).get("tool") or "").strip().lower()
+    except Exception:
+        return False
+    if not tool:
+        return False
+    tok = r"(?<![\w.-])" + re.escape(tool) + r"(?![\w.-])"
+    c = (cmd or "").lower()
+    return bool(re.search(tok, c) or any(re.search(tok, ic.lower()) for ic in _inners(cmd)))
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
         cmd = (payload.get("tool_input") or {}).get("command") or ""
-        if not _should_nudge(cmd):
+        if not _should_nudge(cmd) or _driver_served(cmd):
             return
         try:
             import _meta

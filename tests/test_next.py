@@ -252,6 +252,25 @@ def test_deadend_pair_suppresses_hand_revived_row(tmp_path, capsys):
     assert "Skill(wiki-arsenal)" not in out   # suppressed row is not served
 
 
+def test_deadend_pair_expands_class_equivs(tmp_path, capsys):
+    """D-D2 suppression side (audit 2026-09-10): a deadend written `file-upload` must
+    suppress a board row spelled `upload` (and vice versa) - else G4 keeps serving a
+    vector coverage already cleared under the other spelling."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "upload"},
+                                     status="[ ]", skill="", tool="nuclei")])
+    (eng / "Deadends.md").write_text(
+        "| asset | class | what was tried | why exhausted | date | reopen-if |\n"
+        "|---|---|---|---|---|---|\n"
+        "| web1 | file-upload | all extensions refused | exhausted | 2026-09-10 | |\n",
+        encoding="utf-8")
+    assert ("web1", "upload") in offensive._deadend_pairs(eng)
+    rc, out = _next_out(capsys, vault, eng)
+    assert rc == 0
+    assert "G4: 1 open row(s) match a Deadends.md pair" in out
+    assert "Skill(wiki-arsenal)" not in out   # cross-spelling suppression held
+
+
 def test_walled_board_gets_redteamlead_not_closeout(tmp_path, capsys):
     """All parked/dead + zero finds must NOT print the closeout chain."""
     vault, eng = _setup(tmp_path)

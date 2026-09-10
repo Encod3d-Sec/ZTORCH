@@ -251,13 +251,53 @@ def test_board_is_4a_slice_not_first_table(tmp_path):
 
 def test_long_foreground_scan_through_bridge_advises_detached(tmp_path):
     """P15 DOA table: a slow scan in the foreground through the direct vm.sh bridge is
-    structurally dropped at ~2min - the advisory fires with no engagement at all."""
+    structurally dropped at ~2min - the advisory fires with no engagement at all (isolated
+    vault with an EMPTY targets/: the 15-min DOA stamp is per-engagement, so a
+    no-engagement run is unthrottled; an empty targets/ keeps active_dir from falling
+    back to this repo's live vault)."""
+    (tmp_path / "novault" / "targets").mkdir(parents=True)
     payload = json.dumps({"tool_name": "Bash", "tool_input": {
         "command": "bash /root/vm.sh 'nmap -p- --min-rate 2000 -T4 10.0.0.5'"}})
     r = subprocess.run([sys.executable, str(HOOK)], input=payload,
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30,
+                       env=dict(os.environ, ZTORCH_VAULT=str(tmp_path / "novault")))
     ctx = _decoded(r).get("hookSpecificOutput", {}).get("additionalContext", "")
     assert "TRANSPORT DOA" in ctx and "vm-scan.sh" in ctx
+
+
+def test_doa_advisory_stamp_gates_and_falls_through(tmp_path):
+    """Audit 2026-09-10: within an engagement the DOA advisory injects ONCE per 15 min
+    (.doa-stamp); a stamped-out advisory must FALL THROUGH to the campaign logic (the
+    off-board streak still counts a DOA-shaped retry loop) instead of returning silent."""
+    v = _mk(tmp_path, streak=0)
+    # 1st fire: advisory injects + stamps
+    r1 = _run(v, "bash /root/vm.sh 'nmap -p- 10.0.0.5'")
+    ctx1 = _decoded(r1).get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert "TRANSPORT DOA" in ctx1
+    assert (tmp_path / "targets" / "engd" / ".doa-stamp").exists()
+    # 2nd fire inside the window: the DOA text is not re-injected, but the fall-through
+    # COUNTS the call -- streak 1 prints the ordinary DRIFT advisory instead
+    r2 = _run(v, "bash /root/vm.sh 'nmap -p- 10.0.0.5'")
+    ctx2 = _decoded(r2).get("hookSpecificOutput", {}).get("additionalContext", "")
+    assert "TRANSPORT DOA" not in ctx2
+    assert "DRIFT (off-board, streak 1)" in ctx2
+    st = json.loads((tmp_path / "targets" / "engd" / ".offensive.json").read_text())
+    assert st["off_board_streak"] == 1
+
+
+def test_doa_ignores_text_that_only_mentions_the_bridge(tmp_path):
+    """Audit 2026-09-10: bridge + slow markers must co-occur in ONE executable segment;
+    echo/heredoc text mentioning vm.sh next to an nmap word elsewhere must not fire, and
+    deploy-vm.sh (lookbehind) is not the bridge."""
+    env = dict(os.environ, ZTORCH_VAULT=str(tmp_path / "novault"))
+    for cmd in ("echo 'run vm.sh for the box'; nmap -sV 10.0.0.5 > /tmp/o.txt",
+                "cat notes.txt   # mentions vm.sh and nmap -p- prose",
+                "bash deploy-vm.sh 'nmap -p- 10.0.0.5'",
+                "bash /root/vm.sh 'curl \"http://10.0.0.5/?a=1&b=2\"'"):   # quoted & is data
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
+        r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                           capture_output=True, text=True, timeout=30, env=env)
+        assert r.stdout.strip() == "", cmd
 
 
 def test_detached_or_fast_forms_do_not_fire(tmp_path):

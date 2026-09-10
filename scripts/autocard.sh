@@ -86,7 +86,17 @@ while IFS= read -r tab <&3; do
   # finished? the pane's last non-empty line is a shell prompt (kali `└─#`, or a trailing #/$).
   done_prompt=0
   printf '%s' "$last" | tail -1 | grep -qE '└─#|[#$][[:space:]]*$' && done_prompt=1
-  if [ $((NOW - first)) -gt 2700 ] && [ "$done_prompt" -eq 0 ]; then
+  # interactive-prompt classification (clone pattern: stall-watchdog PROMPT_PATTERNS): the
+  # tail looks like a question the TOOL is asking a human (y/n, password, overwrite?) - not
+  # a wedge and not done. Name it so the operator ANSWERS the tab instead of killing it.
+  blocked_prompt=0
+  if [ "$done_prompt" -eq 0 ] && printf '%s' "$last" | tail -1 | tr -d '\r' | \
+      grep -qiE '\((y/n|yes/no)\)|password for|press (any key|enter)|continue\?|overwrite\?|\b(do you|would you|are you sure|ready to)\b.*\?'; then
+    blocked_prompt=1
+    printf 'autocard: %s BLOCKED on an interactive prompt (last: %s) - answer it in the tab, do not kill\n' \
+      "$tab" "$(printf '%s' "$last" | tail -1 | tr -d '\r' | cut -c1-60)"
+  fi
+  if [ $((NOW - first)) -gt 2700 ] && [ "$done_prompt" -eq 0 ] && [ "$blocked_prompt" -eq 0 ]; then
     printf 'autocard: %s RUNNING >45m - wedged scan or listener (last: %s)\n' \
       "$tab" "$(printf '%s' "$last" | tail -1 | tr -d '\r' | cut -c1-60)"
   fi

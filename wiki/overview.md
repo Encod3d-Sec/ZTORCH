@@ -43,12 +43,12 @@ sources: []
 | Recon & OSINT | Complete | [[wiki/cheatsheets/recon]] cheatsheet, [[wiki/tools/nmap]], [[wiki/tools/ffuf]], [[gobuster]], [[nikto]], [[wiki/tools/rustscan]] |
 | Service enumeration | Complete | [[service-enumeration]] |
 | Web exploitation | Complete | 20+ technique pages (see Web section below) |
-| Network exploitation | Complete | [[network-service-attacks]], [[network-services]] cheatsheet |
+| Network exploitation | Complete | [[network-service-attacks]] |
 | Password attacks | Complete | [[password-cracking]], [[pass-the-hash]], [[password-attacks]] cheatsheet |
-| Post-exploitation | Complete | [[reverse-shells]], [[file-transfer]], [[linux-privesc]], [[linux-privesc]] cheatsheet |
+| Post-exploitation | Complete | [[reverse-shells]], [[file-transfer]], [[linux-privesc]] |
 | Active Directory | Complete | [[active-directory]] hub, [[ad-enumeration]], [[ad-lateral-movement]], [[ad-persistence]], [[ad-cheatsheet|Active Directory cheatsheet]] |
-| Cloud (AWS) | Complete | [[aws-attacks]], [[cloud-iam-attacks]], [[aws]] cheatsheet |
-| Pivoting & Tunneling | Complete | [[pivoting-tunneling]], [[pivoting]] cheatsheet |
+| Cloud (AWS) | Complete | [[aws-attacks]], [[cloud-iam-attacks]] |
+| Pivoting & Tunneling | Complete | [[pivoting-tunneling]] |
 | Reporting | Complete | [[vuln-assessment]], [[pentest-methodology]] |
 
 ---

@@ -19,7 +19,7 @@ without a `poc/` image), GATE 3 (exhausted vector -> `[!]` + one `Deadends.md` l
 This mandate stands over every phase below. Before writing ANY custom script or recalling an exploit from memory:
 1. `qmd_query "<tech/version> exploit"` and `qmd_query "<service> privilege escalation"` via wiki-search MCP. Read matches. If the MCP is down (it drops mid-session), run `bash scripts/wiki-query.sh "<tech> exploit"` (same qmd index; `-k` for an exact CVE) - do NOT skip wiki-first or fall back to grep.
 2. Pull payloads from `wiki/payloads/` and chains from `wiki/cheatsheets/attack-chains.md` + `wiki/cheatsheets/cve-arsenal.md`, or `Skill(wiki-arsenal)` to resolve the exact file.
-3. Privesc reference: `wiki/techniques/linux/linux-privesc.md` / `wiki/cheatsheets/linux-privesc.md` (or windows-privesc).
+3. Privesc reference: `wiki/techniques/linux/linux-privesc.md` (or windows-privesc).
 Only after the wiki has nothing do you write a custom PoC. Do not reinvent what the wiki already documents.
 
 **Tooling home:** check `/opt/arsenal` first for pspy/linpeas/shot/capture. pspy64/linpeas/winPEAS live in `/opt/arsenal`, seeded by `vm-provision.sh` from their GitHub releases; our own helpers (`shot.py`, `capture.sh`) are pushed on demand by `bash scripts/vm-sync.sh <name>` from the vault.
@@ -87,7 +87,7 @@ Fingerprint the exact app + version. **`Skill(wiki-arsenal)` FIRST** on any fing
 - **Stabilize EVERY Linux shell the moment it lands** (a raw `nc` shell has no job control, no arrow keys, no tab-complete, and Ctrl-C kills it). Full upgrade ladder (pty.spawn fallbacks, `stty raw -echo; fg` Enter-twice gotcha, TERM, rows/cols, and the authorized_keys skip-the-dance alternative): [[reverse-shells]] TTY Upgrade section. (Windows shells: no PTY dance; grab a proper shell via a C2/`ConPtyShell` or just RDP/WinRM once you have creds.)
 - **Catch every reverse-shell pop through `msfconsole` `multi/handler` - never a raw `nc` listener by default.** A raw `nc` PTY has the footgun that `Ctrl-C` kills the LISTENER (dropping the shell back to your own prompt - the false-RCE trap) and needs quoting gymnastics to drive. Default the payload to **meterpreter** (`linux/x64/meterpreter/reverse_tcp` etc.); when meterpreter is blocked or unstable - routine on **Windows/EDR**, where the stager dies but a plain shell survives - fall back to a **plain `shell_reverse_tcp`** payload still caught in `multi/handler` (a bare `nc`/`vm-scan.sh --win shell` listener is the last resort). Meterpreter also gives `autoroute`/`portfwd`/`socks` to reach internal-only ports - use that before hand-rolling SSH `-L` forwards. `msfconsole`/`msfvenom` are on the VM. (An already-interactive SSH/`evil-winrm`/cred session needs none of this - drive it directly.) Drive the whole handler setup + catch through `Skill(metasploit)`.
 - **Drive commands into the landed shell (reverse shell or tmux tab) with `scripts/vm-rsh.sh <eng> '<cmd>'`** - it base64-wraps the command so any metachars survive the vm.sh -> ssh -> tmux bridge and returns clean output. NEVER hand-quote `tmux send-keys` + `capture-pane`, or `/dev/tcp` file-transfers, to run commands; that quoting hell is a known repeat drift.
-- **On FIRST foothold, stand up ONE persistent multiplexed channel and reuse it.** SSH `ControlMaster`/`ControlPersist` (plus `-L` forwards for internal-only ports), or a reverse shell that survives home-perm resets. Opening a fresh SSH per command through an unstable VPN tunnel was the dominant wall-clock sink on a recent box. See [[pivoting]].
+- **On FIRST foothold, stand up ONE persistent multiplexed channel and reuse it.** SSH `ControlMaster`/`ControlPersist` (plus `-L` forwards for internal-only ports), or a reverse shell that survives home-perm resets. Opening a fresh SSH per command through an unstable VPN tunnel was the dominant wall-clock sink on a recent box. See [[pivoting-tunneling]].
 - **Cred-reuse FIRST.** Capture creds to `targets/<eng>/loot.md` immediately; try reuse (su / ssh / other services) BEFORE hunting new ones. DB/web creds are very often **reused for SSH**.
   - **Spray EVERY secret you hold against EVERY user x surface, not just the newest one.** The drift: a cred gets written to loot.md, one obvious target is tried, and the rest of the matrix is never run while a fresh privesc vector is ground for half an hour. Re-run the FULL matrix each time a new secret lands. `su` and SSH are NOT equivalent - `PermitRootLogin no` makes `ssh root@` fail while `su root` with the same password succeeds, so a "root: []" SSH result is NOT a negative for root (needs a PTY: `pty.spawn`/`script -qc`).
   - **The leaked config is not the live secret.** An app that does `load_dotenv()` / `os.environ.get(...)` keeps its REAL password in a `.env` beside the source, not in the seeded `.sql`. Read every config the app actually loads, and diff it against what the leak gave you.
@@ -157,7 +157,7 @@ the colored hits survive) AND the FULL text log - redirect the tool to a file, t
 
 **Read-whole is not just for recon: grep is NOT the read for PAYLOAD RESULTS or pspy/linpeas output either.** A UNION/echo dump can reflect in an unexpected phrasing (singular "1 word" vs plural "N words"), and a root cron hides in the full pspy stream; read the whole result block, not a keyword grep.
 
-Walk the full manual checklist ([[wiki/cheatsheets/linux-privesc]] Quick wins / [[linux-privesc]]) -- the box's intended path is usually ONE of those rows; do not skip any.
+Walk the full manual checklist ([[linux-privesc]] Quick wins) -- the box's intended path is usually ONE of those rows; do not skip any.
 
 **Windows runs the same manual discipline off [[windows-privesc]] (winpeas + `whoami /priv` first).** Key shape the Linux table has no row for: a writable service-binary directory + a LocalSystem AUTO_START service you cannot start/stop = trigger execution with a REBOOT (SeShutdownPrivilege); a vendor repair watchdog can revert the swap, so re-arm and issue the reboot in the SAME action ([[wiki/cheatsheets/windows-privesc]]).
 
@@ -210,12 +210,12 @@ After each phase, write to `targets/<eng>/`: hosts/access -> `state.md`, creds -
 - [[wiki/cheatsheets/recon]]
 - [[nuclei-arsenal]]
 - [[wordlists]]
-- [[network-services]]
+- [[network-service-attacks]]
 - [[linux-enumeration]]
 - [[windows-enumeration]]
 - [[windows-privesc]]
 - [[password-attacks]]
 - [[sqlmap]]
-- [[pivoting]]
+- [[pivoting-tunneling]]
 - [[web-client-attacks]]
 - [[metasploit]]

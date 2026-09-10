@@ -20,13 +20,13 @@
    "arsenal": "payloads/auth-bypass"
   },
   "bizlogic": {
-   "class": "bizlogic",
+   "class": "business-logic",
    "skill": "hunt-bizlogic",
    "wiki": "business-logic",
    "arsenal": "race-conditions"
   },
   "cache": {
-   "class": "cache",
+   "class": "web-cache",
    "skill": "hunt-cache",
    "wiki": "web-cache-poisoning",
    "arsenal": "payloads/web-cache"
@@ -50,7 +50,7 @@
    "arsenal": "payloads/deserialization"
   },
   "federation": {
-   "class": "federation",
+   "class": "oauth-saml",
    "skill": "hunt-federation",
    "wiki": "oauth-attacks",
    "arsenal": "payloads/oauth-saml"
@@ -116,7 +116,7 @@
    "arsenal": "recon-dorks"
   },
   "smuggling": {
-   "class": "smuggling",
+   "class": "request-smuggling",
    "skill": "hunt-smuggling",
    "wiki": "http-request-smuggling",
    "arsenal": "payloads/smuggling"
@@ -134,7 +134,7 @@
    "arsenal": "payloads/ssrf"
   },
   "upload": {
-   "class": "upload",
+   "class": "file-upload",
    "skill": "hunt-upload",
    "wiki": "file-upload",
    "arsenal": "payloads/file-upload"
@@ -314,7 +314,7 @@
    "arsenal": "payloads/jwt"
   },
   "oauth": {
-   "class": "federation",
+   "class": "oauth-saml",
    "skill": "hunt-federation",
    "wiki": "oauth-attacks",
    "arsenal": "payloads/oauth-saml"
@@ -398,7 +398,7 @@
    "arsenal": "windows-enumeration"
   },
   "cache-headers": {
-   "class": "cache",
+   "class": "web-cache",
    "skill": "hunt-cache",
    "wiki": "web-cache-poisoning",
    "arsenal": "payloads/web-cache"

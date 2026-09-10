@@ -133,7 +133,7 @@ nxc ldap <dc> -u <user> -p <pass> --bloodhound -c all --dns-server <dc> --dns-tc
 ```
    - **Through a SOCKS pivot** the collection needs `--dns-tcp` too (UDP DNS never traverses the
      tunnel, DC discovery dies with "Could not find a domain controller"), and certipy needs
-     `-ldap-scheme ldap`; [[pivoting]] carries the toolkit gotchas. No GUI needed: jq over the zip's
+     `-ldap-scheme ldap`; [[pivoting-tunneling]] carries the toolkit gotchas. No GUI needed: jq over the zip's
      users/groups JSON lists exactly what a principal holds rights on ([[bloodhound]]).
    - **GenericWrite on a GROUP is a self-add**: the group may be NESTED in Domain Admins (you never
      touch DA directly); when RPC will not traverse the pivot, add yourself with a raw ldap3

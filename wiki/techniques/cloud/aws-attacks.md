@@ -4,7 +4,7 @@ type: technique
 tags: [aws, cloud, ec2, enumeration, exploitation, s3, thm, vpc]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-05-13
+date_updated: 2026-09-10
 sources: [thm-aws-intro, thm-aws-core-services, thm-aws-serverless, git-cloudfox]
 ---
 
@@ -14,7 +14,7 @@ sources: [thm-aws-intro, thm-aws-core-services, thm-aws-serverless, git-cloudfox
 
 AWS exposes a third dimension of attack surface beyond traditional network-centric security. Every AWS resource is controlled through authenticated API calls — there is no "inside the firewall" equivalent. Compromising valid IAM credentials gives an attacker full programmatic control over the targeted account. The primary attack surfaces are EC2 (compute), S3 (object storage), VPC (software-defined networking), Lambda (serverless compute), and API Gateway (managed API proxy).
 
-See also: [[cloud-iam-attacks]], [[aws]]
+See also: [[cloud-iam-attacks]]
 
 ---
 
@@ -312,6 +312,43 @@ Some buckets are locked to access only from a specific VPC endpoint (using `aws:
 
 ## VPC Attacks
 
+### VPC Reconnaissance
+
+```bash
+# List all VPCs
+aws ec2 describe-vpcs
+
+# List subnets
+aws ec2 describe-subnets
+
+# List route tables
+aws ec2 describe-route-tables
+
+# List internet gateways
+aws ec2 describe-internet-gateways
+
+# List security groups
+aws ec2 describe-security-groups
+
+# List NACLs
+aws ec2 describe-network-acls
+
+# List VPC endpoints
+aws ec2 describe-vpc-endpoints
+
+# List prefix lists (maps AWS service CIDR ranges)
+aws ec2 describe-prefix-lists
+
+# List load balancers
+aws elbv2 describe-load-balancers
+aws elbv2 describe-load-balancers \
+  --query LoadBalancers[].DNSName --output text
+
+# Find CloudFormation stack outputs (useful for discovering internal resources)
+aws cloudformation describe-stacks \
+  --query "Stacks[?contains(StackName,'target')].Outputs"
+```
+
 ### Security Group Misconfigurations
 
 Security groups are the primary network-level control for EC2 and other VPC resources. Common misconfigurations:
@@ -430,6 +467,18 @@ cat output.json | jq -r . | grep AWS
 ```
 
 This leaks `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` — temporary credentials for the Lambda execution role.
+
+**Key Lambda environment variables** (available inside the execution environment):
+
+| Variable | Content |
+|----------|---------|
+| `AWS_ACCESS_KEY_ID` | Temporary key ID for execution role |
+| `AWS_SECRET_ACCESS_KEY` | Temporary secret for execution role |
+| `AWS_SESSION_TOKEN` | Session token for execution role |
+| `AWS_REGION` | Region the function runs in |
+| `AWS_LAMBDA_FUNCTION_NAME` | Function name |
+| `AWS_LAMBDA_FUNCTION_MEMORY_SIZE` | Allocated memory |
+| `_HANDLER` | Handler path |
 
 ### Lambda Execution Role Escalation
 
@@ -687,6 +736,42 @@ kubectl get serviceaccounts --all-namespaces
 IAM roles attached to node groups (`ec2:DescribeInstances` on worker nodes → IMDS → node role credentials) can be a path into the cluster even without direct API server access.
 
 ---
+
+## CloudTrail Detection Evasion
+
+- `aws:SourceIp` in CloudTrail reveals your IP; use FireProx or VPN
+- `sts:GetCallerIdentity` is logged but low-signal; it still appears in CloudTrail
+- GuardDuty triggers on: credentials used from unexpected location, port scanning, crypto mining, DNS exfiltration, unusual API call patterns
+- Using regional STS endpoints (`sts.us-east-1.amazonaws.com`) may reduce some detection
+- Pacu has `--no-cloudtrail` aware modules that avoid high-detection API calls
+
+## Common Attack Chains
+
+**SSRF to Admin**:
+```text
+SSRF vulnerability → IMDS credentials → STS get-caller-identity → IAM enumeration
+→ iam:AttachUserPolicy or iam:PassRole + ec2:RunInstances → AdministratorAccess
+```
+
+**Public S3 to Code Execution**:
+```text
+Public bucket discovered → AMI binary or Lambda zip found → Restore/download code
+→ Extract secrets/credentials from code → Or deploy modified code for RCE
+```
+
+**Lambda Pivot (VPC-restricted bucket)**:
+```text
+Read-only creds → lambda:list-functions → Command injection in vulnerable Lambda
+→ Steal Lambda execution role creds → lambda:UpdateFunctionCode on VPC Lambda
+→ Invoke modified VPC Lambda → Read VPC-endpoint-restricted S3 bucket
+```
+
+**Leaked AKIA to Full Compromise**:
+```text
+AKIA found in GitHub/config → aws sts get-caller-identity → iam enumeration
+→ iam:CreatePolicyVersion / iam:AttachUserPolicy → AdministratorAccess
+→ sts:AssumeRole OrganizationAccountAccessRole → Full org compromise
+```
 
 ## Detection and Defence
 

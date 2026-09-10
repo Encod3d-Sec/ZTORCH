@@ -176,6 +176,11 @@ def collect(d, extra_transcript=None):
     skills = Counter(e.get("skill") for e in events if e.get("kind") == "tool" and e.get("skill"))
     hooks = Counter(e.get("hook") for e in events if e.get("kind") == "hook" and e.get("hook"))
     drifts = [e for e in events if e.get("kind") == "drift"]
+    # advisories acted on: drift-guard logs kind="advice" action="complied" when advice
+    # was outstanding and the agent came back to the driver - the denominator for the
+    # drift_count above (advice that worked vs advice ignored to a deny).
+    complied = sum(1 for e in events if e.get("kind") == "advice"
+                   and e.get("action") == "complied")
     # hunt-firing drift: a fingerprint routed a hunt-* skill that was never invoked this session
     # (recon-capture logs kind="route"; tool-telemetry logs kind="tool" skill=<name> on invocation).
     _routed = {e.get("routed") for e in events
@@ -193,7 +198,7 @@ def collect(d, extra_transcript=None):
         "tool_calls": sum(tools.values()), "tools": tools,
         "skill_calls": sum(skills.values()), "skills": skills,
         "hook_fires": sum(hooks.values()), "hooks": hooks,
-        "drift_count": len(drifts), "drifts": drifts,
+        "drift_count": len(drifts), "drifts": drifts, "advice_complied": complied,
         "tool_out": sum(e.get("out_bytes") or 0 for e in events if e.get("kind") == "tool"),
         "bench": bench_lines(d),
         "transcripts": [t for t in transcripts if os.path.isfile(t)],
@@ -239,6 +244,7 @@ def render(name, c):
          "| skill calls | %d |" % c["skill_calls"],
          "| hook fires | %d |" % c["hook_fires"],
          "| drift signals | %d |" % c["drift_count"],
+         "| advisories acted on | %d |" % c.get("advice_complied", 0),
          ""]
     # cache-churn advisory (pass 11): the hit-rate row alone does not force the read; a
     # long box under 70% is context churn (compactions / fresh-context re-reads) and the

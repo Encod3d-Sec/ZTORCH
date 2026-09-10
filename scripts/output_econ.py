@@ -74,8 +74,19 @@ def stub(data, path, thresh):
     saved = (" Full output saved to: %s" % path) if path else ""
     head = (b"[output economy] %d bytes exceeded %d cap.%s\n"
             b"Preview (first %d bytes):\n" % (len(data), thresh, saved.encode(), len(prev)))
-    tail = (b"\n[%d more bytes] re-run narrow: grep/head the saved file, or re-run the "
-            b"command with a server-side filter.\n" % (len(data) - len(prev)))
+    # keep-the-tail (clone pattern): verdicts/errors/flags live at the END of a big dump -
+    # a head-only stub hid the exit state of every large scan. Append the last 1KB,
+    # newline-aligned, when anything was actually omitted.
+    omitted = len(data) - len(prev)
+    tail = b""
+    if omitted > 0:
+        t = ANSI.sub(b"", data[-1024:])
+        cut = t.find(b"\n")
+        if cut != -1 and len(t) - cut > 64:
+            t = t[cut + 1:]
+        tail = (b"\n[... %d middle bytes omitted - full output in the saved file ...]\n" % omitted) + t
+    tail += (b"\n[re-run narrow: grep/head the saved file, or re-run the "
+             b"command with a server-side filter]\n")
     return head + prev + tail
 
 

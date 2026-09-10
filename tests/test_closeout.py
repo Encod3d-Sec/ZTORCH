@@ -37,6 +37,18 @@ def _run(argv):
     return offensive.main(argv)
 
 
+def _seed_asset(eng, asset="web1"):
+    """Insert a state.md asset row (the bb/ctf table) below its separator. `coverage`
+    derives the asset set from state.md via next_move.in_scope_assets -- a board-only
+    fixture mirrors no real engagement (assets always start in state.md)."""
+    state = eng / "state.md"
+    lines = state.read_text().splitlines()
+    sep = next(i for i, l in enumerate(lines)
+               if l.startswith("|") and set(l.strip("| ")) <= set("-:| "))
+    lines.insert(sep + 1, "| %s | http://t/ | / | | | recon | |" % asset)
+    state.write_text("\n".join(lines) + "\n")
+
+
 def _state(eng):
     return json.loads((eng / offensive.STATE_NAME).read_text())
 
@@ -74,6 +86,7 @@ def test_closeout_chain_per_type(tmp_path, capsys):
 def test_coverage_lists_untested_classes(tmp_path, capsys):
     vault, eng = _setup(tmp_path, "bb")
     # web1: sqli tested [x], ssrf still open -> ssrf (+ every other base class) is a gap
+    _seed_asset(eng)
     offensive.write_board(eng, [
         _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
              arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap", status="[x]"),
@@ -160,6 +173,7 @@ def test_coverage_type_alias_and_deadend_credit(tmp_path, capsys):
     st = json.loads((eng / offensive.STATE_NAME).read_text())
     st["type"] = "bugbounty"                      # the normalized spelling, not `bb`
     (eng / offensive.STATE_NAME).write_text(json.dumps(st, indent=2))
+    _seed_asset(eng)
     offensive.write_board(eng, [
         _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
              arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap", status="[x]"),

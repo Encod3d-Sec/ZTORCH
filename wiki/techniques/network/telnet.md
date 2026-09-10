@@ -223,6 +223,5 @@ Decision tree:
 
 - [[service-enumeration]] — protocol enumeration general patterns
 - [[network-service-attacks]] — sibling services (FTP/SMB/RDP)
-- [[network-services]] — quick-reference cheatsheet
 - [[password-attacks]] — hydra/medusa/ncrack and wordlist tooling
 - [[pivoting-tunneling]] — post-shell pivot

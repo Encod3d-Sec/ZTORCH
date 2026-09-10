@@ -20,7 +20,7 @@ GATE 1 (wiki): no hand-rolled exploit until its Weaponize wiki item is `[x]`.
 GATE 2 (poc):  no exploit step goes `[~]`->`[x]` without a poc/ image.
 GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the next open item. Never re-run `[!]`.
 
-## 1. Recon  ([[wiki/cheatsheets/recon]] · [[service-enumeration]] · [[network-services]])
+## 1. Recon  ([[wiki/cheatsheets/recon]] · [[service-enumeration]] · [[network-service-attacks]])
 - [ ] rustscan all ports                 -> [[wiki/tools/rustscan]]
 - [ ] nmap -sCV on open ports            -> [[wiki/tools/nmap]]
 - [ ] service enum per port              -> [[service-enumeration]]
@@ -66,7 +66,7 @@ route by class: Skill(wiki-arsenal) -> Skill(`hunt-<class>`)
 - [ ] linpeas / winpeas              -> [[linpeas]] [[linux-enumeration]] [[windows-enumeration]]
 - [ ] sudo -l / SUID / caps / cron / timers / groups  -> [[linux-privesc]] [[windows-privesc]]
 - [ ] docker / lxd / container check -> [[docker-attacks]] [[linux-container-escape]]
-- [ ] internal services / pivot      -> [[pivoting]] [[chisel]] [[ligolo-ng]] [[file-transfer]]
+- [ ] internal services / pivot      -> [[pivoting-tunneling]] [[chisel]] [[ligolo-ng]] [[file-transfer]]
 - [ ] persistence (if required)      -> [[linux-persistence]] [[windows-persistence]]
 
 ### 4c. Objective

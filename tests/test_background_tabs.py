@@ -222,3 +222,49 @@ def test_autocard_prunes_ledgers_after_session_loss(tmp_path):
         assert "ferox-1=100" in open_tabs        # live name KEEPS its first-seen epoch
     finally:
         shutil.rmtree(eng, ignore_errors=True)
+
+
+# ---------------------------------------------------------------- vm-bg delta/idle
+
+def test_vm_bg_delta_offset_and_idle_hint(tmp_path):
+    """pass 16: --delta is a byte-offset incremental read (1st call = full log, 2nd =
+    only new bytes), and --status judges silence by the LAUNCH-TIME per-tool idle hint
+    ($LOG.idle: pspy 60s, not one global 180s): a log silent 120s reads hung?, and a
+    .done marker flips the verdict to done exit=. FAKE_TMUX + a sed-rewriting fake
+    vm.sh execute the REAL remote scripts with /dev/shm pointed at tmp."""
+    b, d = _shim(tmp_path)
+    shm = tmp_path / "shm"
+    shm.mkdir()
+    vm = b / "vm.sh"
+    vm.write_text('#!/usr/bin/env bash\n'
+                  'eval "$(sed "s#/dev/shm#%s#g" <<<"$1")"\n' % shm)
+    os.chmod(vm, 0o755)
+    env = _env(b, d)
+    env["VM_SH"] = str(vm)
+
+    def run(*args):
+        return subprocess.run(["bash", os.path.join(SCRIPTS, "vm-bg.sh")] + list(args),
+                              capture_output=True, text=True, env=env, timeout=30)
+
+    log = shm / "eng1-pspy.log"
+    r = run("eng1", "pspy", "pspy64 -f 2>/dev/null")
+    assert "launched" in r.stdout
+    assert (shm / "eng1-pspy.log.idle").read_text().strip() == "60"   # per-tool hint
+
+    log.write_text("line1\n")
+    r1 = run("--delta", "eng1", "pspy")
+    assert "line1" in r1.stdout and "(no new output" not in r1.stdout
+    r2 = run("--delta", "eng1", "pspy")
+    assert "(no new output; 6 bytes total)" in r2.stdout
+    log.write_text("line1\nline2\n")
+    r3 = run("--delta", "eng1", "pspy")
+    assert "line2" in r3.stdout and "line1" not in r3.stdout       # only NEW bytes
+
+    import time as _t
+    old = _t.time() - 120
+    os.utime(log, (old, old))
+    assert "hung?" in run("--status", "eng1", "pspy").stdout       # 120s >= 60s hint
+    os.utime(log, None)
+    assert "running (" in run("--status", "eng1", "pspy").stdout
+    (shm / "eng1-pspy.log.done").write_text("exit=0\n")
+    assert "done exit=0" in run("--status", "eng1", "pspy").stdout

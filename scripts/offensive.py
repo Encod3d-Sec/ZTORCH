@@ -41,13 +41,21 @@ BOARD_COLS = ["id", "asset", "vuln class", "arsenal", "skill", "tool",
 # entry MUST be a `class` in scripts/routing.json so every
 # base-superset row resolves to a real skill+arsenal (satisfies board G1/G2).
 # tests/test_board.py::test_no_base_row_has_blank_skill enforces this.
+# D-D2 (pass 16): spellings are the CANONICAL coverage-classes.json ones -- routing.json
+# values were renamed to match, so new boards emit one spelling everywhere and the
+# _CLASS_EQUIV shim in skills/hooks only carries LEGACY boards. This list stays a literal
+# (NOT loaded from coverage-classes.json): that file is the broader METHODOLOGY checklist
+# for gap reporting (next_move/status/coverage -- many of its classes are not routing
+# classes), while this is the routing-resolvable board seed; conflating them would gut
+# the pentest/ctf boards (0-1 of their checklist classes are routing classes).
 BASE_CLASSES = {
     "pentest": ["ad", "windows", "macos", "secrets", "api", "rce", "sqli",
                 "ssrf", "auth", "idor"],
     "bb": ["rce", "sqli", "ssrf", "injection", "deserialization", "auth",
-           "idor", "federation", "smuggling", "upload", "bizlogic", "api",
-           "cache", "secrets", "xss", "cicd", "mcp", "llm"],
-    "ctf": ["rce", "sqli", "ssrf", "injection", "idor", "upload", "auth",
+           "idor", "oauth-saml", "request-smuggling", "file-upload",
+           "business-logic", "api", "web-cache", "secrets", "xss", "cicd",
+           "mcp", "llm"],
+    "ctf": ["rce", "sqli", "ssrf", "injection", "idor", "file-upload", "auth",
             "xss", "secrets", "pwn"],
 }
 
@@ -67,11 +75,11 @@ CLASS_TOOL = {
     "deserialization": "metasploit", "auth": "nuclei", "idor": "burp-suite",
     "xss": "dalfox", "subdomain-takeover": "nuclei", "mcp": "curl",
     "cicd": "trufflehog", "api": "nuclei", "injection": "nuclei",
-    "federation": "burp-suite", "cloud": "pacu", "secrets": "trufflehog",
-    "smuggling": "nuclei", "upload": "nuclei", "vpn": "nmap",
+    "oauth-saml": "burp-suite", "cloud": "pacu", "secrets": "trufflehog",
+    "request-smuggling": "nuclei", "file-upload": "nuclei", "vpn": "nmap",
     "windows": "winpeas", "ad": "netexec", "m365": "netexec",
-    "macos": "linpeas", "llm": "curl", "bizlogic": "burp-suite",
-    "cache": "nuclei", "pwn": "pwntools",
+    "macos": "linpeas", "llm": "curl", "business-logic": "burp-suite",
+    "web-cache": "nuclei", "pwn": "pwntools",
 }
 
 CLASS_TOOL.update({
@@ -172,13 +180,24 @@ def _drain_board_warnings():
 
 
 def _deadend_pairs(eng):
-    """{(asset_lower, class_lower)} from Deadends.md (G4 suppression set)."""
+    """{(asset_lower, class_lower)} from Deadends.md (G4 suppression set). Class cells
+    expand through the same _class_equivs the coverage credit uses (audit 2026-09-10):
+    a deadend written `file-upload` must suppress a board row spelled `upload` and vice
+    versa, else G4 keeps serving a vector coverage already cleared -- the suppression
+    side of the D-D2 spelling gap."""
+    try:
+        import next_move                      # puts skills/hooks on sys.path
+        from _engagement_classes import _class_equivs as equiv
+    except Exception:
+        def equiv(c):
+            return {c}
     out = set()
     for r in _parse_table(Path(eng) / "Deadends.md"):
         a = (r.get("asset") or "").strip().lower()
         c = (r.get("class") or "").strip().lower()
         if a and c:
-            out.add((a, c))
+            for cc in equiv(c):
+                out.add((a, cc))
     return out
 
 
@@ -1471,35 +1490,26 @@ def cmd_done(args):
 
 
 def cmd_coverage(args):
-    """G7 gap report: per asset, the BASE_CLASSES[type] vuln classes with no
-    [x] row on the board (4a + 4b). Untested = no closed evidence row, whether
-    the row is open, dead, parked, or absent. Prints no question."""
+    """G7 gap report: per IN-SCOPE asset, the coverage-classes.json vuln classes with
+    no tested credit (4a/4b [x] rows + findings + Deadends lines). Untested = no closed
+    evidence row, whether the row is open, dead, parked, or absent. Prints no question.
+    Converged on scripts/status.py's coverage_data (pass 16): same base list, same
+    in-scope asset filter, same credit path as next_move's [gap] floor and the
+    --coverage matrix, so the three views cannot disagree -- the old local slice
+    (short-spelling BASE_CLASSES + unfiltered board assets incl. the OSINT pseudo-asset)
+    printed gaps for a DIFFERENT class set than status.py showed (audit 2026-09-10)."""
     eng, state = _eng_state(args, "coverage")
     if eng is None:
         return 2
     raw = state.get("type", "pentest")
-    # state frontmatter may carry either spelling; BASE_CLASSES keys use the short
-    # one while the credit helpers normalize to the long one (D-D2, pass 15).
     etype = {"bb": "bugbounty"}.get(raw, raw)
-    base = BASE_CLASSES.get({"bugbounty": "bb"}.get(raw, raw), [])
-    rows = read_board(eng) + read_board_4b(eng)
-    assets, seen = [], set()
-    for r in rows:
-        a = (r.get("asset") or "").strip()
-        if a and a not in seen:
-            seen.add(a)
-            assets.append(a)
-    # credit = the SAME full path next_move's [gap] floor uses (4a [x] rows +
-    # written findings + Deadends lines), so this report and the gap nudges can
-    # never disagree: a deadend naming a class clears it here too (D-D2, pass 15).
-    import next_move
-    glob_l, norm = next_move.tested_lookup(eng, etype, base)
+    import status
+    base, assets, tested = status.coverage_data(str(eng), etype)
     print("coverage (%s): base vuln classes untested per asset "
           "(credit: 4a/4b [x] + findings + deadends)" % raw)
     gaps_found = False
     for a in assets:
-        gaps = [c for c in base
-                if c.lower() not in next_move.tested_for_asset(a, glob_l, norm)]
+        gaps = [c for c in base if c.lower() not in tested.get(a, set())]
         if gaps:
             gaps_found = True
             print("  %s: %s" % (a, ", ".join(gaps)))

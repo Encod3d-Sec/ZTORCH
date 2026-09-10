@@ -58,3 +58,31 @@ def test_4a_row_json_spelling_credits_driver_spelling(tmp_path):
         encoding="utf-8")
     per_asset, _ = _engagement.tested_classes(str(tmp_path), "bugbounty", {"upload"})
     assert "upload" in per_asset.get("web01", set())
+
+
+def test_negated_deadend_row_credits_nothing(tmp_path):
+    """Audit 2026-09-10 negation guard: a Deadends row saying the class was NOT tested
+    (`skipped` / `out of scope`) is the opposite of a credit - crediting it would silence
+    the gap reminder for a class never touched. The exhausted row beside it still credits."""
+    (tmp_path / "Deadends.md").write_text(
+        "| asset | class | what was tried | why exhausted | date | reopen-if |\n"
+        "|---|---|---|---|---|---|\n"
+        "| 10.0.0.5 | sqli | skipped, out of scope this phase | - | 2026-09-10 | |\n"
+        "| 10.0.0.5 | ssrf | full param matrix, OOB sink dry | exhausted | 2026-09-10 | |\n",
+        encoding="utf-8")
+    per_asset, _ = _engagement.tested_classes(str(tmp_path), "pentest", {"sqli", "ssrf"})
+    got = per_asset.get("10.0.0.5", set())
+    assert "ssrf" in got                 # the real deadend credits
+    assert "sqli" not in got             # the negated row does not
+
+
+def test_negated_deadend_prose_line_credits_nothing(tmp_path):
+    """Same guard on hand-written prose lines (`never tested`, `false positive`): the
+    negated line must land in no credit set, while the plain exhausted line still does."""
+    (tmp_path / "Deadends.md").write_text(
+        "ssrf exhausted after the bounded param matrix\n"
+        "ssrf never tested on web02 - no route to the proxy\n"
+        "xss false positive, parser echo only\n",
+        encoding="utf-8")
+    _, glob = _engagement.tested_classes(str(tmp_path), "bugbounty", {"ssrf", "xss"})
+    assert glob == {"ssrf"}
