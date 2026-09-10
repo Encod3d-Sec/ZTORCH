@@ -44,6 +44,19 @@ TO="timeout 5"; command -v timeout >/dev/null 2>&1 || TO=""
 LIST=$($TO bash "$VM_SH" "tmux list-windows -t '$ENG' -F '#{window_name}' 2>/dev/null" 2>/dev/null) || exit 0
 [ -n "$LIST" ] || exit 0
 
+# prune both ledgers against the LIVE window list: a VM reboot kills every tab but
+# leaves .carded-tabs/.open-tabs entries behind, so a relaunched same-named scan is
+# permanently skip-carded (.carded-tabs) or instantly "RUNNING >45m" (.open-tabs stale
+# epoch). Prune = keep only names still present; AUTOCARD_MAX applies later, inside.
+# -F= so the .open-tabs "name=epoch" lines match on their NAME part ($1); a bare .carded-tabs
+# line has no '=', so $1 is the whole line - one awk serves both. (ponytail: a tab NAME
+# containing '=' would alias; vm-scan sanitizes its names, accept.)
+for LEDGER in "$CARDED" "$OPEN"; do
+  [ -f "$LEDGER" ] || continue
+  awk -F= -v live=" $(printf '%s\n' "$LIST" | tr '\n' ' ') " 'index(live, " " $1 " ")' \
+    "$LEDGER" > "$LEDGER.tmp" 2>/dev/null && mv "$LEDGER.tmp" "$LEDGER"
+done
+
 # NOTE: read the tab list on fd 3, NOT stdin - the `bash $VM_SH` (ssh) calls inside the loop read
 # stdin and would otherwise swallow the rest of the list, carding only the first window.
 n=0

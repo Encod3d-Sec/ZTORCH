@@ -61,6 +61,38 @@ def open_lanes_from_text(text):
     return out
 
 
+def lane_lines(d, stale_min=45):
+    """Open (in-flight) lane lines from log.md, aged off the @HH:MM cell. A lane open
+    past stale_min was likely lost (compaction ate it or the subagent died) - surfaced
+    as resume-or-close instead of the driver silently re-serving its work forever.
+    Lives HERE (beside _LANE_RE) so every consumer imports it plainly; status.py and
+    close-out.py re-export/call it without exec-ing a module by path."""
+    from datetime import datetime
+    try:
+        text = open(os.path.join(d, "log.md"), encoding="utf-8", errors="ignore").read()
+    except Exception:
+        return []
+    now = datetime.now()
+    out = []
+    for name, tail in open_lanes_from_text(text):
+        age = ""
+        m = re.search(r"@(\d{1,2}:\d{2})", tail)
+        if m:
+            try:
+                t = datetime.strptime(m.group(1), "%H:%M").replace(
+                    year=now.year, month=now.month, day=now.day)
+                mins = int((now - t).total_seconds() // 60)
+                if mins < 0:
+                    mins += 1440                     # opened before midnight
+                age = " (%dmin)" % mins
+                if mins >= stale_min:
+                    age += " STALE - resume via its handle or close the lane line"
+            except ValueError:
+                pass
+        out.append("  - lane %s %s%s" % (name, tail, age))
+    return out
+
+
 def _search(dirpath, needle):
     """True when needle appears in any file under dirpath (recursive, fail-open False)."""
     if not os.path.isdir(dirpath):

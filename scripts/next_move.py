@@ -197,7 +197,12 @@ def _ranked(limit=5):
     # twice below: the fingerprint block suppresses a re-surfaced [test] move once its class
     # is done/dead on the asset, and the coverage-gap floor subtracts each asset's OWN tested
     # set (not a flattened global one, so a class tested on A still gaps on B).
-    base = CLASSES.get(etype, [])
+    # union the chain-edge destination classes into the normalization vocab: a
+    # to_class outside CLASSES would never match a tested/dead set, so its edge
+    # re-surfaced forever after the destination was already worked.
+    base = sorted(set(CLASSES.get(etype, []))
+                  | {str(c.get("to_class") or "").lower()
+                     for e in CHAINS.values() for c in (e.get("then") or [])})
     glob_tested_l, per_asset_norm = tested_lookup(d, etype, base)
 
     def tested_for(ent):
@@ -282,6 +287,9 @@ def _ranked(limit=5):
                 to_cls = (cand.get("to_class") or "").lower()
                 if to_cls and to_cls in done:
                     continue                       # destination class already tested/dead here
+                if no_brute and re.search(r"\b(spray|crack)\b",
+                                          (cand.get("move") or "").lower()):
+                    continue                       # RoE no_bruteforce: the edge's action is the forbidden tooling
                 try:
                     gain = int(cand.get("gain", 0))
                 except (TypeError, ValueError):

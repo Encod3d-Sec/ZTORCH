@@ -408,3 +408,51 @@ def test_board_malformed_rows_warned_best_effort(tmp_path, capsys):
     _, payload = _next_json(capsys, vault, eng)           # re-read regenerates them
     assert any("status cell" in w for w in payload["warnings"])
     assert any("shifted" in w for w in payload["warnings"])
+
+
+def test_next_json_runner_and_gate_actions(tmp_path, capsys):
+    """pass 12: the payload carries what a programmatic consumer needs to ACT,
+    not just to look: gate_action (the directive), runner/cmd/read_cmd (the G8
+    dispatch split), evidence_cmd, posture, and the closeout chain on an
+    exhausted board."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="", skill="hunt-sqli", tool="sqlmap")])
+    _, p = _next_json(capsys, vault, eng)
+    assert p["gate_action"] == "Skill(wiki-arsenal) sqli"
+    assert p["runner"] is None and p["cmd"] is None and p["chain"] is None
+    # release G1, skill unfired -> skill gate names the skill
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli",
+                                     tool="sqlmap", status="[~]")])
+    (eng / ".events.jsonl").write_text("")
+    _, p = _next_json(capsys, vault, eng)
+    assert p["gate_action"] == "Skill(hunt-sqli)"
+    # sqlmap is OUTPUT_CLASS -> vm-bg runner + a read command + evidence line
+    state = json.loads((eng / offensive.STATE_NAME).read_text())
+    (eng / ".events.jsonl").write_text(json.dumps(
+        {"tool": "Skill", "skill": "hunt-sqli", "ts": state["started_at"]}) + "\n")
+    _, p = _next_json(capsys, vault, eng)
+    assert p["gates_remaining"] == []
+    assert p["runner"] == "vm-bg" and "vm-bg.sh" in p["cmd"] and "--read" in (p["read_cmd"] or "")
+    assert "capture.sh" in p["evidence_cmd"] and "4a:1" in p["evidence_cmd"]
+    assert p["posture"] == "serial"          # one open asset
+    # a second open asset flips posture; close everything -> chain is served
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "sqli"}, status="[x]"),
+        _row(id="4a:2", asset="web2", **{"vuln class": "xss"}, status="[!]")])
+    _, p = _next_json(capsys, vault, eng)
+    assert p["terminal"] == "exhausted" and p["chain"] == offensive.CLOSEOUT_CHAINS["bb"]
+
+
+def test_next_json_corrupt_state_keeps_stdout_clean(tmp_path, capsys):
+    """pass 12: under --json a corrupt .offensive.json must report on STDERR and
+    exit 2 - stdout stays parseable (empty of diagnostics), so a wrapper's
+    json.loads never trips over an error line."""
+    vault, eng = _setup(tmp_path)
+    (eng / offensive.STATE_NAME).write_text('{"truncated": ')
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "next", "--json"])
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "corrupt" in captured.err and "checkpoint" in captured.err
+    assert ".offensive.json corrupt" not in captured.out   # path chars aside, no diagnostic

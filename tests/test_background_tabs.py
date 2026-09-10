@@ -180,3 +180,45 @@ def test_autocard_all_sweep_keeps_died_rc_slug(tmp_path):
         assert "ferox-1" in (eng / ".carded-tabs").read_text()
     finally:
         shutil.rmtree(eng, ignore_errors=True)
+
+
+def test_vm_scan_quoted_scan_survives_transport(tmp_path):
+    """pass 12: a SCAN holding single quotes must arrive in the pane VERBATIM (base64
+    transport wrap). Pre-wrap, one bad quote aborted the whole remote script and the
+    local tail still exited 0 (silent no-scan)."""
+    b, d = _shim(tmp_path)
+    r = _run_remote(b, d, "x", "T", "awk '{print $1}' /f")
+    sent = (d / "sent").read_text()
+    assert "awk '{print $1}' /f; echo __ZT_RC=" in sent
+
+
+def test_vm_scan_dead_bridge_exits_nonzero(tmp_path):
+    """pass 12: VM down / remote abort -> the local caller must SEE the failure (no
+    window= line -> exit 1), not a silent exit-0 tip."""
+    vmsh = tmp_path / "vmsh-dead"
+    vmsh.write_text("#!/usr/bin/env bash\necho 'ssh: connect refused'\nexit 255\n")
+    os.chmod(vmsh, 0o755)
+    r = subprocess.run(["bash", os.path.join(SCRIPTS, "vm-scan.sh"), "x", "T", "nmap T"],
+                       capture_output=True, text=True,
+                       env={**os.environ, "VM_SH": str(vmsh)})
+    assert r.returncode == 1 and "bridge failed" in r.stderr
+
+
+def test_autocard_prunes_ledgers_after_session_loss(tmp_path):
+    """pass 12: a VM reboot wipes the tabs but not the ledgers. Entries whose name is absent
+    from the live window list are dropped from BOTH ledgers (a dead .carded-tabs name must
+    stop suppressing a relaunched same-named tab); a LIVE name keeps its .open-tabs epoch
+    (the aging clock must survive the sweep, not reset every turn)."""
+    eng = Path(tempfile.mkdtemp(prefix=".acprune-", dir=os.path.join(VAULT, "targets")))
+    try:
+        (eng / ".carded-tabs").write_text("ferox-1\noldtab\n", encoding="utf-8")
+        (eng / ".open-tabs").write_text("ferox-1=100\ngone-tab=200\n", encoding="utf-8")
+        _autocard(tmp_path, eng, {}, ["main", "ferox-1"])  # oldtab / gone-tab not live
+        carded = (eng / ".carded-tabs").read_text().split()
+        assert "oldtab" not in carded            # dead name pruned
+        assert "ferox-1" in carded               # live name kept (still skip-carded)
+        open_tabs = (eng / ".open-tabs").read_text()
+        assert "gone-tab" not in open_tabs       # dead name pruned
+        assert "ferox-1=100" in open_tabs        # live name KEEPS its first-seen epoch
+    finally:
+        shutil.rmtree(eng, ignore_errors=True)

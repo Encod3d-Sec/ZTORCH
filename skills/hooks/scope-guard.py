@@ -54,15 +54,32 @@ _DATA_FLAG = re.compile(
     r"(?<!\S)(?:--data(?:-raw|-binary|-urlencode)?|--form|--header|-d|-F|-H)\s+(?:'[^']*'|\"[^\"]*\"|\S+)",
     re.I)
 _QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+# A URL reduced to its AUTHORITY (scheme://host[:port]) - everything past the first / ? #
+# is PATH, not destination. `curl in-scope.com/archive/10.0.0.5/x` connects to the in-scope
+# host; the path IP is payload by another syntax and must not false-deny.
+_URL_PATH = re.compile(r"([a-z][a-z0-9+.-]*://)([^/?#\\s\"'>]+)[^\\s]*", re.I)
 
 
 def _strip_noise(cmd):
     """Remove URL query/fragment values, data/header-flag payloads, and any REMAINING quoted
     text (an echo/grep string merely mentioning a tool or host, not invoking/targeting it) so
     only genuine invoked-tool tokens and target host/IPs remain for scope/RoE matching. Keeps
-    option-assigned targets (`--url=<host>`, unquoted or bare)."""
-    stripped = _QUERY_FRAG.sub("", _DATA_FLAG.sub(" ", cmd))
-    return _QUOTED.sub(lambda m: " " * len(m.group(0)), stripped)
+    option-assigned targets (`--url=<host>`, unquoted or bare). A quoted span holding a URL,
+    or a single host/IP token (`ssh 'dc01.corp.local'`), IS a target: routine shell quoting
+    must not blank the destination (the under-block). URL paths are reduced to the authority
+    (a path segment is payload, not the socket destination)."""
+    s = _DATA_FLAG.sub(" ", cmd)
+
+    def _unquote(m):
+        inner = m.group(0)[1:-1]
+        if "://" in inner or (not re.search(r"\s", inner)
+                              and (IP_RE.search(inner) or IP6_RE.search(inner)
+                                   or HOST_RE.search(inner))):
+            return inner                      # quoted TARGET, not a prose mention
+        return " " * len(m.group(0))          # prose mention stays blanked
+    s = _QUOTED.sub(_unquote, s)
+    s = _URL_PATH.sub(r"\1\2", s)
+    return _QUOTED.sub(lambda m: " " * len(m.group(0)), _QUERY_FRAG.sub("", s))
 
 
 try:
@@ -82,7 +99,7 @@ def _scan_text(cmd):
     if _cmdnorm is None:
         return _strip_noise(cmd)
     return "\n".join(_strip_noise(s) for s in _cmdnorm.segments(cmd))
-HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
+HOST_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
 # file extensions that HOST_RE would otherwise match as "hosts" (config.yml, app.py...)
 FILE_EXT = {"json", "yml", "yaml", "md", "sh", "py", "txt", "js", "ts", "go", "rs",
             "conf", "cfg", "ini", "toml", "lock", "log", "csv", "xml", "html", "css",

@@ -144,3 +144,39 @@ def test_dotted_hostname_yields_no_ip_candidates():
     """Functional: the rebind token produces ZERO ip candidates, so the hostname arm owns it."""
     assert scope_guard.ip_out_of_scope("dig axfr @10.5.0.9.evil.com corp.local",
                                        {"out_of_scope": ["10.5.0.9.evil.com"]}) == []
+
+
+# pass 12: quoting/underscore/path under-blocks + the path-IP over-block
+def test_quoted_url_target_flagged():
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope("curl 'http://10.0.0.5/admin'", sc) == ["10.0.0.5"]
+
+
+def test_quoted_single_host_target_flagged():
+    sc = {"out_of_scope": ["dc01.corp.local"]}
+    assert scope_guard.host_out_of_scope(
+        "ssh 'dc01.corp.local'", sc,
+        lambda h, s: h in s["out_of_scope"]) == {"dc01.corp.local"}
+
+
+def test_underscore_host_label_matches():
+    sc = {"out_of_scope": ["web_01.corp.local"]}
+    assert scope_guard.host_out_of_scope(
+        "nxc smb web_01.corp.local -u '' -p ''", sc,
+        lambda h, s: h in s["out_of_scope"]) == {"web_01.corp.local"}
+
+
+def test_oos_ip_in_url_path_of_inscope_host_not_flagged():
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope(
+        "curl https://target.com/archive/10.0.0.5/backup.tar", sc) == []
+
+
+def test_oos_ip_as_url_authority_still_flagged():
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope("curl http://10.0.0.5/", sc) == ["10.0.0.5"]
+
+
+def test_data_flag_payload_with_url_still_exempt():
+    sc = {"out_of_scope": ["10.0.0.5"]}
+    assert scope_guard.ip_out_of_scope("curl --data 'http://10.0.0.5/' http://ok.com/", sc) == []

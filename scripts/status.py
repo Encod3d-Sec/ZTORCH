@@ -14,6 +14,7 @@ on-demand view (evidence + dead-ends included) the operator can pull mid-engagem
 --coverage flag prints the per-asset coverage grid (offensive.py coverage) instead of the dashboard.
 """
 import glob
+import json
 import os
 import re
 import subprocess
@@ -85,38 +86,12 @@ def board_phase(d):
 
 
 def lane_lines(d, stale_min=45):
-    """Open (in-flight) lane lines from log.md, aged off the @HH:MM cell. A lane open
-    past stale_min was likely lost (compaction ate it or the subagent died) - surfaced
-    as resume-or-close instead of the driver silently re-serving its work forever."""
-    import importlib.util
-    from datetime import datetime
-    try:
-        spec = importlib.util.spec_from_file_location(
-            "lane_validate", os.path.join(HERE, "lane_validate.py"))
-        lv = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(lv)
-        text = open(os.path.join(d, "log.md"), encoding="utf-8", errors="ignore").read()
-    except Exception:
-        return []
-    now = datetime.now()
-    out = []
-    for name, tail in lv.open_lanes_from_text(text):
-        age = ""
-        m = re.search(r"@(\d{1,2}:\d{2})", tail)
-        if m:
-            try:
-                t = datetime.strptime(m.group(1), "%H:%M").replace(
-                    year=now.year, month=now.month, day=now.day)
-                mins = int((now - t).total_seconds() // 60)
-                if mins < 0:
-                    mins += 1440                     # opened before midnight
-                age = " (%dmin)" % mins
-                if mins >= stale_min:
-                    age += " STALE - resume via its handle or close the lane line"
-            except ValueError:
-                pass
-        out.append("  - lane %s %s%s" % (name, tail, age))
-    return out
+    """Delegates to lane_validate.lane_lines (the parse + aging now live beside
+    _LANE_RE, so close-out.py imports it directly instead of exec-ing this
+    module by path). Kept as a name for existing callers/tests."""
+    sys.path.insert(0, HERE)
+    import lane_validate
+    return lane_validate.lane_lines(d, stale_min)
 
 
 def render_coverage(base, assets, tested_by_asset):
@@ -232,8 +207,21 @@ def main():
         moves_text = r.stdout or ""
     except Exception:
         pass
+    lanes = lane_lines(d)
+    spend = spend_line(d)
+    if "--json" in sys.argv:
+        # machine-readable dashboard (brain lanes / steering; mirrors render()'s inputs).
+        # moves_text stays raw prose - it is next_move.py's own output, already line-based.
+        print(json.dumps({
+            "eng": name, "type": etype, "solved": solved,
+            "summary": summ, "board_phase": board,
+            "evidence": {"poc": poc, "cards": cards, "recon": recon, "died": died},
+            "deadends": deads, "lanes": [ln.strip() for ln in lanes],
+            "moves": moves_text.splitlines(), "spend": spend,
+        }, ensure_ascii=False))
+        return 0
     print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text,
-                 lane_lines(d), died=died, spend=spend_line(d)))
+                 lanes, died=died, spend=spend))
     return 0
 
 

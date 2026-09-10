@@ -146,6 +146,10 @@ def _retry_key(active):
             norm = " ".join(_cmdnorm.segments(active))
         except Exception:
             pass
+    # strip quote chars: the model re-fires the SAME command with cosmetic quoting
+    # variance (`curl host` vs `curl 'host'`) and the ring never accumulates toward
+    # the 3x deny. Digits/ports stay (iterating a port list is a real new attempt).
+    norm = norm.replace("'", "").replace('"', "")
     return hashlib.sha1(norm.encode("utf-8", "ignore")).hexdigest()[:12]
 
 
@@ -299,6 +303,35 @@ def main():
         st = json.load(open(sp, encoding="utf-8"))
     except Exception:
         return
+
+    # Engagement budget hard-stop (opt-in via ZT_MAX_ENG_USD): spend_usd over cap in
+    # .metrics.json (written by tool-telemetry) -> deny further Bash calls. Bash-only
+    # ceiling: other tools still run; the full budget picture lives in the transcript.
+    try:
+        cap = float(os.environ.get("ZT_MAX_ENG_USD", "") or 0)
+    except ValueError:
+        cap = 0.0
+    if cap > 0 and _enforcing():
+        try:
+            spent = float(json.load(open(os.path.join(d, ".metrics.json"),
+                                         encoding="utf-8")).get("spend_usd", 0) or 0)
+            if spent > cap:
+                try:
+                    import _telemetry
+                    _telemetry.hook("drift-guard", action="deny")
+                except Exception:
+                    pass
+                print(json.dumps({"hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason":
+                        ("BLOCKED by harness enforcement: engagement spend $%.2f exceeds "
+                         "ZT_MAX_ENG_USD=$%.2f. Stop and report to the operator; raise "
+                         "ZT_MAX_ENG_USD to continue." % (spent, cap)),
+                }}))
+                return
+        except Exception:
+            pass                                   # no metrics file / bad json -> no stop
 
     # A driver call resets the streak (the agent came back to the board). Command-position
     # only (_driver_called): an echo/grep string mentioning the driver is not contact.

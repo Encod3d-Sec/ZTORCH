@@ -50,13 +50,13 @@
       "note": "SSTI surface; check whether template source is user-controlled"
     },
     {
-      "re": "sendFile\\(|sendRedirect\\(|redirect\\(\\s*(req|request|ctx)|res\\.redirect\\(\\s*req",
+      "re": "sendFile\\(\\s*(req|request)|sendRedirect\\(|redirect\\(\\s*(req|request|ctx)|res\\.redirect\\(\\s*req",
       "class": "open-redirect",
       "skill": "hunt-injection",
       "note": "redirect/file send on request input; traversal or open-redirect"
     },
     {
-      "re": "AKIA(?![0-9A-Z]*EXAMPLE)[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.",
+      "re": "-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE|eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "hard key/JWT material; capture verbatim, test scope of use"
@@ -93,7 +93,7 @@
       "note": "version banner; fingerprint -> playbook.json targeted tests"
     },
     {
-      "re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV.*production|NODE_ENV.*development",
+      "re": "\\bDEBUG\\s*=\\s*True|APP_DEBUG|FLASK_ENV[^\n]*(development|debug)|NODE_ENV.*development",
       "class": "recon",
       "skill": "",
       "note": "debug mode flag; debug mode = stack traces + code exec surfaces"
@@ -383,13 +383,13 @@
       "note": "browser-extension privileged surface (browser-extension-attacks); check sender origin"
     },
     {
-      "fname": "(^|/)\\.env(\\.|$)",
+      "fname": "(^|/)\\.env(\\.(?!example$|sample$|template$|dist$)[^/]*)?$",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "env file in a mirror/dump; read every line, test every cred"
     },
     {
-      "fname": "(\\.pem|\\.p12|\\.pfx|\\.kdbx|id_rsa|id_dsa|id_ed25519)$",
+      "fname": "^(?!.*(?:cert|chain|public)).*(\\.pem|\\.p12|\\.pfx|\\.kdbx|id_rsa|id_dsa|id_ed25519)$",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "key/keystore file on disk or in a listing; capture + try everywhere"
@@ -401,13 +401,13 @@
       "note": "exposed git internals; config leaks deploy URLs + maybe tokens"
     },
     {
-      "fname": "\\.sql$|\\.dump$|\\.bak$|\\.old$",
+      "fname": "^(?!.*\\.(?:css|js|map|png|jpe?g|svg|gif|ico|min)\\.).*(?:\\.sql|\\.dump|\\.bak|\\.old)$",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "backup/dump file; likely contains creds + PII"
     },
     {
-      "fname": "wp-config\\.php$|settings\\.py$|config\\.php$|secrets\\.yml",
+      "fname": "wp-config\\.php$|config\\.php$|secrets\\.yml",
       "class": "secrets",
       "skill": "hunt-secrets",
       "note": "app config file; read DB + secret keys first"
@@ -431,7 +431,7 @@
       "note": "MCP config/manifest content; enumerate every mcpServers entry, read each command/args/URL before trusting it"
     },
     {
-      "re": "https?://[^\\s'\"<>]+/(mcp|sse)\\b",
+      "re": "https?://[^\\s'\"<>]+/mcp\\b",
       "class": "mcp",
       "skill": "hunt-mcp",
       "prio": 3,
@@ -516,6 +516,25 @@
       "class": "pwn",
       "skill": "hunt-pwn",
       "note": "format arg is a bare variable; user-reachable = arbitrary read/write via %n"
+    },
+    {
+      "fname": "libc[-_.][0-9.]+\\.so$|libc\\.so\\.6$|ld-linux[-.x0-9]*\\.so",
+      "class": "pwn",
+      "skill": "hunt-pwn",
+      "note": "libc/ld handout in challenge files; version-identifies the build env for ret2libc/one_gadget"
+    },
+    {
+      "re": "^\\s*[1-5]\\.\\s*(?i:add|new|delete|remove|edit|show|view|print|note)\\b",
+      "class": "pwn",
+      "skill": "hunt-pwn",
+      "prio": 2,
+      "note": "heap-menu banner (numbered add/delete/show); menu-layout = heap feng shui + UAF/tcache class"
+    },
+    {
+      "re": "\\.dockerenv|/proc/1/cgroup.*(docker|kubepods)",
+      "class": "recon",
+      "skill": "",
+      "note": "container-indicator; escape surface = capabilities, mounts, socket (wiki: container-escape)"
     }
   ]
 }

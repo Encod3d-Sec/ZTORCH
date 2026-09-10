@@ -20,7 +20,7 @@ ZCode needs no per-device hook symlink: registration ships in the committed
 ```
 
 The committed `.zcode/config.json` is the live registration on a ZCode build -- nothing to run to
-verify it, it ships with the repo (13 hook commands across 6 events -- see below). `bash
+verify it, it ships with the repo (17 hook commands across 6 events -- see below). `bash
 setup/install-hooks.sh` provisions the SEPARATE, per-device `~/.claude/settings.json` used by a
 Claude Code CLI seat instead (see the section below); it does not read or write `.zcode/config.json`.
 On a new machine, re-running `bash setup/bootstrap.sh` handles all steps automatically.
@@ -65,11 +65,15 @@ bash setup/install-hooks.sh    # provisions ~/.claude/settings.json for a Claude
 # 3. restart ZCode
 ```
 
-`install-hooks.sh` is self-locating (works on any user/path/spelling) and idempotent. It registers the canonical set (mirrored in `scripts/check-hooks.py` `EXPECTED_HOOKS`; `engagement-init` warns at SessionStart if any is unregistered) -- 13 hook commands across 6 events:
+`install-hooks.sh` is self-locating (works on any user/path/spelling) and idempotent. It registers the canonical set (mirrored in `scripts/check-hooks.py` `EXPECTED_HOOKS`; `engagement-init` warns at SessionStart if any is unregistered) -- 17 hook commands across 6 events:
 - **SessionStart** -- `session-start.sh` (skill auto-register + hot.md cache), `engagement-init.py` (self-heals the per-type core set: ctf gets `state/loot/Approach/...`, pentest/bugbounty add `Killchain`; injects the state summary + plan board status + top next-moves + one compact `harness:` maintenance line).
 - **UserPromptSubmit** -- `hunt-trigger.py` (fires hunt skills from `skills/hunt/triggers.json`).
 - **PreToolUse (Bash)** -- `scope-guard.py` (ENFORCES: denies out-of-scope host/IP (IPv4+IPv6, CIDR-aware; query-param/fragment values exempt) or RoE-forbidden tooling; fail-open + `skills/hooks/.enforce-off` escape hatch; also logs each block as a drift signal).
 - **PreToolUse (Bash)** -- `sleep-guard.py` (ENFORCES: denies a blind `sleep N` wait, N >= 10, with no poll loop watching output; fail-open + `.enforce-off` escape hatch).
+- **PreToolUse (Bash)** -- `zg-nudge.py` (advisory: a cross-file locate-shaped grep/rg fire gets one `zg query --human` nudge per 15 min).
+- **PreToolUse (Bash)** -- `tmux-nudge.py` (advisory: a heavy tool run bare, not via `vm-scan.sh`/`vm-bg.sh`/`vm-rsh.sh`, gets the tmux-driver nudge; 15-min rate limit).
+- **PreToolUse (Bash)** -- `burp-nudge.py` (advisory: a body-ful curl with a payload signature or a hand-rolled fuzz loop gets the Burp Repeater/Intruder nudge; 15-min rate limit).
+- **PreToolUse (Read)** -- `big-read.py` (advisory: one nudge per oversized full Read, with the locate-first ladder; the read-first mandate still rules).
 - **PreToolUse (Write)** -- `session-guard.py` (client-marker leak guard: session/* AND git-tracked framework trees; targets/ + docs/superpowers/ exempt; logs a boundary-drift signal).
 - **PreToolUse (Bash)** -- `drift-guard.py` (keeps the offensive driver in view: on an off-board exploit-shaped command during an active engagement at pass>=5 -- a NET_BINS/handroll call whose binary no open board row names -- escalates an `off_board_streak` in `.offensive.json` and injects a "run offensive.py next" advisory; an `offensive.py next|board|done` call resets it. Advisory-only, fail-open; shares the `.enforce-off` escape hatch).
 - **PostToolUse (Bash)** -- `recon-capture.py` (fingerprint router + OOB callback correlation + a once-per-engagement GATE-1 wiki-first nudge; a framework-meta guard suppresses false fires; advisory).

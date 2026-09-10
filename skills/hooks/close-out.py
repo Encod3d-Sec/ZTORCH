@@ -28,14 +28,11 @@ def inflight_signals(d):
     re-checked); ingest/OOB do re-surface at SessionStart, this adds turn-end
     visibility for the operator watching the session end."""
     parts = []
-    try:                                       # open lanes (age/STALE via status.py)
-        import importlib.util
+    try:                                       # open lanes (age/STALE via lane_validate)
         import _engagement
-        spec = importlib.util.spec_from_file_location(
-            "status", os.path.join(_engagement.VAULT, "scripts", "status.py"))
-        st = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(st)
-        parts += [ln.strip() for ln in st.lane_lines(d)]
+        sys.path.insert(0, os.path.join(_engagement.VAULT, "scripts"))
+        import lane_validate
+        parts += [ln.strip() for ln in lane_validate.lane_lines(d)]
     except Exception:
         pass
     try:                                       # served move with no disposition

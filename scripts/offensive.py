@@ -744,6 +744,8 @@ def _next_json_payload(eng, state, vault):
     out = {"eng": eng.name, "pass": state.get("pass", 0), "asset": None,
            "row": None, "class": None, "skill": None, "tool": None,
            "invocation": None, "board": {}, "gates_remaining": [],
+           "gate_action": None, "runner": None, "cmd": None, "read_cmd": None,
+           "evidence_cmd": None, "posture": None, "chain": None,
            "autonomy": autonomy_of(eng)[0], "warnings": [], "terminal": None}
     if index_stale(eng, vault):
         out["terminal"] = "stale-index"
@@ -778,6 +780,7 @@ def _next_json_payload(eng, state, vault):
         "closed": sum(1 for r in rows if _status_of(r) == "[x]"),
         "stuck": sum(1 for r in rows if _status_of(r) in ("[?]", "[!]")),
     }
+    out["posture"] = "parallel" if out["board"]["open_assets"] >= 2 else "serial"
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
@@ -785,6 +788,8 @@ def _next_json_payload(eng, state, vault):
                                        and out["board"]["stuck"]) else "exhausted"
         if out["terminal"] == "walled":
             out["skill"] = "redteamlead"
+        else:
+            out["chain"] = CLOSEOUT_CHAINS.get(state.get("type"), [])
         return out
     rid = (row.get("id") or "").strip()
     cls = (row.get("vuln class") or "").strip()
@@ -811,6 +816,7 @@ def _next_json_payload(eng, state, vault):
                                "restricted scope" % out["autonomy"])
     if not (row.get("arsenal") or "").strip():
         out["gates_remaining"].append("arsenal")
+        out["gate_action"] = "Skill(wiki-arsenal) %s" % cls
         return out
     if skill and not _skill_fired(eng, skill, _row_since(state, asset, cls)):
         if _events(eng) is None:
@@ -818,9 +824,27 @@ def _next_json_payload(eng, state, vault):
                                    "unverifiable")
         else:
             out["gates_remaining"].append("skill")
+            out["gate_action"] = "Skill(%s)" % skill
             return out
     out["invocation"] = ((index.get("tools") or {}).get(tool, {})
                          .get("invocation") or (tool + " <target>"))
+    # G8 runner split (mirror of the text prints): SCAN_CLASS -> vm-scan tab,
+    # OUTPUT/4b -> vm-bg log (+ read), else the bare invocation
+    tl = tool.lower()
+    if tl in SCAN_CLASS:
+        out["runner"] = "vm-scan"
+        out["cmd"] = ("bash scripts/vm-scan.sh --win %s %s %s '%s'"
+                      % (tl, eng.name, asset, out["invocation"]))
+    elif tl in OUTPUT_CLASS or tl in MECHANICAL_4B_TOOLS:
+        out["runner"] = "vm-bg"
+        out["cmd"] = ("bash scripts/vm-bg.sh %s %s-%s '%s'"
+                      % (eng.name, tl, asset, out["invocation"]))
+        out["read_cmd"] = ("bash scripts/vm-bg.sh --read %s %s-%s"
+                           % (eng.name, tl, asset))
+    else:
+        out["runner"] = "direct"
+        out["cmd"] = out["invocation"]
+    out["evidence_cmd"] = "scripts/capture.sh req <request>  (evidence for %s)" % rid
     return out
 
 
@@ -830,7 +854,10 @@ def cmd_next(args):
     if eng is None or not eng.is_dir():
         print("error: --eng <name|path> required for `next`")
         return 2
-    state = _load_state(eng)
+    # --json keeps stdout pure: state errors go to stderr so a wrapper parsing
+    # stdout never sees a diagnostic line where the payload should be
+    _err = (lambda m: print(m, file=sys.stderr)) if getattr(args, "json", False) else print
+    state = _load_state(eng, err=_err)
     if state is None:
         return 2
     if getattr(args, "json", False):
@@ -1038,24 +1065,31 @@ def cmd_next(args):
 # a row advances the loop with no state write here (G7 no-ask).
 
 
-def _load_state(eng):
+def _load_state(eng, err=print):
     """Shared .offensive.json load with clean failure. A truncated write (crash
     mid-write on /mnt/c) used to surface as a raw JSONDecodeError traceback; a
     wrong-typed file as AttributeError - both now name the fix, including the
-    shadow-git recovery path (_ckpt keeps one commit per driver mutation)."""
+    shadow-git recovery path (_ckpt keeps one commit per driver mutation).
+    `err` routes the message: under `next --json` stdout must stay pure JSON,
+    so the caller passes a stderr printer there."""
     try:
         state = json.loads((eng / STATE_NAME).read_text())
     except FileNotFoundError:
-        print("error: %s missing - run `init` first" % STATE_NAME)
+        err("error: %s missing - run `init` first" % STATE_NAME)
+        return None
+    except OSError as e:
+        err("error: %s unreadable (%s) - fix permissions/encoding, or restore the "
+            "last checkpoint: git -C %s log --oneline, then git -C %s checkout "
+            "<commit> -- %s" % (STATE_NAME, e, eng, eng, STATE_NAME))
         return None
     except ValueError as e:
-        print("error: %s corrupt (%s) - restore the last checkpoint: "
+        err("error: %s corrupt (%s) - restore the last checkpoint: "
               "git -C %s log --oneline (pick the pre-corruption commit), then "
               "git -C %s checkout <commit> -- %s" % (STATE_NAME, e, eng, eng, STATE_NAME))
         return None
     if not isinstance(state, dict):
-        print("error: %s is a %s, expected a JSON object (the driver state map) - "
-              "restore as above" % (STATE_NAME, type(state).__name__))
+        err("error: %s is a %s, expected a JSON object (the driver state map) - "
+            "restore as above" % (STATE_NAME, type(state).__name__))
         return None
     return state
 

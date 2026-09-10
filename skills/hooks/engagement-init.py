@@ -326,11 +326,28 @@ def _compact_restore():
                          m.get("class", ""), m.get("skill", ""), m.get("tool", "")))
         except Exception:
             pass
-        if not rows and not lm:
+        # open (in-flight) delegate lanes from log.md: a lane's continuation handle lives
+        # only in the dispatch message, which compaction ate. The log line IS the state
+        # (no new state file) - re-inject them aged so they get resumed or closed instead
+        # of the driver silently re-serving the same work.
+        try:
+            # lane_validate is stateless (parses log.md text), so anchor to the vault the
+            # HOOK ships in (HERE/../..), not _engagement.VAULT: a ZTORCH_VAULT override
+            # pointing at a bare test tree would silently kill the import.
+            sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "..", "scripts")))
+            import lane_validate
+            lanes = lane_validate.lane_lines(d)
+        except Exception:
+            lanes = []
+        if not rows and not lm and not lanes:
             return None
         head = ("restored post-compact (Approach.md open rows, verbatim; re-run "
                 "`offensive.py next` before acting):\n")
-        return head + "\n".join(rows) + lm
+        body = head + "\n".join(rows) + lm
+        if lanes:
+            body += "\nopen delegate lanes (log.md 'in flight'; resume via handle or "
+            body += "close the line):\n" + "\n".join(lanes)
+        return body
     except Exception:
         return None
 

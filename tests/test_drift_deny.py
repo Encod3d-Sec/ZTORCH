@@ -187,3 +187,32 @@ def test_new_row_serve_clears_ring(tmp_path):
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
     assert st["retry_counts"] == {}               # board advanced = genuine re-plan
     assert st["_driver_row"] == "4a:2"
+
+
+def test_budget_over_cap_denies_every_bash_call(tmp_path, monkeypatch):
+    """pass 12: ZT_MAX_ENG_USD set + .metrics.json spend_usd over cap -> the deny
+    shape on an otherwise CLEAN command (no off-board streak needed). Under cap or
+    without the env var -> silent (opt-in only)."""
+    v = _mk(tmp_path, streak=0)
+    (v / "targets" / "engd" / ".metrics.json").write_text(
+        json.dumps({"spend_usd": 4.25}), encoding="utf-8")
+    monkeypatch.setenv("ZT_MAX_ENG_USD", "3.00")
+    r = _run(v, cmd="ls -la")
+    out = _decoded(r)
+    assert out.get("hookSpecificOutput", {}).get("permissionDecision") == "deny"
+    assert "ZT_MAX_ENG_USD" in out["hookSpecificOutput"]["permissionDecisionReason"]
+    monkeypatch.setenv("ZT_MAX_ENG_USD", "9.00")
+    assert _decoded(_run(v, cmd="ls -la")) == {}          # under cap -> silent
+    monkeypatch.delenv("ZT_MAX_ENG_USD")
+    assert _decoded(_run(v, cmd="ls -la")) == {}          # unset -> silent
+
+
+def test_retry_key_quote_variance_is_same_loop(tmp_path):
+    """pass 12: cosmetic quoting variance must not launder the identical-retry
+    ring - `curl http://x/f` and `curl 'http://x/f'` are one loop."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("dg", str(HOOK))
+    dg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dg)
+    assert dg._retry_key("curl http://x/f") == dg._retry_key("curl 'http://x/f'")
+    assert dg._retry_key("curl http://x/f") != dg._retry_key("curl http://x/f2")

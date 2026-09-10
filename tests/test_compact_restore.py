@@ -91,3 +91,22 @@ def test_compact_refire_no_lineage(tmp_path):
     _run(v, "compact", sid="aa11bb22-cc33-4d5e-9f60-112233445566")
     log = (v / "targets" / "engc" / "log.md")
     assert not log.exists() or "session aa11bb22 start" not in log.read_text(encoding="utf-8")
+
+
+LANES = ("## Lanes\n"
+         "- lane sqlimap in flight: SUCCESS = banner | tmux win w1 | capture /tmp/c1 | handle a1\n"
+         "- lane done1: SUCCESS = x | tmux win w2 | capture /tmp/c2 | VERIFIED ok\n")
+
+
+def test_compact_reinjects_open_delegate_lanes(tmp_path):
+    """pass 12: a lane's continuation handle lives only in the dispatch message, which
+    compaction ate. The open ('in flight') lane line from log.md is re-injected (aged by
+    lane_validate); a CLOSED lane never is."""
+    v = _mk(tmp_path)
+    (v / "targets" / "engc" / "log.md").write_text(LANES, encoding="utf-8")
+    r = _run(v, "compact")
+    # scope to the restored block itself: the state summary below ALSO tails log.md
+    rb = r.stdout.split("restored post-compact")[1].split("=== Engagement")[0]
+    assert "open delegate lanes" in rb
+    assert "lane sqlimap in flight" in rb
+    assert "done1" not in rb

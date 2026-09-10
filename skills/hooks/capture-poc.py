@@ -338,7 +338,30 @@ def main():
                             rid = ((st.get("last_move") or {}).get("row") or "").strip()
                         except Exception:
                             rid = ""
-                        if rid and "STALL SIGNAL" in r.stdout:
+                        # host-match guard: the verdict may name a DIFFERENT host than
+                        # the row the driver last served - closing that row would kill
+                        # an unrelated vector. Only auto-close when the verdict's host
+                        # token appears in the served row's target/notes (or the verdict
+                        # names no host at all, e.g. hash exhaustion).
+                        row_ok = True
+                        host_m = re.search(r"against (\S+)", r.stdout)
+                        if rid and host_m:
+                            host = host_m.group(1).strip("'\".,")
+                            row_ok = False
+                            try:
+                                sys.path.insert(0, os.path.join(_engagement.VAULT, "scripts"))
+                                import offensive as _off
+                                for rw in (_off.read_board(d)
+                                           + (_off.read_board_4b(d)
+                                              if st.get("foothold") else [])):
+                                    if (rw.get("id") or "").strip() == rid:
+                                        hay = " ".join(str(rw.get(k) or "")
+                                                       for k in ("asset", "notes", "target"))
+                                        row_ok = host.lower() in hay.lower()
+                                        break
+                            except Exception:
+                                row_ok = True    # board unreadable -> old behavior
+                        if rid and row_ok and "STALL SIGNAL" in r.stdout:
                             try:
                                 subprocess.run(
                                     ["python3", os.path.join(_engagement.VAULT, "scripts",

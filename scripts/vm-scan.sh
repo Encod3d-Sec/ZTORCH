@@ -23,6 +23,13 @@ while [ $# -gt 0 ]; do
 done
 SESSION="${1:?need <session>}"; TARGET="${2:?need <target>}"; shift 2
 SCAN="$*"; : "${SCAN:?need <scan-command...>}"
+# transport-wrap the scan: base64 charset survives BOTH parse layers (local heredoc build +
+# VM-side bash) unchanged, so a nested quote in SCAN ('awk "{print \$1}"') can no longer
+# shatter the send-keys arg or kill the whole remote script (an unbalanced quote aborted
+# session setup too, and the local tail still exited 0 = silent no-scan). Decoded INSIDE
+# the command substitution, so the PANE still receives the readable command (the card's
+# content); the RC echo stays outside the decoded text.
+B64="$(printf '%s' "$SCAN" | base64 -w0)"
 
 # sanitize: . : and space -> - . Window name = --win override if given, else the target.
 NAME="$(printf '%s' "${WIN:-$TARGET}" | tr './: ' '----')"
@@ -51,7 +58,7 @@ if [ -z "\$WID" ]; then
 fi
 # the __ZT_RC=$?__ echo lands in the pane as the scan's last output line: autocard
 # greps it so a finished tab cards as exit=N (a died scan is visible, not just "done")
-tmux send-keys -t "\$WID" '$SCAN' '; echo __ZT_RC=\$?__' C-m
+tmux send-keys -t "\$WID" "\$(printf %s $B64 | base64 -d); echo __ZT_RC=\$?__" C-m
 echo "window=\$WID name=\$WINNAME session=$SESSION reused=\$REUSED"
 EOF
 
@@ -64,6 +71,13 @@ VM_SH="${VM_SH:-/root/vm.sh}"
 OUT="$(bash "$VM_SH" "$REMOTE")"
 printf '%s\n' "$OUT"
 if printf '%s' "$OUT" | grep -q 'vm-scan: refuse'; then
+  exit 1
+fi
+# dead-bridge / remote-syntax-abort check: the remote script ALWAYS echoes the window= line
+# on success; without this a VM-down or heredoc abort still printed the tip and exited 0
+# (silent no-scan - the launch-side twin of the pass-10 RC-trailer gap).
+if ! printf '%s' "$OUT" | grep -q 'window='; then
+  echo "vm-scan: bridge failed - no window= confirmation (VM down or remote error above). No scan was launched." >&2
   exit 1
 fi
 ACTUAL="$(printf '%s' "$OUT" | grep -oE 'name=[^ ]+' | head -1 | cut -d= -f2)"
