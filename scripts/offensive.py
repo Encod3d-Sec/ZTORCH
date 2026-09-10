@@ -48,7 +48,7 @@ BASE_CLASSES = {
            "idor", "federation", "smuggling", "upload", "bizlogic", "api",
            "cache", "secrets", "xss", "cicd", "mcp", "llm"],
     "ctf": ["rce", "sqli", "ssrf", "injection", "idor", "upload", "auth",
-            "xss", "secrets"],
+            "xss", "secrets", "pwn"],
 }
 
 # Per-type close-out chain (Skill names the agent runs in order) + wall-break
@@ -71,7 +71,7 @@ CLASS_TOOL = {
     "smuggling": "nuclei", "upload": "nuclei", "vpn": "nmap",
     "windows": "peass", "ad": "netexec", "m365": "netexec",
     "macos": "linpeas", "llm": "curl", "bizlogic": "burp-suite",
-    "cache": "nuclei",
+    "cache": "nuclei", "pwn": "pwntools",
 }
 
 CLASS_TOOL.update({
@@ -316,8 +316,6 @@ def cmd_board(args):
     index = load_index(eng)
 
     existing = read_board(eng)
-    for w in _drain_board_warnings():
-        print("BOARD (parsed best-effort): %s" % w)
     have = {((r.get("asset") or "").lower(), (r.get("vuln class") or "").lower())
             for r in existing}
     nid = _next_board_id(existing)
@@ -336,6 +334,10 @@ def cmd_board(args):
     write_board(eng, rows)
     if added:
         (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    # drain AFTER derive_rows: it parses state.md/Deadends.md too, and a warning
+    # from those files must be announced here, not leak into the next command
+    for w in _drain_board_warnings():
+        print("BOARD (parsed best-effort): %s" % w)
     print("board: %d rows (%d new) -> %s" % (len(rows), added, eng / "Approach.md"))
     return 0
 

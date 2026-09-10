@@ -456,13 +456,34 @@ def main():
     # capture gap the operator should see at a glance. Silent at zero. Full view: scripts/status.py.
     try:
         import glob as _glob
+        import re as _re
         _d = _engagement.active_dir()
         if _d:
             _poc = len(_glob.glob(os.path.join(_d, "poc", "**", "*.png"), recursive=True))
-            _rec = len(_glob.glob(os.path.join(_d, "recon", "*.png")))
+            _rec = _glob.glob(os.path.join(_d, "recon", "*.png"))
             if _poc or _rec:
-                out.append("evidence: %d poc shot(s), %d recon card(s) "
-                           "(scripts/status.py = full status)" % (_poc, _rec))
+                _line = "evidence: %d poc shot(s), %d recon card(s)" % (_poc, len(_rec))
+                _died = sum(1 for _p in _rec if _re.search(r"-x\d+", os.path.basename(_p)))
+                if _died:
+                    _line += " (%d DIED)" % _died
+                out.append(_line + " (scripts/status.py = full status)")
+    except Exception:
+        pass
+
+    # VM tabs in flight (pass 11 L6): windows autocard has SEEN but never carded - its
+    # .open-tabs ledger, maintained every Stop hook, so this needs no SSH round-trip here.
+    # A tab stuck on this list across sessions is a wedged scan or an un-carded listener.
+    try:
+        _d = _engagement.active_dir()
+        _p = os.path.join(_d, ".open-tabs") if _d else ""
+        if _p and os.path.isfile(_p):
+            _tabs = [l.strip().split("=", 1)[0] for l in
+                     open(_p, encoding="utf-8", errors="ignore") if l.strip()]
+            if _tabs:
+                _extra = " +%d more" % (len(_tabs) - 5) if len(_tabs) > 5 else ""
+                out.append("vm tabs in flight: %d un-carded (%s%s) - card them "
+                           "(capture.sh recon) or expect the close-out sweep"
+                           % (len(_tabs), ", ".join(_tabs[:5]), _extra))
     except Exception:
         pass
 

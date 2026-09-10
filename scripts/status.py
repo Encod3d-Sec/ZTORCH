@@ -25,13 +25,17 @@ sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
 
 
 def evidence_counts(d):
-    """(poc_shots, poc_cards, recon_cards): PoC images under poc/ (recursive) + poc/ .md evidence
-    cards (excluding poc/scripts/ preserved-exploit .md) + auto recon shots."""
+    """(poc_shots, poc_cards, recon_cards, died_scans): PoC images under poc/ (recursive) +
+    poc/ .md evidence cards (excluding poc/scripts/ preserved-exploit .md) + auto recon
+    shots + the subset of recon shots whose slug marks a DIED scan (-x<rc>, written by
+    autocard from the pane's __ZT_RC marker) - the operator wants died scans visible,
+    not folded into "done"."""
     poc = len(glob.glob(os.path.join(d, "poc", "**", "*.png"), recursive=True))
     cards = len([p for p in glob.glob(os.path.join(d, "poc", "**", "*.md"), recursive=True)
                  if os.sep + "scripts" + os.sep not in p])
-    recon = len(glob.glob(os.path.join(d, "recon", "*.png")))
-    return poc, cards, recon
+    recon_shots = glob.glob(os.path.join(d, "recon", "*.png"))
+    died = sum(1 for p in recon_shots if re.search(r"-x\d+", os.path.basename(p)))
+    return poc, cards, len(recon_shots), died
 
 
 def deadend_lines(d, limit=3):
@@ -155,7 +159,21 @@ def coverage_data(d, etype):
     return base, assets, tested_by_asset
 
 
-def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=()):
+def spend_line(d):
+    """One 'spend: $X.XX' line from .metrics.json's live spend_usd (accumulated by the
+    tool-telemetry hook), or None when telemetry has not written it yet. Reading the
+    transcripts here would be too heavy for a dashboard; the hook keeps the running total."""
+    import json
+    try:
+        m = json.load(open(os.path.join(d, ".metrics.json"), encoding="utf-8"))
+        v = float(m.get("spend_usd", 0) or 0)
+    except Exception:
+        return None
+    return "spend: $%.2f" % v if v > 0 else None
+
+
+def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=(),
+           died=0, spend=None):
     """Pure formatter -> the dashboard string. All inputs are precomputed (testable)."""
     head = "=== %s (%s)%s ===" % (name, etype, "  STATUS: SOLVED" if solved else "")
     lines = [head]
@@ -168,7 +186,12 @@ def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_tex
     ev = "evidence: %d poc shot(s), " % poc
     if cards:
         ev += "%d card(s), " % cards
-    lines.append(ev + "%d recon card(s)" % recon)
+    ev += "%d recon card(s)" % recon
+    if died:
+        ev += " (%d DIED - rerun or Deadends.md them)" % died
+    lines.append(ev)
+    if spend:
+        lines.append(spend)
     if lanes:
         lines.append("open lanes:")
         lines += list(lanes)
@@ -200,7 +223,7 @@ def main():
     solved = _engagement.is_solved(d)
     summ = _engagement.summary()
     board = board_phase(d)
-    poc, cards, recon = evidence_counts(d)
+    poc, cards, recon, died = evidence_counts(d)
     deads = deadend_lines(d)
     moves_text = ""
     try:
@@ -210,7 +233,7 @@ def main():
     except Exception:
         pass
     print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text,
-                 lane_lines(d)))
+                 lane_lines(d), died=died, spend=spend_line(d)))
     return 0
 
 

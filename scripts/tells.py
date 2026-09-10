@@ -23,6 +23,7 @@ TABLE = SCRIPT_DIR / "tells.json"
 
 MAX_FILE = 50 * 1024 * 1024   # skip files above 50MB
 SNIPPET = 100                 # printed line cap
+CAP = 80                      # printed-HIT cap: a response tree can wall the operator
 SKIP_DIRS = {".git", "node_modules", "__pycache__"}
 
 
@@ -49,6 +50,11 @@ def compile_tells(rows):
             out.append((re.compile(pat), row))
         except re.error as e:
             print("tells: skipping bad row (%s): %s" % (e, pat), file=sys.stderr)
+    # prio (playbook.json schema): 1 fire-first, 2 default, 3 volume/noisy. A response
+    # tree fires the near-universal rows (version banner, chunked, cache headers) on
+    # every file; sorting sinks/oracles ahead of them keeps the top of the output the
+    # part worth reading.
+    out.sort(key=lambda pair: pair[1].get("prio", 2))
     return out
 
 
@@ -63,14 +69,24 @@ def _files(paths):
 
 
 def scan(paths, table, out=print):
-    """Print one line per tell hit across paths. Binary files are skipped for
-    CONTENT rows; fname rows match the path itself and always fire."""
+    """Print one line per tell hit across paths (table is prio-sorted: sinks and
+    oracles first, volume rows last). Binary files are skipped for CONTENT rows;
+    fname rows match the path itself and always fire. Stops at CAP printed hits -
+    past that the output is a wall, and the operator should narrow the path."""
+    hits = [0]
+
+    def emit(*a):
+        out(*a)
+        hits[0] += 1
+
     for f in _files(paths):
+        if hits[0] >= CAP:
+            break
         for rx, row in table:
             if row.get("fname") and rx.search(str(f)):
                 skill = "Skill(%s)" % row["skill"] if row.get("skill") else "no skill"
-                out("%s  [%s] FILENAME %s  -> %s | %s"
-                    % (f, row.get("class", "?"), rx.pattern, skill, row.get("note", "")))
+                emit("%s  [%s] FILENAME %s  -> %s | %s"
+                     % (f, row.get("class", "?"), rx.pattern, skill, row.get("note", "")))
         try:
             if f.stat().st_size > MAX_FILE:
                 continue
@@ -80,15 +96,19 @@ def scan(paths, table, out=print):
         if b"\x00" in raw[:8192]:
             continue                                  # binary
         for i, line in enumerate(raw.decode("utf-8", errors="ignore").splitlines(), 1):
+            if hits[0] >= CAP:
+                break
             for rx, row in table:
                 if row.get("fname"):
                     continue                          # path row, already handled
                 if rx.search(line):
                     snippet = line.strip()[:SNIPPET]
                     skill = "Skill(%s)" % row["skill"] if row.get("skill") else "no skill"
-                    out("%s:%d  [%s] %s  -> %s | %s"
-                        % (f, i, row.get("class", "?"), snippet, skill,
-                           row.get("note", "")))
+                    emit("%s:%d  [%s] %s  -> %s | %s"
+                         % (f, i, row.get("class", "?"), snippet, skill,
+                            row.get("note", "")))
+    if hits[0] >= CAP:
+        out("tells: cap hit (%d lines) - narrow the path; the noisy rows sit at prio 3 in --list" % CAP)
 
 
 def main(argv=None):

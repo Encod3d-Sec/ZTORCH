@@ -62,6 +62,14 @@ def inflight_signals(d):
             parts.append("%d ingest file(s) pending (ingest skill)" % len(n))
     except Exception:
         pass
+    try:                                       # wedged VM scan tabs (autocard's ledger)
+        wt = os.path.join(d, ".wedged-tabs")
+        if os.path.isfile(wt):
+            parts += [ln.strip() for ln in
+                      open(wt, encoding="utf-8", errors="ignore").read().splitlines()
+                      if ln.strip()]
+    except Exception:
+        pass
     try:                                       # planted OOB tokens still waiting
         oob = os.path.join(d, "oob.md")
         if os.path.isfile(oob):
@@ -99,9 +107,19 @@ def main():
             env = dict(os.environ, AUTOCARD_MAX=os.environ.get("AUTOCARD_MAX", "2"))
             # total budget 8s (> autocard's 5s per-SSH cap, < the harness 10s hook timeout);
             # the fast nudge logic below needs only sub-second, so it is never starved.
-            subprocess.run(["bash", sc, os.path.basename(d)],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           stdin=subprocess.DEVNULL, env=env, timeout=8)
+            # stdout is CAPTURED (pass 11): autocard's "RUNNING >45m" lines are the
+            # wedged-scan signal the inflight surface below should see, not /dev/null.
+            r = subprocess.run(["bash", sc, os.path.basename(d)],
+                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                               stdin=subprocess.DEVNULL, env=env, timeout=8)
+            # persist UNCONDITIONALLY (pass 11): a clean run empties the file, so a
+            # tab that recovered stops surfacing; stale wedged lines never accumulate.
+            wedged = [ln for ln in (r.stdout or "").splitlines() if "RUNNING >45m" in ln]
+            try:
+                open(os.path.join(d, ".wedged-tabs"), "w", encoding="utf-8").write(
+                    "".join(ln + "\n" for ln in wedged))
+            except OSError:
+                pass
     except Exception:
         pass
     solved = _engagement.is_solved(d)

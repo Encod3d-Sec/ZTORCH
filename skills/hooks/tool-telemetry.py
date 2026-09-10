@@ -97,6 +97,79 @@ def _out_bytes(data):
     return None
 
 
+def _spend_update(transcript, d):
+    """Accumulate est. USD spend into .metrics.json['spend_usd'] (status.py renders it;
+    eval_metrics' auto block carries the full breakdown at close-out). Reads only the
+    transcript bytes past the offset recorded last run (spend_state: {path: byte_off}),
+    so each call is one tail-read, never a full re-walk. Pricing comes from
+    scripts/eval_metrics.py (USD_PER_MTOK via _rates) - imported, never forked, so a
+    tier added there prices here too. With ZT_MAX_ENG_USD set, returns one over-budget
+    advisory per 15 min (.budget-stamp) for additionalContext; PostToolUse cannot block,
+    so the cap is advisory by construction."""
+    tp = str(transcript or "")
+    if not tp or not os.path.isfile(tp):
+        return None
+    try:
+        size = os.path.getsize(tp)
+        mp = os.path.join(d, ".metrics.json")
+        try:
+            m = json.load(open(mp, encoding="utf-8"))
+        except Exception:
+            m = {}
+        state = m.get("spend_state") or {}
+        off = int(state.get(tp, 0) or 0)
+        if size < off:
+            off = 0                                  # rotated/truncated: re-read whole file
+        with open(tp, "rb") as fh:
+            fh.seek(off)
+            chunk = fh.read()
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts"))
+        import eval_metrics as em
+        delta = 0.0
+        for line in chunk.decode("utf-8", "ignore").splitlines():
+            try:
+                msg = (json.loads(line).get("message") or {})
+            except Exception:
+                continue                             # partial first line past a mid-line offset
+            u = msg.get("usage") or {}
+            if not u:
+                continue
+            r, _tier = em._rates(msg.get("model"))
+            delta += (u.get("input_tokens", 0) * r["input"]
+                      + u.get("output_tokens", 0) * r["output"]
+                      + (u.get("cache_read_input_tokens") or 0) * r["cache_read"]
+                      + (u.get("cache_creation_input_tokens") or 0) * r["cache_creation"]) / 1e6
+        m["spend_usd"] = round(float(m.get("spend_usd", 0) or 0) + delta, 4)
+        state[tp] = size
+        m["spend_state"] = state
+        with open(mp, "w", encoding="utf-8") as fh:
+            json.dump(m, fh, indent=1)
+        cap = 0.0
+        try:
+            cap = float(os.environ.get("ZT_MAX_ENG_USD", "") or 0)
+        except ValueError:
+            cap = 0.0
+        if cap > 0 and m["spend_usd"] > cap:
+            import time as _t
+            st = os.path.join(d, ".budget-stamp")
+            if os.path.exists(st) and _t.time() - os.path.getmtime(st) < 900:
+                return None
+            try:
+                open(st, "w").close()
+                import _telemetry
+                _telemetry.drift("budget",
+                                 "est. $%.2f exceeds cap $%.2f (ZT_MAX_ENG_USD)"
+                                 % (m["spend_usd"], cap), d=d)
+            except Exception:
+                pass
+            return ("Engagement spend est. $%.2f is over the $%.2f cap - wrap up: cheap-tier "
+                    "lanes (Skill(delegate)), narrow reads, close out open rows."
+                    % (m["spend_usd"], cap))
+    except Exception:
+        return None
+    return None
+
+
 def _context_low(transcript, d):
     """Percent remaining when the last transcript usage row exceeds 75% of the model
     window, else None (clone formula: input + cache_read + cache_creation + output,
@@ -184,6 +257,14 @@ def main():
             _telemetry.drift("context-low", "~%d%% context remaining" % low, d=d)
         except Exception:
             pass
+    # live spend accumulator (pass 11 L5): status.py's `spend:` line + the opt-in
+    # ZT_MAX_ENG_USD over-budget advisory. Silent unless the cap is set and crossed.
+    budget = _spend_update(data.get("transcript_path"), d)
+    if budget:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "additionalContext": budget,
+        }}))
 
 
 if __name__ == "__main__":

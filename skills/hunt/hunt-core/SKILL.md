@@ -217,6 +217,7 @@ output; this table is the manual reference when it does not fire or you are reas
 | exposed `.git` / `.env` / keys, secrets in a JS bundle | `Skill(hunt-secrets)` |
 | LLM prompt-injection / excessive agency | `Skill(hunt-llm)` |
 | MCP tool-poisoning / indirect injection | `Skill(hunt-mcp)` |
+| a handed-out binary / a socket service that crashes on crafted input (stack-heap corruption, format string, ROP, seccomp jail) | `Skill(hunt-pwn)` |
 | AD: kerberoast / AS-REP / ADCS / DCSync / delegation (dotted-FQDN domain / a DC) | `Skill(hunt-ad)` |
 | Windows LOCAL privesc: service misconfig / autologon reg / SeImpersonate-Potato / scheduled-task / DLL hijack (standalone/workgroup box, or a local shell on a member) | `Skill(hunt-windows)` |
 | AWS/Azure/GCP metadata or IAM | `Skill(hunt-cloud)` |
@@ -258,6 +259,7 @@ own `## Wiki` block. Extend this table, not `playbook.json`, when a driver-side 
 | m365 | m365 | hunt-m365 | azure-ad-enumerate | azure-ad-conditional-access-policy |
 | macos | macos | hunt-macos | macos-tcc | payloads/macos-app-injection |
 | mcp | mcp | hunt-mcp | mcp-server-attacks | payloads/llm-prompt-injection |
+| pwn | pwn | hunt-pwn | binary-exploitation | cheatsheets/binary-exploitation |
 | rce | rce | hunt-rce | os-command-injection | payloads/command-injection |
 | secrets | secrets | hunt-secrets | secret-hunting | recon-dorks |
 | smuggling | smuggling | hunt-smuggling | http-request-smuggling | payloads/smuggling |
@@ -275,6 +277,7 @@ own `## Wiki` block. Extend this table, not `playbook.json`, when a driver-side 
 | ssti | injection | hunt-injection | ssti | payloads/ssti |
 | xxe | injection | hunt-injection | ssti | payloads/xxe |
 | lfi | rce | hunt-rce | os-command-injection | payloads/lfi-path-traversal |
+| binary-exploitation | pwn | hunt-pwn | binary-exploitation | cheatsheets/binary-exploitation |
 | phpipam | sqli | hunt-sqli | sql-injection | payloads/sqli |
 | spring | injection | hunt-injection | ssti | api-request-findings |
 | supabase | auth | hunt-auth | authentication-attacks | supabase-attacks |

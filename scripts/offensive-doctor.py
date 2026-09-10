@@ -124,6 +124,20 @@ def _skill_and_hook():
     tt = os.path.join(VAULT, "skills", "hooks", "tool-telemetry.py")
     check("tool-telemetry.py hook present (G2 skill-fired telemetry)", os.path.isfile(tt),
           "G2 fails open without it - run setup/install-hooks.sh", warn=True)
+    # pass 11 L6 wiring (warn-level, static): the background-tab residuals are pure shell;
+    # a missing marker string is the earliest signal the wiring got reverted or drift-merged.
+    ac = os.path.join(VAULT, "scripts", "autocard.sh")
+    if os.path.isfile(ac):
+        body = open(ac, encoding="utf-8", errors="ignore").read()
+        check("autocard.sh open-tabs ledger + RUNNING line wired",
+              ".open-tabs" in body and "RUNNING >45m" in body,
+              "un-carded VM tabs would age invisibly (no wedged-scan signal)", warn=True)
+    vs = os.path.join(VAULT, "scripts", "vm-scan.sh")
+    if os.path.isfile(vs):
+        body = open(vs, encoding="utf-8", errors="ignore").read()
+        check("vm-scan.sh same-name reuse prompt-gated",
+              "capture-pane" in body and "-2" in body,
+              "keystrokes could re-enter a LIVE pane and clobber a running scan", warn=True)
 
 
 # --------------------------------------------------------------------------- 6. zg (zvec-grep) search layer

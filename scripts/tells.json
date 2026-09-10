@@ -44,7 +44,7 @@
       "note": "XML parser; XXE unless entities disabled - check parser config"
     },
     {
-      "re": "render_template_string|Template\\(\\s*['\"f]|Jinja2\\(|\\{\\{[^}]*\\|\\s*safe",
+      "re": "render_template_string|Template\\(\\s*['\"f]|Jinja2\\(",
       "class": "injection",
       "skill": "hunt-injection",
       "note": "SSTI surface; check whether template source is user-controlled"
@@ -89,6 +89,7 @@
       "re": "(Server|X-Powered-By):\\s*[A-Za-z]+/\\d",
       "class": "recon",
       "skill": "",
+      "prio": 3,
       "note": "version banner; fingerprint -> playbook.json targeted tests"
     },
     {
@@ -206,9 +207,10 @@
       "note": "Java deser runtime error; your bytes ARE reaching the parser - gadget-confirm"
     },
     {
-      "re": "(?i)x-cache(-status)?:\\s*(miss|hit)|x-served-by:|x-varnish:|age: \\d+",
+      "re": "(?i)x-cache(-status)?:\\s*(miss|hit)|x-served-by:|x-varnish:|\\bage: \\d+",
       "class": "cache",
       "skill": "hunt-cache",
+      "prio": 3,
       "note": "cache layer present; probe unkeyed headers (X-Forwarded-Host etc.) for poisoning"
     },
     {
@@ -335,6 +337,7 @@
       "re": "Transfer-Encoding:\\s*chunked",
       "class": "smuggling",
       "skill": "hunt-smuggling",
+      "prio": 3,
       "note": "chunked response; if a CL frontend sits in front, desync candidate"
     },
     {
@@ -431,6 +434,7 @@
       "re": "https?://[^\\s'\"<>]+/(mcp|sse)\\b",
       "class": "mcp",
       "skill": "hunt-mcp",
+      "prio": 3,
       "note": "remote MCP/SSE endpoint; pull the tool manifest (tools/list) and scan it before any client trusts it"
     },
     {
@@ -440,10 +444,11 @@
       "note": "canonical tool-poisoning wrapper (Invariant Labs); read the FULL description + every param description, then prove client-side execution"
     },
     {
-      "re": "[​-‏⁠﻿󠀀-󠁿]",
+      "re": "[\\u200b\\u200c\\u200e\\u200f\\u2060\\U000e0000-\\U000e007f]",
       "class": "mcp",
       "skill": "hunt-mcp",
-      "note": "zero-width/tag chars in a description = hidden text; hexdump the line, decode what is smuggled"
+      "prio": 3,
+      "note": "zero-width/tag chars in a description = hidden text; hexdump the line, decode what is smuggled. ZWJ (emoji sequences) and BOM (U+FEFF) are deliberately OUT: both are ubiquitous benign text"
     },
     {
       "fname": "mcp\\.json$|claude_desktop_config\\.json$",
@@ -464,9 +469,10 @@
       "note": "LLM endpoint/key in shipped JS or source; app fronts a model, read the call site + route the chat surface"
     },
     {
-      "re": "system_prompt|systemPrompt|initial_prompt",
+      "re": "system_prompt|systemPrompt",
       "class": "llm",
       "skill": "hunt-llm",
+      "prio": 3,
       "note": "client-visible system-prompt param; read the block around it for the real instructions or an injection sink"
     },
     {
@@ -482,16 +488,34 @@
       "note": "fake system-message callout (agentdojo system_message attack); find the channel that carried it"
     },
     {
-      "re": "SAFETY MODULE FAILED TO LOAD|CONFIG CORRUPTED|ERR_CODE: 0x[0-9A-Fa-f]{4}_",
+      "re": "SAFETY MODULE FAILED TO LOAD|ERR_CODE: 0x[0-9A-Fa-f]{4}_",
       "class": "injection",
       "skill": "hunt-llm",
       "note": "prompt-probing core-dump framing; system-prompt extraction probe, not a real system error"
     },
     {
-      "re": "EMERGENCY_OVERRIDE_AUTH|LEGAL_DISCOVERY_ORDER|\\[CRITICAL_ALERT\\]",
+      "re": "EMERGENCY_OVERRIDE_AUTH|LEGAL_DISCOVERY_ORDER",
       "class": "injection",
       "skill": "hunt-llm",
       "note": "system-override fake-crisis framing; urgency forgery attached to a request = jailbreak attempt"
+    },
+    {
+      "re": "Canary found|NX enabled|PIE enabled|Full RELRO|Partial RELRO",
+      "class": "pwn",
+      "skill": "hunt-pwn",
+      "note": "checksec output; mitigations choose the technique - read cheatsheets/binary-exploitation first"
+    },
+    {
+      "re": "Segmentation fault \\(core dumped\\)",
+      "class": "pwn",
+      "skill": "hunt-pwn",
+      "note": "cyclic-pattern crash = memory-corruption class; classify in gdb-gef before exploiting"
+    },
+    {
+      "re": "printf\\s*\\(\\s*[a-z][a-zA-Z0-9_]*\\s*\\)",
+      "class": "pwn",
+      "skill": "hunt-pwn",
+      "note": "format arg is a bare variable; user-reachable = arbitrary read/write via %n"
     }
   ]
 }

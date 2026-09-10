@@ -91,3 +91,35 @@ def test_cost_is_4term_cache_aware(tmp_path):
     assert tk["tiers"] == "sonnet"
     out = eval_metrics.render("demo", {**_fake_collected(), "tokens": tk})
     assert "$18.30" in out and "sonnet tier" in out
+
+
+def test_opus_tier_priced_not_defaulted(tmp_path):
+    """pass 11: opus transcripts used to price at the sonnet/default table (~5x
+    under-report). 1M of each flavor on opus -> $15+$75+$1.50+$18.75 = $110.25, and
+    the label must be DERIVED from the tier table, not a hardcoded $3/$15 string."""
+    tp = tmp_path / "tr.jsonl"
+    tp.write_text(json.dumps({"message": {"model": "claude-opus-5", "usage": {
+        "input_tokens": 1_000_000, "output_tokens": 1_000_000,
+        "cache_read_input_tokens": 1_000_000, "cache_creation_input_tokens": 1_000_000}},
+        "timestamp": datetime.now(timezone.utc).isoformat()}) + "\n", encoding="utf-8")
+    tk = eval_metrics.tokens_in_window([str(tp)], None, None)
+    assert tk["tiers"] == "opus"
+    assert abs(tk["cost"] - 110.25) < 1e-9
+    out = eval_metrics.render("demo", {**_fake_collected(), "tokens": tk})
+    assert "$110.25" in out and "$15/$75/$1.5/$18.75" in out
+
+
+def test_cache_churn_advisory_gated():
+    """pass 11: >=20 turns under 70% cache hit-rate -> one advisory line naming the
+    lever (output economy). High hit-rate or a short box renders no advisory."""
+    def _tk(**kw):
+        base = {"output": 1, "input": 1000, "cache_read": 100, "cache_creation": 100,
+                "cost": 1.0, "tiers": "sonnet", "turns": 25}
+        base.update(kw)
+        return Counter(base)
+    churned = eval_metrics.render("demo", {**_fake_collected(), "tokens": _tk()})
+    assert "Advisory" in churned and "context churn" in churned
+    assert "Advisory" not in eval_metrics.render(
+        "demo", {**_fake_collected(), "tokens": _tk(cache_read=5000)})
+    assert "Advisory" not in eval_metrics.render(
+        "demo", {**_fake_collected(), "tokens": _tk(turns=5)})

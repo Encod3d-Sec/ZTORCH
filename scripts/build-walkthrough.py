@@ -92,6 +92,13 @@ def _caption_from_filename(png_basename):
     if _LEAD_CARD.match(stem):
         return "request/response lead card"
 
+    # died-scan slug (autocard -x<rc> from the pane's __ZT_RC marker): label it as died,
+    # never a clean finish - the walkthrough must not read a failed scan as a good one.
+    m = re.search(r"-x(\d+)$", stem)
+    if m:
+        base = _caption_from_filename(stem[:m.start()] or stem)
+        return "%s (died, exit %s)" % (base, m.group(1))
+
     stem = _LEADING_SEQ.sub("", stem)
     stem = _DASH_RUN.sub(" ", stem).strip()
     return stem or png_basename

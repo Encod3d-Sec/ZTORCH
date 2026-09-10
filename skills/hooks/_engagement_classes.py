@@ -53,6 +53,8 @@ CLASS_ALIASES = {
     "recon": ["reconnaissance"],
     "mcp": ["model context protocol"],
     "cicd": ["ci/cd", "pipeline injection", "github actions", "runner takeover"],
+    "pwn": ["binary exploitation", "format string", "use-after-free", "heap overflow",
+            "buffer overflow", "rop chain", "one_gadget", "ret2libc"],
 }
 
 

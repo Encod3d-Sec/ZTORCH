@@ -69,6 +69,13 @@ def main(argv):
           (name, status,
            ", then walkthrough build + Skill(learn)" if status != "SUSPEND"
            else " only (parked; walkthrough/learn resume when reopened)"))
+    # advisory (pass 11 L6): nothing in the close-out chain kills the engagement's tmux
+    # session on the VM - leftover scan/listener tabs silently persist into the next box.
+    # Advise the operator-named kill (NEVER kill-server; VPN lives outside tmux but the
+    # rule stands). The AUTOCARD_ALL sweep at close-out cards everything first.
+    print("advisory: once the close-out chain finishes, kill the VM session for this box: "
+          "bash /root/vm.sh \"tmux kill-session -t %s\" (named session ONLY, never "
+          "kill-server)." % name)
     return 0
 
 
