@@ -601,7 +601,7 @@ Derived from 0xdf HackTheBox writeups covering Kerberos-heavy machines:
 | Scrambled | Silver Ticket (NTLM disabled domain-wide) |
 | APT | Kerbrute at scale; Kerberos hash brute from NTDS backup |
 
-Cross-references: [[ad-enumeration]], [[ad-lateral-movement]], [[pass-the-hash]], [[ad-persistence]], [[password-cracking]], [[netexec]], [[wiki/tools/certipy]], [[adcs]]
+Cross-references: [[ad-enumeration]], [[ad-lateral-movement]], [[pass-the-hash]], [[ad-persistence]], [[password-cracking]], [[netexec]], [[wiki/tools/certipy]], [[adcs]]; cloud pivot: [[cloud-iam-attacks]] (AD-federated IAM trust extends domain compromise into the cloud tenant)
 
 ## References
 

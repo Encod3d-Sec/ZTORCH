@@ -118,4 +118,4 @@ sqlmap -r req.txt -p id                                       # target specific 
 -v 6                                    # full debug, print every request
 ```
 
-See [[sqlmap]] for the full tool page.
+See [[wiki/cheatsheets/sqlmap]] for the full tool page.

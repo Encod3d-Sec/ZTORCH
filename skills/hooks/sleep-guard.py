@@ -127,8 +127,9 @@ def main():
             "permissionDecision": "deny",
             "permissionDecisionReason": ("BLOCKED by harness enforcement: " + reason
                 + ".\n\nPoll on a CONDITION instead (until-loop / output-file check) - e.g. "
-                  "`until grep -q Ready app.log; do sleep 2; done`. (False block? create "
-                  "skills/hooks/.enforce-off to downgrade enforcement to advisory.)"),
+                  "`until grep -q Ready app.log; do sleep 2; done`. (False block? ask "
+                  "the OPERATOR to create skills/hooks/.enforce-off to downgrade "
+                  "enforcement to advisory.)"),
         }}))
     else:
         print(json.dumps({"hookSpecificOutput": {

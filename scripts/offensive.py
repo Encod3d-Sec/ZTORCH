@@ -10,6 +10,7 @@ Python 3 stdlib only.
 """
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
@@ -121,6 +122,18 @@ VECTOR_INDICATOR = {
 
 def _today():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _save_state(eng, state):
+    """Atomic .offensive.json write (tmp + os.replace). The driver is the producer that
+    writes state most often (mid-turn, on /mnt/c); the old truncate-then-write, killed
+    mid-write, left the file unparseable and silently disabled every hook consumer for
+    the rest of the engagement -- the exact failure drift-guard's own _save_state
+    already fixed for itself (its comment names it). One helper, all 15 sites."""
+    p = Path(eng) / STATE_NAME
+    tmp = Path(eng) / (STATE_NAME + ".tmp")
+    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.replace(tmp, p)
 
 
 # --------------------------------------------------------------------------- board (4a matrix)
@@ -374,7 +387,7 @@ def cmd_board(args):
         added += 1
     write_board(eng, rows)
     if added:
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
     # drain AFTER derive_rows: it parses state.md/Deadends.md too, and a warning
     # from those files must be announced here, not leak into the next command
     for w in _drain_board_warnings():
@@ -552,7 +565,7 @@ def seed_4b(eng, index, etype, st):
         added += 1
     if added:
         write_board_4b(eng, rows)
-        (Path(eng) / STATE_NAME).write_text(json.dumps(st, indent=2))
+        _save_state(eng, st)
     return added
 
 
@@ -796,7 +809,7 @@ def _next_json_payload(eng, state, vault):
     threshold = WALLBREAK_THRESHOLD.get(state.get("type"), 3)
     if state.get("dry_streak", 0) >= threshold:
         state["dry_streak"] = 0
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
         out["terminal"] = "wall-break"
         out["skill"] = "redteamlead"
         out["warnings"].append("dry_streak hit %d - wrong vector, ask redteamlead "
@@ -832,7 +845,7 @@ def _next_json_payload(eng, state, vault):
         else:
             out["terminal"] = "exhausted"
         state["terminal_count"] = state.get("terminal_count", 0) + 1
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
         if state["terminal_count"] >= 3:
             out["warnings"].append("terminal %dx - stop polling next; operator "
                                    "decision required" % state["terminal_count"])
@@ -862,7 +875,7 @@ def _next_json_payload(eng, state, vault):
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "asset": asset, "row": rid, "class": cls, "skill": skill, "tool": tool,
     }
-    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    _save_state(eng, state)
     if ts.get(rid, 0) >= 3:
         out["warnings"].append("RE-SERVE %dx: row %s reached the tool step %d times "
                                "with no disposition - dispose (done --dead/--park) or "
@@ -943,7 +956,7 @@ def cmd_next(args):
     threshold = WALLBREAK_THRESHOLD.get(state.get("type"), 3)
     if state.get("dry_streak", 0) >= threshold:
         state["dry_streak"] = 0
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
         print("WALL-BREAK: dry_streak reached %d (>= %d) - you are grinding a "
               "wrong vector. Run Skill(redteamlead) for wiki-grounded direction "
               "before the next vector." % (threshold, threshold))
@@ -982,7 +995,7 @@ def cmd_next(args):
         closed = sum(1 for r in rows if _status_of(r) == "[x]")
         stuck = sum(1 for r in rows if _status_of(r) in ("[?]", "[!]"))
         state["terminal_count"] = state.get("terminal_count", 0) + 1
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
         if state["terminal_count"] >= 3:
             print("TERMINAL %dx: `next` printed a terminal state %d times in a row - stop "
                   "polling it; an operator decision (recon, re-plan, or close-out) is "
@@ -1027,7 +1040,7 @@ def cmd_next(args):
         "asset": asset, "row": rid, "class": cls, "skill": skill,
         "tool": (row.get("tool") or "").strip(),
     }
-    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    _save_state(eng, state)
     lvl, _lvl_note = autonomy_of(eng)
     print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s"
           % (state.get("pass", 0), asset, rid, cls, lvl))
@@ -1264,7 +1277,7 @@ def cmd_note(args):
         # reopened vector. The [ ] -> [~] flip is when work on this row really
         # starts (driver audit, 2026-09-10).
         _stamp_row_opened(state, row.get("asset"), row.get("vuln class"))
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
     writer(eng, rows)
     print("note: %s arsenal=%s (G1 released; row [~])" % (args.row, args.arsenal))
     _ckpt(eng, "note %s" % args.row)
@@ -1286,7 +1299,7 @@ def cmd_park(eng, state, rows, row, reason, writer=write_board):
     # park (reason N/A) skips the bump (B4).
     if not (isinstance(reason, str) and reason.strip().upper().startswith("N/A")):
         state["dry_streak"] = state.get("dry_streak", 0) + 1
-    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    _save_state(eng, state)
     print("done: %s parked (status set for later revisit) -> decisions.md; "
           "loop advances with no operator prompt (dry_streak=%d)"
           % ((row.get("id") or "").strip(), state["dry_streak"]))
@@ -1354,7 +1367,7 @@ def cmd_foothold(args):
     if not asset:
         _die("foothold needs an <asset> (or a cursor asset from a prior `next`)")
     matched = _record_foothold(eng, state, asset, args.win)
-    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    _save_state(eng, state)
     etype = state.get("type", "pentest")
     added = seed_4b(eng, load_index(eng), etype, state)
     print("foothold: %s -> tmux window %s (foothold=true)%s"
@@ -1402,7 +1415,7 @@ def cmd_done(args):
         # close (reason N/A) is not a no-find signal - skip it (B4).
         if not (isinstance(args.dead, str) and args.dead.strip().upper().startswith("N/A")):
             state["dry_streak"] = state.get("dry_streak", 0) + 1
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
         print("done: %s dead [!] (dry_streak=%d) -> Deadends.md (loop advances)"
               % (args.row, state["dry_streak"]))
         _ckpt(eng, "dead %s" % args.row)
@@ -1470,7 +1483,7 @@ def cmd_done(args):
     writer(eng, rows)
     # WALL-BREAK feed: a find resets the dry streak.
     state["dry_streak"] = 0
-    (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+    _save_state(eng, state)
     print("done: %s closed [x] (poc=%s kind=%s)" % (args.row, args.poc, args.kind))
 
     # --win: this row landed a shell (e.g. an RCE) -> record a foothold on its
@@ -1478,7 +1491,7 @@ def cmd_done(args):
     if args.win:
         asset = (row.get("asset") or "").strip()
         matched = _record_foothold(eng, state, asset, args.win)
-        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        _save_state(eng, state)
         added = seed_4b(eng, load_index(eng), state.get("type", "pentest"), state)
         print("  foothold recorded on %s (tmux %s%s); 4b: %d post-ex rows"
               % (asset, args.win, "" if matched else ", no state.md row", added))
@@ -1636,7 +1649,7 @@ def cmd_init(args):
         "foothold": False,
         "started_at": datetime.now(timezone.utc).isoformat(),
     }
-    state_path.write_text(json.dumps(state, indent=2))
+    _save_state(eng, state)
     # repoint targets/active.md so hook telemetry (.events.jsonl) lands in THIS engagement;
     # a stale pointer silently breaks G2 (skill fires recorded under the old engagement)
     active = vault / "targets" / "active.md"

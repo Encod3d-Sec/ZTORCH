@@ -16,7 +16,9 @@
 # the window scripts/vm-scan.sh --win shell created for the nc listener). With --create the
 # session/window is created if missing (lands at a shell prompt), so one call creates the
 # named window, runs the command, and returns clean output. VM_SH overridable
-# for tests. Fail-soft: prints nothing + exits 1 if the end marker never appears.
+# for tests. On timeout the PARTIAL output (sliced after the LAST start marker) prints,
+# a grew-vs-hung verdict goes to stderr, exit 2; 3 straight bridge failures abort with
+# the last stderr bytes appended, exit 1.
 set -uo pipefail
 VM_SH="${VM_SH:-/root/vm.sh}"
 WIN="shell"; TO=40; CREATE=0
@@ -55,22 +57,29 @@ bash "$VM_SH" "tmux send-keys -t $SESSION:$WIN '$SEND' Enter" >/dev/null 2>&1
 # poll the pane until the end marker shows up (or timeout). Circuit-breaker: 3 CONSECUTIVE
 # transport failures (vm.sh nonzero - VM down/half-dead bridge) abort the poll instead of
 # burning the whole TO budget on blind retries; a successful poll resets the count. The
-# window is kept so a recovered bridge resumes where it left off.
-PANE=""; FAILS=0
+# window is kept so a recovered bridge resumes where it left off. The abort line is
+# followed by the last 512 bytes of captured bridge stderr (the WHY). SZ tracking feeds
+# the timeout verdict: pane bytes changed during the window = still producing output.
+ERRF="$(mktemp)"; trap 'rm -f "$ERRF"' EXIT
+PANE=""; FAILS=0; BASE=-1; GREW=0; DONE=0
 for _ in $(seq 1 "$TO"); do
-  PANE="$(bash "$VM_SH" "tmux capture-pane -pS -600 -t $SESSION:$WIN" 2>/dev/null)"; RC=$?
+  PANE="$(bash "$VM_SH" "tmux capture-pane -pS -600 -t $SESSION:$WIN" 2>"$ERRF")"; RC=$?
   if [ "$RC" -ne 0 ]; then
     FAILS=$((FAILS+1))
     if [ "$FAILS" -ge 3 ]; then
       echo "vm-rsh: bridge failed ${FAILS}x during poll (VM down?); aborting - window $SESSION:$WIN kept for recovery" >&2
+      tail -c 512 "$ERRF" >&2
       exit 1
     fi
   else
     FAILS=0
   fi
+  SZ="$(printf '%s' "$PANE" | wc -c)"
+  [ "$BASE" -lt 0 ] && BASE="$SZ"
+  [ "$SZ" -ne "$BASE" ] && GREW=1
   # break only on the EXECUTED end marker (alone on its line); an echo-on PTY also shows the
   # marker embedded in the echoed command line, which must not end the poll before output lands.
-  printf '%s\n' "$PANE" | grep -qE "^ *$END *$" && break
+  printf '%s\n' "$PANE" | grep -qE "^ *$END *$" && { DONE=1; break; }
   sleep 1
 done
 
@@ -79,8 +88,11 @@ done
 # echoed command line, and any narrow-wrap fragment of it, is never taken for a boundary, so
 # an unstabilized echo-on PTY works without stabilization. ponytail: alone-on-line replaces the
 # old rfind + heuristic cmd-line drop; belt of stty -echo skipped, the extractor is the guarantee.
-printf '%s' "$PANE" | python3 -c '
-import sys
+# On timeout (TIMEOUT=1) the slice runs to EOF instead of exiting, so partial output is kept.
+TIMEDOUT=0; [ "$DONE" = 1 ] || TIMEDOUT=1
+EXRC=0
+printf '%s' "$PANE" | TIMEOUT=$TIMEDOUT python3 -c '
+import os, sys
 t = sys.stdin.read()
 s, e = "'"$START"'", "'"$END"'"
 lines = t.split("\n")
@@ -90,8 +102,11 @@ if not starts:
 i = starts[-1]
 after = [n for n, l in enumerate(lines) if n > i and l.strip() == e]
 if not after:
-    sys.exit(1)
-out = lines[i+1:after[0]]
+    if os.environ.get("TIMEOUT") != "1":
+        sys.exit(1)
+    out = lines[i+1:]
+else:
+    out = lines[i+1:after[0]]
 while out and not out[0].strip():   # trim leading blanks
     out.pop(0)
 while out and not out[-1].strip():   # trim trailing blanks
@@ -105,4 +120,18 @@ if out and _re.search(r"\S+@\S+:\S*[#\$]\s*$", out[-1]):
                      "back to the attacker box; re-run this window with whoami and expect the "
                      "TARGET user before trusting anything above\n")
 print("\n".join(out))
-'
+' || EXRC=$?
+# timeout verdict (items: stall-vs-hung + partial output): output that GREW during the
+# window is a stalled-but-alive command (hashcat mid-run has no prompt either); only zero
+# new bytes across the whole window reads as hung. Either way the partial output above is
+# already printed and the exit is 2 (nonzero timeout convention). The done path keeps the
+# extractor rc (1 = marker never landed in the captured window).
+if [ "$TIMEDOUT" = 1 ]; then
+  if [ "$GREW" = 1 ]; then
+    echo "vm-rsh: no end marker in ${TO}s but output still growing - running (stalled output); window $SESSION:$WIN kept" >&2
+  else
+    echo "vm-rsh: no new output across the whole ${TO}s poll window - hung tab or dead shell; window $SESSION:$WIN kept" >&2
+  fi
+  exit 2
+fi
+exit "$EXRC"

@@ -65,13 +65,21 @@ def _load(d):
         with open(_metrics_path(d), encoding="utf-8") as fh:
             return json.load(fh)
     except Exception:
+        # a corrupt .metrics.json would zero every downstream eval_metrics report
+        # silently; record the reset (an absent file is the normal first-run
+        # case, not a failure). kind "telemetry" stays out of drift counts.
+        if os.path.exists(_metrics_path(d)):
+            log_event("telemetry", d=d, error=".metrics.json unparseable - baseline reset")
         return {}
 
 
 def _save(d, m):
     try:
-        with open(_metrics_path(d), "w", encoding="utf-8") as fh:
+        p = _metrics_path(d)
+        tmp = p + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(m, fh, indent=2, ensure_ascii=False)
+        os.replace(tmp, p)   # atomic: never a half-written metrics file
     except Exception:
         pass
 

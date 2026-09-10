@@ -31,8 +31,11 @@ case "${1:-}" in
 esac
 ENG="${1:?need <eng>}"; WIN="${2:?need <win>}"; CMD="${3:-}"
 SESSION="$ENG"; LOG="/dev/shm/${SESSION}-${WIN}.log"
+# log watchdog, reads only: >200MB gets ONE warning line naming the size; truncation is
+# the operator's call, never automatic. Prefixed into read/delta/status remote scripts.
+WARN="wsz=\$(stat -c %s '$LOG' 2>/dev/null || echo 0); [ \"\$wsz\" -gt 209715200 ] && echo \"vm-bg: WARNING: '$LOG' is \$((wsz/1048576))MB (>200MB) - consider truncating it\"; "
 if [ "$MODE" = read ]; then
-  bash "$VM_SH" "cat '$LOG' 2>/dev/null || echo '(no log yet: $LOG)'"; exit 0
+  bash "$VM_SH" "${WARN}cat '$LOG' 2>/dev/null || echo '(no log yet: $LOG)'"; exit 0
 fi
 if [ "$MODE" = tail ]; then
   N="${3:-40}"; bash "$VM_SH" "tail -n $N '$LOG' 2>/dev/null || echo '(no log yet: $LOG)'"; exit 0
@@ -40,9 +43,12 @@ fi
 if [ "$MODE" = delta ]; then
   # byte-offset incremental read (clone pattern: task-output delta). $LOG.off holds the
   # offset already consumed; prints only NEW bytes and advances it. --read/--tail never
-  # touch .off, so a full re-read is always available.
-  bash "$VM_SH" "off=\$(cat '$LOG.off' 2>/dev/null || echo 0); sz=\$(stat -c %s '$LOG' 2>/dev/null || echo 0); \
-if [ \"\$sz\" -gt \"\$off\" ]; then tail -c +\$((off+1)) '$LOG'; echo \$sz > '$LOG.off'; \
+  # touch .off, so a full re-read is always available. A vanished log with a leftover .off
+  # (VM reboot / /dev/shm wipe) says so once and drops the offset, so the next run starts
+  # fresh instead of silently reading nothing forever.
+  bash "$VM_SH" "${WARN}off=\$(cat '$LOG.off' 2>/dev/null || echo 0); sz=\$(stat -c %s '$LOG' 2>/dev/null || echo 0); \
+if [ ! -f '$LOG' ] && [ -f '$LOG.off' ]; then echo 'log vanished (VM reboot or /dev/shm wipe) - offset reset'; rm -f '$LOG.off'; \
+elif [ \"\$sz\" -gt \"\$off\" ]; then tail -c +\$((off+1)) '$LOG'; echo \$sz > '$LOG.off'; \
 else echo \"(no new output; \$sz bytes total)\"; fi"
   exit 0
 fi
@@ -52,7 +58,7 @@ if [ "$MODE" = status ]; then
   # say so instead of a misleading "running" off a stale log mtime.
   IDLE="${3:-}"
   HINT="\$(cat '$LOG.idle' 2>/dev/null || echo 180)"
-  bash "$VM_SH" "idle=${IDLE:-$HINT}; \
+  bash "$VM_SH" "${WARN}idle=${IDLE:-$HINT}; \
 if [ -f '$LOG.done' ]; then echo \"done \$(cat '$LOG.done')\"; \
 elif ! tmux has-session -t '$SESSION' 2>/dev/null; then echo 'session gone (VM reboot or kill) - log is stale, last lines:'; tail -n 5 '$LOG' 2>/dev/null; \
 elif [ -f '$LOG' ]; then age=\$(( \$(date +%s) - \$(stat -c %Y '$LOG') )); \
@@ -104,8 +110,11 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 # single jittered relaunch (clone pattern), not a retry loop: a transient bridge hiccup gets ONE
-# immediate second try with a 1-3s jitter so two agents don't stampede in lockstep.
-if ! bash "$VM_SH" "$REMOTE"; then
+# immediate second try with a 1-3s jitter so two agents don't stampede in lockstep. The abort
+# line is followed by the last 512 bytes of the retry stderr (the WHY the bridge died).
+ERRF="$(mktemp)"; trap 'rm -f "$ERRF"' EXIT
+if ! bash "$VM_SH" "$REMOTE" 2>"$ERRF"; then
+  cat "$ERRF" >&2
   sleep "1.$((RANDOM % 3))"
-  bash "$VM_SH" "$REMOTE" || { echo "vm-bg: launch failed twice (VM unreachable via $VM_SH?)" >&2; exit 1; }
+  bash "$VM_SH" "$REMOTE" 2>"$ERRF" || { echo "vm-bg: launch failed twice (VM unreachable via $VM_SH?)" >&2; tail -c 512 "$ERRF" >&2; exit 1; }
 fi

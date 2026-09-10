@@ -468,6 +468,12 @@ def main():
     try:
         st = json.load(open(sp, encoding="utf-8"))
     except Exception:
+        try:      # corrupt state silently disabled this guard for whole boxes; record it
+            import _telemetry
+            _telemetry.log_event("hook", d=d, hook="drift-guard",
+                                 error=".offensive.json unparseable - drift-guard disabled")
+        except Exception:
+            pass
         return
 
     # A driver call resets the streak (the agent came back to the board). Command-position
@@ -626,7 +632,8 @@ def main():
                 "- do NOT re-attempt the exact same call. Change one variable, close the row "
                 "dead (`Deadends.md` line + `python3 scripts/offensive.py done <row> --dead`), "
                 "or run `python3 scripts/offensive.py next` to switch vector.\n\n"
-                "(False block? create skills/hooks/.enforce-off to downgrade enforcement to "
+                "(False block? ask the OPERATOR to create skills/hooks/.enforce-off to "
+                "downgrade enforcement to "
                 "advisory.)" % retries)
         else:
             _deny(
@@ -635,7 +642,8 @@ def main():
                 "authoritative. Run `python3 scripts/offensive.py next` to get the required "
                 "row + tool (this also resets the counter), or `offensive.py note` if this is "
                 "a legitimate off-board lane, then re-run the command.\n\n"
-                "(False block? create skills/hooks/.enforce-off to downgrade enforcement to "
+                "(False block? ask the OPERATOR to create skills/hooks/.enforce-off to "
+                "downgrade enforcement to "
                 "advisory.)" % (streak, off))
         return
 

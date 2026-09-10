@@ -25,9 +25,9 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 - [ ] httpx probe + gowitness               -> [[wiki/tools/httpx]] [[gowitness]]
 - [ ] dump TLS cert SANs for hidden vhosts: `echo | openssl s_client -connect <ip>:443 -servername <host> 2>/dev/null | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"`  -> [[cdn-waf-bypass]]
 - [ ] gau + katana crawl (urls, .js)        -> [[gau]] [[katana]] [[javascript-source-map-exploitation]]
-- [ ] arjun param mining                     -> [[arjun]]
+- [ ] arjun param mining                     -> [[wiki/tools/arjun]]
 - [ ] nuclei                                 -> [[wiki/tools/nuclei]] [[nuclei-arsenal]]
-- [ ] trufflehog / .git / secrets            -> [[trufflehog]] [[git-exposure]] [[secret-hunting]]
+- [ ] trufflehog / .git / secrets            -> [[wiki/tools/trufflehog]] [[git-exposure]] [[secret-hunting]]
 - [ ] wiki-query EACH fingerprinted tech/version   <-- GATE 1 source
 
 ## 2. Weaponize  ([[owasp-top-10]] · [[oob-callbacks]] · [[cve-arsenal]])
@@ -38,7 +38,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 ## 3. Deliver  ([[burp-mcp]] · [[api-security]])
 - [ ] deliver via burp repeater / curl       -> [[burp-mcp]]
 - [ ] token / cookie / cred reuse            -> loot.md
-- [ ] fuzz params / request items            -> [[wiki/tools/ffuf]] [[arjun]]
+- [ ] fuzz params / request items            -> [[wiki/tools/ffuf]] [[wiki/tools/arjun]]
 
 ## 4. Exploit
 

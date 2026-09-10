@@ -61,7 +61,7 @@ Feed the resulting wordlist to [[wiki/tools/hydra]], medusa, or [[wiki/tools/joh
 
 - Blank fields are fine; CUPP just skips permutations for that field, it does not error.
 - The `-i < answers.txt` trick works for any tool that normally expects an interactive terminal when the transport (SSH bridge, some MCP shells) does not forward stdin/TTY.
-- Combine with [[cewl]] when the password may mix personal info with company/site vocabulary (feed CeWL's word list into CUPP's "keywords" field).
+- Combine with [[wiki/tools/cewl]] when the password may mix personal info with company/site vocabulary (feed CeWL's word list into CUPP's "keywords" field).
 
 ## Related techniques
 

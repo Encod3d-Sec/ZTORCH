@@ -83,7 +83,13 @@ def inflight_signals(d):
                                      % (rid, lm.get("ts", "?")))
                     break
     except Exception:
-        pass
+        try:    # corrupt driver state silently drops the served-move surface; record it
+            if os.path.isfile(os.path.join(d, ".offensive.json")):
+                import _telemetry
+                _telemetry.log_event("hook", d=d, hook="close-out",
+                                     error=".offensive.json unparseable - served-move surface skipped")
+        except Exception:
+            pass
     try:                                       # pending ingest (SessionStart repeats it)
         ing = os.path.join(d, "ingest")
         n = [f for f in os.listdir(ing) if not f.startswith(("_", "."))]
@@ -390,7 +396,13 @@ def main():
                                        "x" if _ev else " ", "x" if not _stale else " ",
                                        "x" if not _pend else " "))
     except Exception:
-        pass
+        try:    # corrupt driver state silently drops the chain status line; record it
+            if os.path.isfile(os.path.join(d, ".offensive.json")):
+                import _telemetry
+                _telemetry.log_event("hook", d=d, hook="close-out",
+                                     error=".offensive.json unparseable - close-out chain line skipped")
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

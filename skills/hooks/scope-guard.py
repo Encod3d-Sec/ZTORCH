@@ -116,6 +116,10 @@ BRUTEFORCE = re.compile(
     r"|--password-file|\bspray(ing|hound)?\b|-[uUpP]\s+\S+\.(txt|lst)\b", re.I)
 DOS = re.compile(r"\b(slowloris|hping3|stress-ng|siege|t50)\b|--flood|--min-rate\s+[0-9]{5,}|nmap[^|;&]*-T5|\bab\b[^|;&]*-n\s+[0-9]{5,}", re.I)
 ACTIVE = re.compile(r"\b(nmap|masscan|rustscan|nuclei|ffuf|gobuster|feroxbuster|nxc|netexec|crackmapexec|hydra|medusa|sqlmap|wpscan|nikto|dirb)\b", re.I)
+# Escape-hatch write (advisory-only, Finding B): a scanned segment that WRITES the marker -
+# touch/tee in command position, or a > / >> redirect - followed by the marker string in the
+# same segment. Narrow by design (cp/mv/rm and bare mentions never match).
+_ENFORCE_OFF_WRITE = re.compile(r"^(?:touch|tee)\b[^|;&]*\.enforce-off\b|>{1,2}[^|;&]*\.enforce-off\b")
 
 
 def ip_out_of_scope(cmd, sc):
@@ -211,6 +215,26 @@ def main():
         pass
 
     if not deny:
+        # escape-hatch write (advisory ONLY, never deny: the operator may legitimately be
+        # driving): a Bash segment creating/modifying skills/hooks/.enforce-off downgrades
+        # every hook deny to advisory with no narration otherwise; surface it + record it.
+        try:
+            if _ENFORCE_OFF_WRITE.search(_scan_text(cmd)):
+                try:
+                    import _telemetry
+                    _telemetry.drift("scope-guard",
+                                     "enforcement downgrade requested via Bash: skills/hooks/.enforce-off")
+                except Exception:
+                    pass
+                print(json.dumps({"hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "additionalContext": ("SCOPE-GUARD (advisory): enforcement downgrade "
+                                          "requested via Bash: skills/hooks/.enforce-off - this "
+                                          "marker downgrades every hook deny to advisory. "
+                                          "OPERATOR: confirm this was you."),
+                }}))
+        except Exception:
+            pass
         return
     body = "\n- ".join(deny)
     # telemetry: every block/advise is a recorded drift signal (a wrong action the guard caught)
@@ -226,8 +250,8 @@ def main():
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
             "permissionDecisionReason": ("BLOCKED by harness enforcement:\n- " + body
-                + "\n\nFix the command and re-run. (False block? create skills/hooks/.enforce-off "
-                  "to downgrade enforcement to advisory.)"),
+                + "\n\nFix the command and re-run. (False block? ask the OPERATOR to create "
+                  "skills/hooks/.enforce-off to downgrade enforcement to advisory.)"),
         }}))
     else:
         print(json.dumps({"hookSpecificOutput": {

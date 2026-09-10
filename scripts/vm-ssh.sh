@@ -17,13 +17,13 @@ if [ -f "$KEY" ] && [ -n "$HOST" ] && \
     # strips it and a missing trailer means the transport died mid-stream (a
     # truncated response used to pass through as complete-looking output).
     # Only on this path - the raw exec path below has nobody to strip the marker.
-    ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR \
+    ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
       -o StrictHostKeyChecking=accept-new "root@$HOST" \
       "bash -c \"\$(printf %s '$B64' | base64 -d)\"; echo __ZT_RC=\$?__" \
       | ZT_FRAME=1 python3 "$ECON" "$CMD"
     exit $?
   fi
-  exec ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR \
+  exec ssh -i "$KEY" -o BatchMode=yes -o LogLevel=ERROR -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
     -o StrictHostKeyChecking=accept-new "root@$HOST" \
     "bash -c \"\$(printf %s '$B64' | base64 -d)\""
 fi

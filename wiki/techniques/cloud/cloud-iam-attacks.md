@@ -84,6 +84,7 @@ aws iam list-groups-for-user --user-name USERNAME
 - Enterprise environments use SAML 2.0 or OIDC to federate identities from Active Directory, Azure AD, Okta, etc.
 - Authentication occurs in the external IdP; the resulting assertion is exchanged for temporary AWS credentials via STS
 - Federated sessions use `AWS:SourceIdentity` and `sts:RoleSessionName` in CloudTrail
+- Federation is also the cloud-to-on-prem bridge: where AD federates into AWS, Kerberos-side domain compromise and IAM-side trust abuse are the same attack surface from both ends, see [[kerberos-attacks]]
 
 ### AWS Services as Principals
 
@@ -612,7 +613,7 @@ aws glue create-dev-endpoint --endpoint-name my_dev_endpoint --role-arn arn_of_g
 
 ### Scenario 1: Leaked Credentials in Source Code
 
-Developers commonly commit long-term `AKIA` keys to GitHub. Tools for finding them:
+Developers commonly commit long-term `AKIA` keys to GitHub. Full dork corpus, secret regexes, and the read-only validation workflow: [[secret-hunting]]. Tools for finding them:
 
 ```bash
 # Scan git repos for secrets

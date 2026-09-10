@@ -107,7 +107,7 @@ Read `docs/workflows.md` before performing any ingest, target session, lint, or 
 
 ## Output rules
 
-- **Brevity during engagements/tool-loops (output tokens are billed).** Working a target or any multi-step tool loop: one short line before a tool batch stating intent, then lead the next turn with the RESULT, not a recap. No per-step paragraphs, no restating what a command will do, no re-narrating the plan. Full prose is for deliverables that need it (a report, a walkthrough, a design/brainstorm, an explanation the user asked for). A 40-min box should not cost a paragraph per step.
+- **Brevity during engagements/tool-loops (output tokens are billed).** Working a target or any multi-step tool loop: one short line before a tool batch stating intent (<=25 words); whole engagement-turn text <=100 words; then lead the next turn with the RESULT, not a recap. Emit text only for (a) decisions needing the operator, (b) milestone status, (c) errors/blockers that change the plan. No per-step paragraphs, no restating what a command will do, no re-narrating the plan. Full prose is for deliverables that need it (a report, a walkthrough, a design/brainstorm, an explanation the user asked for). A 40-min box should not cost a paragraph per step.
 - Never use em-dashes (`--`). Use a comma, semicolon, or rewrite the sentence. (`--` is permitted inside code blocks as a CLI flag.)
 - Never use emojis.
 - Do not narrate inside commands (echo/printf label banners, `=== ... ===` separators). The harness shows every command with its output; run commands directly.

@@ -313,3 +313,16 @@ def test_detached_or_fast_forms_do_not_fire(tmp_path):
         r = subprocess.run([sys.executable, str(HOOK)], input=payload,
                            capture_output=True, text=True, timeout=30)
         assert r.stdout.strip() == "", cmd
+
+
+def test_corrupt_state_fails_open_but_telemetrifies(tmp_path):
+    """Corrupt-state telemetry: an unparseable .offensive.json must fail OPEN (the call is
+    allowed, the guard silently off) AND leave a hook event in .events.jsonl - a corrupt
+    state file used to disable the guard with zero signal."""
+    v = _mk(tmp_path, streak=5)            # would deny on a clean state
+    (v / "targets" / "engd" / ".offensive.json").write_text("{corrupt", encoding="utf-8")
+    out = _decoded(_run(v, cmd=OFFBOARD_CMD))
+    assert out.get("hookSpecificOutput", {}).get("permissionDecision") != "deny"
+    ev = (v / "targets" / "engd" / ".events.jsonl").read_text(encoding="utf-8")
+    assert '"hook": "drift-guard"' in ev
+    assert ".offensive.json unparseable" in ev

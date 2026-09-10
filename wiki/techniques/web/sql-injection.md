@@ -12,7 +12,7 @@ sources: [cpts-sqli-fundamentals, ps-labs-sqli, thm-adv-sqli-advanced, thm-linux
 
 SQL Injection (SQLi) is a code injection technique that allows an attacker to interfere with the queries an application makes to its database. It is the most prevalent and impactful web vulnerability class, enabling data exfiltration, authentication bypass, file system access, and in some configurations, OS command execution.
 
-See also: [[sqlmap]], [[authentication-attacks]], [[business-logic]], [[nosql-injection]]
+See also: [[wiki/tools/sqlmap]], [[authentication-attacks]], [[business-logic]], [[nosql-injection]]
 
 ---
 

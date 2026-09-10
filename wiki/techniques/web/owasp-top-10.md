@@ -58,7 +58,7 @@ Weak auth, broken session, MFA bypass, credential stuffing, weak reset.
 - **Real-world:** credential-stuffing ATO waves; reset-poisoning takeovers across bug-bounty programs.
 - **CVEs:** CVE-2023-7028 (GitLab ATO).
 - **Payloads:** `wiki/payloads/auth-bypass.md`, `wiki/payloads/oauth-saml.md`, `wiki/payloads/jwt`.
-- **Pages:** [[authentication-attacks]], [[wiki/techniques/web/account-takeover]], [[mfa-bypass]], [[session-management-attacks]], [[jwt-attacks]], [[oauth-attacks]], [[saml-attacks]]. **Skills:** `hunt-auth`, `hunt-federation`.
+- **Pages:** [[authentication-attacks]], [[wiki/techniques/web/account-takeover]], [[session-management-attacks]], [[jwt-attacks]], [[oauth-attacks]], [[saml-attacks]]. **Skills:** `hunt-auth`, `hunt-federation`.
 
 ## A08 - Software and Data Integrity Failures
 Insecure deserialization, unsigned updates, CI/CD compromise, dependency confusion.

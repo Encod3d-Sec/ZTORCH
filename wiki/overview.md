@@ -62,7 +62,7 @@ sources: []
 [[wiki/payloads/ssrf]] · [[file-upload]] · [[path-traversal-lfi]] · [[race-conditions]]
 
 ### Web — Authentication & Session
-[[authentication-attacks]] · [[access-control]] · [[session-management-attacks]] · [[jwt-attacks]] · [[oauth-attacks]] · [[mfa-bypass]] · [[csrf]]
+[[authentication-attacks]] · [[access-control]] · [[session-management-attacks]] · [[jwt-attacks]] · [[oauth-attacks]] · [[csrf]]
 
 ### Web — Client-Side
 [[xss]] · [[dom-attacks]] · [[prototype-pollution]] · [[cors-sop]] · [[http-request-smuggling]]
@@ -104,7 +104,7 @@ sources: []
 
 ## Tools
 
-[[wiki/tools/nmap]] · [[wiki/tools/rustscan]] · [[wiki/tools/ffuf]] · [[gobuster]] · [[nikto]] · [[wiki/tools/httpx]] · [[wiki/tools/nuclei]] · [[wiki/tools/hydra]] · [[medusa]] · [[wiki/tools/hashcat]] · [[wiki/tools/wpscan]] · [[metasploit]] · [[burp-suite]] · [[sqlmap]] · [[netexec]] · [[impacket]] · [[wiki/tools/certipy]] · [[wiki/tools/evil-winrm]] · [[wiki/tools/tshark]] · [[gdb-gef]] · [[radare2]] · [[ghidra]] · [[pwntools]] · [[angr]] · [[volatility]] · [[binwalk]] · [[aflplusplus]] · [[libfuzzer]] · [[semgrep]] · [[codeql]] · [[trivy]] · [[bloodhound]] · [[responder]] · [[subfinder]] · [[gowitness]] · [[ligolo-ng]] · [[frida]] · [[wiki/tools/john]] · [[scoutsuite]] · [[pacu]] · [[roadtools]] · [[apktool]] · [[jadx]]
+[[wiki/tools/nmap]] · [[wiki/tools/rustscan]] · [[wiki/tools/ffuf]] · [[gobuster]] · [[nikto]] · [[wiki/tools/httpx]] · [[wiki/tools/nuclei]] · [[wiki/tools/hydra]] · [[medusa]] · [[wiki/tools/hashcat]] · [[wiki/tools/wpscan]] · [[metasploit]] · [[burp-suite]] · [[wiki/tools/sqlmap]] · [[netexec]] · [[impacket]] · [[wiki/tools/certipy]] · [[wiki/tools/evil-winrm]] · [[wiki/tools/tshark]] · [[gdb-gef]] · [[radare2]] · [[ghidra]] · [[pwntools]] · [[angr]] · [[volatility]] · [[binwalk]] · [[aflplusplus]] · [[libfuzzer]] · [[semgrep]] · [[codeql]] · [[trivy]] · [[bloodhound]] · [[responder]] · [[subfinder]] · [[gowitness]] · [[ligolo-ng]] · [[frida]] · [[wiki/tools/john]] · [[scoutsuite]] · [[pacu]] · [[roadtools]] · [[apktool]] · [[jadx]]
 
 ---
 

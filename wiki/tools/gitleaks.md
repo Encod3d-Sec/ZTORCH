@@ -11,7 +11,7 @@ phase: recon
 ## Purpose
 
 **gitleaks** scans git history (and plain directories) for hardcoded secrets via a large built-in
-regex/entropy ruleset -- a fast complement to [[trufflehog]] when you want a quick, dependency-free
+regex/entropy ruleset -- a fast complement to [[wiki/tools/trufflehog]] when you want a quick, dependency-free
 pass over a cloned repo or CI checkout, especially in a pipeline where trufflehog's verification
 step (live-checking each candidate against its provider API) is unnecessary or too slow.
 
@@ -41,14 +41,14 @@ gitleaks detect -s . --no-git                               # scan a directory t
 - `--depth 1` clones lose history -- gitleaks only sees the checked-out ref's diff-visible secrets,
   not the FULL history. Drop `--depth 1` (or `git fetch --unshallow`) when a shallow scan comes up
   empty; secrets are routinely committed then "removed" in a later commit while staying in history.
-- No live verification (unlike [[trufflehog]]) -- every hit needs manual confirmation the credential
+- No live verification (unlike [[wiki/tools/trufflehog]]) -- every hit needs manual confirmation the credential
   is still valid before reporting.
 - `.gitleaksignore` / inline rule config lets a target repo suppress known false positives; check
   for one before trusting a "clean" scan.
 
 ## Related techniques
 
-[[trufflehog]], [[secret-hunting]]
+[[wiki/tools/trufflehog]], [[secret-hunting]]
 
 ## Sources
 

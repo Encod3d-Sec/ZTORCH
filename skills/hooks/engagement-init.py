@@ -325,7 +325,13 @@ def _compact_restore():
                       % (m.get("ts", "?"), m.get("asset", "?"), m.get("row", "?"),
                          m.get("class", ""), m.get("skill", ""), m.get("tool", "")))
         except Exception:
-            pass
+            try:   # corrupt driver state silently drops the post-compact move restore
+                if os.path.isfile(os.path.join(d, ".offensive.json")):
+                    import _telemetry
+                    _telemetry.log_event("hook", d=d, hook="engagement-init",
+                                         error=".offensive.json unparseable - post-compact driver-move restore skipped")
+            except Exception:
+                pass
         # open (in-flight) delegate lanes from log.md: a lane's continuation handle lives
         # only in the dispatch message, which compaction ate. The log line IS the state
         # (no new state file) - re-inject them aged so they get resumed or closed instead
@@ -418,6 +424,11 @@ def main():
     summ = _engagement.summary_text()
     if summ:
         out.append(summ)
+        # Output-economy caps ride with the summary: summary_text() is truthy only when
+        # an engagement is active (active_dir() resolved), so a bare vault never sees this.
+        out.append("Output caps (engagement turns): intent line before a tool batch <=25 "
+                   "words; whole turn <=100 words; emit text only for operator decisions, "
+                   "milestones, or blockers that change the plan.")
 
     sc = _engagement.scope_text()
     if sc:
