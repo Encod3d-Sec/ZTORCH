@@ -89,40 +89,37 @@ def test_build_index_from_fixture(tmp_path):
 
 # --------------------------------------------------------------------------- gates (Task 4)
 
-def _write_hunt_core(vault, table_body):
-    core = vault / "skills" / "hunt" / "hunt-core"
-    core.mkdir(parents=True)
-    (core / "SKILL.md").write_text(
-        "---\nname: hunt-core\n---\n\n## Routing table (machine-readable)\n\n%s\n" % table_body
-    )
+def _write_routing(vault, routing):
+    (vault / "scripts").mkdir(parents=True, exist_ok=True)
+    (vault / "scripts" / "routing.json").write_text(json.dumps({"routing": routing}))
+
+
+_VALID_ROUTING = {
+    "ssrf": {"class": "ssrf", "skill": "hunt-ssrf",
+             "wiki": "ssrf", "arsenal": "payloads/ssrf"},
+}
 
 
 def test_malformed_routing_row_exits_nonzero(tmp_path, capsys):
     vault = tmp_path / "vault"
-    # third data row is missing a cell (4 columns, not 5)
-    _write_hunt_core(vault, "\n".join([
-        "| fingerprint | class | hunt-skill | primary wiki | arsenal slug |",
-        "|---|---|---|---|---|",
-        "| ssrf | ssrf | hunt-ssrf | ssrf | payloads/ssrf |",
-        "| idor | idor | hunt-idor | access-control |",
-    ]))
+    # second row is missing its wiki key
+    _write_routing(vault, {
+        "ssrf": _VALID_ROUTING["ssrf"],
+        "idor": {"class": "idor", "skill": "hunt-idor", "arsenal": "payloads/idor"},
+    })
 
     with pytest.raises(SystemExit) as exc:
         offensive.build_index(tmp_path / "eng", vault)
     assert exc.value.code != 0
 
     err = capsys.readouterr().err
-    assert "skills/hunt/hunt-core/SKILL.md" in err
-    assert "expected 5" in err
+    assert "scripts/routing.json" in err
+    assert "class/skill/wiki/arsenal" in err
 
 
 def test_hunt_dir_without_wiki_exits_nonzero(tmp_path, capsys):
     vault = tmp_path / "vault"
-    _write_hunt_core(vault, "\n".join([
-        "| fingerprint | class | hunt-skill | primary wiki | arsenal slug |",
-        "|---|---|---|---|---|",
-        "| ssrf | ssrf | hunt-ssrf | ssrf | payloads/ssrf |",
-    ]))
+    _write_routing(vault, dict(_VALID_ROUTING))
     ssrf_dir = vault / "skills" / "hunt" / "hunt-ssrf"
     ssrf_dir.mkdir(parents=True)
     # no '## Wiki' section here
@@ -139,11 +136,7 @@ def test_hunt_dir_without_wiki_exits_nonzero(tmp_path, capsys):
 
 def test_tool_without_usage_exits_nonzero(tmp_path, capsys):
     vault = tmp_path / "vault"
-    _write_hunt_core(vault, "\n".join([
-        "| fingerprint | class | hunt-skill | primary wiki | arsenal slug |",
-        "|---|---|---|---|---|",
-        "| ssrf | ssrf | hunt-ssrf | ssrf | payloads/ssrf |",
-    ]))
+    _write_routing(vault, dict(_VALID_ROUTING))
     # the routing-referenced skill must be installed (the unknown-skill lint fires
     # before the tool-index lint, so a bare fixture never reaches the tool check)
     ssrf_dir = vault / "skills" / "hunt" / "hunt-ssrf"
@@ -177,7 +170,7 @@ def test_index_stale_true_after_source_touch(tmp_path, monkeypatch):
     # bump a real source file's mtime past the cache's
     cache_mtime = (eng / ".offensive-index.json").stat().st_mtime
     future = cache_mtime + 10
-    src = VAULT / "skills" / "hunt" / "hunt-core" / "SKILL.md"
+    src = VAULT / "scripts" / "routing.json"
     os.utime(src, (future, future))
     try:
         assert offensive.index_stale(eng, VAULT) is True
@@ -201,7 +194,7 @@ def test_index_stale_check_is_cached_within_interval(tmp_path, monkeypatch):
 
     cache_mtime = (eng / ".offensive-index.json").stat().st_mtime
     future = cache_mtime + 10
-    src = VAULT / "skills" / "hunt" / "hunt-core" / "SKILL.md"
+    src = VAULT / "scripts" / "routing.json"
     os.utime(src, (future, future))
     try:
         # within the interval -> still reports fresh (cached), even though a real

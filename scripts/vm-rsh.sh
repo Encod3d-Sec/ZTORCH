@@ -96,5 +96,13 @@ while out and not out[0].strip():   # trim leading blanks
     out.pop(0)
 while out and not out[-1].strip():   # trim trailing blanks
     out.pop()
+# B1 (pass 14): a dead target shell drops the window back to the ATTACKER prompt - the
+# false-RCE trap. If the captured slice ENDS on a prompt-shaped line, say so on stderr
+# (advisory; a legit target prompt can match too - verify with whoami before trusting).
+import re as _re
+if out and _re.search(r"\S+@\S+:\S*[#\$]\s*$", out[-1]):
+    sys.stderr.write("vm-rsh: output ends on a shell prompt - the target shell may have died "
+                     "back to the attacker box; re-run this window with whoami and expect the "
+                     "TARGET user before trusting anything above\n")
 print("\n".join(out))
 '

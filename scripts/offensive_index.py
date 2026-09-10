@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """offensive_index.py - vault-markdown index compiler for offensive.py.
 
-Reads vault markdown (the hunt-core routing table, tool-page frontmatter +
+Reads vault config/markdown (scripts/routing.json, tool-page frontmatter +
 usage fences, hunt-skill method blocks) into a per-engagement JSON cache
 `targets/<eng>/.offensive-index.json`. offensive.py's board/next/gates build
 on this cache via build_index/load_index/index_stale.
@@ -79,23 +79,11 @@ def _first_section(text, *headings_lower):
 # --------------------------------------------------------------------------- parsers
 
 def parse_routing_table(vault_root):
-    """{fingerprint: {class, skill, wiki, arsenal}} from the hunt-core
-    `## Routing table (machine-readable)` markdown table."""
-    text = _read(Path(vault_root) / "skills" / "hunt" / "hunt-core" / "SKILL.md")
-    section = _section(text, "routing table")
-    rows = {}
-    for line in section.splitlines():
-        line = line.strip()
-        if not line.startswith("|"):
-            continue
-        cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
-        if len(cells) != 5:
-            continue
-        fp, cls, skill, wiki, arsenal = cells
-        if fp in ("fingerprint", "") or set(fp) <= set("-: "):  # header / separator
-            continue
-        rows[fp] = {"class": cls, "skill": skill, "wiki": wiki, "arsenal": arsenal}
-    return rows
+    """{fingerprint: {class, skill, wiki, arsenal}} from scripts/routing.json
+    (relocated from the hunt-core SKILL.md table; key order = old table order,
+    and it is load-bearing - first key per class wins in _class_info)."""
+    p = Path(vault_root) / "scripts" / "routing.json"
+    return (json.loads(_read(p)) or {}).get("routing") or {}
 
 
 def _first_usage_command(text):
@@ -161,30 +149,24 @@ def parse_hunt_method(hunt_skill_dir):
 # from the routing table.
 
 def _lint_routing_table(vault_root):
-    """Every `| ... |` line inside the hunt-core routing-table section must
-    have exactly 5 columns (header/separator included) - catches a wrong
-    column count, a missing cell, or a pipe embedded in a cell."""
-    path = Path(vault_root) / "skills" / "hunt" / "hunt-core" / "SKILL.md"
+    """scripts/routing.json: every row must carry exactly class/skill/wiki/arsenal
+    (strings). A typo'd key (e.g. arsenal_slug) would otherwise silently drop a
+    cell. Duplicate fingerprints are unrepresentable in a JSON object - the old
+    markdown duplicate-row check dissolves. Values may be empty (an empty skill
+    is a legal G2-skipping state; per-class adequacy is the doctor's job)."""
+    path = Path(vault_root) / "scripts" / "routing.json"
     if not path.exists():
         return
-    section = _section(_read(path), "routing table")
     rel = _rel(path, vault_root)
-    seen = set()
-    for line in section.splitlines():
-        line = line.strip()
-        if not line.startswith("|"):
-            continue
-        cells = line.strip("|").split("|")
-        if len(cells) != 5:
-            _die("%s: routing row has %d columns, expected 5" % (rel, len(cells)))
-        fp = cells[0].strip().strip("`")
-        if fp in ("fingerprint", "") or set(fp) <= set("-: "):
-            continue
-        if fp in seen:
-            _die("%s: duplicate routing fingerprint '%s' - parse_routing_table "
-                 "keeps only the last one; the first route silently vanishes. "
-                 "Merge them or make one more specific" % (rel, fp))
-        seen.add(fp)
+    data = json.loads(_read(path))
+    if not isinstance(data, dict) or not isinstance(data.get("routing"), dict):
+        _die("%s: expected a JSON object with a 'routing' key" % rel)
+    for fp, row in data["routing"].items():
+        if not isinstance(row, dict) or set(row) != {"class", "skill", "wiki", "arsenal"}:
+            _die("%s: routing row '%s' must have exactly class/skill/wiki/arsenal" % (rel, fp))
+        for k, v in row.items():
+            if not isinstance(v, str):
+                _die("%s: routing row '%s' field '%s' is not a string" % (rel, fp, k))
 
 
 def _lint_hunt_methods(vault_root, routing):
@@ -226,7 +208,7 @@ def _lint_tool_index(vault_root):
 def _index_sources(vault_root):
     """Every markdown file build_index reads - used for the staleness check."""
     vault_root = Path(vault_root)
-    srcs = [vault_root / "skills" / "hunt" / "hunt-core" / "SKILL.md"]
+    srcs = [vault_root / "scripts" / "routing.json"]
     tdir = vault_root / "wiki" / "tools"
     srcs += sorted(tdir.glob("*.md")) if tdir.is_dir() else []
     hdir = vault_root / "skills" / "hunt"

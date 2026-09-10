@@ -18,7 +18,7 @@ FIX = ROOT / "tests" / "fixtures" / "offensive"
 def _setup(tmp_path, etype="bb"):
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
-    for sub in ("skills", "wiki"):
+    for sub in ("skills", "wiki", "scripts"):
         shutil.copytree(FIX / sub, vault / sub)
     offensive.main(["--vault", str(vault), "init", "demo", "--type", etype])
     eng = vault / "targets" / "demo"
@@ -145,7 +145,7 @@ def test_dry_streak_increments_and_resets(tmp_path):
     (eng / ".events.jsonl").write_text(json.dumps(
         {"tool": "Skill", "skill": "hunt-ssrf", "ts": st["started_at"]}) + "\n")
     (eng / "poc").mkdir(parents=True, exist_ok=True)
-    (eng / "poc" / "ssrf.png").write_text("")
+    (eng / "poc" / "ssrf.png").write_text("x")
     _run(["--vault", str(vault), "--eng", str(eng), "done", "4a:2",
           "--poc", "poc/ssrf.png", "--kind", "req"])
     assert _state(eng)["dry_streak"] == 0

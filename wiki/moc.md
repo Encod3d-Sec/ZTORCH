@@ -13,7 +13,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 
 - [[active-directory-moc|Active Directory]] (101)
 - [[blockchain-moc|Blockchain]] (2)
-- [[cloud-moc|Cloud]] (53)
+- [[cloud-moc|Cloud]] (52)
 - [[cracking-moc|Cracking]] (6)
 - [[exploit-dev-moc|Exploit Dev]] (19)
 - [[forensics-moc|Forensics]] (6)
@@ -21,8 +21,8 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[macos-moc|Macos]] (19)
 - [[methodology-moc|Methodology]] (14)
 - [[mobile-iot-moc|Mobile Iot]] (5)
-- [[network-moc|Network]] (18)
-- [[osint-moc|Osint]] (8)
+- [[network-moc|Network]] (16)
+- [[osint-moc|Osint]] (7)
 - [[red-team-moc|Red Team]] (15)
 - [[web-moc|Web]] (85)
 

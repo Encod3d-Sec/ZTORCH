@@ -42,6 +42,7 @@ curl -L https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh
 - It is loud and reads many files; EDR/monitoring will see it. On hardened engagements prefer targeted manual checks.
 - Enumerate first (misconfig, sudo, SUID, caps, writable services) before reaching for kernel CVEs; most boxes fall to a misconfig.
 - Grep the output for passwords, keys, and history files it surfaces.
+- Avoid `-a` on boxes with 1-2 GB RAM or less (most THM VMs): a full `-a` scan can OOM-thrash the box until every service (ssh/http/db) times out, which looks exactly like a crashed target. Use the default scan, or throttle with `nice -n19 ionice -c3 ./linpeas.sh`; recovery is `pkill -9 -f linpeas` as the launching user.
 - Full methodology in [[linux-privesc]].
 
 ## Related techniques

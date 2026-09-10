@@ -15,7 +15,7 @@ def _setup(tmp_path, etype="pentest"):
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
     # symlink (read-only for these tests); setup/ is never read via --vault
-    for sub in ("skills", "wiki"):
+    for sub in ("skills", "wiki", "scripts"):
         (vault / sub).symlink_to(ROOT / sub, target_is_directory=True)
     offensive.main(["--vault", str(vault), "init", "demo", "--type", etype])
     eng = vault / "targets" / "demo"
@@ -77,7 +77,7 @@ def test_done_win_records_foothold(tmp_path):
                                      skill="hunt-rce", tool="metasploit")])
     _fire(eng, "hunt-rce")
     (eng / "poc").mkdir(parents=True, exist_ok=True)
-    (eng / "poc" / "shell.png").write_text("")
+    (eng / "poc" / "shell.png").write_text("x")
     rc = offensive.main(["--vault", str(vault), "--eng", str(eng), "done", "4a:1",
                          "--poc", "poc/shell.png", "--kind", "req", "--win", "3"])
     assert rc == 0

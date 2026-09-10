@@ -44,27 +44,7 @@ Tooling-first: rustscan/nmap/feroxbuster/ffuf/nuclei/nxc, never a hand-rolled `/
 
 **Never `pkill -f <pattern>` with a pattern that also matches your OWN driver/ssh command** - it kills your own tooling (a pattern on the target IP can match the ssh session carrying it).
 
-```bash
-T=<ip>
-rustscan -a $T --ulimit 5000 -g                        # fast full-port sweep -> open-port CSV
-nmap -p<found> -sCV -Pn $T -oN nmap-svc.txt            # version/script scan on rustscan's hits
-nmap -p- --min-rate 2000 -T4 -Pn $T -oN nmap-all.txt   # full-TCP confirm (own tmux tab)
-nc -nv $T <port>                 # manual banner / custom-proto services
-dig any @$T <domain>; dig axfr @$T <domain>   # DNS if 53 open / vhost hints
-nxc smb $T -u '' -p '' --shares                 # SMB: netexec first (fingerprint router), not smbclient
-nxc smb $T -u 'guest' -p '' --shares --rid-brute   # guest fallback + RID-cycle user enum
-smbclient -N //$T/<share> -c 'recurse;ls'       # smbclient only to pull a specific file/share
-# --- web ports found: feroxbuster (primary) + nuclei + whatweb IN PARALLEL, own tmux tab each ---
-feroxbuster -u http://$T -w /tmp/harness-paths.txt -x php,txt,log,sql,bak,zip,env,old,conf -d 2 --no-state -o ferox.txt   # our high-signal list first
-feroxbuster -u http://$T -w /usr/share/seclists/Discovery/Web-Content/raft-large-words.txt -x php,txt,log,bak -d 2 --no-state   # then the big list
-bash scripts/backup-sweep.sh http://$T ferox.txt    # full-filename backup suffixes (.bak/~/.old/...) ferox -x misses; BURP_PROXY=127.0.0.1:8080 to route via Burp
-ffuf -c -u "http://$T/?FUZZ=x" -w scripts/wordlists/harness-params.txt -fs <baseline>   # param mining
-ffuf -c -u http://$T/ -H "Host: FUZZ.$T" -w <vhost-wordlist> -mc all -o vh.json         # vhosts: diff redirect Location, don't filter by code (a decoy vhost 302s the same place; the real one differs)
-ffuf -c -u "http://$T/~FUZZ/" -w /usr/share/seclists/Usernames/top-usernames-shortlist.txt -mc 200,301,403   # Apache userdir (~name) - no dir wordlist carries these, fuzz explicitly
-nuclei -u http://$T -o nuclei.txt
-whatweb -a3 http://$T ; curl -s -I http://$T    # own tmux tab so it gets a recon card
-wpscan -u http://$T                              # if WordPress
-```
+Basic-tool sweep order (rustscan -> nmap -sCV -> full-TCP confirm -> ferox/nuclei/whatweb in parallel, each scan its own tmux tab + recon card): [[wiki/cheatsheets/recon]] -- never hand-roll it.
 
 **Missing `-w` wordlist = ffuf prints help text and silently finds NOTHING** (a false "no hidden endpoints"). Preflight every fuzz (`ls "$W" || W=/usr/share/wordlists/dirb/big.txt`); seclists may be absent on the VM, push harness lists over via base64 first.
 
@@ -167,19 +147,8 @@ buffers), and never retry a broken tool-execution pattern >2x - switch method (v
 
 **pspy shows exec/process events, NOT unix-socket/IPC beacons.** If the privesc lead is an internal listener/socket (a service "talking to itself" on loopback), RE and interact with THAT directly - do not grind pspy or stage linpeas for a socket-protocol vector they cannot see. Run pspy when the suspected vector is cron/timer/exec.
 
-**Always run pspy first** to catch root-run background jobs/cron/timers that static checks miss:
-```bash
-# upload pspy64 (host it on the tooling box, curl/wget it down) and watch >=60s
-./pspy64 -pf -i 1000     # see every exec + file event as root; reveals per-minute cron/systemd timers
-```
-Then the automated sweep:
-```bash
-./linpeas.sh         # linux   (winpeas.exe / winpeas.bat on windows)
-# AVOID `-a` (deep/thorough) on small boxes (<=1-2 GB RAM, most THM VMs): the full scan can
-# OOM-thrash the target until every service (ssh/http/db) times out - looks exactly like the box
-# crashed. Use the default scan, or throttle: `nice -n19 ionice -c3 ./linpeas.sh`. If it does hang
-# the box, `pkill -9 -f linpeas` (kill it as the user that launched it) and load drains in seconds.
-```
+pspy ALWAYS + linpeas/winpeas before any manual check -- invocation, flags, and the small-RAM linpeas gotcha: [[pspy]] / [[linpeas]] / [[peass]].
+
 Capture linpeas/pspy TWO ways: a `--term` screenshot of the highlighted findings (Skill(screenshot),
 the colored hits survive) AND the FULL text log - redirect the tool to a file, then
 `scripts/capture.sh log <eng> <slug> /tmp/linpeas.txt` pulls the whole scan (ANSI stripped) into
@@ -188,19 +157,7 @@ the colored hits survive) AND the FULL text log - redirect the tool to a file, t
 
 **Read-whole is not just for recon: grep is NOT the read for PAYLOAD RESULTS or pspy/linpeas output either.** A UNION/echo dump can reflect in an unexpected phrasing (singular "1 word" vs plural "N words"), and a root cron hides in the full pspy stream; read the whole result block, not a keyword grep.
 
-Then walk the manual checklist (do not skip any; the box's intended path is usually ONE of these):
-
-| Check | Command | Win = |
-|---|---|---|
-| sudo rights | `sudo -l` | NOPASSWD/GTFObin -> root |
-| SUID/SGID | `find / -perm -4000 -o -perm -2000 2>/dev/null` | GTFObins; keep `-p` on the spawned shell or the euid silently drops ([[linux-privesc]]) |
-| Capabilities | `getcap -r / 2>/dev/null` | cap_setuid etc. |
-| Cron | `cat /etc/crontab /etc/cron.d/*; ls -la /etc/cron.*` + pspy | writable/relative-path script |
-| **systemd timers** | `systemctl list-timers --all` + `systemctl cat <svc>` | **writable ExecStart script run as root** (e.g. THM Ollie `feedme.timer`) |
-| Writable root files | writable scripts/units root executes; `/etc/passwd` writable | inject payload, wait for trigger |
-| Groups | `id` (docker/lxd/disk/adm/shadow) | group->root GTFO; a group named after ONE specific binary is the nudge, check that binary's bits first |
-| Creds | configs, history, DB, `.ssh`, backups | reuse / su |
-| Kernel/pkg CVE | `uname -r`; pkg versions (pkexec/polkit, sudo, dbus) | **LAST resort** - check the patch level first ([[linux-privesc]]) |
+Walk the full manual checklist ([[wiki/cheatsheets/linux-privesc]] Quick wins / [[linux-privesc]]) -- the box's intended path is usually ONE of those rows; do not skip any.
 
 **Windows runs the same manual discipline off [[windows-privesc]] (winpeas + `whoami /priv` first).** Key shape the Linux table has no row for: a writable service-binary directory + a LocalSystem AUTO_START service you cannot start/stop = trigger execution with a REBOOT (SeShutdownPrivilege); a vendor repair watchdog can revert the swap, so re-arm and issue the reboot in the SAME action ([[wiki/cheatsheets/windows-privesc]]).
 

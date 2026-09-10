@@ -65,6 +65,6 @@ lives only in `CLOSEOUT_CHAINS` (`scripts/offensive.py`), not restated here to a
 
 ## Maintenance rule
 
-A skill added to `skills/` without a routing row in this file or in `hunt-core`'s table is an
+A skill added to `skills/` without a routing row in this file or in `scripts/routing.json` is an
 orphan by definition: nothing will ever name it mid-engagement. New skill -> add its row to the
 section above that fits.

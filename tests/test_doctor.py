@@ -3,6 +3,7 @@
 The doctor self-locates its vault (VAULT = dir above scripts/). So the healthy test runs the REPO's doctor; the broken test
 runs a COPY of the repo whose routing table has been corrupted.
 """
+import json
 import shutil
 import subprocess
 import sys
@@ -41,10 +42,8 @@ def test_doctor_passes_on_healthy_vault():
 def test_doctor_flags_missing_routing_table(tmp_path):
     vault = tmp_path / "vault"
     _mk_vault_copy(vault)
-    # corrupt the routing table: overwrite hunt-core with a stub that has no
-    # `## Routing table (machine-readable)` section.
-    core = vault / "skills" / "hunt" / "hunt-core" / "SKILL.md"
-    core.write_text("---\nname: hunt-core\n---\n# hunt-core\n\nno routing table here\n")
+    # corrupt the routing table: a JSON object with no 'routing' key.
+    (vault / "scripts" / "routing.json").write_text("{}")
     rc, out = _run(vault / "scripts" / "offensive-doctor.py")
     assert rc != 0, "doctor should fail when the routing table is broken:\n" + out
     assert "routing" in out.lower()
@@ -73,16 +72,17 @@ def test_phase_check_is_frontmatter_scoped(tmp_path):
 
 
 def test_4b_hollow_only_warns_if_all_rows_blank(tmp_path):
-    """Blanking the FIRST windows routing row's arsenal must not warn as long
+    """Blanking ONE windows routing row's arsenal must not warn as long
     as another windows row still carries an arsenal."""
     vault = tmp_path / "vault"
     _mk_vault_copy(vault)
-    core = vault / "skills" / "hunt" / "hunt-core" / "SKILL.md"
-    text = core.read_text()
-    old_row = "| windows | windows | hunt-windows | windows-privesc | privesc-exploit-arsenal |"
-    new_row = "| windows | windows | hunt-windows | windows-privesc |  |"
-    assert old_row in text, "fixture row not found - hunt-core routing table changed"
-    core.write_text(text.replace(old_row, new_row, 1))
+    rj = vault / "scripts" / "routing.json"
+    data = json.loads(rj.read_text())
+    wins = [fp for fp, row in data["routing"].items()
+            if row.get("class") == "windows" and (row.get("arsenal") or "").strip()]
+    assert len(wins) >= 2, "fixture needs >=2 arsenal-carrying windows rows"
+    data["routing"][wins[0]]["arsenal"] = ""
+    rj.write_text(json.dumps(data, indent=1))
     rc, out = _run(vault / "scripts" / "offensive-doctor.py", "--verbose")
     assert "WARN  4b OS route not hollow: windows" not in out, (
         "doctor warned on windows even though another windows row still has an arsenal:\n" + out)

@@ -7,7 +7,7 @@ engagement. Modelled on the retired campaign-doctor lineage.
 
 Checks (each a PASS/WARN/FAIL line; exit 1 if any FAIL):
   1. scripts/offensive.py present + importable.
-  2. hunt-core routing table parses (non-empty) + every hunt-skill cell names a real
+  2. scripts/routing.json parses (non-empty) + every hunt-skill cell names a real
      skills/hunt/hunt-* dir (dangling-skill-ref).
   3. every wiki/tools/*.md carries phase: + a runnable ## Core usage fence (tool index resolves).
   4. skills/workflow/offensive/SKILL.md present with `name: offensive`.
@@ -69,7 +69,7 @@ def _routing(off):
         check("routing table parses", False, str(e)[:80])
         return
     if not check("routing table parses (non-empty)", bool(routing),
-                 "no rows in hunt-core '## Routing table (machine-readable)'"):
+                 "no rows in scripts/routing.json"):
         return
 
     # dangling-skill-ref: every hunt-skill cell must name a real skills/hunt/hunt-* dir.

@@ -138,6 +138,10 @@ if not has("PreToolUse", "session-guard.py"):
     add("PreToolUse", {"matcher": "Write|Edit", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/session-guard.py", "timeout": 10}]})
     print("added PreToolUse session-guard")
+if not has("PreToolUse", "eng-ckpt.py"):
+    add("PreToolUse", {"matcher": "Write|Edit", "hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/eng-ckpt.py", "timeout": 10}]})
+    print("added PreToolUse eng-ckpt")
 if not has("PreToolUse", "drift-guard.py"):
     add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/drift-guard.py", "timeout": 10}]})

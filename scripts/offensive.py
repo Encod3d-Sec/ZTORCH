@@ -2,7 +2,7 @@
 """offensive.py - deterministic engagement driver for the ZTorch vault.
 
 Board/next/gates/CLI for a pentest/bb/ctf engagement. The vault-markdown
-index compile step (routing table, tool index, hunt-skill methods ->
+index compile step (routing.json, tool index, hunt-skill methods ->
 targets/<eng>/.offensive-index.json) lives in offensive_index.py; this file
 consumes it via build_index/load_index/index_stale.
 
@@ -38,7 +38,7 @@ BOARD_COLS = ["id", "asset", "vuln class", "arsenal", "skill", "tool",
               "status", "poc", "poc_kind"]
 
 # Base vuln-class set per engagement type (literal dict, no JSON file). Each
-# entry MUST be a `class` in the hunt-core routing table so every
+# entry MUST be a `class` in scripts/routing.json so every
 # base-superset row resolves to a real skill+arsenal (satisfies board G1/G2).
 # tests/test_board.py::test_no_base_row_has_blank_skill enforces this.
 BASE_CLASSES = {
@@ -95,6 +95,12 @@ VECTOR_CLASSES = {
 VECTOR_EXCEPTION = {
     ("web", "wordpress"): "wpscan-scan",
 }
+
+# class -> classes it replaces on the same asset when IMPLIED (a fingerprint signal).
+# A binary-exploitation pwn box must not also carry the blanket web `rce` base row:
+# its G2 would force a web command-injection skill onto a memory-corruption box
+# (observed live: hunt-rce fired and was skipped as irrelevant on a pwn challenge).
+CLASS_SUPERSEDES = {"pwn": ("rce",)}
 VECTOR_PRIORITY = ["web", "ad_windows", "linux"]
 VECTOR_INDICATOR = {
     "web": re.compile(r"\b(https?|nginx|apache|iis|tomcat)\b"),
@@ -273,7 +279,12 @@ def derive_rows(eng, index, etype):
                 cls = (row.get("class") or "").strip()
                 if cls and cls not in implied:
                     implied.append(cls)
-        for cls in implied:
+        # fingerprint-implied supersession: an implied pwn drops the blanket web
+        # rce row for THIS asset (CLASS_SUPERSEDES) before anything is emitted.
+        sup = set()
+        for c in implied:
+            sup.update(CLASS_SUPERSEDES.get(c, ()))
+        for cls in [c for c in implied if c not in sup]:
             _emit_row(out, seen, dead, info, asset, cls)
 
         # (2) vector baseline + narrow exceptions, in VECTOR_PRIORITY order
@@ -286,7 +297,7 @@ def derive_rows(eng, index, etype):
                 if v == vector and fp_substr in hay:
                     _emit_row(out, seen, dead, info, asset, exc_cls)
 
-        for cls in [c for c in base if c not in implied]:
+        for cls in [c for c in base if c not in implied and c not in sup]:
             _emit_row(out, seen, dead, info, asset, cls)
     return out
 
@@ -316,6 +327,17 @@ def cmd_board(args):
     index = load_index(eng)
 
     existing = read_board(eng)
+    dead = _deadend_pairs(eng)
+    if dead:
+        _low = lambda r: ((r.get("asset") or "").strip().lower(),
+                          (r.get("vuln class") or "").strip().lower())
+        zombie = [r for r in existing if _status_of(r) in ("[ ]", "[~]") and _low(r) in dead]
+        if zombie:
+            existing = [r for r in existing if not (_status_of(r) in ("[ ]", "[~]")
+                                                    and _low(r) in dead)]
+            print("G4: dropped %d open row(s) matching a Deadends.md pair (status cell "
+                  "hand-edited back?) - suppressed: %s"
+                  % (len(zombie), ", ".join((r.get("id") or "?") for r in zombie)))
     have = {((r.get("asset") or "").lower(), (r.get("vuln class") or "").lower())
             for r in existing}
     nid = _next_board_id(existing)
@@ -784,8 +806,17 @@ def _next_json_payload(eng, state, vault):
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
-        out["terminal"] = "walled" if (out["board"]["closed"] == 0
-                                       and out["board"]["stuck"]) else "exhausted"
+        if not rows:
+            out["terminal"] = "empty-board"
+        elif out["board"]["closed"] == 0 and out["board"]["stuck"]:
+            out["terminal"] = "walled"
+        else:
+            out["terminal"] = "exhausted"
+        state["terminal_count"] = state.get("terminal_count", 0) + 1
+        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        if state["terminal_count"] >= 3:
+            out["warnings"].append("terminal %dx - stop polling next; operator "
+                                   "decision required" % state["terminal_count"])
         if out["terminal"] == "walled":
             out["skill"] = "redteamlead"
         else:
@@ -797,6 +828,12 @@ def _next_json_payload(eng, state, vault):
     tool = (row.get("tool") or "").strip()
     out.update({"asset": asset, "row": rid, "class": cls,
                 "skill": skill or None, "tool": tool or None})
+    ts = state.setdefault("tool_serves", {})      # JSON twin of the text-path A1 rule
+    if not (not (row.get("arsenal") or "").strip()
+            or (skill and _events(eng) is not None
+                and not _skill_fired(eng, skill, _row_since(state, asset, cls)))):
+        ts[rid] = ts.get(rid, 0) + 1
+    state["terminal_count"] = 0
     out["pass"] = state.get("pass", 0) + 1
     state["pass"] = out["pass"]
     state["asset_cursor"] = asset
@@ -807,10 +844,10 @@ def _next_json_payload(eng, state, vault):
         "asset": asset, "row": rid, "class": cls, "skill": skill, "tool": tool,
     }
     (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
-    if sc[rid] >= 3:
-        out["warnings"].append("RE-SERVE %dx: row %s served %d times with no "
-                               "disposition - redteamlead / done --dead / change "
-                               "one variable" % (sc[rid], rid, sc[rid]))
+    if ts.get(rid, 0) >= 3:
+        out["warnings"].append("RE-SERVE %dx: row %s reached the tool step %d times "
+                               "with no disposition - dispose (done --dead/--park) or "
+                               "Skill(redteamlead)" % (ts.get(rid, 0), rid, ts.get(rid, 0)))
     if out["autonomy"] in ("L0", "L1") and cls.lower() in EXPLOIT_CLASSES:
         out["warnings"].append("AUTONOMY %s advisory: exploit-class row under a "
                                "restricted scope" % out["autonomy"])
@@ -825,6 +862,9 @@ def _next_json_payload(eng, state, vault):
         else:
             out["gates_remaining"].append("skill")
             out["gate_action"] = "Skill(%s)" % skill
+            out["warnings"].append("G2: Skill(%s) unfired; if out of scope for the row, "
+                                   "one line to log.md + dispose (--dead/--park), or "
+                                   "close --skill <fired>" % skill)
             return out
     out["invocation"] = ((index.get("tools") or {}).get(tool, {})
                          .get("invocation") or (tool + " <target>"))
@@ -922,7 +962,15 @@ def cmd_next(args):
         # the closeout chain on an unsolved board is the wrong instruction.
         closed = sum(1 for r in rows if _status_of(r) == "[x]")
         stuck = sum(1 for r in rows if _status_of(r) in ("[?]", "[!]"))
-        if closed == 0 and stuck:
+        state["terminal_count"] = state.get("terminal_count", 0) + 1
+        (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
+        if state["terminal_count"] >= 3:
+            print("TERMINAL %dx: `next` printed a terminal state %d times in a row - stop "
+                  "polling it; an operator decision (recon, re-plan, or close-out) is "
+                  "required." % (state["terminal_count"], state["terminal_count"]))
+        if not rows:
+            print("board empty: no rows yet - feed recon into state.md, then run `board`")
+        elif closed == 0 and stuck:
             print("board exhausted with NO closed rows: %d parked/dead, 0 finds. Run "
                   "Skill(redteamlead) for a ranked re-plan or `coverage` for untested "
                   "classes; closeout is for a SOLVED board." % stuck)
@@ -933,6 +981,16 @@ def cmd_next(args):
     rid = (row.get("id") or "").strip()
     cls = (row.get("vuln class") or "").strip()
     skill = (row.get("skill") or "").strip()
+    # tool_serves counts only serves that reach the G8 tool step (A1, pass 14): gate
+    # serves must not pollute the re-serve signal - a healthy row legitimately spends
+    # one serve on G1/G2 first and hit a false RE-SERVE at 3 under serve_count.
+    no_arsenal = not (row.get("arsenal") or "").strip()
+    g2_gated = bool(skill) and _events(eng) is not None \
+        and not _skill_fired(eng, skill, _row_since(state, asset, cls))
+    ts = state.setdefault("tool_serves", {})
+    if not (no_arsenal or g2_gated):
+        ts[rid] = ts.get(rid, 0) + 1
+    state["terminal_count"] = 0        # a live serve resets the terminal streak (A3)
     state["asset_cursor"] = asset
     # Serve accounting (driver audit, 2026-09-10). `pass` = serves this engagement:
     # drift-guard arms its off-board enforcement at pass >= 5, and the banner had
@@ -954,11 +1012,15 @@ def cmd_next(args):
     lvl, _lvl_note = autonomy_of(eng)
     print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s"
           % (state.get("pass", 0), asset, rid, cls, lvl))
-    if sc[rid] >= 3:
-        print("RE-SERVE %dx: row %s has now been served %d times with no disposition - "
-              "the tool is not landing. Run Skill(redteamlead) for a ranked re-plan, "
-              "close the row (`done %s --dead '<why>'` or `--park`), or change one "
-              "variable in the invocation." % (sc[rid], rid, sc[rid], rid))
+    tsc = ts.get(rid, 0)
+    if tsc == 2 and (state.get("last_move") or {}).get("row") == rid:
+        print("RE-SERVE: row %s served again while you still hold its last move - if the "
+              "tool run landed, record it (`note`/`done`); do not re-run it unchanged." % rid)
+    if tsc >= 3:
+        print("RE-SERVE %dx: row %s reached the tool step %d times with no disposition. "
+              "Dispose of the row now (`done %s --dead '<why>'` or `done %s --park "
+              "'<why>'`) or run Skill(redteamlead) for a ranked re-plan."
+              % (tsc, rid, tsc, rid, rid))
 
     # Autonomy envelope (advisory, never a gate): an exploit-class row served
     # under an L0/L1 scope -> say so in one line; the operator/agent decides.
@@ -989,6 +1051,8 @@ def cmd_next(args):
         else:
             print("POST-EX   foothold established; route post-ex cmds through the "
                   "recorded vm-rsh shell%s" % board_hint)
+        print("          verify the shell first: bash scripts/vm-rsh.sh --win %s 'whoami' "
+              "(expect the TARGET user; your own prompt = the shell died)" % (win or "<win>"))
         # G-cost-control: the row's tool is mechanical/wait-heavy (pspy/linpeas/winpeas,
         # a compile-and-run exploit) -> surface Skill(delegate) here, the one place the
         # driver otherwise never mentions it. Judgment-heavy rows (e.g. bloodhound) get no nudge.
@@ -1025,6 +1089,14 @@ def cmd_next(args):
                   "unverifiable - proceeding to the tool step)")
         else:
             print("  1. Skill(%s)        [G2: skill unfired in .events.jsonl]" % skill)
+            print("     (out of scope for this row? say why in one line to log.md, then dispose")
+            print("      the row: `done %s --dead '<why>'` or `--park` -- or close via "
+                  "`--skill <the-skill-that-actually-fired>`)" % rid)
+            if ts.get(rid, 0) >= 3:
+                print("     (still gated after %d tool serves: an absent .events.jsonl "
+                      "fails G2 open - check tool-telemetry.py registration - or close "
+                      "via `done %s --skill <the-skill-that-actually-fired>`)"
+                      % (ts.get(rid, 0), rid))
             return 0
 
     # G8 tool-first: emit the tool invocation, then the capture line.
@@ -1151,7 +1223,16 @@ def cmd_note(args):
     # before every retry). Refuse it: different slug, or dispose of the row.
     prev = (row.get("arsenal") or "").strip()
     rid = (row.get("id") or args.row).strip()
-    sc = (state.get("serve_count") or {}).get(rid, 0)
+    # B7 (pass 14): a typo'd slug would satisfy G1 with a card that does not exist.
+    slug = args.arsenal.strip()
+    vault = Path(args.vault) if getattr(args, "vault", None) else DEFAULT_VAULT
+    cands = ([vault / "wiki" / ("%s.md" % slug)] if "/" in slug else []) + \
+            [vault / "wiki" / sub / ("%s.md" % slug)
+             for sub in ("tools", "payloads", "cheatsheets")]
+    if not getattr(args, "force", False) and slug and not any(c.is_file() for c in cands):
+        _die("arsenal slug '%s' resolves to no wiki card (%s) - fix the slug or pass "
+             "--force" % (slug, ", ".join(str(c.relative_to(vault)) for c in cands)))
+    sc = (state.get("tool_serves") or {}).get(rid, 0)
     if prev and args.arsenal.strip() == prev and sc >= 3:
         _die("RE-SERVE %dx on %s: re-arming the same arsenal '%s' unchanged. Change "
              "one variable (a different --arsenal slug) or dispose of the row "
@@ -1182,8 +1263,10 @@ def cmd_park(eng, state, rows, row, reason, writer=write_board):
                  % ((row.get("id") or "").strip(), reason, _today()))
     # A park is a no-find outcome: feed the WALL-BREAK streak exactly like --dead
     # does, else a park-everything loop empties the board without ever triggering
-    # the redteamlead redirection (driver audit, 2026-09-10).
-    state["dry_streak"] = state.get("dry_streak", 0) + 1
+    # the redteamlead redirection (driver audit, 2026-09-10). An administrative
+    # park (reason N/A) skips the bump (B4).
+    if not (isinstance(reason, str) and reason.strip().upper().startswith("N/A")):
+        state["dry_streak"] = state.get("dry_streak", 0) + 1
     (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
     print("done: %s parked (status set for later revisit) -> decisions.md; "
           "loop advances with no operator prompt (dry_streak=%d)"
@@ -1296,8 +1379,10 @@ def cmd_done(args):
         _append_line(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | |"
                      % (row.get("asset") or "", cls, reason, _today()))
         # WALL-BREAK feed: a no-find outcome bumps the dry streak (next fires
-        # Skill(redteamlead) once it hits the type threshold).
-        state["dry_streak"] = state.get("dry_streak", 0) + 1
+        # Skill(redteamlead) once it hits the type threshold). An administrative
+        # close (reason N/A) is not a no-find signal - skip it (B4).
+        if not (isinstance(args.dead, str) and args.dead.strip().upper().startswith("N/A")):
+            state["dry_streak"] = state.get("dry_streak", 0) + 1
         (eng / STATE_NAME).write_text(json.dumps(state, indent=2))
         print("done: %s dead [!] (dry_streak=%d) -> Deadends.md (loop advances)"
               % (args.row, state["dry_streak"]))
@@ -1319,9 +1404,26 @@ def cmd_done(args):
              "indistinguishable from any visitor's screenshot. Use --kind cli "
              "(capture.sh cli) for a command-execution class, or --kind req "
              "(capture.sh req) for a request/response one [G3]" % cls)
-    if not (Path(eng) / args.poc).is_file():
+    poc_p = Path(eng) / args.poc
+    if not poc_p.is_file():
         _die("--poc %s does not exist under %s [G3: a row never closes on a "
              "path that isn't a real captured evidence file]" % (args.poc, eng))
+    if not (args.poc.startswith("poc/") or args.poc.startswith("recon/")):
+        _die("--poc %s must live under poc/ or recon/ [G3: evidence is a captured "
+             "card, not an arbitrary file]" % args.poc)
+    if poc_p.stat().st_size == 0:
+        _die("--poc %s is empty [G3: an empty file is not evidence]" % args.poc)
+    try:   # evidence must postdate the row's opening; unparseable stamp = skip (fail-open).
+        # 1s tolerance: inode mtimes come from the kernel's coarse clock and can trail
+        # datetime.now() by a fraction of a millisecond (observed 0.5ms on tmpfs), which
+        # false-refused a poc captured AFTER the row. The gate targets stale-reuse (hours/
+        # days old evidence), not sub-second races.
+        _since = datetime.fromisoformat(_row_since(state, row.get("asset"), cls))
+        if poc_p.stat().st_mtime + 1 < _since.timestamp():
+            _die("--poc %s predates the row's opening [G3: evidence must be captured "
+                 "for THIS row]" % args.poc)
+    except ValueError:
+        pass
     # G2 skill-first: the mapped hunt skill must have fired since THIS ROW
     # opened (not engagement start -- see _row_since/_stamp_row_opened). A
     # `--skill <name>` override lets a CORRECTLY-fired skill satisfy G2 when the
@@ -1397,7 +1499,8 @@ def cmd_coverage(args):
     if not assets:
         print("  no assets on the board yet - run `board` first")
     elif not gaps_found:
-        print("  none - every asset carries an [x] row for each base class")
+        print("  none - every asset carries an [x] row for each base class "
+              "(row presence only, not evidence quality)")
     return 0
 
 
@@ -1553,6 +1656,8 @@ def main(argv=None):
     p_note = sub.add_parser("note", help="set a row's arsenal cell (G1 release)")
     p_note.add_argument("row", help="board row id, e.g. 4a:3")
     p_note.add_argument("--arsenal", required=True, help="consulted wiki-arsenal card slug")
+    p_note.add_argument("--force", action="store_true",
+                        help="skip the arsenal-slug existence check (staged cards)")
     p_note.set_defaults(fn=cmd_note)
 
     p_done = sub.add_parser("done", help="close a row (G1/G2/G3 gates) or --dead / --park")

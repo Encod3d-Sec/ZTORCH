@@ -18,7 +18,7 @@ FIX = ROOT / "tests" / "fixtures" / "offensive"
 def _setup(tmp_path):
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
-    for sub in ("skills", "wiki"):
+    for sub in ("skills", "wiki", "scripts"):
         shutil.copytree(FIX / sub, vault / sub)
     offensive.main(["--vault", str(vault), "init", "demo", "--type", "bb"])
     eng = vault / "targets" / "demo"
@@ -46,10 +46,11 @@ def _run(argv):
 
 
 def _mk_poc(eng, rel):
-    """Create an empty file at `rel` under eng, for G3's --poc existence check."""
+    """Create a small non-empty file at `rel` under eng (G3 checks existence,
+    poc/|recon/ placement, and non-emptiness)."""
     p = eng / rel
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("")
+    p.write_text("x")
 
 
 # --------------------------------------------------------------------------- note
@@ -68,13 +69,13 @@ def test_note_sets_arsenal(tmp_path):
 
 def _seed_serves(eng, n):
     state = json.loads((eng / offensive.STATE_NAME).read_text())
-    state["serve_count"] = {"4a:1": n}
+    state["tool_serves"] = {"4a:1": n}
     (eng / offensive.STATE_NAME).write_text(json.dumps(state))
 
 
 def test_note_refuses_same_arsenal_rearm_after_three_serves(tmp_path, capsys):
-    """RE-SERVE enforcement: the banner says 'change one variable'; after 3 serves,
-    re-arming the SAME slug is the byte-identical retry the clone never issues."""
+    """RE-SERVE enforcement: after 3 tool serves, re-arming the SAME slug is the
+    byte-identical retry the clone never issues (withRetry mutates context)."""
     vault, eng = _setup(tmp_path)
     offensive.write_board(eng, [_row(id="4a:1", asset="web1",
                                      **{"vuln class": "sqli"},
@@ -85,7 +86,7 @@ def test_note_refuses_same_arsenal_rearm_after_three_serves(tmp_path, capsys):
         _run(["--vault", str(vault), "--eng", str(eng), "note", "4a:1",
               "--arsenal", "payloads/sqli"])
     assert ex.value.code != 0
-    assert "change one variable" in capsys.readouterr().err.lower()
+    assert "same arsenal" in capsys.readouterr().err.lower()
 
 
 def test_note_allows_rearm_below_threshold_or_with_new_slug(tmp_path):
@@ -98,9 +99,11 @@ def test_note_allows_rearm_below_threshold_or_with_new_slug(tmp_path):
     assert _run(["--vault", str(vault), "--eng", str(eng), "note", "4a:1",
                  "--arsenal", "payloads/sqli"]) == 0
     _seed_serves(eng, 4)                           # past it: a CHANGED slug still fine
+    # "sqli" (not "payloads/sqli") is a genuinely changed slug that ALSO resolves to a
+    # real fixture card (wiki/payloads/sqli.md) - B7 slug validation stays exercised.
     assert _run(["--vault", str(vault), "--eng", str(eng), "note", "4a:1",
-                 "--arsenal", "payloads/sqli-blind"]) == 0
-    assert offensive.read_board(eng)[0]["arsenal"] == "payloads/sqli-blind"
+                 "--arsenal", "sqli"]) == 0
+    assert offensive.read_board(eng)[0]["arsenal"] == "sqli"
 
 
 # --------------------------------------------------------------------------- G1

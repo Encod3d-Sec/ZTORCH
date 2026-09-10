@@ -935,3 +935,42 @@ done
 <!-- kind: technique | feeds: recon.md Always-On HTTP Checks section -->
 
 <!-- promoted-slug: well-known-uri-recon-sweep -->
+
+---
+
+## Boot-to-root box sweep (TCP-first)
+
+The staged order is the point: fast full-port sweep first, deep scan only on what answers, full-TCP confirm in its own tab.
+
+```bash
+rustscan -a <T> --ulimit 5000 -g                        # fast full-port sweep -> open-port CSV
+nmap -p<found> -sCV -Pn <T> -oN nmap-svc.txt            # version/script scan on rustscan's hits
+nmap -p- --min-rate 2000 -T4 -Pn <T> -oN nmap-all.txt   # full-TCP confirm (own tmux tab)
+
+# SMB: netexec first (fingerprint router), smbclient only to pull a specific file/share
+nxc smb <T> -u '' -p '' --shares
+nxc smb <T> -u 'guest' -p '' --shares --rid-brute       # guest fallback + RID-cycle user enum
+```
+
+Content discovery runs two lists IN ORDER - the high-signal harness list first, the big seclist second:
+
+```bash
+feroxbuster -u http://<T> -w /tmp/harness-paths.txt -x php,txt,log,sql,bak,zip,env,old,conf -d 2 --no-state -o ferox.txt   # our high-signal list first
+feroxbuster -u http://<T> -w /usr/share/seclists/Discovery/Web-Content/raft-large-words.txt -x php,txt,log,bak -d 2 --no-state   # then the big list
+bash scripts/backup-sweep.sh http://<T> ferox.txt       # full-filename backup suffixes (.bak/~/.old/...) ferox -x misses
+
+# vhosts: verdict = diff the redirect Location between responses, do NOT filter by status code
+# (a decoy vhost 302s to the same place; the real one differs)
+ffuf -c -u http://<T>/ -H "Host: FUZZ.<T>" -w <vhost-wordlist> -mc all -o vh.json
+
+# Apache userdir (~name): no dir wordlist carries these, fuzz explicitly
+ffuf -c -u "http://<T>/~FUZZ/" -w /usr/share/seclists/Usernames/top-usernames-shortlist.txt -mc 200,301,403
+```
+
+Fan out in parallel the moment a web port appears - one tmux tab per scan, never serial:
+
+```bash
+nuclei -u http://<T> -o nuclei.txt
+whatweb -a3 http://<T> ; curl -s -I http://<T>          # own tmux tab so it gets a recon card
+wpscan -u http://<T>                                    # if WordPress
+```

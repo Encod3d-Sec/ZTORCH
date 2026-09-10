@@ -39,7 +39,7 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
 - [CI/CD Products](#summary)
     - [[cicd-github-actions|GitHub Actions]]
     - [[cicd-gitlab-ci|Gitlab CI]]
-    - [[cicd-azure-devops|Azure Pipelines (Azure DevOps)]]
+    - [[azure-services-azure-devops|Azure Pipelines (Azure DevOps)]]
     - [[cicd-circleci|Circle CI]]
     - [[cicd-drone-ci|Drone CI]]
     - [[cicd-buildkite|BuildKite]]

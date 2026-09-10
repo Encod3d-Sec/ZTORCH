@@ -173,10 +173,32 @@ def _active_segs(cmd):
     return [s for s in _cmdnorm.segments(cmd) if not _META_RE.search(s)]
 
 
+# B5 (pass 14): reader-lead segments (cat/grep/rg/... ) are file READS, not invocations --
+# their arguments are filenames whose text must not count as a fired binary (observed: 22 false
+# flags off `cat nmap-notes.md` alone). Exec-capable walkers (find -exec, xargs, awk system(),
+# sed e) are deliberately NOT readers: their arguments can still execute.
+_READER_LEAD = re.compile(
+    r"^(?:sudo\s+)?(?:cat|grep|rg|ls|head|tail|echo|less|more|wc|sort|uniq|file|jq|strings|zcat|bat)\b")
+
+
 def _bins_in(cmd):
     """Exploit/scan binaries mentioned anywhere in the command string (whole-string search, so a
-    binary inside a `bash vm.sh '<inner>'` wrapper is still seen)."""
-    return set(_BIN_RE.findall(cmd or ""))
+    binary inside a `bash vm.sh '<inner>'` wrapper is still seen -- the unwrapped inner command
+    is its own segment). Reader segments are skipped (see _READER_LEAD); a WRAPPER segment whose
+    inner command was already unwrapped is skipped too (its quoted text is a filename to the
+    wrapper, scanned once as the inner segment). Falls back to the whole-string scan when the
+    segmenter is absent. Wrappers the segmenter does NOT unwrap (vm-ssh.sh) keep their whole-
+    segment scan, unchanged."""
+    if _cmdnorm is None:
+        return set(_BIN_RE.findall(cmd or ""))
+    inners = [i.strip() for i in _cmdnorm.inner(cmd or "") if i.strip()]
+    found = set()
+    for seg in _cmdnorm.segments(cmd or ""):
+        s = seg.strip()
+        if _READER_LEAD.match(s) or any(i in s for i in inners):
+            continue
+        found |= set(_BIN_RE.findall(s))
+    return found
 
 
 def _scanner_cap(d, cmd):
@@ -393,7 +415,20 @@ def main():
     # ON-BOARD escape 1: no OPEN ([ ]/[~]) rows -> empty board (generic tech) OR end-of-board.
     # Either way the driver has nothing to hold the agent to, so allow (fail-open). Checking OPEN
     # status (not mere presence) stops end-of-board verification probes from being false-blocked.
-    rows = _engagement._parse_table(os.path.join(d, "Approach.md"))
+    # B6 (pass 14): parse the `### 4a` board SLICE, not the file's first table -- an
+    # agent-added table above the board (a recon-finding matrix) otherwise becomes "the
+    # board": its rows neither hold the cursor nor whitelist the driver's real tools.
+    # offensive.read_board is the same tested reader `next` uses; fail back to the old
+    # whole-file parse if the import is unavailable.
+    try:
+        _sc = os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts")
+        if _sc not in sys.path:                  # the scripts/ that ships with this hook
+            sys.path.insert(0, _sc)
+        import offensive
+        rows = offensive.read_board(d) \
+            or _engagement._parse_table(os.path.join(d, "Approach.md"))
+    except Exception:
+        rows = _engagement._parse_table(os.path.join(d, "Approach.md"))
     open_rows = [r for r in rows if (r.get("status") or "[ ]").strip() in ("[ ]", "[~]", "")]
     if not open_rows:
         return

@@ -216,3 +216,34 @@ def test_retry_key_quote_variance_is_same_loop(tmp_path):
     spec.loader.exec_module(dg)
     assert dg._retry_key("curl http://x/f") == dg._retry_key("curl 'http://x/f'")
     assert dg._retry_key("curl http://x/f") != dg._retry_key("curl http://x/f2")
+
+
+# ---- pass 14: reader-lead filenames + 4a-slice board (B5/B6) ----
+
+def test_reader_lead_filename_not_exploit_shaped(tmp_path):
+    """B5: `cat nmap-notes.md` is a file READ - the scanner name inside the FILENAME
+    must not count as a fired binary (22 false flags observed off this one shape)."""
+    v = _mk(tmp_path, streak=5)                 # would deny if the read counted
+    r = _run(v, "bash /root/vm.sh 'cat nmap-notes.md'")
+    out = _decoded(r).get("hookSpecificOutput", {})
+    assert out.get("permissionDecision") != "deny"
+
+
+def test_board_is_4a_slice_not_first_table(tmp_path):
+    """B6: an agent-added table ABOVE the `### 4a` board must not become the board -
+    its tool cells neither hold the cursor nor whitelist binaries. sqlmap sits only in
+    the preamble table here; the real 4a board whitelists nuclei alone."""
+    v = _mk(tmp_path, streak=5)
+    t = v / "targets" / "engd"
+    preamble = ("| finding | tool |\n|---|---|\n| x | sqlmap |\n\n"
+                "### 4a. Coverage matrix\n\n"
+                "| id | asset | vuln class | arsenal | skill | tool | status | poc | poc_kind |\n"
+                "|---|---|---|---|---|---|---|---|---|\n"
+                "| 4a:1 | web1 | xss | a | s | nuclei | [ ] | | |\n")
+    (t / "Approach.md").write_text(preamble, encoding="utf-8")
+    r = _run(v, "sqlmap -u http://10.0.0.5/?x=1 --batch")
+    out = _decoded(r).get("hookSpecificOutput", {})
+    assert out.get("permissionDecision") == "deny"   # not whitelisted by the preamble
+    r2 = _run(v, "nuclei -u http://10.0.0.5/")
+    out2 = _decoded(r2).get("hookSpecificOutput", {})
+    assert out2.get("permissionDecision") != "deny"  # the real board whitelists it

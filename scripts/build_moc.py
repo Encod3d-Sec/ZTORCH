@@ -36,7 +36,7 @@ PREFIX_LABELS = {
     "cobalt-strike": "Cobalt Strike",
     "mssql": "MSSQL",
     "kerberos": "Kerberos",
-    "network-pivoting": "Pivoting",
+    "network-pivoting": "Pivoting", "pivoting-tunneling": "Pivoting",
 }
 
 

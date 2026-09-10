@@ -406,7 +406,8 @@ def main():
     moves = suggest(limit=limit)
     d = _engagement.active_dir()
     name = os.path.basename(d) if d else "?"
-    print(f"Next moves ({name}):")
+    print(f"Next moves ({name}): [advisory; the board is authoritative: "
+          f"`offensive.py next`]")
     for i, m in enumerate(moves, 1):
         print(f" {i}. {m}")
 

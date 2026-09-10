@@ -117,7 +117,7 @@ Short known-list per vendor, non-disruptive: try each pair once after fingerprin
 ## Chaining
 
 A VPN foothold is network access, not the endgame. On confirmed creds / session / RCE:
-- Authenticated session or admin -> pivot into the internal network the appliance fronts: [[network-pivoting-techniques]], [[pivoting-tunneling]].
+- Authenticated session or admin -> pivot into the internal network the appliance fronts: [[pivoting-tunneling]].
 - Recovered credentials (config dumps, FortiOS `sslvpn_websession`, IKE PSK) are frequently reused - spray against internal SSH/RDP/SMB and hand off to `hunt-ad`.
 - Citrix Bleed / session-token leaks -> replay the token to ride an authenticated session, then continue as that user.
 

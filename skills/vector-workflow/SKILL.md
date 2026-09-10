@@ -57,10 +57,10 @@ VECTOR_EXCEPTION = {
 
 ## The pseudo-classes and their real hunt-skill mapping
 
-Every class above resolves through the hunt-core routing table (`skills/hunt/hunt-core/SKILL.md`)
+Every class above resolves through the routing table (`scripts/routing.json`)
 to a real skill/wiki/arsenal, same as any fingerprint-implied class - `_class_info()` reads it
 straight from the compiled index, no special-casing for vector rows. Current mapping (grep
-`skills/hunt/hunt-core/SKILL.md` for the `-baseline` rows if this drifts):
+`scripts/routing.json` for the `-baseline` rows if this drifts):
 
 | class | hunt skill | primary wiki | arsenal slug | tool (`CLASS_TOOL`) |
 |---|---|---|---|---|
@@ -93,7 +93,7 @@ already populated with arsenal/skill/tool. Read this skill when:
 - You're extending `offensive.py` conceptually (not editing it here) and need the exact seeding
   order without re-deriving it from `derive_rows()`.
 - A vector row's skill/arsenal looks wrong and you need the real mapping to check against
-  `skills/hunt/hunt-core/SKILL.md` rather than guessing.
+  `scripts/routing.json` rather than guessing.
 
 Full loop mechanics (gates, `next`/`note`/`done`, close-out) live in `Skill(offensive)`; this skill
 is scoped to the board-seeding pipeline only.

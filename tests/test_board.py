@@ -17,7 +17,7 @@ def _mk_eng(tmp_path, tech, deadends_rows=""):
     # symlink the real routing/tool sources so build_index sees them (read-only for
     # these tests -- a copytree of skills/+wiki/'s 600+ small files costs seconds per
     # test on this filesystem; setup/ is never read via --vault, dropped entirely)
-    for sub in ("skills", "wiki"):
+    for sub in ("skills", "wiki", "scripts"):
         (vault / sub).symlink_to(ROOT / sub, target_is_directory=True)
 
     offensive.main(["--vault", str(vault), "init", "demo", "--type", "bb"])
@@ -76,20 +76,24 @@ def test_board_rows_from_fingerprints(tmp_path):
 
 
 def test_no_base_row_has_blank_skill(tmp_path):
-    """Every emitted 4a row (implied + base-superset) resolves to a real
-    skill AND arsenal against the real routing table, for all 3 types.
-    Guards the finding that BASE_CLASSES drifted from the routing vocabulary."""
+    """Every BASE_CLASSES-sourced row resolves to a real skill AND arsenal
+    against the real routing table, for all 3 types. Guards the finding that
+    BASE_CLASSES drifted from the routing vocabulary. Vector-baseline rows
+    (content-discovery-baseline etc.) may legally carry an empty skill: they
+    have no doctrine match and next/done G2-skip an empty skill cell."""
     vault, eng = _mk_eng(tmp_path, "wordpress, apache")
     index = offensive.build_index(eng, vault)
 
     for etype in ("pentest", "bb", "ctf"):
         rows = offensive.derive_rows(eng, index, etype)
         assert rows, "%s should derive rows" % etype
-        # every base class for this type is in the routing vocabulary
+        # every base class resolves to a non-empty skill+arsenal routing entry
+        info = offensive._class_info(index)
         for cls in offensive.BASE_CLASSES[etype]:
-            assert cls in offensive._class_info(index), \
-                "%s base class %r not a routing class" % (etype, cls)
+            assert cls in info, "%s base class %r not a routing class" % (etype, cls)
+            assert info[cls][0], "%s base class %r has blank skill" % (etype, cls)
         for r in rows:
-            assert r["skill"], "%s row %r has blank skill" % (etype, r)
+            if r["vuln class"] in offensive.BASE_CLASSES[etype]:
+                assert r["skill"], "%s row %r has blank skill" % (etype, r)
             assert r["arsenal"], "%s row %r has blank arsenal" % (etype, r)
             assert r["tool"], "%s row %r has blank tool" % (etype, r)

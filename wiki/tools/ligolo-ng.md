@@ -58,6 +58,6 @@ nmap -sT 10.10.20.5
 - Engagement rule: tunnel for lateral movement; do not turn pivot hosts into scan sources against out-of-scope ranges.
 
 ## Related techniques
-[[pivoting-tunneling]], [[network-pivoting-techniques]], [[ad-lateral-movement]]. Lighter alternative: [[chisel]].
+[[pivoting-tunneling]], [[ad-lateral-movement]]. Lighter alternative: [[chisel]].
 
 ## Sources

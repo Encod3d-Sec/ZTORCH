@@ -4,8 +4,8 @@ type: technique
 tags: [binary, git-poc, sast]
 phase: recon
 date_created: 2026-05-08
-date_updated: 2026-05-08
-sources: [git-raptor]
+date_updated: 2026-09-10
+sources: [git-raptor, InternalAllTheThings]
 ---
 
 # Static Code Analysis
@@ -81,6 +81,31 @@ rules:
     severity: ERROR
 ```
 
+### Install and rule registries
+
+**Install**:
+
+* Binaries: [opengrep/opengrep](https://github.com/opengrep/opengrep) / [semgrep/semgrep](https://github.com/semgrep/semgrep)
+* macOS: `brew install semgrep`
+* Docker
+
+```ps1
+docker run -it -v "${PWD}:/src" semgrep/semgrep semgrep login
+docker run -e SEMGREP_APP_TOKEN=<TOKEN> --rm -v "${PWD}:/src" semgrep/semgrep semgrep ci
+```
+
+**Semgrep rules**:
+
+* [semgrep/semgrep-rules](https://github.com/semgrep/semgrep-rules) - Official Semgrep rules registry
+* [trailofbits/semgrep-rules](https://github.com/trailofbits/semgrep-rules) - Semgrep queries developed by Trail of Bits
+* [Decurity/semgrep-smart-contracts)](https://github.com/Decurity/semgrep-smart-contracts) - Semgrep rules for smart contracts based on DeFi exploits
+* [0xdea/semgrep-rules](https://github.com/0xdea/semgrep-rules) - A collection of Semgrep rules to facilitate vulnerability research.
+* [elttam/semgrep-rules](https://github.com/elttam/semgrep-rules) - Elttam's public semgrep rules repository.
+
+**Other Tools**:
+
+* [Orange-Cyberdefense/grepmarx](https://github.com/Orange-Cyberdefense/grepmarx) - A source code static analysis platform for AppSec enthusiasts, based on semgrep engine.
+
 ---
 
 ## CodeQL
@@ -153,7 +178,118 @@ where config.hasFlowPath(source, sink)
 select sink.getNode(), source, sink, "SQL injection from $@", source.getNode(), "user input"
 ```
 
+### Configuration
+
+```ps1
+codeql resolve packs
+codeql resolve languages
+codeql database analyze /codeql-dbs/example-repo javascript-code-scanning.qls --sarif-category=javascript-typescript  --format=sarif-latest --output=/temp/example-repo-js.sarif
+codeql database analyze <database> microsoft/coding-standards@1.0.0 github/security-queries --format=sarifv2.1.0 --output=query-results.sarif --download
+```
+
 ---
+
+## AI Analysis
+
+* [trailofbits/skills](https://github.com/trailofbits/skills) - Trail of Bits Claude Code skills for security research, vulnerability detection, and audit workflows.
+
+```ps1
+npm install -g @github/copilot
+copilot
+/login
+/model
+/plugin marketplace add trailofbits/skills
+/plugin marketplace browse trailofbits
+/plugin install ask-questions-if-underspecified@trailofbits
+/plugin install static-analysis@trailofbits
+/plugin install entry-point-analyzer@trailofbits
+/plugin install semgrep-rule-creator@trailofbits
+/plugin install semgrep-rule-variant-creator@trailofbits
+/plugin install sharp-edges@trailofbits
+/plugin install insecure-defaults@trailofbits
+```
+
+## SonarQube
+
+> Continuous Inspection
+
+**Install**
+
+* Docker
+
+```ps1
+docker run -d --name sonarqube -p 9000:9000 sonarqube:community
+```
+
+**Configuration**
+
+* Go to localhost:9000
+* Login with `admin:admin`
+* Create a local project
+* Generate a token for the project
+* Use `sonar-scanner-cli` with the generated token
+
+```ps1
+docker run --rm -e SONAR_HOST_URL="http://10.10.10.10:9000" -v "/tmp/www:/usr/src" sonarsource/sonar-scanner-cli -Dsonar.projectKey=sonar-project-name -Dsonar.sources=. -Dsonar.host.url=http://10.10.10.10:9000 -Dsonar.token=sqp_redacted
+```
+
+* Check the Security Hotspots tab: `http://10.10.10.10:9000/security_hotspots?id=sonar-project-name`
+
+:warning: remove dead symbolic links before scanning a folder.
+
+## Psalm
+
+> A static analysis tool for finding errors in PHP applications
+
+**Install**
+
+```ps1
+composer require --dev vimeo/psalm
+```
+
+**Configuration**
+
+* Create a project and initiate a scan of the codebase
+
+```ps1
+./vendor/bin/psalm --init
+./vendor/bin/psalm --taint-analysis
+./vendor/bin/psalm --report=results.sarif
+```
+
+* Use a Sarif viewer to see the results: [microsoft.github.io/sarif-web-component](https://microsoft.github.io/sarif-web-component/)
+
+## Snyk
+
+> Snyk CLI scans and monitors your projects for security vulnerabilities.
+
+**Install**
+
+* [Snyk Security - Visual Studio](https://marketplace.visualstudio.com/items?itemName=snyk-security.snyk-vulnerability-scanner-vs)
+* [Snyk Code / Snyk Open Source](https://app.snyk.io)
+
+```ps1
+curl https://static.snyk.io/cli/latest/snyk-linux -o snyk
+chmod +x ./snyk
+mv ./snyk /usr/local/bin/ 
+
+docker run -it \
+    -e "SNYK_TOKEN=<TOKEN>" \
+    -v "<PROJECT_DIRECTORY>:/project" \
+    -v "/home/user/.gradle:/home/node/.gradle" \
+snyk/snyk:gradle:6.4 test --org=my-org-name
+```
+
+**Configuration**
+
+```ps1
+snyk auth
+snyk ignore --file-path=<directory_or_file>
+snyk code test
+
+# npm install snyk-to-html -g
+snyk code test --json | snyk-to-html -o results-opensource.html
+```
 
 ## Vulnerability Validation Pipeline (7 Stages)
 
@@ -312,3 +448,9 @@ rules = {r['ruleId'] for r in d['runs'][0]['results']}
 print('\n'.join(sorted(rules)))
 "
 ```
+
+## References
+
+* [Code auditing 101 - Rodolphe Ghio - August 2, 2025](https://blog.rodolpheg.xyz/posts/code-auditing--101/)
+* [Detect PHP security vulnerabilities with Psalm - Matt Brown - June 23, 2020](https://psalm.dev/articles/detect-security-vulnerabilities-with-psalm)
+* [Security Analysis in Psalm - Official Documentation](https://psalm.dev/docs/security_analysis/)

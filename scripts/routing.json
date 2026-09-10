@@ -1,0 +1,701 @@
+{
+ "_doc": "fingerprint -> {class, skill, wiki, arsenal}: the parse contract offensive.py index reads (relocated from the hunt-core SKILL.md '## Routing table' section). KEY ORDER IS LOAD-BEARING: the first key per class wins (_class_info) and implied-class order follows key order (derive_rows) - do not re-sort. Extend this file, not playbook.json, when a driver-side signal is added. An empty skill cell is a legal G2-skipping state (vector-baseline rows with no doctrine match).",
+ "routing": {
+  "ad": {
+   "class": "ad",
+   "skill": "hunt-ad",
+   "wiki": "active-directory",
+   "arsenal": "netexec"
+  },
+  "api": {
+   "class": "api",
+   "skill": "hunt-api",
+   "wiki": "api-security",
+   "arsenal": "payloads/api"
+  },
+  "auth": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "payloads/auth-bypass"
+  },
+  "bizlogic": {
+   "class": "bizlogic",
+   "skill": "hunt-bizlogic",
+   "wiki": "business-logic",
+   "arsenal": "race-conditions"
+  },
+  "cache": {
+   "class": "cache",
+   "skill": "hunt-cache",
+   "wiki": "web-cache-poisoning",
+   "arsenal": "payloads/web-cache"
+  },
+  "cicd": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "payloads/cicd"
+  },
+  "cloud": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "payloads/imds-cloud-metadata"
+  },
+  "deserialization": {
+   "class": "deserialization",
+   "skill": "hunt-deserialization",
+   "wiki": "insecure-deserialization",
+   "arsenal": "payloads/deserialization"
+  },
+  "federation": {
+   "class": "federation",
+   "skill": "hunt-federation",
+   "wiki": "oauth-attacks",
+   "arsenal": "payloads/oauth-saml"
+  },
+  "ics": {
+   "class": "ics",
+   "skill": "hunt-ics",
+   "wiki": "ics-scada-modbus",
+   "arsenal": "payloads/modbus"
+  },
+  "idor": {
+   "class": "idor",
+   "skill": "hunt-idor",
+   "wiki": "access-control",
+   "arsenal": "payloads/idor"
+  },
+  "injection": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "payloads/ssti"
+  },
+  "llm": {
+   "class": "llm",
+   "skill": "hunt-llm",
+   "wiki": "llm-attacks",
+   "arsenal": "payloads/llm-prompt-injection"
+  },
+  "m365": {
+   "class": "m365",
+   "skill": "hunt-m365",
+   "wiki": "azure-ad-enumerate",
+   "arsenal": "azure-ad-conditional-access-policy"
+  },
+  "macos": {
+   "class": "macos",
+   "skill": "hunt-macos",
+   "wiki": "macos-tcc",
+   "arsenal": "payloads/macos-app-injection"
+  },
+  "mcp": {
+   "class": "mcp",
+   "skill": "hunt-mcp",
+   "wiki": "mcp-server-attacks",
+   "arsenal": "payloads/llm-prompt-injection"
+  },
+  "pwn": {
+   "class": "pwn",
+   "skill": "hunt-pwn",
+   "wiki": "binary-exploitation",
+   "arsenal": "cheatsheets/binary-exploitation"
+  },
+  "rce": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "payloads/command-injection"
+  },
+  "secrets": {
+   "class": "secrets",
+   "skill": "hunt-secrets",
+   "wiki": "secret-hunting",
+   "arsenal": "recon-dorks"
+  },
+  "smuggling": {
+   "class": "smuggling",
+   "skill": "hunt-smuggling",
+   "wiki": "http-request-smuggling",
+   "arsenal": "payloads/smuggling"
+  },
+  "sqli": {
+   "class": "sqli",
+   "skill": "hunt-sqli",
+   "wiki": "sql-injection",
+   "arsenal": "payloads/sqli"
+  },
+  "ssrf": {
+   "class": "ssrf",
+   "skill": "hunt-ssrf",
+   "wiki": "ssrf",
+   "arsenal": "payloads/ssrf"
+  },
+  "upload": {
+   "class": "upload",
+   "skill": "hunt-upload",
+   "wiki": "file-upload",
+   "arsenal": "payloads/file-upload"
+  },
+  "vpn": {
+   "class": "vpn",
+   "skill": "hunt-vpn",
+   "wiki": "network-service-attacks",
+   "arsenal": "cheatsheets/cve-arsenal"
+  },
+  "windows": {
+   "class": "windows",
+   "skill": "hunt-windows",
+   "wiki": "windows-privesc",
+   "arsenal": "privesc-exploit-arsenal"
+  },
+  "xss": {
+   "class": "xss",
+   "skill": "hunt-xss",
+   "wiki": "xss",
+   "arsenal": "payloads/xss"
+  },
+  "dom-xss": {
+   "class": "xss",
+   "skill": "hunt-xss",
+   "wiki": "xss",
+   "arsenal": "payloads/xss"
+  },
+  "graphql": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "payloads/graphql"
+  },
+  "minio": {
+   "class": "secrets",
+   "skill": "hunt-secrets",
+   "wiki": "secret-hunting",
+   "arsenal": "default-credentials"
+  },
+  "login-form": {
+   "class": "sqli",
+   "skill": "hunt-sqli",
+   "wiki": "sql-injection",
+   "arsenal": "payloads/sqli"
+  },
+  "sqlstate": {
+   "class": "sqli",
+   "skill": "hunt-sqli",
+   "wiki": "sql-injection",
+   "arsenal": "payloads/sqli"
+  },
+  "ssti": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "payloads/ssti"
+  },
+  "xxe": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "payloads/xxe"
+  },
+  "lfi": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "payloads/lfi-path-traversal"
+  },
+  "binary-exploitation": {
+   "class": "pwn",
+   "skill": "hunt-pwn",
+   "wiki": "binary-exploitation",
+   "arsenal": "cheatsheets/binary-exploitation"
+  },
+  "phpipam": {
+   "class": "sqli",
+   "skill": "hunt-sqli",
+   "wiki": "sql-injection",
+   "arsenal": "payloads/sqli"
+  },
+  "spring": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "api-request-findings"
+  },
+  "supabase": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "supabase-attacks"
+  },
+  "wordpress": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cms-exploitation"
+  },
+  "laravel": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "payloads/deserialization"
+  },
+  "nextjs": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "nextjs-middleware-bypass"
+  },
+  "firebase": {
+   "class": "idor",
+   "skill": "hunt-idor",
+   "wiki": "access-control",
+   "arsenal": "payloads/idor"
+  },
+  "magento": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cms-exploitation"
+  },
+  "jenkins": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "default-credentials"
+  },
+  "tomcat": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "attack-chains"
+  },
+  "aria2": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "attack-chains"
+  },
+  "gitlab": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "elasticsearch": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "api-request-findings"
+  },
+  "influxdb": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "api-request-findings"
+  },
+  "redis": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "attack-chains"
+  },
+  "mssql": {
+   "class": "sqli",
+   "skill": "hunt-sqli",
+   "wiki": "sql-injection",
+   "arsenal": "mssql-command-execution"
+  },
+  "jwt": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "payloads/jwt"
+  },
+  "oauth": {
+   "class": "federation",
+   "skill": "hunt-federation",
+   "wiki": "oauth-attacks",
+   "arsenal": "payloads/oauth-saml"
+  },
+  "s3": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-service-s3-buckets"
+  },
+  "m365-tenant": {
+   "class": "m365",
+   "skill": "hunt-m365",
+   "wiki": "azure-ad-enumerate",
+   "arsenal": "identity-fabric"
+  },
+  "azure-imds": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "azure-managed-identity-abuse"
+  },
+  "vpn-appliance": {
+   "class": "vpn",
+   "skill": "hunt-vpn",
+   "wiki": "network-service-attacks",
+   "arsenal": "cheatsheets/cve-arsenal"
+  },
+  "kubernetes": {
+   "class": "ssrf",
+   "skill": "hunt-ssrf",
+   "wiki": "ssrf",
+   "arsenal": "kubernetes-attacks"
+  },
+  "docker": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "docker-attacks"
+  },
+  "api-docs": {
+   "class": "api",
+   "skill": "hunt-api",
+   "wiki": "api-security",
+   "arsenal": "api-testing"
+  },
+  "ldap": {
+   "class": "ad",
+   "skill": "hunt-ad",
+   "wiki": "active-directory",
+   "arsenal": "ad-enumeration"
+  },
+  "winrm": {
+   "class": "windows",
+   "skill": "hunt-windows",
+   "wiki": "windows-privesc",
+   "arsenal": "windows-using-credentials"
+  },
+  "rdp": {
+   "class": "windows",
+   "skill": "hunt-windows",
+   "wiki": "windows-privesc",
+   "arsenal": "rdp-persistence"
+  },
+  "smb": {
+   "class": "windows",
+   "skill": "hunt-windows",
+   "wiki": "windows-privesc",
+   "arsenal": "internal-shares"
+  },
+  "ad-domain": {
+   "class": "ad",
+   "skill": "hunt-ad",
+   "wiki": "active-directory",
+   "arsenal": "ad-enumeration"
+  },
+  "windows-version": {
+   "class": "windows",
+   "skill": "hunt-windows",
+   "wiki": "windows-privesc",
+   "arsenal": "windows-enumeration"
+  },
+  "cache-headers": {
+   "class": "cache",
+   "skill": "hunt-cache",
+   "wiki": "web-cache-poisoning",
+   "arsenal": "payloads/web-cache"
+  },
+  "nosql": {
+   "class": "injection",
+   "skill": "hunt-injection",
+   "wiki": "ssti",
+   "arsenal": "payloads/nosql"
+  },
+  "confluence": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "drupal": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cms-exploitation"
+  },
+  "joomla": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cms-exploitation"
+  },
+  "grafana": {
+   "class": "idor",
+   "skill": "hunt-idor",
+   "wiki": "access-control",
+   "arsenal": "default-credentials"
+  },
+  "phpmyadmin": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "default-credentials"
+  },
+  "weblogic": {
+   "class": "deserialization",
+   "skill": "hunt-deserialization",
+   "wiki": "insecure-deserialization",
+   "arsenal": "payloads/deserialization"
+  },
+  "aspnet": {
+   "class": "deserialization",
+   "skill": "hunt-deserialization",
+   "wiki": "insecure-deserialization",
+   "arsenal": "payloads/deserialization"
+  },
+  "struts": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "payloads/command-injection"
+  },
+  "jira": {
+   "class": "ssrf",
+   "skill": "hunt-ssrf",
+   "wiki": "ssrf",
+   "arsenal": "api-request-findings"
+  },
+  "github-actions": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "payloads/cicd"
+  },
+  "grpc": {
+   "class": "api",
+   "skill": "hunt-api",
+   "wiki": "api-security",
+   "arsenal": "api-testing"
+  },
+  "exchange": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "ivanti": {
+   "class": "vpn",
+   "skill": "hunt-vpn",
+   "wiki": "network-service-attacks",
+   "arsenal": "cheatsheets/cve-arsenal"
+  },
+  "moveit": {
+   "class": "sqli",
+   "skill": "hunt-sqli",
+   "wiki": "sql-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "crushftp": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "authentication-attacks"
+  },
+  "geoserver": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "sharepoint": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "activemq": {
+   "class": "deserialization",
+   "skill": "hunt-deserialization",
+   "wiki": "insecure-deserialization",
+   "arsenal": "payloads/deserialization"
+  },
+  "coldfusion": {
+   "class": "deserialization",
+   "skill": "hunt-deserialization",
+   "wiki": "insecure-deserialization",
+   "arsenal": "cve-arsenal"
+  },
+  "php-cgi": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "payloads/command-injection"
+  },
+  "vcenter": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "screenconnect": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "cve-arsenal"
+  },
+  "papercut": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "ofbiz": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "aws-keys": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-access-token-secrets"
+  },
+  "cognito": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-service-cognito"
+  },
+  "content-discovery-baseline": {
+   "class": "content-discovery",
+   "skill": "",
+   "wiki": "web-attack-surface",
+   "arsenal": "wordlists"
+  },
+  "js-extract-baseline": {
+   "class": "js-extract",
+   "skill": "hunt-secrets",
+   "wiki": "javascript-source-map-exploitation",
+   "arsenal": "recon-dorks"
+  },
+  "recon-nuclei-baseline": {
+   "class": "recon-nuclei",
+   "skill": "",
+   "wiki": "web-attack-surface",
+   "arsenal": "nuclei-arsenal"
+  },
+  "recon-nikto-baseline": {
+   "class": "recon-nikto",
+   "skill": "",
+   "wiki": "web-attack-surface",
+   "arsenal": "cve-arsenal"
+  },
+  "wpscan-scan-baseline": {
+   "class": "wpscan-scan",
+   "skill": "",
+   "wiki": "cms-exploitation",
+   "arsenal": "cms-exploitation"
+  },
+  "osint-subdomain-baseline": {
+   "class": "osint-subdomain",
+   "skill": "hunt-secrets",
+   "wiki": "web-attack-surface",
+   "arsenal": "recon"
+  },
+  "osint-leaks-baseline": {
+   "class": "osint-leaks",
+   "skill": "hunt-secrets",
+   "wiki": "secret-hunting",
+   "arsenal": "recon-dorks"
+  },
+  "subdomain-takeover-baseline": {
+   "class": "subdomain-takeover",
+   "skill": "hunt-secrets",
+   "wiki": "subdomain-takeover",
+   "arsenal": "recon"
+  },
+  "linux-svc-enum-baseline": {
+   "class": "linux-svc-enum",
+   "skill": "",
+   "wiki": "vuln-assessment",
+   "arsenal": "service-enumeration"
+  },
+  "dynamodb": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-service-dynamodb"
+  },
+  "ec2": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-service-ec2"
+  },
+  "lambda": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-service-lambda-api-gateway"
+  },
+  "ssm": {
+   "class": "cloud",
+   "skill": "hunt-cloud",
+   "wiki": "cloud-iam-attacks",
+   "arsenal": "aws-service-ssm"
+  },
+  "azure-devops": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "azure-services-azure-devops"
+  },
+  "buildkite": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "cicd-buildkite"
+  },
+  "circleci": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "cicd-circleci"
+  },
+  "drone-ci": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "cicd-drone-ci"
+  },
+  "gitlab-ci": {
+   "class": "cicd",
+   "skill": "hunt-cicd",
+   "wiki": "cicd-github-actions",
+   "arsenal": "cicd-gitlab-ci"
+  },
+  "as400": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "as400"
+  },
+  "telnet": {
+   "class": "auth",
+   "skill": "hunt-auth",
+   "wiki": "authentication-attacks",
+   "arsenal": "telnet"
+  },
+  "liferay": {
+   "class": "rce",
+   "skill": "hunt-rce",
+   "wiki": "os-command-injection",
+   "arsenal": "cve-arsenal"
+  },
+  "macos-host": {
+   "class": "macos",
+   "skill": "hunt-macos",
+   "wiki": "macos-tcc",
+   "arsenal": "macos-loot-locations"
+  }
+ }
+}

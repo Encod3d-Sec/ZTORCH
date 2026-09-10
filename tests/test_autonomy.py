@@ -20,7 +20,7 @@ def _vault(tmp):
     ones, like test_board; setup/ is never read via --vault)."""
     vault = Path(tmp) / "vault"
     (vault / "targets").mkdir(parents=True)
-    for sub in ("skills", "wiki"):
+    for sub in ("skills", "wiki", "scripts"):
         (vault / sub).symlink_to(ROOT / sub, target_is_directory=True)
     offensive.main(["--vault", str(vault), "init", "demo", "--type", "bb"])
     eng = vault / "targets" / "demo"

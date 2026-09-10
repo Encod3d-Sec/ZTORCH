@@ -198,6 +198,20 @@ def main():
     solved = _engagement.is_solved(d)
     summ = _engagement.summary()
     board = board_phase(d)
+    if board:
+        # D3 (pass 14): board_phase counts checkbox LINES (4a + 4b tables + any checklist
+        # prose); the parsed 4a/4b ROWS are what the driver serves. On skew, name both so
+        # "N open" is never misread as board rows. Fail-open: parse trouble -> no note.
+        try:
+            import offensive
+            prows = offensive.read_board(d) + offensive.read_board_4b(d)
+            popen = sum(1 for r in prows
+                        if (r.get("status") or "").strip() in ("[ ]", "[~]"))
+            if popen != board[1]:
+                board = ("%s [line-count; board parses %d open]" % (board[0], popen),
+                         board[1], board[2])
+        except Exception:
+            pass
     poc, cards, recon, died = evidence_counts(d)
     deads = deadend_lines(d)
     moves_text = ""

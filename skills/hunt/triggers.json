@@ -5,6 +5,7 @@
     "prototype pollution|dom clobbering": "hunt-xss",
     "sqli|sql injection|nosql injection": "hunt-sqli",
     "idor|broken access control|access control": "hunt-idor",
+    "buffer overflow|format string|ret2?libc|one[_ ]?gadget|\\brop\\b|heap exploitation|tcache|checksec|pwntools": "hunt-pwn",
     "\\brce\\b|command injection|remote code execution": "hunt-rce",
     "auth bypass|account takeover|\\bato\\b|authentication bypass": "hunt-auth",
     "csrf|cross-site request forgery": "hunt-auth",

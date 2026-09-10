@@ -190,7 +190,7 @@ winPEAS uses the same idea as linPEAS: bright/highlighted findings are the high-
 
 - **PEAS is a lead generator, not proof.** Green means "matched a known-good name", not "verified safe", and a red-on-yellow line still needs you to confirm the vector manually. Do not report a finding straight from PEAS output; reproduce the escalation first.
 
-- **Run with `-a` (linPEAS) when you can.** The default run skips the slow checks (FS-wide password search, process monitoring, user brute). On a box where noise/time is not a concern, `-a` finds things the default misses. Use `-s` (stealth) when you need to be fast and quiet instead.
+- **Run with `-a` (linPEAS) when you can.** The default run skips the slow checks (FS-wide password search, process monitoring, user brute). On a box where noise/time is not a concern, `-a` finds things the default misses. Use `-s` (stealth) when you need to be fast and quiet instead. **RAM caveat:** avoid `-a` on boxes with 1-2 GB RAM or less (most THM VMs) - a full `-a` scan can OOM-thrash the box until every service (ssh/http/db) times out, which looks exactly like a crashed target. Use the default scan or throttle with `nice -n19 ionice -c3 ./linpeas.sh`; recovery is `pkill -9 -f linpeas` as the launching user.
 
 - **`quiet notcolor` for clean logs.** Raw ANSI color codes make a redirected file unreadable. Add `notcolor` (winPEAS) or `-N` (linPEAS) whenever you pipe output to a file or a dumb shell, and `quiet`/`-q` to drop the banner.
 

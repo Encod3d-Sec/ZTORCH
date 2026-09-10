@@ -21,7 +21,7 @@ def _setup(tmp_path):
     build the index. Returns (vault, eng)."""
     vault = tmp_path / "vault"
     (vault / "targets").mkdir(parents=True)
-    for sub in ("skills", "wiki"):
+    for sub in ("skills", "wiki", "scripts"):
         shutil.copytree(FIX / sub, vault / sub)
     offensive.main(["--vault", str(vault), "init", "demo", "--type", "bb"])
     eng = vault / "targets" / "demo"
@@ -139,7 +139,7 @@ def test_g9_refuses_on_stale_index(tmp_path, capsys):
     offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
                                      arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap")])
     # touch a routing source newer than the cache
-    src = vault / "skills" / "hunt" / "hunt-core" / "SKILL.md"
+    src = vault / "scripts" / "routing.json"
     future = time.time() + 10
     os.utime(src, (future, future))
     with pytest.raises(SystemExit) as ex:
@@ -275,7 +275,7 @@ def test_note_restamps_row_opened_at(tmp_path, capsys):
     st["row_opened_at"] = {"web1|ssrf": "2020-01-01T00:00:00+00:00"}
     st_p.write_text(json.dumps(st))
     rc = offensive.main(["--vault", str(vault), "--eng", str(eng),
-                         "note", "4a:1", "--arsenal", "s"])
+                         "note", "4a:1", "--arsenal", "s", "--force"])
     assert rc == 0
     st = json.loads(st_p.read_text())
     assert st["row_opened_at"]["web1|ssrf"] > "2020-01-01"
@@ -329,9 +329,9 @@ def test_next_json_gates_in_walk_order(tmp_path, capsys):
 
 def test_next_json_terminal_states(tmp_path, capsys):
     vault, eng = _setup(tmp_path)
-    offensive.write_board(eng, [])          # no rows at all -> exhausted (not walled)
+    offensive.write_board(eng, [])          # no rows at all -> empty-board
     _, p = _next_json(capsys, vault, eng)
-    assert p["terminal"] == "exhausted" and p["row"] is None
+    assert p["terminal"] == "empty-board" and p["row"] is None
     # walled: only parked/dead rows, zero closed
     offensive.write_board(eng, [_row(id="4a:1", asset="web1", status="[?]",
                                      **{"vuln class": "ssrf"})])
@@ -360,7 +360,7 @@ def test_next_json_stale_index_exits_2(tmp_path, capsys):
     offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "ssrf"},
                                      arsenal="a", skill="hunt-ssrf", tool="nuclei")])
     fut = time.time() + 600
-    os.utime(vault / "skills" / "hunt" / "hunt-core" / "SKILL.md", (fut, fut))
+    os.utime(vault / "scripts" / "routing.json", (fut, fut))
     rc, payload = _next_json(capsys, vault, eng)
     assert rc == 2
     assert payload["terminal"] == "stale-index"

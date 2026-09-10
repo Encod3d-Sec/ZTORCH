@@ -4,7 +4,7 @@ type: technique
 tags: [azure, cicd, cloud, exploitation, reference-import]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
+date_updated: 2026-09-10
 sources: [InternalAllTheThings]
 ---
 
@@ -121,6 +121,35 @@ $'https://dev.azure.com/YOURORGANIZATION/_apis/graph/groups?api-version=7.0'
 * Get the organizations that user belongs to: <https://app.vssps.visualstudio.com/_apis/accounts?memberId={UserID}?api-version=7.1>
 * Get the repositories inside of that organization: <https://dev.azure.com/{org_name}/_apis/projects?api-version=7.1>
 
+## Azure Pipelines
+
+The configuration files for azure pipelines are normally located in the root directory of the repository and called - `azure-pipelines.yml`\
+You can tell if the pipeline builds pull requests based on its trigger instructions. Look for `pr:` instruction:
+
+```yaml
+trigger:
+  branches:
+      include:
+      - master
+      - refs/tags/*
+pr:
+- master
+```
+
+## Secret Extractions
+
+Extract secrets for these service connection:
+
+* AzureRM
+* GitHub
+* AWS
+* SonarQube
+* SSH
+
+```ps1
+nord-stream.py devops ... --build-yaml test.yml --build-type ssh
+```
+
 ## Privilege Escalation
 
 * Adding User to Group: `ADOKit.exe addcollectionbuildadmin /credential:UserAuthentication=ABC123 /url:https://dev.azure.com/YourOrganization /user:"username"`
@@ -194,6 +223,7 @@ $'https://dev.azure.com/YourOrganization/_apis/Contribution/HierarchyQuery'
 * [Hiding in the Clouds: Abusing Azure DevOps Services to Bypass Microsoft Sentinel Analytic Rules - Brett Hawkins - November 6, 2023](https://www.ibm.com/downloads/cas/5JKAPVYD)
 * [DevOps access is closer than you assume - rikvduijn - January 21, 2025](https://zolder.io/blog/devops-access-is-closer-than-you-assume/)
 * [Training - Attacking and Defending Azure Lab - Altered Security](https://www.alteredsecurity.com/azureadlab)
+* [Azure DevOps CICD Pipelines - Command Injection with Parameters, Variables and a discussion on Runner hijacking - Sana Oshika - May 1 2023](https://pulsesecurity.co.nz/advisories/Azure-Devops-Command-Injection)
 
 ## Bypasses and variants
 

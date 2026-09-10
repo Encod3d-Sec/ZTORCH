@@ -27,7 +27,7 @@ Post-exploitation, C2, lateral movement, and persistence.
 1. Stand up the team server; configure listeners and redirectors.
 2. Generate an implant with the appropriate transport and evasion options.
 3. Deliver via your initial-access vector; establish the session.
-4. Post-exploitation: token and credential ops, BOFs, lateral movement, pivoting (see [[network-pivoting-techniques]]).
+4. Post-exploitation: token and credential ops, BOFs, lateral movement, pivoting (see [[pivoting-tunneling]]).
 5. Maintain opsec: jittered sleep, domain fronting or redirectors, and masked in-memory footprint.
 
 ## Key payloads / examples

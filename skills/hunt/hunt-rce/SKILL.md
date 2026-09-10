@@ -7,6 +7,8 @@ description: RCE hunting - template injection, YAML/XML deserialization, depende
 
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
+Binary/memory-corruption RCE (a socket service or a handed-out binary) belongs to `Skill(hunt-pwn)`; if you were routed here for one, say so in one line and re-route.
+
 ## Wiki
 
 Hub: [[web-moc]] · Primary page: [[os-command-injection]] · Payload arsenal: `wiki/payloads/command-injection.md`

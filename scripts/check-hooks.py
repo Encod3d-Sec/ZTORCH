@@ -40,6 +40,7 @@ EXPECTED_HOOKS = [
     ("PreToolUse", "sleep-guard.py"),
     ("PreToolUse", "session-guard.py"),
     ("PreToolUse", "drift-guard.py"),
+    ("PreToolUse", "eng-ckpt.py"),
     ("PreToolUse", "zg-nudge.py"),
     ("PreToolUse", "tmux-nudge.py"),
     ("PreToolUse", "burp-nudge.py"),

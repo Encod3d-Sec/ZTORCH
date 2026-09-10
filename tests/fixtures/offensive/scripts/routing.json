@@ -1,0 +1,9 @@
+{
+ "_doc": "fixture slice: mirrors the real scripts/routing.json contract (key order = table order).",
+ "routing": {
+  "ssrf": {"class": "ssrf", "skill": "hunt-ssrf", "wiki": "ssrf", "arsenal": "payloads/ssrf"},
+  "idor": {"class": "idor", "skill": "hunt-idor", "wiki": "access-control", "arsenal": "payloads/idor"},
+  "sqli": {"class": "sqli", "skill": "hunt-sqli", "wiki": "sql-injection", "arsenal": "payloads/sqli"},
+  "login-form": {"class": "sqli", "skill": "hunt-sqli", "wiki": "sql-injection", "arsenal": "payloads/sqli"}
+ }
+}
