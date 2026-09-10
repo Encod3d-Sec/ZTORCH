@@ -16,7 +16,7 @@ AWS Identity and Access Management (IAM) is the engine that determines what ever
 
 IAM attacks fall into three phases: **initial access** (finding credentials), **enumeration** (understanding what the credentials can do), and **privilege escalation** (expanding access toward administrative permissions).
 
-See also: [[aws-attacks]], [[aws]]
+See also: [[aws-attacks]]
 
 ---
 
@@ -192,6 +192,35 @@ SCPs do **not** apply to the Organization Management Account.
 
 ## IAM Credentials
 
+### AWS CLI Setup
+
+```bash
+# Configure default profile
+aws configure
+# Prompts for: Access Key ID, Secret Access Key, Region, Output format
+
+# Configure named profile
+aws configure --profile profile-name
+
+# Set session token for temporary credentials (after configure)
+aws configure set aws_session_token TOKEN --profile profile-name
+
+# Use environment variables (no config file needed)
+export AWS_ACCESS_KEY_ID=AKIA...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_SESSION_TOKEN=...       # only for temporary/ASIA keys
+export AWS_DEFAULT_REGION=us-east-1
+
+# Credentials file location
+cat ~/.aws/credentials
+# [default]
+# aws_access_key_id = AKIA...
+# aws_secret_access_key = ...
+
+# Role session cache (SSO / CLI assume-role)
+ls ~/.aws/cli/cache/
+```
+
 ### Access Key Types
 
 | Type | Prefix | Duration | Usage |
@@ -206,6 +235,16 @@ export AWS_ACCESS_KEY_ID=ASIA...
 export AWS_SECRET_ACCESS_KEY=...
 export AWS_SESSION_TOKEN=...
 ```
+
+**Key identifier prefixes**:
+
+| Prefix | Entity |
+|--------|--------|
+| `AKIA` | Long-term IAM User access key |
+| `ASIA` | Temporary (STS) session key |
+| `AROA` | IAM Role unique ID |
+| `AIDA` | IAM User unique ID |
+| `AGPA` | IAM Group unique ID |
 
 ### Credential Discovery Locations
 
@@ -243,6 +282,9 @@ aws sts get-caller-identity
 
 # Organization structure (reveals management account email)
 aws organizations describe-organization
+
+# Check account password policy
+aws iam get-account-password-policy
 ```
 
 ### Enumerating Users, Roles, and Groups
@@ -289,6 +331,12 @@ aws iam get-role-policy --role-name ROLENAME --policy-name PolicyName
 aws iam get-policy-version \
   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess \
   --version-id v1
+
+# Lambda function: get its role and enumerate that role's policies
+ROLE=$(aws lambda get-function --function-name FUNCTION_NAME \
+  --query Configuration.Role --output text | awk -F/ '{print $NF}')
+aws iam list-attached-role-policies --role-name $ROLE
+aws iam list-role-policies --role-name $ROLE
 ```
 
 ### Simulating Permissions

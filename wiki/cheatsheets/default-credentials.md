@@ -4,7 +4,7 @@ type: cheatsheet
 tags: [cheatsheet, credentials, default-creds]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-06-05
+date_updated: 2026-09-10
 ---
 
 # Default Credentials
@@ -27,6 +27,11 @@ Per the engagement discipline, default-cred checks are an acceptable early move;
 | InfluxDB | 1.x | (none) | (none) | vendor | auth often disabled |
 | Camunda Platform (7.x web apps) | 7.x | demo | demo | vendor | distribution's example user; login at `/camunda/app/welcome/`; Cockpit/Tasklist reaches scripted tasks (business-logic impact) |
 | Splunk (THM lab rooms) | 9.x/10.x | admin | TryHackMe! | observed | THM pre-indexed-evidence rooms ship Splunk with this pair; also try admin/changeme (vendor default) before anything else |
+| Generic admin interface | any | admin | admin / password / (blank) | vendor | first trio on any vendor admin UI |
+| Generic root account | any | root | root / 12345678 | vendor | |
+| Windows local administrator | any | administrator | Password | vendor | |
+| FTP server | any | anonymous | (blank) | vendor | anonymous login check before any brute force |
+| SNMP v1/v2c | any | (community string) | public (read) / private (write) | vendor | community strings act as the passwords |
 | Product | Service / entry point | Default | Note |
 | <product> | <version> | <username> | <password> | observed | <generic notes; NO client host> |
 

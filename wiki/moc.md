@@ -11,7 +11,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 
 ## Technique domains
 
-- [[active-directory-moc|Active Directory]] (97)
+- [[active-directory-moc|Active Directory]] (96)
 - [[blockchain-moc|Blockchain]] (2)
 - [[cloud-moc|Cloud]] (51)
 - [[cracking-moc|Cracking]] (6)

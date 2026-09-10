@@ -624,7 +624,7 @@ Cross-references: [[ad-enumeration]], [[ad-lateral-movement]], [[pass-the-hash]]
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[active-directory-tricks]]
 - [[forest-to-forest-compromise-trust-ticket]]
-- [[internal-kerberos-relay]]
+- [[internal-ntlm-relay]]
 - [[kerberos-bronze-bit]]
 - [[kerberos-delegation-constrained-delegation]]
 - [[kerberos-delegation-resource-based-constrained-delegation]]

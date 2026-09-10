@@ -74,7 +74,7 @@ on every fresh session, then targeted `post/*` modules, `getsystem`, and
 
 ## Pivoting
 `autoroute`/`portfwd`/`socks` through a session to reach internal-only ports before hand-rolling
-SSH `-L`. Full syntax and proxychains setup: `[[pivoting]]`.
+SSH `-L`. Full syntax and proxychains setup: `[[pivoting-tunneling]]`.
 
 ## Verify target (false-root)
 Before trusting any shell or privesc claim: `getuid` + `sysinfo`/hostname must match the actual

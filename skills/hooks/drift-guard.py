@@ -195,7 +195,10 @@ def _bins_in(cmd):
     found = set()
     for seg in _cmdnorm.segments(cmd or ""):
         s = seg.strip()
-        if _READER_LEAD.match(s) or any(i in s for i in inners):
+        # skip the WRAPPER segment (carries the inner as quoted text); an unwrapped
+        # inner segment IS the inner (`i in s` matched it too and zeroed the whole
+        # scan -- vm.sh-wrapped scans counted no bins at all, audit 2026-09-10)
+        if _READER_LEAD.match(s) or any(i != s and i in s for i in inners):
             continue
         found |= set(_BIN_RE.findall(s))
     return found
@@ -263,32 +266,49 @@ def _selfkill_advisory(cmd):
 # scan through the direct vm.sh/vm-ssh.sh bridge is dropped at ~2min (exit 255, no output),
 # burning the call and reading as a dead target. Detached forms (vm-scan.sh tmux tab /
 # nohup / background &) are the sanctioned paths and never fire.
-_BRIDGE_RE = re.compile(r"\b(?:vm|vm-ssh|win-vm)\.sh\b")
+_BRIDGE_RE = re.compile(r"(?<![\w-])(?:vm|vm-ssh|win-vm)\.sh\b")
 _DETACHED_RE = re.compile(r"\b(?:nohup|tmux|disown|vm-scan\.sh|vm-rsh\.sh|win-rsh\.sh)\b")
-# single `&` that is a background operator (not `&&`, not `2>&1`/`&>` fd plumbing)
-_BG_RE = re.compile(r"(?<!&)&(?!&)(?![>)\d])")
+# single `&` that is a background OPERATOR: at least one flank is whitespace/edge (an `&`
+# glued between non-space chars is data: `?a=1&b=2` in a URL, quoted or not), never part
+# of `&&`, and never fd plumbing (`2>&1`, `&>`). Quote-blanking cannot work here: the
+# transport wrapper's OWN quotes carry the operator (`vm.sh 'longcmd ... &'`).
+_BG_RE = re.compile(r"(?<!\S)&(?![>&\d])|(?<![&>\d])&(?!\S)")
 # nmap only counts with a slow-shape marker (a `nmap -sV -p 80` finishes in seconds); the
 # rest are slow essentially always on real wordlists/rules.
 _SLOW_RE = re.compile(
     r"\b(?:feroxbuster|ffuf|nuclei|hashcat|john|sqlmap|gobuster|dirb|wpscan|nikto|amass|"
     r"subfinder|masscan|crackmapexec|nxc)\b"
-    r"|nmap[^|;&\n]*?(?:-p-|-p\s+1-|-sU|--min-rate|-T5)")
+    r"|nmap[^|;&\n]*?(?:-p-|-p\s*\d+-|-sU|--min-rate|-T5)")
+
+
+_DOA_MSG = ("TRANSPORT DOA (advisory): a long foreground command through the direct "
+            "vm.sh/vm-ssh.sh bridge is dropped at ~2min (exit 255, no output) - the scan "
+            "never completes and the empty output reads as a dead target. Run it detached: "
+            "`bash scripts/vm-scan.sh <eng> <target> '<cmd>'` (named tmux tab, gets a recon "
+            "card) or `nohup <cmd> >/tmp/out 2>&1 &` + poll for the DONE marker.")
 
 
 def _bridge_doa_advisory(cmd):
     """Advisory string when a long FOREGROUND command goes through the direct VM bridge
     (the transport drops it at ~2min), else None. Advisory-only: a deliberate foreground
-    run of a fast-enough scan is the operator's call."""
+    run of a fast-enough scan is the operator's call.
+    Per-SEGMENT (audit 2026-09-10): the bridge marker and the slow-shape marker must
+    co-occur in ONE executable segment -- the old whole-string pair let an echo/grep
+    text mentioning vm.sh plus an nmap word elsewhere false-fire. Reader segments are
+    skipped; a vm.sh wrapper segment carries its quoted inner command, so a real bridge
+    run pairs inside the wrapper segment itself. Detached/background markers are still
+    checked whole-string (backgrounding is a property of the whole command)."""
     c = cmd or ""
-    if not _BRIDGE_RE.search(c) or _DETACHED_RE.search(c) or _BG_RE.search(c):
+    if _DETACHED_RE.search(c) or _BG_RE.search(c):
         return None
-    if not _SLOW_RE.search(c):
+    if _cmdnorm is None:
+        segs = [c]
+    else:
+        segs = [s.strip() for s in _cmdnorm.segments(c)
+                if s.strip() and not _READER_LEAD.match(s.strip())]
+    if not any(_BRIDGE_RE.search(s) and _SLOW_RE.search(s) for s in segs):
         return None
-    return ("TRANSPORT DOA (advisory): a long foreground command through the direct "
-            "vm.sh/vm-ssh.sh bridge is dropped at ~2min (exit 255, no output) - the scan "
-            "never completes and the empty output reads as a dead target. Run it detached: "
-            "`bash scripts/vm-scan.sh <eng> <target> '<cmd>'` (named tmux tab, gets a recon "
-            "card) or `nohup <cmd> >/tmp/out 2>&1 &` + poll for the DONE marker.")
+    return _DOA_MSG
 
 
 # --- advisory throttle (A1/A2/A3): a legitimately off-board run (writeup-driven, or post-foothold
@@ -327,6 +347,79 @@ def _should_advise(streak, post_foothold):
     return streak in (1, 2, 3) or streak % 25 == 0
 
 
+def _advise_probe(cmd):
+    """Executable, non-framework text for the always-on advisories: joined segments that
+    are neither framework-meta (in a MIXED command only the meta part is exempt; the old
+    whole-string check exempted `git status && pkill -f bash` entirely) nor reader-leads
+    (an echo/grep string MENTIONING pkill or vm.sh is not an invocation). Whole string
+    when the segmenter is absent; '' = nothing to check."""
+    if _cmdnorm is None:
+        return "" if _META_RE.search(cmd or "") else (cmd or "")
+    return "\n".join(s.strip() for s in _cmdnorm.segments(cmd or "")
+                     if s.strip() and not _META_RE.search(s)
+                     and not _READER_LEAD.match(s.strip()))
+
+
+_STAMP_TTL = 900     # one advisory injection per 15 min per kind (audit 2026-09-10): the
+                     # DOA/selfkill advisories returned early and re-fired on EVERY
+                     # matching call -- a retry loop over a DOA shape flooded context AND
+                     # skipped the off-board streak below (a loop the ring never saw).
+
+
+def _stamp_fresh(d, name):
+    """True (and touches the stamp) when an advisory of this kind may inject now; False
+    while a fresh stamp stands. Per-engagement; no engagement -> always True (no stamp
+    file to write). Pattern = tool-telemetry's .ctx-low-stamp."""
+    if not d:
+        return True
+    p = os.path.join(d, name)
+    import time
+    try:
+        if time.time() - os.path.getmtime(p) < _STAMP_TTL:
+            return False
+    except OSError:
+        pass
+    try:
+        open(p, "w").close()
+    except OSError:
+        pass
+    return True
+
+
+def _budget_deny(d):
+    """Engagement budget hard-stop (opt-in via ZT_MAX_ENG_USD): spend_usd over cap in
+    .metrics.json (written by tool-telemetry) -> deny further Bash calls. Bash-only
+    ceiling: other tools still run; the full budget picture lives in the transcript.
+    Returns True when it printed the deny."""
+    try:
+        cap = float(os.environ.get("ZT_MAX_ENG_USD", "") or 0)
+    except ValueError:
+        cap = 0.0
+    if cap <= 0 or not _enforcing():
+        return False
+    try:
+        spent = float(json.load(open(os.path.join(d, ".metrics.json"),
+                                     encoding="utf-8")).get("spend_usd", 0) or 0)
+        if spent > cap:
+            try:
+                import _telemetry
+                _telemetry.hook("drift-guard", action="deny")
+            except Exception:
+                pass
+            print(json.dumps({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason":
+                    ("BLOCKED by harness enforcement: engagement spend $%.2f exceeds "
+                     "ZT_MAX_ENG_USD=$%.2f. Stop and report to the operator; raise "
+                     "ZT_MAX_ENG_USD to continue." % (spent, cap)),
+            }}))
+            return True
+    except Exception:
+        pass                                       # no metrics file / bad json -> no stop
+    return False
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -338,22 +431,35 @@ def main():
     if not cmd:
         return
 
-    # self-kill footgun advisory (any time, before the campaign gates) - skip framework-meta so a
-    # grep/test string mentioning `pkill bash` during harness dev never fires it.
-    if not _META_RE.search(cmd):
-        _sk = _selfkill_advisory(cmd)
-        if _sk:
-            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                  "additionalContext": _sk}}))
-            return
-        _doa = _bridge_doa_advisory(cmd)
-        if _doa:
-            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                  "additionalContext": _doa}}))
-            return
-
     import _engagement
     d = _engagement.active_dir()
+
+    # Budget deny FIRST, above the advisory block: an advisory that returns early
+    # bypassed the deny for exactly the long DOA-shaped commands that burn spend
+    # (audit 2026-09-10).
+    if d and _budget_deny(d):
+        return
+
+    # self-kill / transport-DOA advisories (any time, before the campaign gates). The probe
+    # is per-segment (mixed commands: only the meta part exempt); injection is stamp-gated
+    # (15 min per kind) and a stamped-out advisory FALLS THROUGH to the campaign logic
+    # below so the off-board streak / retry ring still counts the call.
+    _probe = _advise_probe(cmd)
+    if _probe:
+        _sk = _selfkill_advisory(_probe)
+        _msg = _sk or _bridge_doa_advisory(cmd)
+        if _msg:
+            _stamp = ".selfkill-stamp" if _sk else ".doa-stamp"
+            if _stamp_fresh(d, _stamp):
+                try:
+                    import _telemetry
+                    _telemetry.drift("drift-guard", "advisory " + _stamp.lstrip("."))
+                except Exception:
+                    pass
+                print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                      "additionalContext": _msg}}))
+                return
+
     if not d:
         return
     sp = os.path.join(d, ".offensive.json")
@@ -364,35 +470,6 @@ def main():
     except Exception:
         return
 
-    # Engagement budget hard-stop (opt-in via ZT_MAX_ENG_USD): spend_usd over cap in
-    # .metrics.json (written by tool-telemetry) -> deny further Bash calls. Bash-only
-    # ceiling: other tools still run; the full budget picture lives in the transcript.
-    try:
-        cap = float(os.environ.get("ZT_MAX_ENG_USD", "") or 0)
-    except ValueError:
-        cap = 0.0
-    if cap > 0 and _enforcing():
-        try:
-            spent = float(json.load(open(os.path.join(d, ".metrics.json"),
-                                         encoding="utf-8")).get("spend_usd", 0) or 0)
-            if spent > cap:
-                try:
-                    import _telemetry
-                    _telemetry.hook("drift-guard", action="deny")
-                except Exception:
-                    pass
-                print(json.dumps({"hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason":
-                        ("BLOCKED by harness enforcement: engagement spend $%.2f exceeds "
-                         "ZT_MAX_ENG_USD=$%.2f. Stop and report to the operator; raise "
-                         "ZT_MAX_ENG_USD to continue." % (spent, cap)),
-                }}))
-                return
-        except Exception:
-            pass                                   # no metrics file / bad json -> no stop
-
     # A driver call resets the streak (the agent came back to the board). Command-position
     # only (_driver_called): an echo/grep string mentioning the driver is not contact.
     # The retry RING is only cleared when the driver moved the board (a different row
@@ -402,8 +479,8 @@ def main():
     if _driver_called(cmd):
         new_row = (st.get("last_move") or {}).get("row")
         same_row = new_row is not None and new_row == st.get("_driver_row")
-        changed = bool(st.get("off_board_streak")) or bool(st.get("retry_counts")) \
-            or (st.get("_driver_row") or "") != (new_row or "")
+        complied = bool(st.get("off_board_streak")) or bool(st.get("retry_counts"))
+        changed = complied or (st.get("_driver_row") or "") != (new_row or "")
         if changed:
             st["off_board_streak"] = 0
             if not same_row:
@@ -411,6 +488,14 @@ def main():
                                                    # re-runs after it are new attempts
             st["_driver_row"] = new_row
             _save_state(sp, st)
+            if complied:
+                # advice was outstanding and the agent came back to the driver: the one
+                # "advisories acted on" signal eval_metrics reports (audit rec 3).
+                try:
+                    import _telemetry
+                    _telemetry.log_event("advice", hook="drift-guard", action="complied")
+                except Exception:
+                    pass
         return
 
     # Framework/dev commands are not engagement drift -- but only per-SEGMENT: in a mixed
@@ -557,6 +642,14 @@ def main():
     # THROTTLE the context injection (the count above still fired for eval accuracy).
     if not deny_wanted and not _should_advise(streak, post_fh):
         return
+    if deny_wanted:
+        # not enforcing (.enforce-off): the would-be deny prints as an UN-THROTTLED
+        # advisory so the operator sees what would have blocked -- capped at 5 fires so
+        # a long off-board run under the hatch cannot flood context either.
+        st["soft_deny_total"] = int(st.get("soft_deny_total", 0) or 0) + 1
+        _save_state(sp, st)
+        if st["soft_deny_total"] > 5:
+            return
 
     try:
         import _telemetry

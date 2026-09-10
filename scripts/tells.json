@@ -208,7 +208,7 @@
     },
     {
       "re": "(?i)x-cache(-status)?:\\s*(miss|hit)|x-served-by:|x-varnish:|\\bage: \\d+",
-      "class": "cache",
+      "class": "web-cache",
       "skill": "hunt-cache",
       "prio": 3,
       "note": "cache layer present; probe unkeyed headers (X-Forwarded-Host etc.) for poisoning"
@@ -317,7 +317,7 @@
     },
     {
       "re": "move_uploaded_file\\s*\\(",
-      "class": "upload",
+      "class": "file-upload",
       "skill": "hunt-upload",
       "note": "upload sink; check extension/content validation before the move"
     },
@@ -335,7 +335,7 @@
     },
     {
       "re": "Transfer-Encoding:\\s*chunked",
-      "class": "smuggling",
+      "class": "request-smuggling",
       "skill": "hunt-smuggling",
       "prio": 3,
       "note": "chunked response; if a CL frontend sits in front, desync candidate"

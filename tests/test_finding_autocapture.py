@@ -83,3 +83,22 @@ def test_no_card_on_ordinary_output(tmp_path):
     v = _mk_vault(tmp_path)
     _run_hook(v, "bash /root/vm.sh 'curl -s http://10.0.0.5/'", "200 OK homepage")
     assert glob.glob(str(v / "targets" / "engz" / "poc" / "*auto*.md")) == []
+
+
+def test_advisories_emit_strict_posttooluse_json(tmp_path):
+    """Audit 2026-09-10: plain prose prints on the strict PostToolUse channel are
+    silently dropped by the harness - every advisory (auto-card line, EMPTY OUTPUT)
+    must parse as JSON with hookSpecificOutput.additionalContext (recon-capture's
+    _emit pattern)."""
+    v = _mk_vault(tmp_path)
+    r = _run_hook(v, "bash /root/vm.sh 'curl -s http://10.0.0.5/flag'", "THM{f4k3_fl4g_here}")
+    assert r.stdout.strip()
+    hso = json.loads(r.stdout)["hookSpecificOutput"]        # prose would not parse
+    assert hso["hookEventName"] == "PostToolUse"
+    assert "capture.sh" in hso["additionalContext"]
+    # EMPTY OUTPUT streak: fires on the 2nd empty response, same JSON contract
+    _run_hook(v, "bash /root/vm.sh 'curl -s http://10.0.0.5/'", "")
+    r2 = _run_hook(v, "bash /root/vm.sh 'curl -s http://10.0.0.5/'", "")
+    hso2 = json.loads(r2.stdout)["hookSpecificOutput"]
+    assert hso2["hookEventName"] == "PostToolUse"
+    assert "EMPTY OUTPUT x2" in hso2["additionalContext"]

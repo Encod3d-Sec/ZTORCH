@@ -62,6 +62,9 @@ CLASS_ALIASES = {
 # spelling must also credit the other: next_move's [gap] floor subtracts the JSON spelling
 # while the driver seeds rows with the routing.json spelling, so a row closed as `upload`
 # left `file-upload` a perpetual gap no board close could ever clear (D-D2, pass 15).
+# Pass 16 renamed routing.json class VALUES + BASE_CLASSES to the canonical spellings, so
+# NEW boards emit one spelling; this map now carries LEGACY boards/rows only -- keep it
+# until live targets/*/ boards are rewritten (client data, not rewritable from the repo).
 _CLASS_EQUIV = {
     "upload": "file-upload",
     "smuggling": "request-smuggling",
@@ -80,6 +83,13 @@ def _class_equivs(cls):
         elif cls == b:
             hits.add(a)
     return hits
+
+
+# a Deadends line that says the class was NOT tested is not a deadend (audit 2026-09-10):
+# these markers flip the meaning, so such lines credit nothing instead of everything.
+_NEG_RE = re.compile(r"\bnot tested\b|\bnot run\b|\bskipped?\b"
+                     r"|\bnever (?:ran|run|tested)\b|\bout of scope\b"
+                     r"|\bfalse positive|\bn/a\b")
 
 
 def _match_classes(text, classes):
@@ -167,8 +177,19 @@ def tested_classes(d, etype, classes):
     #    spelling-equivalence credit as 4a, plus `what was tried` text) and hand-written
     #    prose lines. The old prose-only scan skipped every `|` row -- a real deadend never
     #    credited coverage, the exact perpetual-gap shape D-D2 chases (pass 15).
+    #    Negation guard (audit 2026-09-10): a line saying the class was NOT tested
+    #    ("sqli NOT tested - blocked by RoE", "out of scope", "skipped", a False-positives
+    #    bullet) is the OPPOSITE of a deadend credit -- crediting it silences the gap
+    #    reminder for a class never touched. Skip those lines entirely.
     de = os.path.join(d, "Deadends.md")
     if os.path.isfile(de):
+        # call-time import: _engagement (which re-imports THIS module mid-file) defines
+        # _host_of after that re-import, so a module-level import would be circular.
+        try:
+            from _engagement import _host_of
+        except Exception:
+            def _host_of(x):
+                return x
         ents = []
         try:
             for r in _parse_table(os.path.join(d, "state.md")):
@@ -181,11 +202,13 @@ def tested_classes(d, etype, classes):
             for r in _parse_table(de):
                 a = (r.get("asset") or "").strip().lower()
                 cls = (r.get("class") or "").strip().lower()
+                text = (cls + " " + (r.get("what was tried", "") or "")).strip()
+                if _NEG_RE.search(text.lower()):
+                    continue
                 # the class cell is often free text ("request smuggling desync"), so match
                 # it (bare token + aliases) like a prose line in addition to exact+equiv.
                 hits = _class_equivs(cls) if cls and not re.fullmatch(r"-+", cls) else set()
-                hits |= _match_classes((cls + " " + (r.get("what was tried", "") or ""))
-                                       .strip(), classes)
+                hits |= _match_classes(text, classes)
                 credit(hits, a)
         except Exception:
             pass
@@ -194,9 +217,21 @@ def tested_classes(d, etype, classes):
             body = re.sub(r"^\s*---\s*\n.*?\n---\s*\n", "", raw, count=1, flags=re.S)
             for line in body.splitlines():
                 s = line.strip()
-                if not s or s.startswith(("#", "<!--", "|", "---")):
+                if not s or s.startswith(("#", "<!--", "|", "---", "- ")):
                     continue
-                asset = next((e for e in ents if e.lower() in s.lower()), "")
+                if _NEG_RE.search(s.lower()):
+                    continue
+                # entity attribution: token match on the entity's HOST (a URL entity
+                # https://api.x.com credits a prose line naming api.x.com; a short host
+                # `web` no longer matches `website`/`webshell` -- raw substring did, audit
+                # 2026-09-10). Boundary set allows a sentence period after the token.
+                asset = ""
+                for e in ents:
+                    h = _host_of(e.lower())
+                    if h and re.search(r"(?<![\w.-])" + re.escape(h) + r"(?![\w-])",
+                                       s.lower()):
+                        asset = e
+                        break
                 credit(_match_classes(s, classes), asset)
         except OSError:
             pass

@@ -32,6 +32,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 MAX_OUT = 40000        # per-entry output cap (chars); a huge scan is truncated, not dropped
+
+
+def _emit(text):
+    """PostToolUse additionalContext as proper JSON. Plain prose prints on this strict
+    channel are silently dropped by the harness (recon-capture's _emit pattern, audit
+    rec 2) - every advisory this hook wants the model to see must go through here."""
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse",
+                                             "additionalContext": text}}))
 try:
     from _meta import _DEV_META as _SHARED_DEV_META
 except Exception:
@@ -251,7 +259,7 @@ def main():
             except OSError:
                 n = 1
             if n >= 2:
-                print("EMPTY OUTPUT x%d: probe with a bare `whoami` before anything else - "
+                _emit("EMPTY OUTPUT x%d: probe with a bare `whoami` before anything else - "
                       "a username = the shell is alive and the empty result was real; "
                       "nothing = stuck; a non-username = the shell died back to your own "
                       "prompt (false-RCE trap, re-pop it). See docs/shell-interaction.md."
@@ -300,7 +308,7 @@ def main():
         if sig:
             line = _auto_card(d, tool, display, body, sig[0], sig[1])
             if line:
-                print(line)
+                _emit(line)
 
         # Mechanical wrong-vector tells, injected at decision time: after any scan/probe/
         # crack capture lands, run the stall battery over the WHOLE cmdlog (consecutive
@@ -324,7 +332,7 @@ def main():
                     r = subprocess.run(["python3", sc, d], capture_output=True, text=True,
                                        timeout=5, stdin=subprocess.DEVNULL)
                     if r.stdout.strip():
-                        print(r.stdout.strip())
+                        _emit(r.stdout.strip())
                         open(smarker, "w").close()
                         # A starvation/zero-yield verdict on the row the driver last
                         # served is doom-loop closure: the driver itself said try this;

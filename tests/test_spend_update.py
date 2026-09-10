@@ -59,14 +59,29 @@ def test_cap_advisory_and_stamp_dedup(monkeypatch, tmp_path):
     p = tmp_path / "t.jsonl"
     p.write_text(_usage_line("mystery-model", input_tokens=1000000) + "\n",
                  encoding="utf-8")
+    # while ENFORCING (no .enforce-off marker) drift-guard already DENIES Bash over this
+    # cap on PreToolUse - the PostToolUse advisory must stay silent, not echo the deny
+    monkeypatch.delenv("ENFORCE_OFF_MARKER", raising=False)
+    assert not (tmp_path / ".enforce-off").exists()
+    tt._spend_update(str(p), str(tmp_path))
+    assert tt._spend_update(str(p), str(tmp_path)) is None
+    m = json.load(open(tmp_path / ".metrics.json", encoding="utf-8"))
+    assert m["spend_usd"] == 3.0                       # spend kept accumulating silently
+    # under the hatch the advisory is the ONLY budget signal left: it fires, then the
+    # fresh .budget-stamp suppresses the next one (15-min dedup)
+    hatch = tmp_path / "hatch"
+    hatch.write_text("", encoding="utf-8")
+    monkeypatch.setenv("ENFORCE_OFF_MARKER", str(hatch))
+    (tmp_path / ".budget-stamp").unlink(missing_ok=True)
+    with open(p, "a", encoding="utf-8") as fh:
+        fh.write(_usage_line("mystery-model", input_tokens=1000000) + "\n")
     a = tt._spend_update(str(p), str(tmp_path))
-    assert a and "$3.00" in a and "$1.00" in a               # over-cap advisory fires
-    # fresh .budget-stamp suppresses the next one (15-min dedup), spend still accumulates
+    assert a and "$6.00" in a and "$1.00" in a               # over-cap advisory fires
     with open(p, "a", encoding="utf-8") as fh:
         fh.write(_usage_line("mystery-model", input_tokens=1000000) + "\n")
     assert tt._spend_update(str(p), str(tmp_path)) is None
     m = json.load(open(tmp_path / ".metrics.json", encoding="utf-8"))
-    assert m["spend_usd"] == 6.0
+    assert m["spend_usd"] == 9.0
 
 
 def test_failopen(monkeypatch, tmp_path):

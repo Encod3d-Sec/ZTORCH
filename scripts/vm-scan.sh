@@ -56,6 +56,10 @@ if [ -z "\$WID" ]; then
   echo "vm-scan: refuse - windows '$NAME'..'$NAME-5' all hold LIVE panes; card or kill one first (or use --win <distinct>)"
   exit 1
 fi
+# pipe-pane tee (clone pattern: file-mode TaskOutput): every scan tab mirrors its pane into a
+# /dev/shm log named like vm-bg's, so --status/--tail/--delta polling and autocard's log-based
+# wedge checks work on vm-scan tabs too, not just vm-bg ones. Killing the window ends the pipe.
+tmux pipe-pane -t "\$WID" -o "cat >> /dev/shm/${SESSION}-\$WINNAME.log"
 # the __ZT_RC=$?__ echo lands in the pane as the scan's last output line: autocard
 # greps it so a finished tab cards as exit=N (a died scan is visible, not just "done")
 tmux send-keys -t "\$WID" "\$(printf %s $B64 | base64 -d); echo __ZT_RC=\$?__" C-m

@@ -122,4 +122,4 @@ CRITICAL = creds to admin/owner, cross-account/tenant takeover, metadata role cr
 ## Context tools
 
 <!-- auto-wired: documented tools to reach for; do not hand-roll -->
-- [[aws]]
+- [[aws-attacks]]

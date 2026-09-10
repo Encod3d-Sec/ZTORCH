@@ -150,6 +150,13 @@ def _spend_update(transcript, d):
         except ValueError:
             cap = 0.0
         if cap > 0 and m["spend_usd"] > cap:
+            # drift-guard (PreToolUse) already DENIES Bash over this same cap while
+            # enforcing; this PostToolUse advisory would only echo the deny's message as
+            # extra context noise. Keep the advisory solely when enforcement is off
+            # (.enforce-off hatch), where it is the only budget signal left.
+            marker = os.environ.get("ENFORCE_OFF_MARKER") or os.path.join(HERE, ".enforce-off")
+            if not os.path.exists(marker):
+                return None
             import time as _t
             st = os.path.join(d, ".budget-stamp")
             if os.path.exists(st) and _t.time() - os.path.getmtime(st) < 900:
