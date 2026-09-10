@@ -58,6 +58,30 @@ CLASS_ALIASES = {
 }
 
 
+# driver-vs-coverage-classes.json spelling variants. A 4a board row closed under one
+# spelling must also credit the other: next_move's [gap] floor subtracts the JSON spelling
+# while the driver seeds rows with the routing.json spelling, so a row closed as `upload`
+# left `file-upload` a perpetual gap no board close could ever clear (D-D2, pass 15).
+_CLASS_EQUIV = {
+    "upload": "file-upload",
+    "smuggling": "request-smuggling",
+    "federation": "oauth-saml",
+    "bizlogic": "business-logic",
+    "cache": "web-cache",
+}
+
+
+def _class_equivs(cls):
+    """A class cell's credit set: itself plus every equivalent spelling (both directions)."""
+    hits = {cls}
+    for a, b in _CLASS_EQUIV.items():
+        if cls == a:
+            hits.add(b)
+        elif cls == b:
+            hits.add(a)
+    return hits
+
+
 def _match_classes(text, classes):
     """Subset of `classes` whose bare token (word-boundaried, so 'rce' does not match
     'source') or a CLASS_ALIASES phrase (substring) appears in `text`. Case-insensitive."""
@@ -109,7 +133,7 @@ def tested_classes(d, etype, classes):
             a = (r.get("asset") or r.get("host") or r.get("target") or "").strip().lower()
             cls = (r.get("vuln class", "") or "").strip().lower()
             if cls and not re.fullmatch(r"-+", cls):
-                credit({cls}, a)
+                credit(_class_equivs(cls), a)
     except Exception:
         pass
 
@@ -137,7 +161,12 @@ def tested_classes(d, etype, classes):
                 for a in (aff if isinstance(aff, list) else [aff]):   # block-list affected -> per-asset
                     credit(hits, a)
 
-    # 3. Deadends.md -> tested-and-cleared; attribute to a state entity if the line names one
+    # 3. Deadends.md -> tested-and-cleared; attribute to a state entity if the line names one.
+    #    The machine-appended format IS the table (`done --dead` writes rows G4 suppresses
+    #    board pairs from), so parse BOTH: table rows (asset cell + class cell with the same
+    #    spelling-equivalence credit as 4a, plus `what was tried` text) and hand-written
+    #    prose lines. The old prose-only scan skipped every `|` row -- a real deadend never
+    #    credited coverage, the exact perpetual-gap shape D-D2 chases (pass 15).
     de = os.path.join(d, "Deadends.md")
     if os.path.isfile(de):
         ents = []
@@ -146,6 +175,18 @@ def tested_classes(d, etype, classes):
                 e = entity(r, etype)
                 if e and e != "?":
                     ents.append(e)
+        except Exception:
+            pass
+        try:
+            for r in _parse_table(de):
+                a = (r.get("asset") or "").strip().lower()
+                cls = (r.get("class") or "").strip().lower()
+                # the class cell is often free text ("request smuggling desync"), so match
+                # it (bare token + aliases) like a prose line in addition to exact+equiv.
+                hits = _class_equivs(cls) if cls and not re.fullmatch(r"-+", cls) else set()
+                hits |= _match_classes((cls + " " + (r.get("what was tried", "") or ""))
+                                       .strip(), classes)
+                credit(hits, a)
         except Exception:
             pass
         try:

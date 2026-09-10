@@ -159,7 +159,7 @@ nxc smb 192.168.0.1 --pfx-base64 user.b64 -u user
 nxc smb 192.168.0.1 --pem-cert user.pem --pem-key key.pem -u user
 ```
 
-A ccache is written into the nxc home folder, reusable by other Kerberos tooling. See [[active-directory-certificate-services]].
+A ccache is written into the nxc home folder, reusable by other Kerberos tooling. See [[adcs]].
 
 ### DNS options
 

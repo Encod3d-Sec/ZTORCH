@@ -149,3 +149,32 @@ def test_dry_streak_increments_and_resets(tmp_path):
     _run(["--vault", str(vault), "--eng", str(eng), "done", "4a:2",
           "--poc", "poc/ssrf.png", "--kind", "req"])
     assert _state(eng)["dry_streak"] == 0
+
+
+def test_coverage_type_alias_and_deadend_credit(tmp_path, capsys):
+    """D-D2 (pass 15): a state frontmatter carrying the normalized `bugbounty` spelling
+    must not silently empty the report (BASE_CLASSES keys use `bb`), and a Deadends.md
+    line naming a class must clear it here exactly like it clears next_move's [gap]
+    floor - the two reports can never disagree."""
+    vault, eng = _setup(tmp_path / "a", "bb")
+    st = json.loads((eng / offensive.STATE_NAME).read_text())
+    st["type"] = "bugbounty"                      # the normalized spelling, not `bb`
+    (eng / offensive.STATE_NAME).write_text(json.dumps(st, indent=2))
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+             arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap", status="[x]"),
+        _row(id="4a:2", asset="web1", **{"vuln class": "smuggling"},
+             arsenal="", skill="", tool="nuclei", status="[ ]"),
+    ])
+    # the smuggling row exhausted -> one Deadends line (credit path next_move already uses)
+    (eng / "Deadends.md").write_text(
+        "| asset | class | what was tried | why exhausted | date | reopen-if |\n"
+        "|---|---|---|---|---|---|\n"
+        "| web1 | request smuggling desync | tee-cl probe | not a desync-capable proxy "
+        "| 2026-09-10 | new proxy version |\n", encoding="utf-8")
+    rc = _run(["--vault", str(vault), "--eng", str(eng), "coverage"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "web1" in out
+    line = [l for l in out.splitlines() if l.strip().startswith("web1")][0]
+    assert "smuggling" not in line            # deadend credit cleared the driver spelling
+    assert "request-smuggling" not in line    # ...and the JSON spelling

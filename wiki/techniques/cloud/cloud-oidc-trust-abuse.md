@@ -68,7 +68,7 @@ steps:
 - Use environment protection rules so only approved deployments mint privileged tokens.
 
 ## Tools
-AWS CLI and configure-aws-credentials; cloud IAM policy auditors. See [[cloud-iam-attacks]], [[aws-identity-access-management]], [[cicd-github-actions]].
+AWS CLI and configure-aws-credentials; cloud IAM policy auditors. See [[cloud-iam-attacks]], [[cicd-github-actions]].
 
 ## Sources
 - GitHub Docs, "Configuring OpenID Connect in Amazon Web Services" (slug: github-oidc-aws-docs).

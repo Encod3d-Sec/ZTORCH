@@ -1477,8 +1477,11 @@ def cmd_coverage(args):
     eng, state = _eng_state(args, "coverage")
     if eng is None:
         return 2
-    etype = state.get("type", "pentest")
-    base = BASE_CLASSES.get(etype, [])
+    raw = state.get("type", "pentest")
+    # state frontmatter may carry either spelling; BASE_CLASSES keys use the short
+    # one while the credit helpers normalize to the long one (D-D2, pass 15).
+    etype = {"bb": "bugbounty"}.get(raw, raw)
+    base = BASE_CLASSES.get({"bugbounty": "bb"}.get(raw, raw), [])
     rows = read_board(eng) + read_board_4b(eng)
     assets, seen = [], set()
     for r in rows:
@@ -1486,13 +1489,17 @@ def cmd_coverage(args):
         if a and a not in seen:
             seen.add(a)
             assets.append(a)
-    tested = {((r.get("asset") or "").strip().lower(),
-               (r.get("vuln class") or "").strip().lower())
-              for r in rows if _status_of(r) == "[x]"}
-    print("coverage (%s): base vuln classes with no [x] row per asset" % etype)
+    # credit = the SAME full path next_move's [gap] floor uses (4a [x] rows +
+    # written findings + Deadends lines), so this report and the gap nudges can
+    # never disagree: a deadend naming a class clears it here too (D-D2, pass 15).
+    import next_move
+    glob_l, norm = next_move.tested_lookup(eng, etype, base)
+    print("coverage (%s): base vuln classes untested per asset "
+          "(credit: 4a/4b [x] + findings + deadends)" % raw)
     gaps_found = False
     for a in assets:
-        gaps = [c for c in base if (a.lower(), c) not in tested]
+        gaps = [c for c in base
+                if c.lower() not in next_move.tested_for_asset(a, glob_l, norm)]
         if gaps:
             gaps_found = True
             print("  %s: %s" % (a, ", ".join(gaps)))
@@ -1500,7 +1507,7 @@ def cmd_coverage(args):
         print("  no assets on the board yet - run `board` first")
     elif not gaps_found:
         print("  none - every asset carries an [x] row for each base class "
-              "(row presence only, not evidence quality)")
+              "(credit only, not evidence quality)")
     return 0
 
 

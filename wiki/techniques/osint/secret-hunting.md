@@ -4,8 +4,8 @@ type: technique
 tags: [credentials, dorking, git-poc, javascript, osint, post-exploitation, recon, secrets, web]
 phase: recon
 date_created: 2026-05-08
-date_updated: 2026-06-18
-sources: [git-claude-osint, payloadsallthethings-apikeys, git-One-Liners]
+date_updated: 2026-09-10
+sources: [git-claude-osint, payloadsallthethings-apikeys, git-One-Liners, InternalAllTheThings]
 
 ---
 
@@ -78,6 +78,32 @@ for q in \
     | jq -r '.items[] | "\(.repository.full_name) → \(.html_url)"'
   sleep 3   # GH API rate limit: 10 req/10s for code search
 done
+```
+
+#### SCMKit: repo, code, and file search on self-hosted GitHub / GitLab
+
+Self-hosted SCM instances sit outside the GitHub dork corpus above. [SCMKit](https://github.com/xforcered/SCMKit) (Source Code Management Attack Toolkit) searches them with either password or API-key auth (`-c userName:password` / `-c apiKey`):
+
+```ps1
+# Discover repositories being used in a particular SCM system
+SCMKit.exe -s gitlab -m listrepo -c userName:password -u https://gitlab.something.local
+SCMKit.exe -s gitlab -m listrepo -c apiKey -u https://gitlab.something.local
+
+# Search for repositories by repository name
+SCMKit.exe -s github -m searchrepo -c userName:password -u https://github.something.local -o "some search term"
+SCMKit.exe -s gitlab -m searchrepo -c apikey -u https://gitlab.something.local -o "some search term"
+
+# Search for code containing a given keyword
+SCMKit.exe -s github -m searchcode -c userName:password -u https://github.something.local -o "some search term"
+SCMKit.exe -s github -m searchcode -c apikey -u https://github.something.local -o "some search term"
+
+# Search for files in repositories containing a given keyword in the file name
+SCMKit.exe -s gitlab -m searchfile -c userName:password -u https://gitlab.something.local -o "some search term"
+SCMKit.exe -s gitlab -m searchfile -c apikey -u https://gitlab.something.local -o "some search term"
+
+# List snippets owned by the current user in GitLab
+SCMKit.exe -s gitlab -m listsnippet -c userName:password -u https://gitlab.something.local
+SCMKit.exe -s gitlab -m listsnippet -c apikey -u https://gitlab.something.local
 ```
 
 ### Step 2 — JavaScript Deep Analysis
@@ -559,6 +585,7 @@ Search for the target name across: `stackoverflow.com`, `serverfault.com`, `supe
 | GitHub code search | Manual dork queries via browser / API |
 | [[burp-suite]] | Intercept + scan JS/API responses for secrets |
 | `trivy` | General purpose vulnerability and misconfiguration scanner (searches for API keys) |
+| [nord-stream](https://github.com/synacktiv/nord-stream) | List the secrets stored inside CI/CD environments and extract them by deploying malicious pipelines |
 | `badsecrets` / `crapsecrets` | Libraries for detecting known or weak secrets |
 | `SignSaboteur` | Burp Suite extension for editing/signing web tokens |
 | `secrets-patterns-db` | Database of regex patterns for detecting secrets |
@@ -614,3 +641,4 @@ treated as untested, not as closed.
 ## Sources
 
 - `raw/git/Claude-OSINT/` — ElementalSoul claude-osint skills v2.1 (offensive-osint §17–19, §23–24; example 04-secret-hunting.md)
+- Synacktiv, [CI/CD Secrets Extraction, Tips and Tricks](https://www.synacktiv.com/publications/cicd-secrets-extraction-tips-and-tricks.html) (Hugo Vincent, Théo Louis-Tisserand, 2023)

@@ -288,12 +288,22 @@ Ctrl+Z
 ```bash
 stty raw -echo; fg
 ```
+Press Enter twice after `fg`: the terminal looks dead until the first newline
+hands control to the remote shell (a silent prompt is not a failed upgrade).
 
 **Step 4 — Fix remote terminal dimensions:**
 ```bash
 export TERM=xterm-256color
 stty rows 50 columns 220
 # Match your actual terminal: run `stty size` in a local terminal first
+```
+
+**Step 5 - Skip the dance entirely (preferred when SSH is possible):**
+drop your key into a writable user's `~/.ssh/authorized_keys` and log in over
+SSH for a resilient, already-interactive session that survives resets:
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo '<your pubkey>' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
 ```
 
 ---

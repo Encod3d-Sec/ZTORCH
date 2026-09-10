@@ -4,7 +4,7 @@ type: technique
 tags: [enumeration, htb, linux, network, recon, windows]
 phase: enumeration
 date_created: 2026-05-08
-date_updated: 2026-05-08
+date_updated: 2026-09-10
 sources: [cpts-footprinting, cpts-nmap]
 ---
 
@@ -30,6 +30,55 @@ Service enumeration proceeds through three mechanisms:
 2. **Service-specific tooling** — Run dedicated tools for each discovered service (rpcclient, smbclient, snmpwalk, odat, etc.).
 3. **Manual verification** — Confirm findings by directly connecting to the service and issuing protocol commands.
 4. **Cross-reference** — Credentials found in one service (e.g., FTP) may unlock another (e.g., SSH). Check for password reuse. See [[pass-the-hash]] when NTLM hashes are obtained.
+
+### Version fingerprint reflex
+
+The instant a service is fingerprinted to a **product + version**, run BOTH of these BEFORE hand-rolling a PoC or deep-diving a CVE writeup. A canned Exploit-DB PoC or a ready `use`-able msf module is very often an instant shell, and it beats reinventing it.
+
+```bash
+# local Exploit-DB search (offline) — then read/copy the match
+searchsploit blogengine 3.3          # match by product + version
+searchsploit -x 47010                 # READ the PoC before running it
+searchsploit -m 47010                 # copy it into the working dir
+
+# Metasploit module search — a matching module = often instant RCE
+msfconsole -qx "search blogengine; exit"
+msfconsole -qx "search type:exploit platform:windows cve:2019-6714; exit"
+```
+
+Habit / checklist:
+1. nmap/whatweb gives `<product> <version>` -> immediately `searchsploit <product> <version>` AND `msfconsole -qx "search <product>"`.
+2. A hit -> `searchsploit -x <id>` (read it) or `use <module>` before writing anything custom.
+3. Cross-check the version against the wiki CVE lookup ([[cve-arsenal]]) and [[metasploit]]; prefer the documented/ready PoC over a fresh one.
+4. Watch for **mislabeled CVE/EDB numbers** — vendors and write-ups conflate them (one EDB id can map to a differently-numbered CVE, and the same bug gets cited under 2-3 CVEs). Trust the PoC's actual behaviour + the affected-version string, not the label.
+
+This is the "known version -> quick win" reflex: most boot-to-root footholds are a searchsploit/msf one-liner away once the version is pinned, and skipping it to hand-roll is the recurring time sink. See [[pentest-methodology]] · [[metasploit]] · [[cve-arsenal]].
+
+<!-- promoted-slug: version-searchsploit-msf-reflex -->
+
+## Quick Port Reference
+
+| Port(s) | Protocol | Primary Tools |
+|---------|----------|---------------|
+| 21/tcp | FTP | `nmap -sC`, `wget`, `nc`, `openssl s_client` |
+| 22/tcp | SSH | `ssh-audit`, `ssh -v` |
+| 25,465,587/tcp | SMTP | `nmap`, `telnet`, `smtp-user-enum` |
+| 53/tcp+udp | DNS | `dig axfr`, `dnsenum` |
+| 110,995/tcp | POP3 | `openssl s_client`, `curl` |
+| 111,2049/tcp | NFS | `showmount`, `mount`, `nmap --script nfs*` |
+| 139,445/tcp | SMB | `smbclient`, `smbmap`, `crackmapexec`, `enum4linux-ng`, `rpcclient` |
+| 143,993/tcp | IMAP | `openssl s_client`, `curl -k imaps://` |
+| 161/udp | SNMP | `snmpwalk`, `onesixtyone`, `braa` |
+| 389,636/tcp | LDAP | `ldapsearch`, `nmap` |
+| 512-514/tcp | R-Services | `rlogin`, `rwho`, `rusers` |
+| 623/udp | IPMI | `nmap`, Metasploit `ipmi_dumphashes`, `hashcat -m 7300` |
+| 873/tcp | RSYNC | `nc`, `rsync -av --list-only` |
+| 1433/tcp | MSSQL | `nmap --script ms-sql-*`, `impacket-mssqlclient` |
+| 1521/tcp | Oracle TNS | `nmap --script oracle-sid-brute`, `odat`, `sqlplus` |
+| 3306/tcp | MySQL | `nmap --script mysql*`, `mysql -u root -h` |
+| 3389/tcp | RDP | `nmap --script rdp*`, `rdp-sec-check.pl`, `xfreerdp` |
+| 5985,5986/tcp | WinRM | `evil-winrm` |
+| 135/tcp | WMI | `impacket-wmiexec` |
 
 ---
 
