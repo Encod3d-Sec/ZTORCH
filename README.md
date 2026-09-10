@@ -6,17 +6,17 @@
    ) ) (
   ( ( ) )                                          Z   T   O   R   C   H
    ) (*)                             ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
-    )|(                              Z.AI Targeted Offensive Recon & Compromise Harness
+    )|(                      GLM-5.3, GLM-5.3-Flash Targeted Offensive Recon & Compromise Harness
      |
     |=|
     | |
     |_|
 ```
 
-[![Built for ZCode](https://img.shields.io/badge/built%20for-ZCode%20%2F%20Z.AI-blue.svg)](https://z.ai)
+[![Built for GLM](https://img.shields.io/badge/built%20for-ZCode%20%2F%20Z.AI-blue.svg)](https://z.ai)
 [![Wiki pages](https://img.shields.io/badge/wiki-500%2B%20pages-brightgreen.svg)](wiki/)
 
-**An AI-driven pentesting / bug-bounty knowledge base and automation harness for [ZCode](https://z.ai) (Z.AI's GLM coding agent).** Clone it and you get a 500+ page offensive-security wiki, a driver that runs a whole engagement autonomously, and per-vulnerability "hunt" skills wired together so the agent checks the knowledge base before it attacks and never repeats a dead end. Think HackTricks or PayloadsAllTheThings, but semantically searchable and driven by an autonomous agent instead of you ctrl-F'ing a browser tab.
+**An AI-driven pentesting / bug-bounty knowledge base and automation harness for [GLM](https://z.ai) .** Clone it and you get a 500+ page offensive-security wiki, a driver that runs a whole engagement autonomously, and per-vulnerability "hunt" skills wired together so the agent checks the knowledge base before it attacks and never repeats a dead end. Think HackTricks or PayloadsAllTheThings, but semantically searchable and driven by an autonomous agent instead of you ctrl-F'ing a browser tab.
 
 > **Authorized testing only.** Everything here assumes a legal engagement: a signed pentest, an in-scope bug-bounty program, or your own lab/CTF. Staying in scope and within the rules of engagement is on you.
 
