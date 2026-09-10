@@ -71,7 +71,7 @@ Server logic probes:
 - For synced passkeys, harden the syncing cloud account and its recovery path.
 
 ## Tools
-See [[authentication-attacks]] and [[mfa-bypass]] for the broader auth-bypass surface, [[oauth-attacks]] for federated step-up abuse, and payloads in [[webauthn-passkey]].
+See [[authentication-attacks]] (including its MFA Bypass section) for the broader auth-bypass surface, [[oauth-attacks]] for federated step-up abuse, and payloads in [[webauthn-passkey]].
 
 ## Sources
 - Proofpoint research (via SC Media and SecurityWeek): Entra ID passkey downgrade via AitM policy steering (slug: proofpoint-entra-passkey-downgrade).

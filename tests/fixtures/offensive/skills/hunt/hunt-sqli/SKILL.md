@@ -11,7 +11,7 @@ description: SQLi and NoSQLi hunting (fixture slice).
 qmd_query "SQL injection error-based union boolean blind" via wiki-search MCP
 ```
 
-Primary page: [[wiki/payloads/sqli]]. Automation: [[sqlmap]].
+Primary page: [[wiki/payloads/sqli]]. Automation: [[wiki/tools/sqlmap]].
 
 ## Attack Surface Signals
 

@@ -368,7 +368,13 @@ def engagement_type(d=None):
         if val in TYPES:
             return val
     except Exception:
-        pass
+        try:   # shared loader: the one corrupt-state signal every hook routes through here
+            if os.path.isfile(os.path.join(d, ".offensive.json")):
+                import _telemetry
+                _telemetry.log_event("hook", d=d, hook="engagement-type",
+                                     error=".offensive.json unparseable - type detection fell back to pentest")
+        except Exception:
+            pass
     return "pentest"
 
 

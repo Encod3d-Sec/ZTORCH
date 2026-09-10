@@ -10,9 +10,17 @@ SessionStart hook surface that drift as one advisory line.
 When you add a new vault hook to setup/install-hooks.sh, also add it to
 EXPECTED_HOOKS below so the drift check stays accurate on every device.
 
-missing_hooks() returns the script basenames that the expected set requires but
-that are absent from settings.json. It fails open: an unreadable or missing
-settings.json returns [] (we cannot assert drift without the file).
+missing_hooks() returns the expected hooks that are absent from settings.json,
+including hooks registered only under the WRONG event (a hook on the wrong
+event never fires where the framework expects it, so it fails like a missing
+one, named as "base (expected X, registered under Y)"). It fails open: an
+unreadable or missing settings.json returns [] (we cannot assert drift without
+the file).
+
+unregistered_scripts() WARNs on skills/hooks scripts registered under NO event
+in the committed .zcode/config.json, and pycache_audit() WARNs on (and deletes)
+orphaned __pycache__ bytecode whose source .py is gone. Both are advisory: they
+never flip the exit code.
 
 missing_skills() does the parallel check for skills: setup/install-skills.sh
 symlinks every SKILL.md-bearing dir under skills/ into ~/.claude/skills so the
@@ -54,9 +62,18 @@ def default_settings_path():
     return os.path.expanduser("~/.claude/settings.json")
 
 
-def _registered_commands(settings):
-    """Yield every hook command string across all events in settings."""
-    for groups in settings.get("hooks", {}).values():
+def _event_commands(settings):
+    """Yield (event, command) for every registered hook command. Handles both
+    registration shapes: ~/.claude/settings.json (hooks -> event -> groups)
+    and the committed .zcode/config.json (hooks -> {"events": {event -> groups}}).
+    """
+    hooks = settings.get("hooks", {})
+    if not isinstance(hooks, dict):
+        return
+    events = hooks.get("events")
+    if not isinstance(events, dict):
+        events = hooks  # settings.json shape: hooks maps event -> groups
+    for event, groups in events.items():
         if not isinstance(groups, list):
             continue
         for group in groups:
@@ -66,15 +83,22 @@ def _registered_commands(settings):
                 if isinstance(hk, dict):
                     cmd = hk.get("command", "")
                     if isinstance(cmd, str):
-                        yield cmd
+                        yield event, cmd
+
+
+def _registered_commands(settings):
+    """Yield every hook command string across all events in settings."""
+    for _event, cmd in _event_commands(settings):
+        yield cmd
 
 
 def missing_hooks(settings_path=None):
-    """Return expected script basenames absent from settings.json.
-
-    Match is by the script basename appearing anywhere in a registered hook
-    command string (commands use ~/.claude/vault-hooks/<name> or
-    `python3 ... <name>`). Fails open: unreadable/missing settings -> [].
+    """Return expected hooks absent from settings.json: fully missing, or
+    registered only under the WRONG event. Wrong-event entries are named as
+    "base (expected X, registered under Y)" so the fix is actionable. Match is
+    by the script basename appearing anywhere in a registered hook command
+    string (commands use ~/.claude/vault-hooks/<name> or `python3 ... <name>`).
+    Fails open: unreadable/missing settings -> [].
     """
     if settings_path is None:
         settings_path = default_settings_path()
@@ -84,12 +108,21 @@ def missing_hooks(settings_path=None):
     except Exception:
         return []  # fail open: cannot assert drift without the file
 
-    commands = list(_registered_commands(settings))
-    missing = []
-    for _event, basename in EXPECTED_HOOKS:
-        if not any(basename in cmd for cmd in commands):
-            missing.append(basename)
-    return missing
+    found_events = {}  # expected basename -> set of events it is registered under
+    for event, cmd in _event_commands(settings):
+        for _expected, basename in EXPECTED_HOOKS:
+            if basename in cmd:
+                found_events.setdefault(basename, set()).add(event)
+
+    problems = []
+    for event, basename in EXPECTED_HOOKS:
+        found = found_events.get(basename)
+        if not found:
+            problems.append(basename)
+        elif event not in found:
+            problems.append("%s (expected %s, registered under %s)"
+                            % (basename, event, ", ".join(sorted(found))))
+    return problems
 
 
 def vault_root():
@@ -167,11 +200,83 @@ def missing_skills(skills_root=None, dest=None):
     return sorted(missing)
 
 
+# engagement-init.py self-registers the "engagement-init" telemetry tag
+# (_telemetry.hook), so that name is never unregistered drift.
+SELF_REGISTERED_TAG = "engagement-init"
+
+
+def unregistered_scripts(hooks_root=None, config_path=None):
+    """Return skills/hooks/*.py|*.sh files registered under NO event in the
+    committed .zcode/config.json. WARN-class, not FAIL: an unregistered script
+    may be an intentional library, so callers must not flip their exit code on
+    it. `_`-prefixed names are shared libraries (imported, never registered);
+    engagement-init's self-registered tag is excluded by stem. Fails open:
+    unreadable config or hooks dir -> [].
+    """
+    if hooks_root is None:
+        hooks_root = os.path.join(vault_root(), "skills", "hooks")
+    if config_path is None:
+        config_path = os.path.join(vault_root(), ".zcode", "config.json")
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            settings = json.load(f)
+        names = os.listdir(hooks_root)
+    except Exception:
+        return []  # fail open: cannot assert drift without both sides
+
+    registered = set()
+    for _event, cmd in _event_commands(settings):
+        for token in cmd.split():
+            name = token.rsplit("/", 1)[-1].rstrip('"')
+            if name.endswith((".py", ".sh")):
+                registered.add(name)
+
+    out = []
+    for name in sorted(names):
+        if not name.endswith((".py", ".sh")) or name.startswith("_"):
+            continue
+        if name in registered or os.path.splitext(name)[0] == SELF_REGISTERED_TAG:
+            continue
+        out.append(name)
+    return out
+
+
+def pycache_audit(roots=None):
+    """Delete and return orphaned .pyc files under skills/hooks/ and scripts/:
+    bytecode whose source .py no longer sits next to its __pycache__ dir
+    (Python's own source-resolution rule for cached bytecode). Stale bytecode
+    for deleted sources is safe to drop; the dirs themselves and any .pyc
+    whose source still lives are never touched. WARN-class: advisory only.
+    """
+    if roots is None:
+        roots = [os.path.join(vault_root(), "skills", "hooks"),
+                 os.path.join(vault_root(), "scripts")]
+    deleted = []
+    for root in roots:
+        for dirpath, _dirs, files in os.walk(root):
+            if os.path.basename(dirpath) != "__pycache__":
+                continue
+            src_dir = os.path.dirname(dirpath)
+            for f in files:
+                if not f.endswith(".pyc"):
+                    continue
+                stem = f[:-4].split(".cpython-")[0]
+                if not stem or os.path.exists(os.path.join(src_dir, stem + ".py")):
+                    continue
+                path = os.path.join(dirpath, f)
+                try:
+                    os.remove(path)
+                    deleted.append(path)
+                except OSError:
+                    pass
+    return deleted
+
+
 def main():
     rc = 0
     miss_h = missing_hooks()
     if miss_h:
-        print("Missing vault hooks: " + ", ".join(miss_h))
+        print("Missing or mis-registered vault hooks: " + ", ".join(miss_h))
         print("Run: bash setup/install-hooks.sh")
         rc = 1
     else:
@@ -189,6 +294,15 @@ def main():
         rc = 1
     else:
         print("all vault skills registered")
+    # advisory drift classes below: WARN only, never flip the exit code
+    unreg = unregistered_scripts()
+    if unreg:
+        print("WARN unregistered scripts in skills/hooks/ (intentional library, or "
+              "missing .zcode/config.json registration): " + ", ".join(unreg))
+    orphans = pycache_audit()
+    if orphans:
+        print("WARN deleted %d orphaned .pyc (source .py gone): %s"
+              % (len(orphans), ", ".join(os.path.basename(p) for p in orphans)))
     return rc
 
 

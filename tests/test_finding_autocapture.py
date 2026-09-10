@@ -12,6 +12,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HOOK = ROOT / "skills" / "hooks" / "capture-poc.py"
+RECON_HOOK = ROOT / "skills" / "hooks" / "recon-capture.py"
 
 
 def _load():
@@ -21,6 +22,20 @@ def _load():
     sys.modules["capture_poc"] = m
     spec.loader.exec_module(m)
     return m
+
+
+def _run_recon(vault, cmd, out):
+    env = dict(os.environ, ZTORCH_VAULT=str(vault))
+    payload = json.dumps({"tool_name": "Bash",
+                          "tool_input": {"command": cmd},
+                          "tool_response": out})
+    return subprocess.run([sys.executable, str(RECON_HOOK)], input=payload,
+                          capture_output=True, text=True, timeout=30, env=env)
+
+
+def _ctx(r):
+    return json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"] \
+        if r.stdout.strip() else ""
 
 
 def _run_hook(vault, cmd, out):
@@ -102,3 +117,35 @@ def test_advisories_emit_strict_posttooluse_json(tmp_path):
     hso2 = json.loads(r2.stdout)["hookSpecificOutput"]
     assert hso2["hookEventName"] == "PostToolUse"
     assert "EMPTY OUTPUT x2" in hso2["additionalContext"]
+
+
+def test_devmeta_and_heredoc_text_do_not_fire_target_advisories(tmp_path):
+    """2026-09-10 FP fix: framework work (a heredoc writing a pytest file whose body
+    mentions pspy/grep/pam.d, plus a /dev/shm meta path) must NOT fire the readwhole/
+    privesc/ad nudges nor plant the privesc-tool marker; a plain real command still
+    fires its nudge."""
+    v = _mk_vault(tmp_path)
+    (v / "targets" / "engz" / "state.md").write_text(
+        "# State\n\n| target | service | port | access | notes |\n"
+        "|---|---|---|---|---|\n"
+        "| 10.0.0.5 | ssh | 22 | foothold | shell |\n", encoding="utf-8")
+    heredoc_cmd = ("cat > /dev/shm/t.py <<'EOF'\n"
+                   "body = 'grep pspy /etc/pam.d/sudo'\n"
+                   "assert 'pspy' in body\n"
+                   "EOF\n"
+                   "python3 -m pytest /dev/shm/t.py -q")
+    ctx = _ctx(_run_recon(v, heredoc_cmd, "1 passed"))
+    for bad in ("READ ", "PRIVESC TOOL-FIRST", "AD PRE-FLIGHT"):
+        assert bad not in ctx, bad
+    assert not (v / "targets" / "engz" / ".privesc-tool-launched").exists(), \
+        "dev text merely mentioning pspy must not plant the suppression marker"
+    # pure heredoc leg: not a dev/meta command, but the pspy/grep text lives only in
+    # the heredoc body (non-executable text), so still no advisory
+    vm_heredoc = ("bash /root/vm.sh 'cat > /dev/shm/notes.txt <<EOF\n"
+                  "grep pspy /etc/pam.d/sudo\nEOF'")
+    ctx2 = _ctx(_run_recon(v, vm_heredoc, "ok"))
+    for bad in ("READ ", "PRIVESC TOOL-FIRST", "AD PRE-FLIGHT"):
+        assert bad not in ctx2, bad
+    # plain real command still produces the expected nudge
+    ctx3 = _ctx(_run_recon(v, "bash /root/vm.sh 'klist'", ""))
+    assert "AD PRE-FLIGHT" in ctx3

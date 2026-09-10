@@ -15,6 +15,8 @@ Reusable list of product/appliance default credentials. **Check here before any 
 
 Per the engagement discipline, default-cred checks are an acceptable early move; broad spraying of captured creds is a last resort. See [[bug-hunting-methodology]].
 
+When the product has no documented default (or it was changed), pivot to leak discovery via [[secret-hunting]] rather than spraying.
+
 | product | version | username | password | source | notes |
 |---------|---------|----------|----------|--------|-------|
 | MSSQL | any | sa | (blank) / sa | vendor | SQL auth; check before assuming |

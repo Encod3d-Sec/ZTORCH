@@ -1,11 +1,11 @@
 ---
 title: "Authentication Attacks"
 type: technique
-tags: [authentication, brute-force, enumeration, exploitation, h1, portswigger, thm, web]
+tags: [authentication, brute-force, enumeration, exploitation, h1, mfa, portswigger, thm, web]
 phase: exploitation
 date_created: 2026-05-08
 date_updated: 2026-09-10
-sources: [ps-general-concepts, ps-indepth-attacks, ps-labs-auth, thm-adv-auth-bruteforce, h1-scraped-authentication-attacks, git-portswigger-all-labs]
+sources: [ps-general-concepts, ps-indepth-attacks, ps-labs-auth, thm-adv-auth-bruteforce, thm-adv-mfa, h1-scraped-authentication-attacks, git-portswigger-all-labs]
 ---
 
 ## What it is
@@ -145,7 +145,43 @@ The password change form can be abused to brute-force the current password witho
 
 ### 7. MFA Bypass
 
-MFA bypass (2FA step-skip, account-cookie logic) -> [[mfa-bypass]].
+Quick payloads: [[payloads/mfa-bypass]].
+
+MFA bypass defeats the second-factor step using only the first factor, or abuses flaws in how the second step is enforced. It works when the app does not enforce step 2 server-side before granting the session, uses a weak guessable code without lockout, ties verification to an attacker-controllable cookie, or delivers codes over SMS (SIM-swap risk). Note that password + email code is single-factor authentication with an extra step: the same knowledge factor is verified twice. Prerequisites: valid first-factor credentials (or a stolen password), knowledge of the post-login URL structure for logic bypass, an own account to observe the flow, and no rate limiting on the 2FA endpoint for code brute force.
+
+#### Step skip (logic bypass)
+
+After completing the password step, when redirected to the 2FA prompt, navigate directly to an authenticated page (`/my-account`, `/dashboard`). If it loads, the 2FA step is enforced only client-side or not at all server-side.
+
+#### Account cookie manipulation (broken logic)
+
+If a cookie set after step 1 identifies the account being verified (`Set-Cookie: account=carlos`), log in with your own account, switch that cookie to the victim's username, then brute-force the 4-6 digit code on the step-2 endpoint. Intruder: Sniper, payload type Numbers, `000000`-`999999` zero-padded, match on a `302` redirect. ffuf alternative without Burp Pro:
+
+```sh
+seq -w 0 9999 > numbers.txt
+ffuf -X POST -u "https://TARGET/login2" \
+  -H "Cookie: verify=carlos; session=SESSION_TOKEN" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "mfa-code=FUZZ" -w numbers.txt -fc 400,401,200
+```
+
+#### 2FA code brute force
+
+Without lockout on the 2FA endpoint, brute the code directly: 4-digit codes are 10,000 combinations; 6-digit TOTP is 1,000,000 but each code is valid only ~30 seconds, so it needs a fast or rate-limit-free endpoint. If the app logs the user out after N failed 2FA attempts, automate the full login-plus-2FA sequence with Turbo Intruder or a macro replaying the first-step login before each code attempt.
+
+When the 2FA endpoint rotates CSRF tokens per request, plain Intruder fails after the first request (stale token). Use a Burp session-handling macro (Project Options -> Sessions -> Session Handling Rules -> Add -> Run a macro) recorded as `GET /login` -> `POST /login` -> `GET /login2`, configured to extract the CSRF token from `GET /login` and inject it into each Intruder request. Add the lab URLs to scope, set the payload to Numbers `0000`-`9999`, maximum 1 concurrent request; a `302` is the hit, and the response must be shown in browser immediately because tokens expire fast.
+
+#### SIM swapping
+
+SMS-delivered codes can be received by the attacker after socially engineering the victim's mobile carrier to transfer the number to an attacker-controlled SIM. Out-of-band social engineering rather than a technical web exploit, but relevant when assessing SMS-based 2FA risk.
+
+#### Cookie / token reuse
+
+A completed-MFA cookie or token can be reusable from a previous session without repeating MFA, forgeable via a user-controlled claim (see [[jwt-attacks]] for JWT-based tokens), or replayable across accounts when not bound to a specific user identity.
+
+#### Account recovery bypass
+
+Password reset and recovery flows often bypass MFA entirely. Test whether email-link reset also resets or bypasses MFA, whether admin-triggered resets receive an MFA exemption, and whether backup codes can be brute-forced or are single-use.
 
 ## Key Payloads / Examples
 
@@ -174,6 +210,24 @@ X-Forwarded-Host: YOUR-EXPLOIT-SERVER.net
 Content-Type: application/x-www-form-urlencoded
 
 username=carlos
+```
+
+MFA step-skip probe (after step 1, before code entry):
+
+```http
+GET /my-account HTTP/1.1
+Host: target.com
+Cookie: session=<session_after_step_1>
+```
+
+MFA account-cookie takeover (brute the code against the victim's account):
+
+```http
+POST /login2 HTTP/1.1
+Cookie: account=victim-user; session=YOUR_OWN_SESSION
+Content-Type: application/x-www-form-urlencoded
+
+mfa-code=§000000§
 ```
 
 ## Bypasses and Variants
@@ -242,10 +296,12 @@ SSH certificates issued for certain GitHub contexts were accepted by `gist.githu
 - Generate password reset tokens with high entropy; validate the token on form submission; expire tokens after short periods and destroy immediately on use
 - Cookie-based "remember me" tokens must be random and high-entropy — do not encode credentials in any form
 - On password reset, destroy all active sessions
+- Enforce 2FA server-side: bind the verification to the specific session and user, never a user-controlled cookie; invalidate all sessions and require re-authentication (including 2FA) on password reset
+- Rate-limit and lock out 2FA code endpoints; prefer app-based TOTP over SMS; make backup codes single-use and rate-limit their consumption
 
 ## Tools
 
-- [[burp-suite]] — Intruder (Sniper / Pitchfork / Cluster Bomb), Repeater
+- [[burp-suite]] — Intruder (Sniper / Pitchfork / Cluster Bomb), Repeater; session-handling macros and Turbo Intruder for multi-step 2FA brute force
 - [[wiki/tools/ffuf]] — fast HTTP fuzzing for login endpoints
 - [[wiki/tools/hydra]] — network login brute force
 - hashcat — offline cracking of password hashes found in cookies
@@ -384,12 +440,14 @@ Combine with absent login lockout/rate-limit for same-day account takeover requi
 - PortSwigger Academy: In-depth Attacks — Authentication
 - PortSwigger Labs: Labs 1–14 (Authentication Vulnerabilities)
 - TryHackMe: Enumeration & Brute Force room
+- TryHackMe: Multifactor Authentications room
 
 ## Wired sub-techniques
 - [[passkey-webauthn-attacks]]
 
 <!-- auto-wired: context-reachable sub-technique pages -->
-- [[mfa-bypass]]
+- [[account-takeover]]
+- [[rate-limit-bypass]]
 - [[webauthn-passkey]]
 - [[captcha-bypass]]
 - [[email-address-parsing-attacks]]

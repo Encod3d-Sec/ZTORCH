@@ -24,6 +24,14 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+# Dev/meta-layer guard for the per-nudge false-positive fix: a command about the harness
+# itself (pytest/git/tests/...) is not a target action. Fail-open to a never-matching
+# pattern so a missing _meta module degrades to the pre-fix nudge behavior.
+try:
+    from _meta import _DEV_META
+except Exception:
+    _DEV_META = re.compile(r"(?!)")
+
 # tools that produce host/service/asset intel
 RECON_TOOLS = (r"nmap|masscan|nxc|netexec|crackmapexec|cme|ffuf|httpx|subfinder|rustscan|"
                r"naabu|dnsx|katana|gau|amass|gowitness|arjun|nuclei|gobuster|feroxbuster")
@@ -793,7 +801,10 @@ def _readwhole_nudge(d, cmd, eng):
     """Post-foothold, a grep/head against a high-signal config is the recurring miss (the box's root
     was a pam_ssh_agent_auth line in /etc/pam.d/sudo we grepped past). Nudge to read it WHOLE, once
     per file path per engagement."""
-    if not (_GREP_RE.search(cmd) and _HIGH_SIGNAL_CFG.search(cmd)):
+    if _DEV_META.search(cmd):
+        return None                                # dev/meta-layer command, not a target action
+    cmd_scan = _HEREDOC_RE.sub(" ", cmd)           # heredoc bodies are payload text, not commands
+    if not (_GREP_RE.search(cmd_scan) and _HIGH_SIGNAL_CFG.search(cmd_scan)):
         return None
     # post-foothold gate: only once a foothold exists (privesc phase)
     footh = False
@@ -807,7 +818,7 @@ def _readwhole_nudge(d, cmd, eng):
         return None
     m = re.search(
         r"(/etc/pam\.d/\S+|\S*sudoers\S*|\S*wp-config\S*|\S+\.conf|\S*authorized_keys\S*|\S+\.env"
-        r"|\S*linpeas\S*|\S*pspy\S*)", cmd)
+        r"|\S*linpeas\S*|\S*pspy\S*)", cmd_scan)
     path = (m.group(1).strip("'\"") if m else "the config")
     seen = os.path.join(d, ".readwhole-nudged")
     try:
@@ -839,13 +850,17 @@ _MANUAL_PRIVESC_RE = re.compile(
 def _privesc_toolfirst_nudge(d, cmd, eng):
     """Post-foothold: a manual SUID/cron/getcap enum before linpeas+pspy have run -> nudge ONCE to run
     the tools first and read them whole. Records a linpeas/pspy launch (suppresses the nudge). Fail-open."""
-    if _PRIVESC_TOOL_RE.search(cmd):
+    if _DEV_META.search(cmd):
+        return None    # dev/meta command; must precede the tool-re check below so merely
+                       # MENTIONING linpeas/pspy in dev text cannot plant the suppression marker
+    cmd_scan = _HEREDOC_RE.sub(" ", cmd)           # heredoc bodies are payload text, not commands
+    if _PRIVESC_TOOL_RE.search(cmd_scan):
         try:
             open(os.path.join(d, ".privesc-tool-launched"), "a").close()
         except Exception:
             pass
         return None
-    if not _MANUAL_PRIVESC_RE.search(cmd):
+    if not _MANUAL_PRIVESC_RE.search(cmd_scan):
         return None
     footh = False
     try:
@@ -909,7 +924,10 @@ _AD_TOOL_RE = re.compile(
 def _ad_preflight_nudge(d, cmd):
     """Fire once per engagement on the first Kerberos/impacket-flavored command: advise checking
     the VM's /etc/hosts and /etc/krb5.conf for a stale realm/hostname entry from a prior box."""
-    if not _AD_TOOL_RE.search(cmd or ""):
+    if _DEV_META.search(cmd or ""):
+        return None                                # dev/meta-layer command, not a target action
+    cmd_scan = _HEREDOC_RE.sub(" ", cmd or "")     # heredoc bodies are payload text, not commands
+    if not _AD_TOOL_RE.search(cmd_scan):
         return None
     marker = os.path.join(d, ".ad-preflight-nudged")
     if os.path.exists(marker):

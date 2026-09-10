@@ -42,7 +42,7 @@ Climb T0 -> T1 -> T2 -> T3 when the current tier is exhausted OR a fingerprint u
 
 ## 5. Pivot to the parameter axis
 Extension fuzz BEFORE page fuzz: probe `indexFUZZ` against `web-extensions.txt` (entries already include the dot) to learn the stack, then page-fuzz with `FUZZ.<ext>`; on param mines run GET and POST both, a deprecated GET hit means keep going to POST ([[wiki/tools/ffuf]]).
-When a discovered endpoint takes input, fuzz hidden params: `arjun -u https://TARGET/endpoint` (see [[arjun]]) or ffuf with `bash scripts/wl-pick.sh params`. Discovered params feed the hunt-* skills (SSRF/LFI/IDOR/cmdi).
+When a discovered endpoint takes input, fuzz hidden params: `arjun -u https://TARGET/endpoint` (see [[wiki/tools/arjun]]) or ffuf with `bash scripts/wl-pick.sh params`. Discovered params feed the hunt-* skills (SSRF/LFI/IDOR/cmdi).
 
 ## 6. WAF / throttle / Cloudflare
 Detect: `wafw00f`/`whatwaf` up front; headers `cf-ray`/`server: cloudflare`/`x-sucuri`/`x-datadome`/`incapsula`; mid-run `429`+`Retry-After`, climbing latency, `000`/timeouts, a wall of uniform `403`.
@@ -56,4 +56,4 @@ Respond, in order:
 A `403` on a discovered dir is a signal, not an end. Try bypass BEFORE abandoning: path mutations (`/admin/`, `/admin/.`, `/admin/..;/`, `/%2e/admin`, case, trailing `?`), method swap (`GET`->`POST`/`HEAD`/`TRACE`), and header spoofs (`X-Forwarded-For: 127.0.0.1`, `X-Original-URL`, `X-Rewrite-URL`). Use a dedicated tool (`byp4xx`/`nomore403`) rather than a wordlist - 403 bypass is mutation, not brute. See [[cdn-waf-bypass]].
 
 ## Wiki
-Tools: [[wiki/tools/ffuf]] [[wiki/tools/feroxbuster]] [[cewl]] [[arjun]]. Reference: [[wordlists]] (the selection matrix, human-readable twin of wordlist-map.json), [[cdn-waf-bypass]] (WAF/origin bypass). Stuck -> Skill(redteamlead).
+Tools: [[wiki/tools/ffuf]] [[wiki/tools/feroxbuster]] [[wiki/tools/cewl]] [[wiki/tools/arjun]]. Reference: [[wordlists]] (the selection matrix, human-readable twin of wordlist-map.json), [[cdn-waf-bypass]] (WAF/origin bypass). Stuck -> Skill(redteamlead).

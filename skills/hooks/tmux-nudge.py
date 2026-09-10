@@ -105,6 +105,14 @@ def _driver_served(cmd):
                             encoding="utf-8"))
         tool = str((st.get("last_move") or {}).get("tool") or "").strip().lower()
     except Exception:
+        try:      # corrupt driver state must not silently kill the driver-served skip
+            if os.path.exists(os.path.join(VAULT, "targets", eng, ".offensive.json")):
+                import _telemetry
+                _telemetry.log_event("hook", d=os.path.join(VAULT, "targets", eng),
+                                     hook="tmux-nudge",
+                                     error=".offensive.json unparseable - driver-served skip disabled")
+        except Exception:
+            pass
         return False
     if not tool:
         return False

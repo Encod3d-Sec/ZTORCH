@@ -346,6 +346,14 @@ def main():
                             rid = ((st.get("last_move") or {}).get("row") or "").strip()
                         except Exception:
                             rid = ""
+                            try:   # corrupt state: stall auto-close silently off; record it
+                                if os.path.isfile(state_p):
+                                    import _telemetry
+                                    _telemetry.log_event(
+                                        "hook", d=d, hook="capture-poc",
+                                        error=".offensive.json unparseable - stall auto-close skipped")
+                            except Exception:
+                                pass
                         # host-match guard: the verdict may name a DIFFERENT host than
                         # the row the driver last served - closing that row would kill
                         # an unrelated vector. Only auto-close when the verdict's host

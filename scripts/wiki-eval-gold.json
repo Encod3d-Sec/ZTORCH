@@ -13,7 +13,7 @@
     {"query": "open redirect URL validation bypass", "expected": ["techniques/web/open-redirect.md", "payloads/open-redirect.md"]},
     {"query": "prototype pollution javascript __proto__ gadget", "expected": ["techniques/web/prototype-pollution.md", "payloads/prototype-pollution.md"]},
     {"query": "race condition TOCTOU limit-overrun single-packet", "expected": ["techniques/web/race-conditions.md", "payloads/race-conditions.md"]},
-    {"query": "MFA bypass 2FA OTP brute force flaw", "expected": ["techniques/web/mfa-bypass.md", "payloads/mfa-bypass.md"]},
+    {"query": "MFA bypass 2FA OTP brute force flaw", "expected": ["techniques/web/authentication-attacks.md", "payloads/mfa-bypass.md"]},
     {"query": "IDOR broken object level authorization enumerate ids", "expected": ["techniques/web/access-control.md", "payloads/idor.md"]},
     {"query": "HTTP request smuggling CL.TE TE.CL desync", "expected": ["techniques/web/http-request-smuggling.md"]},
     {"query": "web cache poisoning unkeyed header input", "expected": ["techniques/web/web-cache-poisoning.md"]},

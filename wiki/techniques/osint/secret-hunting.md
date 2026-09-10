@@ -17,6 +17,8 @@ sources: [git-claude-osint, payloadsallthethings-apikeys, git-One-Liners, Intern
 
 See also: [[git-exposure]], [[aws-attacks]], [[cloud-iam-attacks]], [[identity-fabric]]
 
+Before deep dorking, check [[default-credentials]]: a vendor-documented pair on an identified product is a cheaper first win than any leaked key.
+
 ---
 
 ## How It Works

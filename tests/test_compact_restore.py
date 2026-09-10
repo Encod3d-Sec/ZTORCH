@@ -93,6 +93,19 @@ def test_compact_refire_no_lineage(tmp_path):
     assert not log.exists() or "session aa11bb22 start" not in log.read_text(encoding="utf-8")
 
 
+def test_output_caps_line_gated_on_active_engagement(tmp_path):
+    """Output economy: SessionStart injects the numeric turn caps ONLY when an engagement
+    is active; a bare vault (targets/ empty) never sees the line."""
+    r = _run(_mk(tmp_path), "startup")
+    assert "<=25 words" in r.stdout
+    assert "<=100 words" in r.stdout
+    bare = tmp_path / "bare"
+    (bare / "targets").mkdir(parents=True)
+    r2 = _run(bare, "startup")
+    assert "<=25 words" not in r2.stdout
+    assert "<=100 words" not in r2.stdout
+
+
 LANES = ("## Lanes\n"
          "- lane sqlimap in flight: SUCCESS = banner | tmux win w1 | capture /tmp/c1 | handle a1\n"
          "- lane done1: SUCCESS = x | tmux win w2 | capture /tmp/c2 | VERIFIED ok\n")

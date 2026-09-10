@@ -2,7 +2,10 @@
 host/IP regexes (HOST_RE/IP_RE/IP6_RE) were searched without blanking quoted spans first, so a
 command merely MENTIONING a tool/host inside a string (echo, grep) got falsely DENIED."""
 import importlib.util
+import json
 import os
+import subprocess
+import sys
 
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 _spec = importlib.util.spec_from_file_location(
@@ -180,3 +183,34 @@ def test_oos_ip_as_url_authority_still_flagged():
 def test_data_flag_payload_with_url_still_exempt():
     sc = {"out_of_scope": ["10.0.0.5"]}
     assert scope_guard.ip_out_of_scope("curl --data 'http://10.0.0.5/' http://ok.com/", sc) == []
+
+
+def test_enforce_off_write_advisory_and_drift_event(tmp_path):
+    """Finding B: a Bash command writing skills/hooks/.enforce-off must surface an
+    operator-visible ADVISORY (never a deny) and record a drift event in the engagement's
+    .events.jsonl - the marker write is an enforcement downgrade happening un-narrated.
+    The detector stays narrow: reads, removals, and bare mentions stay silent."""
+    hook = os.path.join(VAULT, "skills", "hooks", "scope-guard.py")
+    t = tmp_path / "targets" / "engs"
+    t.mkdir(parents=True)
+    (tmp_path / "targets" / "active.md").write_text("engs\n", encoding="utf-8")
+    env = dict(os.environ, ZTORCH_VAULT=str(tmp_path))
+    payload = json.dumps({"tool_name": "Bash",
+                          "tool_input": {"command": "touch skills/hooks/.enforce-off"}})
+    r = subprocess.run([sys.executable, hook], input=payload,
+                       capture_output=True, text=True, timeout=30, env=env)
+    out = json.loads(r.stdout) if r.stdout.strip() else {}
+    hso = out.get("hookSpecificOutput", {})
+    assert hso.get("permissionDecision") is None            # advisory only, never a deny
+    assert "enforcement downgrade requested via Bash" in hso.get("additionalContext", "")
+    ev = (t / ".events.jsonl").read_text(encoding="utf-8")
+    assert '"source": "scope-guard"' in ev
+    assert ".enforce-off" in ev
+    for quiet in ("cat skills/hooks/.enforce-off",
+                  "rm -f skills/hooks/.enforce-off",
+                  "echo touch .enforce-off > /tmp/note.txt"):
+        rq = subprocess.run([sys.executable, hook],
+                            input=json.dumps({"tool_name": "Bash",
+                                              "tool_input": {"command": quiet}}),
+                            capture_output=True, text=True, timeout=30, env=env)
+        assert rq.stdout.strip() == "", quiet

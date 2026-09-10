@@ -268,3 +268,65 @@ def test_vm_bg_delta_offset_and_idle_hint(tmp_path):
     assert "running (" in run("--status", "eng1", "pspy").stdout
     (shm / "eng1-pspy.log.done").write_text("exit=0\n")
     assert "done exit=0" in run("--status", "eng1", "pspy").stdout
+
+
+def test_vm_bg_delta_vanished_log_resets_offset(tmp_path):
+    """SSH-bridge hardening: --delta with the log GONE but a stale .off left over (VM
+    reboot / /dev/shm wipe) must print one diagnostic and drop the offset; the old code
+    answered '(no new output; 0 bytes total)' with the .off intact forever."""
+    b, d = _shim(tmp_path)
+    shm = tmp_path / "shm"
+    shm.mkdir()
+    vm = b / "vm.sh"
+    vm.write_text('#!/usr/bin/env bash\n'
+                  'eval "$(sed "s#/dev/shm#%s#g" <<<"$1")"\n' % shm)
+    os.chmod(vm, 0o755)
+    env = _env(b, d)
+    env["VM_SH"] = str(vm)
+
+    def run(*args):
+        return subprocess.run(["bash", os.path.join(SCRIPTS, "vm-bg.sh")] + list(args),
+                              capture_output=True, text=True, env=env, timeout=30)
+
+    log = shm / "eng1-crack.log"
+    off = shm / "eng1-crack.log.off"
+    log.write_text("line1\n")
+    run("--delta", "eng1", "crack")                    # consume the log, .off = 6
+    assert off.exists()
+    log.unlink()                                       # /dev/shm wiped
+    r = run("--delta", "eng1", "crack")
+    assert "vanished" in r.stdout and "offset reset" in r.stdout
+    assert not off.exists()                            # next --delta starts from 0
+
+
+def test_vm_rsh_timeout_partial_output_grew_vs_hung(tmp_path):
+    """SSH-bridge hardening: on timeout the partial output (sliced after the LAST start
+    marker) prints and exit is 2; the stderr verdict splits pane GROWTH (still running,
+    stalled output) from zero new bytes across the window (hung) instead of discarding
+    everything. A growing vm.sh fake stands in for a hashcat mid-run: no prompt, no end
+    marker, output landing on every poll."""
+    b, d = _shim(tmp_path)
+    env = _env(b, d)
+    pane = d / "pane-eng1:shell"
+
+    def rsh(vm, grow):
+        body = '#!/usr/bin/env bash\n'
+        if grow:
+            body += 'case "$1" in *capture-pane*) echo "more hashcat output" >> "%s";; esac\n' % pane
+        vm.write_text(body + 'eval "$1"\n')
+        os.chmod(vm, 0o755)
+        pane.write_text("__RSH_START_9f3a__\nhashcat status line\n")
+        return subprocess.run(["bash", os.path.join(SCRIPTS, "vm-rsh.sh"),
+                               "--timeout", "3", "eng1", "sleep 60"],
+                              capture_output=True, text=True, env={**env, "VM_SH": str(vm)},
+                              timeout=30)
+
+    r = rsh(b / "vm_grow", grow=True)                  # pane grows on every capture
+    assert r.returncode == 2
+    assert "hashcat status line" in r.stdout and "more hashcat output" in r.stdout
+    assert "running" in r.stderr and "hung" not in r.stderr
+
+    r = rsh(b / "vm_plain", grow=False)                # pane frozen: zero new bytes
+    assert r.returncode == 2
+    assert "hashcat status line" in r.stdout
+    assert "hung" in r.stderr

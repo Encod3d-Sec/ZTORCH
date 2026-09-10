@@ -30,11 +30,11 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 - [ ] whatweb + httpx + screenshot       -> [[wiki/tools/whatweb]] [[wiki/tools/httpx]] + Skill(screenshot)
 - [ ] ffuf/feroxbuster dirs + vhosts     -> [[wiki/tools/ffuf]] [[wiki/tools/feroxbuster]] [[gobuster]] [[wordlists]]
 - [ ] dump TLS cert SANs for hidden vhosts: `echo | openssl s_client -connect <ip>:443 -servername <host> 2>/dev/null | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"`  -> [[cdn-waf-bypass]]
-- [ ] arjun param mining                 -> [[arjun]]
+- [ ] arjun param mining                 -> [[wiki/tools/arjun]]
 - [ ] nuclei                             -> [[wiki/tools/nuclei]] [[nuclei-arsenal]]
 - [ ] nikto ; wpscan (if WordPress)      -> [[nikto]] [[wiki/tools/wpscan]]
 - [ ] katana/gau crawl, then READ each .js / inline `<script>` / button `onclick` / `href` END-TO-END (open the file, do not grep - the initial vector hides in a handler grep skips)  -> [[katana]] [[gau]] [[javascript-source-map-exploitation]]
-- [ ] trufflehog / .git exposure         -> [[trufflehog]] [[git-exposure]]
+- [ ] trufflehog / .git exposure         -> [[wiki/tools/trufflehog]] [[git-exposure]]
   (recon, multi-host / subdomains:)
 - [ ] subfinder + dnsx + gowitness       -> [[subfinder]] [[dnsx]] [[gowitness]]
   (osint, if in scope -- ask:)
@@ -49,7 +49,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 - [ ] deliver payload (burp repeater / curl / upload) -> [[burp-mcp]] [[file-upload]]
 - [ ] get a shell (reverse / bind) + stable PTY       -> [[reverse-shells]]
 - [ ] cred reuse tried before new creds               -> loot.md [[default-credentials]]
-- [ ] fuzz params / request items                     -> [[wiki/tools/ffuf]] [[arjun]]
+- [ ] fuzz params / request items                     -> [[wiki/tools/ffuf]] [[wiki/tools/arjun]]
 
 ## 4. Exploit
 
@@ -58,7 +58,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 |----|-------|-----------|---------|-------|------|--------|-----|----------|
 
 cred attacks:  sqlmap / hydra / medusa / john / hashcat
-  -> [[sqlmap]] [[wiki/tools/hydra]] [[medusa]] [[wiki/tools/john]] [[wiki/tools/hashcat]] [[password-attacks]] [[wordlists]] [[default-credentials]]
+  -> [[wiki/tools/sqlmap]] [[wiki/tools/hydra]] [[medusa]] [[wiki/tools/john]] [[wiki/tools/hashcat]] [[password-attacks]] [[wordlists]] [[default-credentials]]
 route by class: Skill(wiki-arsenal) -> Skill(`hunt-<class>`)
 
 ### 4b. Post-Ex / Privesc  ([[linux-privesc]] · [[privesc-exploit-arsenal]])
