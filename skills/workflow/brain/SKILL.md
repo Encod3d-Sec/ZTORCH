@@ -42,6 +42,28 @@ NEVER dispatched at either tier: discovery (route/endpoint/token enumeration),
 "is this surface empty or am I querying it wrong", anything not fully specified.
 A guess wearing a checklist stays on the brain (see `Skill(delegate)`).
 
+## Dispatch archetypes (roster tiers)
+
+Named lane archetypes with a FIXED tier; the table above still governs
+unnamed execution lanes.
+
+- Verifier lane: glm-5.3, always. Independent re-derivation of an
+  escalation-candidate finding from the recorded evidence, never trusting the
+  discovering lane's verdict. A flash verifier hardening a wrong negative is
+  the delegate cheap-tier trap.
+- Research lane: glm-5.3-flash. CVE/PoC lookup across NVD, MITRE, CISA KEV,
+  GHSA/GitHub search, Exploit-DB, vendor advisories, Packet Storm, Vulners,
+  returning a credibility read plus publication/last-updated dates. Output is
+  intelligence only; the go/no-go on testing it stays on the brain.
+- Scribe lane: glm-5.3-flash. Draft and merge finding entries from returned
+  envelopes, dedupe, timestamp. Drafts return to the brain; the brain remains
+  the only writer of `targets/<eng>` files.
+- Console / Lead Strategist: brain duties (routing, judgement, sign-off),
+  never subagent roles; the main chat is glm-5.3 by definition.
+- Step-up rule: a flash lane that hits a judgement fork (vector choice,
+  ambiguous analysis, "is this real or am I querying it wrong") stops and
+  returns to the brain for re-tier instead of guessing.
+
 ## The dispatch (checklist contract)
 
 Reuse `Skill(delegate)`'s eight-slot checklist as the prompt skeleton: confirmed
@@ -123,6 +145,8 @@ main model executes directly.
   then the brain takes the step over.
 - Safeguard refusal on a dispatched run: the brain executes that step itself
   rather than churning re-dispatches.
+- An escalation-candidate finding dispatches to a Verifier lane (glm-5.3) for
+  independent reproduction before it is recorded as foothold/fact.
 - A negative from a subagent is re-verified on the brain before it reaches
   Deadends.md.
 
