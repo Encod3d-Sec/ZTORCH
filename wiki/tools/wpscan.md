@@ -3,7 +3,7 @@ title: "WPScan"
 type: tool
 tags: [brute-force, enumeration, scanner, thm, tool, web]
 date_created: 2026-05-08
-date_updated: 2026-05-08
+date_updated: 2026-09-15
 sources: [thm-tool-wpscan]
 phase: enumerate
 ---
@@ -104,8 +104,18 @@ wpscan --url http://target.thm --enumerate p --plugins-detection aggressive
 wpscan --url http://target.thm -e u,p,t -o wpscan_results.txt
 ```
 
+### Pin the WordPress core version (the pinning ladder, hardest first)
+
+```bash
+wpscan --url https://TARGET --random-user-agent --enumerate p,t
+```
+
+Ladder, stop at the first rung that pins: (1) `readme.html` root version stamp; (2) `<meta name="generator">` on the homepage; (3) `<generator>` element in `/feed/`; (4) wpscan's **upgrade-page CSS vectors** - `wp-includes/css/*.min.css?ver=N.N` files referenced from the upgrade/404 pages (aggressive detection) - this rung survives hardened estates that strip 1-3; (5) hash-style `?ver=` on dist scripts gives only a build floor. Cross-check any pin with the **REST route floor** (see Notes in [[wiki/tools/wp2shell]]): routes that exist only in specific core versions (e.g. Font Library routes = 6.5+, icons/view-config = 7.1+) bound the version from the `/wp-json/` index alone, independent of wpscan.
+
 ## Tips and gotchas
 
+- **WAF/edge-fronted estates 403 the default user agent** (and whatweb sees nothing at all - absence of WordPress in whatweb output is a tool limitation, not evidence). Re-run with `--random-user-agent`; wpscan aborts with "The target is responding with a 403, this might be due to a WAF" until you do.
+- **`--enumerate v` is not a valid choice** in current builds ("Scan Aborted: --enumerate Unknown choice: v") - version detection is automatic, enumerate p,t alongside it.
 - **XML-RPC**: WPScan will flag `xmlrpc.php` if enabled. This endpoint allows brute force even if `wp-login.php` is rate-limited or blocked. Use Metasploit `auxiliary/scanner/http/wordpress_xmlrpc_login` or a custom script to abuse it.
 - **API token**: Without an API token (`--api-token`), WPScan will enumerate plugins/themes but will not report associated CVEs. Free tokens allow 25 lookups/day at wpscan.com.
 - **Plugin versions**: WPScan reads `README.txt` files in `/wp-content/plugins/PLUGIN/` to determine version. If directory listing is disabled and README is absent, version may be unknown.
