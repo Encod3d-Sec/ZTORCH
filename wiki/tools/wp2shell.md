@@ -3,7 +3,7 @@ title: "wp2shell"
 type: tool
 tags: [wordpress, sqli, rce, webshell, exploitation, tool, web]
 date_created: 2026-08-20
-date_updated: 2026-08-20
+date_updated: 2026-09-15
 sources: [gh-icex0-wp2shell]
 phase: exploit
 ---
@@ -50,6 +50,8 @@ python3 wp2shell.py shell -i http://target            # interactive shell after 
 
 ## Notes / gotchas
 
+- **Version gate before firing (affected ranges only).** The chain applies to WordPress 6.9.0-6.9.4 and 7.0.0-7.0.1; fixed in 6.8.6 / 6.9.5 / 7.0.2 and the 7.1 line (Beta 2 onward). Pin first (wpscan `--random-user-agent` upgrade-page `?ver=` vectors survive generator/readme stripping) and cross-check with the **REST route floor**: `/wp-json/` routes that only exist in given core versions bound the version with zero extra requests (Font Library `/wp/v2/font-families` = 6.5+; `wp-abilities/v1` = 6.9+; `/wp/v2/icons` + `/wp/v2/icon-collections` + `/wp/v2/view-config` = 7.1+). A route-floor pin above the affected range closes the finding without sending an exploit-shaped packet. Presence of `/batch/v1` alone proves nothing - it ships with every WP since 5.6.
+- **Edge/WAF 403s on the entry forms drift.** A 403 observed on the batch POST forms on day 1 (edge or origin RASP) may not reproduce days later; re-test before citing a transport mitigation as persistent, and distinguish layers via headers (`x-rasp-block`/origin markers vs a bare edge block page).
 - The `shell` mode deploys a webshell **plugin that self-cleans after each `--cmd`** - each
   invocation is one-shot (fine for enumeration; for a persistent session, drop an SSH key or a
   reverse shell from within the first `--cmd`).
