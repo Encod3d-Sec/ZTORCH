@@ -60,7 +60,9 @@ unnamed execution lanes.
   intelligence only; the go/no-go on testing it stays on the brain.
 - Scribe lane: glm-5.3-flash. Draft and merge finding entries from returned
   envelopes, dedupe, timestamp. Drafts return to the brain; the brain remains
-  the only writer of `targets/<eng>` files.
+  the only APPLIER of shared-file edits (lanes hand back paste-blocks per
+  slot (f); a lane's own capture dir under `poc/<lane>/` is its output, not a
+  shared-file write).
 - Console / Lead Strategist: brain duties (routing, judgement, sign-off),
   never subagent roles; the main chat is glm-5.3 by definition.
 - Step-up rule: a flash lane that hits a judgement fork (vector choice,
@@ -76,7 +78,14 @@ anti-give-up/no-guess, the read-first mandate verbatim, the false-root
 guardrail, the log.md lane line and its close-on-return, `lane_validate.py`,
 and delegate's returned-lane processing order (verdict above the claim, pending
 is status not guess, partial recovery, resume-with-context, 3-fail switch).
-This skill restates NONE of it; when the two files disagree, delegate wins.
+This skill restates NONE of it; when the two files disagree, delegate wins -
+EXCEPT where this file explicitly supersedes it (concurrency: up to 3 disjoint
+lanes replaces delegate's serial one-at-a-time WAIT rule; nothing else
+overrides). Fallback if the delegate fire was skipped or a compaction ate it:
+every dispatch prompt still carries, verbatim, the false-root guardrail
+(`hostname` alongside any `id` output), the read-first mandate (cat each file
+in full, grep only to locate), and anti-give-up/no-guess (run the full
+window, report raw output, never invent a result).
 
 Brain adds two fleet rules on top:
 
@@ -88,7 +97,10 @@ Brain adds two fleet rules on top:
 - Fixed return envelope: every lane returns Scope (what was attempted) /
   Result (verdict + the raw SUCCESS observable) / Key files (capture-dir
   paths) / Issues (blockers + what was ruled out). Slot h's
-  no-one-line-verdict rule applies inside Result.
+  no-one-line-verdict rule applies inside Result, and delegate's slot (f)
+  rides whole within it (paste-able diff block for any shared-file change,
+  REVERT of state the run changed); the envelope is the return shape, not a
+  narrower contract.
 
 ## Concurrency
 
@@ -104,11 +116,15 @@ Brain adds two fleet rules on top:
 - Lane completions arrive as notifications; never poll a running lane. Integrate
   in return order; persist to `state.md`/`loot.md` before the next dependent
   move.
-- Drift-guard interplay: an OPEN lane line (`in flight`) in log.md counts as
-  driver contact, so lane-flight calls never feed the off-board deny - but ONLY
-  while the line is open. Close every lane line on return; after several
-  brain-side exploit-shaped calls with no lane open, run driver `note` before
-  the next wave so the streak resets through the front door.
+- Drift-guard interplay: an OPEN, FRESH lane line (`in flight @<HH:MM>`) in
+  log.md counts as driver contact, so lane-flight calls never feed the
+  off-board deny - only while the line is open AND younger than the 45-min
+  stale window (a forgotten line stops exempting; `status.py` flags it
+  resume-or-close). Windowless lanes (offline/research/read passes) still
+  write the line with `tmux win -` so it parses. Close every lane line on
+  return; after several brain-side exploit-shaped calls with no lane open, run
+  driver `note` before the next wave so the streak resets through the front
+  door.
 
 ## Offensive integration (brain mode over the driver)
 
@@ -141,6 +157,19 @@ main model executes directly.
   independent reproduction before it is recorded as foothold/fact.
 - A negative from a subagent is re-verified on the brain before it reaches
   Deadends.md.
+
+## Known ceilings
+
+Deliberate simplifications, named so they read as intent. A late or duplicate
+envelope (the original agent returning after sweep, re-dispatch, and takeover)
+is resolved by the brain's verdict line, no merge protocol. Cron/scheduled
+lanes run outside the lane-line contract: open a line for them if their calls
+should count as driver contact. An operator-mandated fleet larger than 3
+supersedes the cap by explicit order (disjointness and the applier rule still
+bind). The scanner-cap advisory is per-engagement, so disjoint-target scanner
+lanes may trade spurious serialize warnings. The shared prefix and lane
+directives live only in prompts: stage a copy in the lane's capture dir if a
+compaction landing in the spawn window loses one.
 
 ## Client-data boundary
 
