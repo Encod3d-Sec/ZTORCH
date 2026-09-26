@@ -22,8 +22,11 @@ import sys
 # stays in the text. The dispatch-time format also carries a trailing `| handle <agent-id>`
 # cell, so a line with NOTHING (or only the handle cell) after the capture dir is the
 # still-open one - anything else after it is the appended result.
+# The tmux-win cell may be `tmux win -` for windowless lanes (offline/research/read
+# passes): the cell stays mandatory so the shape parses (drift-guard lane-contact
+# exemption + status.py aging keep working); a missing cell silently voids both.
 _LANE_RE = re.compile(
-    r"^- lane (\S+)(.*): SUCCESS = ([^|]+)\|\s*tmux win \S+\s*\|\s*capture (\S+)(.*)$",
+    r"^- lane (\S+)(.*): SUCCESS = ([^|]+)\|\s*tmux win (?:-|\S+)\s*\|\s*capture (\S+)(.*)$",
     re.MULTILINE)
 _HANDLE_ONLY = re.compile(r"^\|?\s*handle\s+\S+\s*$")
 _MAX_FILE = 2 * 1024 * 1024      # ponytail: caps per-file read; a capture >2MB is raw log noise
@@ -91,6 +94,35 @@ def lane_lines(d, stale_min=45):
                 pass
         out.append("  - lane %s %s%s" % (name, tail, age))
     return out
+
+
+def fresh_lane_open(d, max_min=45):
+    """True when an OPEN lane line is younger than max_min (its @HH:MM cell; midnight
+    wrap handled like lane_lines). A line with no parsable cell counts as NOT fresh: an
+    un-timestamped line must not become a permanent drift exemption. Shared by
+    drift-guard's lane-contact check so the exemption expires on the same clock
+    status.py ages by - a forgotten open line stops exempting once stale."""
+    from datetime import datetime
+    try:
+        text = open(os.path.join(d, "log.md"), encoding="utf-8", errors="ignore").read()
+    except Exception:
+        return False
+    now = datetime.now()
+    for _name, tail in open_lanes_from_text(text):
+        m = re.search(r"@(\d{1,2}:\d{2})", tail)
+        if not m:
+            continue
+        try:
+            t = datetime.strptime(m.group(1), "%H:%M").replace(
+                year=now.year, month=now.month, day=now.day)
+        except ValueError:
+            continue
+        mins = (now - t).total_seconds() // 60
+        if mins < 0:
+            mins += 1440                         # opened before midnight
+        if mins < max_min:
+            return True
+    return False
 
 
 def _search(dirpath, needle):

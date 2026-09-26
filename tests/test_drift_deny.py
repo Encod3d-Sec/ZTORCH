@@ -332,17 +332,20 @@ def test_corrupt_state_fails_open_but_telemetrifies(tmp_path):
 
 # ---- open lane = driver contact (observed: a lane denied pre-flight on inherited streak) --
 
-LANE_OPEN = ("- lane lane6 (portal) in flight @14:10: SUCCESS = http 200 in capture "
-             "| tmux win lane6 | capture /tmp/lane6 | handle a1b2\n")
-LANE_CLOSED = ("- lane lane6 (portal) in flight @14:10: SUCCESS = http 200 in capture "
-               "| tmux win lane6 | capture /tmp/lane6 | handle a1b2 "
-               "-> VERIFIED: poc/01.md\n")
+def _lane_line(minutes_ago, closed=False):
+    """A delegate lane line stamped minutes_ago from now (freshness-gated exemption
+    needs a live timestamp; a hardcoded HH:MM would flake across the day)."""
+    from datetime import datetime, timedelta
+    t = (datetime.now() - timedelta(minutes=minutes_ago)).strftime("%H:%M")
+    ln = ("- lane lane6 (portal) in flight @%s: SUCCESS = http 200 in capture "
+          "| tmux win lane6 | capture /tmp/lane6 | handle a1b2" % t)
+    return ln + (" -> VERIFIED: poc/01.md\n" if closed else "\n")
 
 
 def test_open_lane_is_driver_contact(tmp_path):
     """An `in flight` lane line exempts lane-flight calls from the streak deny (the
     checklist was authored from `next`); the inherited streak resets to 0."""
-    v = _mk(tmp_path, streak=5, log_text=LANE_OPEN)   # would deny without the lane
+    v = _mk(tmp_path, streak=5, log_text=_lane_line(5))  # fresh lane; would deny without it
     r = _run(v, cmd=OFFBOARD_CMD)
     assert r.stdout.strip() == ""
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
@@ -352,7 +355,7 @@ def test_open_lane_is_driver_contact(tmp_path):
 def test_closed_lane_does_not_exempt(tmp_path):
     """The verdict appended to the lane line (rest after the capture cell) closes it:
     off-board calls count again."""
-    v = _mk(tmp_path, streak=5, log_text=LANE_CLOSED)
+    v = _mk(tmp_path, streak=5, log_text=_lane_line(5, closed=True))
     out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
     assert out.get("permissionDecision") == "deny"
 
@@ -361,7 +364,7 @@ def test_retry_ring_still_denies_mid_lane(tmp_path):
     """Mid-lane identical re-fires are still the doom loop: 3 identical calls with a lane
     open still hit the loop-break deny (the ring counts before the lane return), while the
     streak stays 0 (lane flight is driver contact, not drift)."""
-    v = _mk(tmp_path, streak=0, log_text=LANE_OPEN)
+    v = _mk(tmp_path, streak=0, log_text=_lane_line(5))
     _run(v, cmd=OFFBOARD_CMD)
     _run(v, cmd=OFFBOARD_CMD)
     out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
@@ -369,3 +372,31 @@ def test_retry_ring_still_denies_mid_lane(tmp_path):
     assert "doom-loop" in out.get("permissionDecisionReason", "")
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
     assert st["off_board_streak"] == 0
+
+def test_stale_lane_stops_exempting(tmp_path):
+    """Review finding (blocker): a lane line left open must not disable the streak
+    deny forever - past the 45-min stale window the exemption is gone."""
+    v = _mk(tmp_path, streak=5, log_text=_lane_line(90))
+    out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "deny"
+
+
+def test_untimestamped_lane_not_exempt(tmp_path):
+    """No parsable @HH:MM cell = not provably fresh = no exemption (an un-timestamped
+    line must not become a permanent drift shield)."""
+    v = _mk(tmp_path, streak=5,
+            log_text="- lane lane6 (portal) in flight: SUCCESS = x | tmux win - | capture /tmp/l6\n")
+    out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "deny"
+
+
+def test_windowless_lane_line_still_parses(tmp_path):
+    """`tmux win -` (offline/research lane) is a valid lane line: fresh + open it
+    still exempts (otherwise windowless lanes get denied mid-flight like lane6 was)."""
+    from datetime import datetime, timedelta
+    ts = (datetime.now() - timedelta(minutes=5)).strftime("%H:%M")
+    v = _mk(tmp_path, streak=5,
+            log_text="- lane r1 (osint) in flight @%s: SUCCESS = summary written "
+                     "| tmux win - | capture /tmp/r1\n" % ts)
+    r = _run(v, cmd=OFFBOARD_CMD)
+    assert r.stdout.strip() == ""

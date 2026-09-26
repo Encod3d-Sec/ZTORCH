@@ -25,9 +25,10 @@ Policy:
   - every _DENY_TOTAL_ESCALATE cumulative denies the deny message grows a Skill(redteamlead)
     escalation (repeating the same lane that keeps denying is the doom loop)
   - `offensive.py next|board|done|note|init|foothold` seen in the command -> reset the streak to 0
-  - an OPEN lane line (`in flight`, delegate contract) in log.md is driver contact too:
-    calls during lane flight (the lane's own + brain support probes) never count as
-    drift; the identical-retry ring still accumulates mid-lane
+  - an OPEN, FRESH lane line (`in flight @<HH:MM>` younger than the 45-min stale window,
+    delegate contract) in log.md is driver contact too: calls during lane flight (the
+    lane's own + brain support probes) never count as drift; the identical-retry ring
+    still accumulates mid-lane, and a stale line stops exempting
 
 ON-BOARD (allowed, never counted) when EITHER:
   - the command's exploit/scan binary is in .offensive.json emitted bins (the driver told them to
@@ -343,12 +344,15 @@ def _post_foothold(d):
 
 
 def _lane_in_flight(d):
-    """True when log.md still holds an OPEN `in flight` lane line (delegate's lane-line
-    contract). lane_validate owns the parse (status.py + close-out share it) so every
-    consumer agrees on what 'open' means; fail-open False on any error."""
+    """True when log.md holds an OPEN lane line YOUNGER than the stale window
+    (lane_validate.fresh_lane_open - the same 45-min clock status.py ages by, and the
+    same parse close-out shares). An open line is driver contact only while plausibly
+    still flying: a stale or un-timestamped line must not become a permanent off-board
+    exemption (observed: a lane line left open for hours silently disabled the streak
+    deny for the whole run). Fail-open False on any error."""
     try:
         import lane_validate
-        return bool(lane_validate.lane_lines(d))
+        return bool(lane_validate.fresh_lane_open(d))
     except Exception:
         return False
 
@@ -586,13 +590,14 @@ def main():
     if cmd_bins & onboard:
         return
 
-    # OFF-BOARD: escalate. An OPEN lane (delegate's `in flight` line in log.md) is
-    # driver contact: the lane's checklist was authored from `next`, so calls during
-    # flight (the lane's own and the brain's support probes) are planned work, not
-    # streak drift (observed: a lane denied pre-flight on streak inherited from earlier
-    # lanes' calls). A STALE open line keeps the exemption until closed; status.py ages
-    # it and close-out sweeps it. The retry ring below STILL counts: a lane re-firing
-    # one identical command is the same doom loop whoever ran the first one.
+    # OFF-BOARD: escalate. An OPEN, FRESH lane line (delegate's `in flight @<HH:MM>`
+    # contract, < stale window) is driver contact: the lane's checklist was authored from
+    # `next`, so calls during flight (the lane's own and the brain's support probes) are
+    # planned work, not streak drift (observed: a lane denied pre-flight on streak
+    # inherited from earlier lanes' calls). A STALE line (>= 45 min) stops exempting -
+    # status.py flags it for resume-or-close, and a forgotten line must not disable the
+    # deny forever. The retry ring below STILL counts: a lane re-firing one identical
+    # command is the same doom loop whoever ran the first one.
     lane_open = _lane_in_flight(d)
     if lane_open and st.get("off_board_streak"):
         st["off_board_streak"] = 0
