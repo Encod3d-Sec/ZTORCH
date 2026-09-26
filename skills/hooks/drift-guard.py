@@ -25,6 +25,9 @@ Policy:
   - every _DENY_TOTAL_ESCALATE cumulative denies the deny message grows a Skill(redteamlead)
     escalation (repeating the same lane that keeps denying is the doom loop)
   - `offensive.py next|board|done|note|init|foothold` seen in the command -> reset the streak to 0
+  - an OPEN lane line (`in flight`, delegate contract) in log.md is driver contact too:
+    calls during lane flight (the lane's own + brain support probes) never count as
+    drift; the identical-retry ring still accumulates mid-lane
 
 ON-BOARD (allowed, never counted) when EITHER:
   - the command's exploit/scan binary is in .offensive.json emitted bins (the driver told them to
@@ -339,6 +342,17 @@ def _post_foothold(d):
     return False
 
 
+def _lane_in_flight(d):
+    """True when log.md still holds an OPEN `in flight` lane line (delegate's lane-line
+    contract). lane_validate owns the parse (status.py + close-out share it) so every
+    consumer agrees on what 'open' means; fail-open False on any error."""
+    try:
+        import lane_validate
+        return bool(lane_validate.lane_lines(d))
+    except Exception:
+        return False
+
+
 def _should_advise(streak, post_foothold):
     """Gate the context injection (never the count). Post-foothold: one reminder then silent. Else:
     streak 1,2,3 then every 25th - keeps the early signal, kills the ~180x repeat that was noise."""
@@ -572,8 +586,17 @@ def main():
     if cmd_bins & onboard:
         return
 
-    # OFF-BOARD: escalate.
-    streak = int(st.get("off_board_streak", 0) or 0) + 1
+    # OFF-BOARD: escalate. An OPEN lane (delegate's `in flight` line in log.md) is
+    # driver contact: the lane's checklist was authored from `next`, so calls during
+    # flight (the lane's own and the brain's support probes) are planned work, not
+    # streak drift (observed: a lane denied pre-flight on streak inherited from earlier
+    # lanes' calls). A STALE open line keeps the exemption until closed; status.py ages
+    # it and close-out sweeps it. The retry ring below STILL counts: a lane re-firing
+    # one identical command is the same doom loop whoever ran the first one.
+    lane_open = _lane_in_flight(d)
+    if lane_open and st.get("off_board_streak"):
+        st["off_board_streak"] = 0
+    streak = int(st.get("off_board_streak", 0) or 0) + (0 if lane_open else 1)
     st["off_board_streak"] = streak
 
     # Identical-retry ring (doom-loop break): re-firing the SAME unchanged command is a loop,
@@ -588,11 +611,12 @@ def main():
     _save_state(sp, st)
 
     off = ", ".join(sorted(cmd_bins)) or "hand-rolled request loop"
-    try:
-        import _telemetry
-        _telemetry.drift("drift-guard", "off-board streak %d (%s)" % (streak, off))
-    except Exception:
-        pass
+    if not lane_open:
+        try:
+            import _telemetry
+            _telemetry.drift("drift-guard", "off-board streak %d (%s)" % (streak, off))
+        except Exception:
+            pass
 
     # ESCALATE-TO-DENY, most specific trigger first:
     #   1. IDENTICAL-RETRY (loop-break): the same unchanged command fired >= _RETRY_DENY
@@ -604,7 +628,10 @@ def main():
     # blocked), instead of being swallowed by the throttle below.
     post_fh = _post_foothold(d)
     retries = int(ring.get(rk, 0) or 0)
-    deny_wanted = not post_fh and (retries >= _RETRY_DENY or streak >= _DENY_STREAK)
+    # The retry deny fires regardless of lane state (a lane re-firing one command is the
+    # same doom loop); the STREAK deny only when no lane is open (lane flight = contact).
+    deny_wanted = not post_fh and (retries >= _RETRY_DENY
+                                   or (streak >= _DENY_STREAK and not lane_open))
 
     def _deny(reason):
         st["deny_total"] = int(st.get("deny_total", 0) or 0) + 1
@@ -645,6 +672,9 @@ def main():
                 "(False block? ask the OPERATOR to create skills/hooks/.enforce-off to "
                 "downgrade enforcement to "
                 "advisory.)" % (streak, off))
+        return
+
+    if lane_open:
         return
 
     # THROTTLE the context injection (the count above still fired for eval accuracy).

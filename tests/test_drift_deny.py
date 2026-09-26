@@ -21,7 +21,7 @@ STATE = "---\nengagement_type: pentest\n---\n\n" \
 OFFBOARD_CMD = "bash /root/vm.sh 'python3 /tmp/exp.py'"
 
 
-def _mk(tmp_path, streak, access="port-open", enforce_off=False):
+def _mk(tmp_path, streak, access="port-open", enforce_off=False, log_text=""):
     t = tmp_path / "targets" / "engd"
     t.mkdir(parents=True, exist_ok=True)
     (t / ".offensive.json").write_text(
@@ -29,6 +29,8 @@ def _mk(tmp_path, streak, access="port-open", enforce_off=False):
                     "emitted_bins": []}), encoding="utf-8")
     (t / "Approach.md").write_text(APPROACH, encoding="utf-8")
     (t / "state.md").write_text(STATE.replace("port-open", access), encoding="utf-8")
+    if log_text:
+        (t / "log.md").write_text(log_text, encoding="utf-8")
     (tmp_path / "targets" / "active.md").write_text("engd\n", encoding="utf-8")
     if enforce_off:
         (tmp_path / ".enforce-off").write_text("", encoding="utf-8")
@@ -326,3 +328,44 @@ def test_corrupt_state_fails_open_but_telemetrifies(tmp_path):
     ev = (v / "targets" / "engd" / ".events.jsonl").read_text(encoding="utf-8")
     assert '"hook": "drift-guard"' in ev
     assert ".offensive.json unparseable" in ev
+
+
+# ---- open lane = driver contact (observed: a lane denied pre-flight on inherited streak) --
+
+LANE_OPEN = ("- lane lane6 (portal) in flight @14:10: SUCCESS = http 200 in capture "
+             "| tmux win lane6 | capture /tmp/lane6 | handle a1b2\n")
+LANE_CLOSED = ("- lane lane6 (portal) in flight @14:10: SUCCESS = http 200 in capture "
+               "| tmux win lane6 | capture /tmp/lane6 | handle a1b2 "
+               "-> VERIFIED: poc/01.md\n")
+
+
+def test_open_lane_is_driver_contact(tmp_path):
+    """An `in flight` lane line exempts lane-flight calls from the streak deny (the
+    checklist was authored from `next`); the inherited streak resets to 0."""
+    v = _mk(tmp_path, streak=5, log_text=LANE_OPEN)   # would deny without the lane
+    r = _run(v, cmd=OFFBOARD_CMD)
+    assert r.stdout.strip() == ""
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert st["off_board_streak"] == 0
+
+
+def test_closed_lane_does_not_exempt(tmp_path):
+    """The verdict appended to the lane line (rest after the capture cell) closes it:
+    off-board calls count again."""
+    v = _mk(tmp_path, streak=5, log_text=LANE_CLOSED)
+    out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "deny"
+
+
+def test_retry_ring_still_denies_mid_lane(tmp_path):
+    """Mid-lane identical re-fires are still the doom loop: 3 identical calls with a lane
+    open still hit the loop-break deny (the ring counts before the lane return), while the
+    streak stays 0 (lane flight is driver contact, not drift)."""
+    v = _mk(tmp_path, streak=0, log_text=LANE_OPEN)
+    _run(v, cmd=OFFBOARD_CMD)
+    _run(v, cmd=OFFBOARD_CMD)
+    out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "deny"
+    assert "doom-loop" in out.get("permissionDecisionReason", "")
+    st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
+    assert st["off_board_streak"] == 0

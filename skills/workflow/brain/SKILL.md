@@ -1,6 +1,6 @@
 ---
 name: brain
-description: Brain mode - main chat keeps strategy/driver/triage, 2-3 concurrent subagents execute. DEFAULT posture once the board has 2+ open assets. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
+description: Brain mode - the main chat keeps strategy/driver/triage while 2-3 concurrent subagents execute. DEFAULT posture once the board has 2+ open assets. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
 ---
 
 # brain
@@ -17,7 +17,7 @@ The BRAIN keeps (never dispatched):
 - Driver commands: `offensive.py next/note/done/foothold/closeout`. The driver is
   still the plan; the brain never hand-picks moves.
 - All `targets/<eng>` writes (state.md, loot.md, Killchain.md, Deadends.md,
-  decisions.md).
+  decisions.md, log.md).
 - Vector selection, triage, scope/RoE judgement, wiki + arsenal selection (which
   card, which hunt skill).
 - Firing `Skill(hunt-*)` in the MAIN session: loads the doctrine into brain
@@ -37,6 +37,9 @@ The brain DISPATCHES, fully-specified execution chunks only:
 |---|---|---|
 | haiku | glm-5.3-flash | DEFAULT. Mechanical fully-specified runs: one-tool runs, compile+run a known PoC, watch windows, scripted evidence capture, read-and-summarize passes. |
 | sonnet | glm-5.3 | Multi-step runs whose next step depends on reading live responses: hunt-skill execution against a live surface, JS-heavy analysis, a decision-bearing exploit chain. |
+
+Fresh agents only: `subagent_type` general-purpose, never `fork` (a fork inherits
+the main model and ignores the alias, silently voiding this table).
 
 NEVER dispatched at either tier: discovery (route/endpoint/token enumeration),
 "is this surface empty or am I querying it wrong", anything not fully specified.
@@ -64,45 +67,24 @@ unnamed execution lanes.
   ambiguous analysis, "is this real or am I querying it wrong") stops and
   returns to the brain for re-tier instead of guessing.
 
-## The dispatch (checklist contract)
+## The dispatch (delegate is the contract)
 
-Reuse `Skill(delegate)`'s eight-slot checklist as the prompt skeleton: confirmed
-primitive + assumption set, exact copy-paste commands with real IPs/paths inline
-(no `$VAR`), egress/port constraints, false-root/hostname guardrail, fragile-box
-discipline, SUCCESS criterion, report contract. Every dispatch prompt
-additionally carries:
+Fire `Skill(delegate)` in the MAIN session BEFORE the first dispatch of a phase
+(same reasoning as hunt skills: doctrine lands in brain context, G2 records the
+fire). Delegate's eight-slot checklist IS the prompt skeleton - slots a-h,
+anti-give-up/no-guess, the read-first mandate verbatim, the false-root
+guardrail, the log.md lane line and its close-on-return, `lane_validate.py`,
+and delegate's returned-lane processing order (verdict above the claim, pending
+is status not guess, partial recovery, resume-with-context, 3-fail switch).
+This skill restates NONE of it; when the two files disagree, delegate wins.
 
-- anti-give-up/no-guess: run the FULL specified window; if blocked, report RAW
-  output/errors and STOP; never guess or substitute a value, never invent a
-  result.
-- the read-first mandate, verbatim: cat each file in full, grep only to locate.
-- report `hostname` + `id` alongside any shell/id output.
-- the boundary: subagents never run driver commands and never write
-  `targets/<eng>` files; they return raw output and evidence paths only.
-- the assumption set (delegate slot a), verbatim: the lane prompt spells out
-  what must hold true for the run to make sense (access still valid, file
-  still at path, version match); a mismatch is reported, not silently absorbed.
-- the SUCCESS criterion (delegate slot f), verbatim: the brain writes
-  `SUCCESS = <exact observable>` (e.g. `hostname` = target AND `id` =
-  expected uid, plus log path) into the lane prompt before dispatch; the lane
-  returns that observable raw; on return the brain verifies the capture
-  against the criterion; a claimed success whose observable is absent from
-  the capture is a failed lane. Append the lane line to
-  `targets/<eng>/log.md` before dispatch (format per Skill(delegate)) and
-  CLOSE it on return by appending the verdict to that same line; the log
-  line is the lane's only durable state across compaction.
-- the output-landing mandate (delegate slot h), verbatim: per-lane capture dir with
-  full request/response captures, named tmux window for evidence-worthy runs, raw
-  pairs returned for Repeater; no one-line-verdict-only returns.
-
-Two fleet rules (prompt-cache + uniform returns):
+Brain adds two fleet rules on top:
 
 - Frozen shared prefix: author the shared contract body ONCE per phase - slots
-  a, c, d, e, g plus the mandates above, byte-identical in every lane prompt;
-  only the trailing LANE DIRECTIVE (slot b commands, slot f SUCCESS criterion,
-  target/paths) differs per lane. No dynamic content in the shared section;
-  any per-lane fact lives in the directive. Concurrent lanes then share one
-  cached prefix instead of each re-paying a fresh one.
+  a, c, d, e, g plus delegate's cross-lane mandates, byte-identical in every
+  lane prompt; only the trailing LANE DIRECTIVE (slot b commands, slot f
+  SUCCESS criterion, target/paths) differs per lane. No dynamic content in the
+  shared section; any per-lane fact lives in the directive.
 - Fixed return envelope: every lane returns Scope (what was attempted) /
   Result (verdict + the raw SUCCESS observable) / Key files (capture-dir
   paths) / Issues (blockers + what was ruled out). Slot h's
@@ -122,6 +104,11 @@ Two fleet rules (prompt-cache + uniform returns):
 - Lane completions arrive as notifications; never poll a running lane. Integrate
   in return order; persist to `state.md`/`loot.md` before the next dependent
   move.
+- Drift-guard interplay: an OPEN lane line (`in flight`) in log.md counts as
+  driver contact, so lane-flight calls never feed the off-board deny - but ONLY
+  while the line is open. Close every lane line on return; after several
+  brain-side exploit-shaped calls with no lane open, run driver `note` before
+  the next wave so the streak resets through the front door.
 
 ## Offensive integration (brain mode over the driver)
 
@@ -143,6 +130,11 @@ main model executes directly.
 
 - Subagent stalls or dies: stop it, ONE re-dispatch with a tightened checklist,
   then the brain takes the step over.
+- Lane VANISHED (no return, no completion notification): BEFORE any
+  re-dispatch, sweep the lane's capture dir, its tmux window, and the open lane
+  lines (`python3 scripts/status.py` ages them) - a vanished lane often
+  finished its work on disk while the agent died (delegate's partial-recovery
+  rule); re-dispatching redoes completed work.
 - Safeguard refusal on a dispatched run: the brain executes that step itself
   rather than churning re-dispatches.
 - An escalation-candidate finding dispatches to a Verifier lane (glm-5.3) for
