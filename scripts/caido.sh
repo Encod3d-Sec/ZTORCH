@@ -146,6 +146,22 @@ cmd_fuzz() {
   done < "$pf"
 }
 
+# project [name] - list projects (+ which is selected); with a name: create + select
+cmd_project() {
+  if [ -z "${1:-}" ]; then
+    local cur; cur=$(gql 'query { currentProject { project { name } } }' | jq -r '.data.currentProject.project.name // "none"')
+    gql 'query { projects { id name } }' | jq -r --arg cur "$cur" '.data.projects[] | "\(.name)\t\(.id)\t\(if .name == $cur then "SELECTED" else "" end)"'
+    return
+  fi
+  local pid
+  pid=$(gql 'mutation C($input: CreateProjectInput!) { createProject(input: $input) { project { id } error { __typename } } }' \
+    "$(jq -cn --arg name "$1" '{input: {name: $name, temporary: false}}')" \
+    | jq -r '.data.createProject.project.id // empty')
+  [ -n "$pid" ] || die "createProject failed"
+  gql 'mutation S($id: ID!) { selectProject(id: $id) { __typename } }' "{\"id\": \"$pid\"}" >/dev/null
+  echo "created+selected: $1 ($pid)"
+}
+
 case "${1:-}" in
   start) cmd_start ;;
   stop) cmd_stop ;;
@@ -153,8 +169,9 @@ case "${1:-}" in
   gql) shift; gql "$@" ;;
   history) shift; cmd_history "$@" ;;
   findings) shift; cmd_findings "$@" ;;
+  project) shift; cmd_project "$@" ;;
   raw) shift; cmd_raw "$@" ;;
   send) shift; cmd_send "$@" ;;
   fuzz) shift; cmd_fuzz "$@" ;;
-  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|findings|raw|send|fuzz} ..."; exit 2 ;;
+  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|findings|project|raw|send|fuzz} ..."; exit 2 ;;
 esac

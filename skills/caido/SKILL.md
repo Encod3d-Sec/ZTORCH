@@ -48,6 +48,7 @@ bash /root/vm.sh '~/caido.sh raw 15 resp'     # full raw response of captured re
 bash /root/vm.sh '~/caido.sh send /tmp/req.txt target.com 443 1'        # Replay send, prints raw response
 bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt t.com 443 1 0.4'  # variant battery
 bash /root/vm.sh '~/caido.sh findings 20'      # in-project findings (Scanner passive, workflows)
+bash /root/vm.sh '~/caido.sh project'          # list projects + selected; 'project <name>' = create+select
 bash scripts/caido-battery.sh t.com pays.txt   # vault-side: builds+ships a battery in ONE vm.sh call
 bash /root/vm.sh '~/caido.sh gql "<query>" "<vars-json>"'               # anything else, ad hoc
 ```
