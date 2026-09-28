@@ -7,6 +7,8 @@
 # request-line default: 'GET /{{PAYLOAD}} HTTP/1.1'; must contain {{PAYLOAD}};
 # canned Host/UA/Accept/Connection headers are appended (body-bearing POST
 # batteries: craft the template by hand + ~/caido.sh fuzz on the VM).
+# Authenticated battery: export CAIDO_COOKIE (full 'Cookie: ...' line from
+# '~/caido.sh cookies <host>' or a bare value) and it rides every variant.
 # Payloads: one per line, 60 max (RoE cap). Delimiters CBTPL/CBPAY must not
 # appear as a payload/template line.
 set -euo pipefail
@@ -16,6 +18,9 @@ host="${1:?host}"; pf="${2:?payloads file or -}"; line="${3:-}"
 tls="${4:-1}"; port="${5:-0}"; delay="${6:-0.4}"
 [ "$port" = 0 ] && { [ "$tls" = 1 ] && port=443 || port=80; }
 grep -q '{{PAYLOAD}}' <<<"$line" || { echo "template lacks {{PAYLOAD}}" >&2; exit 1; }
+grep -q '{{COOKIE}}' <<<"$line" && { echo "{{COOKIE}} is not substituted here; export CAIDO_COOKIE and the Cookie header is injected" >&2; exit 1; }
+ck=""
+[ -n "${CAIDO_COOKIE:-}" ] && ck="Cookie: ${CAIDO_COOKIE#Cookie: }"$'\n'
 pay=$(mktemp); [ "$pf" = - ] && cat > "$pay" || cat "$pf" > "$pay"
 trap 'rm -f "$pay" "${inner:-}"' EXIT
 n=$(grep -c . "$pay" || true)
@@ -23,7 +28,7 @@ n=$(grep -c . "$pay" || true)
 [ "$n" -gt 0 ] || { echo "no payloads" >&2; exit 1; }
 inner=$(mktemp)
 {
-  printf "cat > /tmp/cb-tpl.txt <<'CBTPL'\n%s\nHost: %s\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) Firefox/128.0\nAccept: */*\nConnection: close\n\nCBTPL\n" "$line" "$host"
+  printf "cat > /tmp/cb-tpl.txt <<'CBTPL'\n%s\nHost: %s\n%sUser-Agent: Mozilla/5.0 (X11; Linux x86_64) Firefox/128.0\nAccept: */*\nConnection: close\n\nCBTPL\n" "$line" "$host" "$ck"
   printf "cat > /tmp/cb-pay.txt <<'CBPAY'\n"; cat "$pay"; printf "\nCBPAY\n"
   printf "~/caido.sh fuzz /tmp/cb-tpl.txt /tmp/cb-pay.txt %s %s %s %s\n" "$host" "$port" "$tls" "$delay"
 } > "$inner"

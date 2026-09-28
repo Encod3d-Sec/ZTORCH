@@ -50,7 +50,9 @@ bash /root/vm.sh '~/caido.sh cookies example.com'      # Cookie hdr of latest ca
   isolation step, now one command; `project` alone lists + marks the selected one).
 - `fuzz <template> <payloads> <host> [port] [tls] [delay]`: template carries
   `{{PAYLOAD}}`; each variant = one Replay session; prints status/bytes/session per
-  line. Cap 60 payloads (RoE); no URL-encoding done for you.
+  line. Cap 60 payloads (RoE); no URL-encoding done for you. Authenticated runs:
+  template may carry `{{COOKIE}}` (refused unless `CAIDO_COOKIE` is set); the
+  vault-side battery injects `Cookie:` from `CAIDO_COOKIE` into every variant.
 - Ad hoc GraphQL: `~/caido.sh gql '<query>' '<vars-json>'` (POST
   `http://127.0.0.1:8082/graphql` with the Bearer token).
 - MITM HTTPS through the proxy needs the client to trust Caido's CA (Settings ->

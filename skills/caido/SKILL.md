@@ -76,6 +76,10 @@ per line - triage by status/length differential, then pull the interesting body 
 Authenticated batteries: templates may carry a `{{COOKIE}}` marker - `fuzz` refuses
 unless `CAIDO_COOKIE` is set, so the session is always explicit:
 `CAIDO_COOKIE="$(~/caido.sh cookies target.com)" ~/caido.sh fuzz tpl pays target.com 443 1`.
+The one-command battery takes the same env and injects the Cookie header into
+every variant: `CAIDO_COOKIE="$(~/caido.sh cookies target.com)" bash
+scripts/caido-battery.sh target.com pays.txt` (full `Cookie: ...` line or bare
+value both accepted).
 End-to-end authed flow: log the browser in THROUGH the proxy (VM chromium, proxy
 192.168.23.128:8080) so the session lands in History -> `cookies <host>` -> `send`
 manual requests or a `{{COOKIE}}` battery -> the Autorize plugin (if enabled) diffs
