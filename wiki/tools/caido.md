@@ -60,7 +60,10 @@ bash /root/vm.sh '~/caido.sh cookies example.com'      # Cookie hdr of latest ca
 - Cloudflare-fronted hosts: `send` replays can take an edge 403 while `fuzz`/battery
   variants pass in the same minute (seen on WP hosts, two independent lanes); prefer
   the battery for load-bearing sends, or pull the body from history `raw <id> resp` -
-  the captured response is already on disk at zero extra target traffic.
+  the captured response is already on disk at zero extra target traffic. Same edge
+  also fingerprints headless `--headless=new` chromium: all deep paths 403 while
+  curl-shaped battery GETs pass the same proxy (lane-regsurface3). A HEADED browser
+  (scripts/browser.sh + chrome-devtools MCP) is the browser fallback, not headless.
 
 ## HTTPQL (filter language)
 
