@@ -76,6 +76,11 @@ delay; RoE still applies on top (no_bruteforce = shape variation, NEVER cred/
 password spraying; back off on 5xx; anti-lockout). Note: payloads render bash-natively,
 no URL-encoding is done for you - pre-encode (`=` -> `%3D`, space -> `+`).
 
+Recon-phase fuzzing (content/param/discovery variation) routes through this lane too
+when scanners are RoE-barred (serial, bounded, operator-visible beats a banned ffuf)
+or when every request must be replay-visible; where wordlist scanners are permitted,
+`Skill(fuzz)` stays the primary lane and Caido is the fallback/visibility layer.
+
 ## HTTPQL (filter language, used by history + GUI filters + Automate)
 
 `<ns>.<field>.<op>:"<value>"` with ns `req`/`resp`/`row`; combine with `and`/`or`.
