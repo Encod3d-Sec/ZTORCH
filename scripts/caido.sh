@@ -73,6 +73,22 @@ cmd_findings() {
     | jq -r '.data.findings.edges[].node | "\(.id)\t\(.reporter)\t\(.host)\(.path)\t\(.title)\t\(.createdAt)"'
 }
 
+# cookies <host> - print the Cookie header of the most recent captured request to host
+# (login through the proxy once, then reuse the session in hand-crafted templates:
+#  CAIDO_COOKIE="$(~/caido.sh cookies host)" ~/caido.sh fuzz ... with a {{COOKIE}} template)
+cmd_cookies() {
+  local host="${1:?need host}" id
+  id=$(gql 'query H($code: String!) { requests(last: 1, filter: {code: $code}) { edges { node { id } } } }' \
+    "$(jq -cn --arg code "req.host.eq:\"$host\"" '{code: $code}')" \
+    | jq -r '.data.requests.edges[0].node.id // empty')
+  [ -n "$id" ] || { echo "# no captured requests for $host" >&2; return 1; }
+  local line
+  line=$(gql 'query R($id: ID!) { request(id: $id) { raw } }' "{\"id\": \"$id\"}" \
+    | jq -r '.data.request.raw' | base64 -d | grep -i '^Cookie:' | head -1 || true)
+  [ -n "$line" ] || { echo "# last captured request to $host carried no Cookie header" >&2; return 1; }
+  printf '%s\n' "$line"
+}
+
 # send <raw-request-file> <host> [port] [tls 0|1] - create Replay session, send, print response.
 # Raw file: full HTTP/1.1 request text. TLS=1 for https targets.
 cmd_send() {
@@ -116,6 +132,10 @@ cmd_fuzz() {
   [ -r "$pf" ] || die "cannot read $pf"
   local tpl; tpl=$(cat "$tf")
   grep -q '{{PAYLOAD}}' <<<"$tpl" || die "template lacks {{PAYLOAD}} marker"
+  if grep -q '{{COOKIE}}' <<<"$tpl"; then
+    [ -n "${CAIDO_COOKIE:-}" ] || die "template has {{COOKIE}} but CAIDO_COOKIE is unset (run: CAIDO_COOKIE=\"\$(~/caido.sh cookies <host>)\" ...)"
+    tpl="${tpl//\{\{COOKIE\}\}/$CAIDO_COOKIE}"
+  fi
   local n; n=$(grep -c . "$pf" || true)
   [ "$n" -gt 60 ] && die "$n payloads exceeds the 60-payload cap (RoE); split the battery"
   [ "$tls" = 1 ] && port="${4:-443}"
@@ -169,9 +189,10 @@ case "${1:-}" in
   gql) shift; gql "$@" ;;
   history) shift; cmd_history "$@" ;;
   findings) shift; cmd_findings "$@" ;;
+  cookies) shift; cmd_cookies "$@" ;;
   project) shift; cmd_project "$@" ;;
   raw) shift; cmd_raw "$@" ;;
   send) shift; cmd_send "$@" ;;
   fuzz) shift; cmd_fuzz "$@" ;;
-  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|findings|project|raw|send|fuzz} ..."; exit 2 ;;
+  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|findings|cookies|project|raw|send|fuzz} ..."; exit 2 ;;
 esac

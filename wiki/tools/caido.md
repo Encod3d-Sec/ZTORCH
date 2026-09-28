@@ -24,6 +24,7 @@ bash /root/vm.sh '~/caido.sh send /tmp/req.txt example.com 80 0'   # Replay send
 bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt example.com 443 1'  # variant battery
 bash scripts/caido-battery.sh example.com pays.txt   # one-command battery (ships template+payloads)
 bash /root/vm.sh '~/caido.sh findings 20'             # in-project findings (Scanner passive etc.)
+bash /root/vm.sh '~/caido.sh cookies example.com'      # Cookie hdr of latest captured req to host
 ```
 
 ## Setup facts (Kali VM)
@@ -43,7 +44,7 @@ bash /root/vm.sh '~/caido.sh findings 20'             # in-project findings (Sca
 ## Driving it
 
 - Helper `~/caido.sh` (source of truth `scripts/caido.sh`): `start|stop|status|gql|
-  history|findings|project|raw|send|fuzz`. All calls go over vm.sh as one command each.
+  history|findings|cookies|project|raw|send|fuzz`. All calls go over vm.sh as one command each.
   `scripts/caido-battery.sh` (vault side) ships a whole battery in one vm.sh call.
   `project <name>` creates + selects an isolated per-engagement project (the skill's
   isolation step, now one command; `project` alone lists + marks the selected one).
