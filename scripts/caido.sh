@@ -66,6 +66,13 @@ cmd_raw() {
   fi
 }
 
+# findings [count] - list in-project findings (Scanner passive checks, workflows, manual)
+cmd_findings() {
+  local n="${1:-20}"
+  gql 'query F($first: Int!) { findings(first: $first) { edges { node { id title reporter host path createdAt } } } }' "{\"first\": $n}" \
+    | jq -r '.data.findings.edges[].node | "\(.id)\t\(.reporter)\t\(.host)\(.path)\t\(.title)\t\(.createdAt)"'
+}
+
 # send <raw-request-file> <host> [port] [tls 0|1] - create Replay session, send, print response.
 # Raw file: full HTTP/1.1 request text. TLS=1 for https targets.
 cmd_send() {
@@ -145,8 +152,9 @@ case "${1:-}" in
   status) cmd_status ;;
   gql) shift; gql "$@" ;;
   history) shift; cmd_history "$@" ;;
+  findings) shift; cmd_findings "$@" ;;
   raw) shift; cmd_raw "$@" ;;
   send) shift; cmd_send "$@" ;;
   fuzz) shift; cmd_fuzz "$@" ;;
-  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|raw|send|fuzz} ..."; exit 2 ;;
+  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|findings|raw|send|fuzz} ..."; exit 2 ;;
 esac
