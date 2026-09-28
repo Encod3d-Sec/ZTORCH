@@ -57,6 +57,10 @@ bash /root/vm.sh '~/caido.sh cookies example.com'      # Cookie hdr of latest ca
   `http://127.0.0.1:8082/graphql` with the Bearer token).
 - MITM HTTPS through the proxy needs the client to trust Caido's CA (Settings ->
   Certificates) or `curl -k`.
+- Cloudflare-fronted hosts: `send` replays can take an edge 403 while `fuzz`/battery
+  variants pass in the same minute (seen on WP hosts, two independent lanes); prefer
+  the battery for load-bearing sends, or pull the body from history `raw <id> resp` -
+  the captured response is already on disk at zero extra target traffic.
 
 ## HTTPQL (filter language)
 
