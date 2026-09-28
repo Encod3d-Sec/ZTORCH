@@ -48,6 +48,7 @@ bash /root/vm.sh '~/caido.sh raw 15 resp'     # full raw response of captured re
 bash /root/vm.sh '~/caido.sh send /tmp/req.txt target.com 443 1'        # Replay send, prints raw response
 bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt t.com 443 1 0.4'  # variant battery
 bash /root/vm.sh '~/caido.sh findings 20'      # in-project findings (Scanner passive, workflows)
+bash /root/vm.sh '~/caido.sh cookies target.com'  # Cookie header of the latest captured request to host
 bash /root/vm.sh '~/caido.sh project'          # list projects + selected; 'project <name>' = create+select
 bash scripts/caido-battery.sh t.com pays.txt   # vault-side: builds+ships a battery in ONE vm.sh call
 bash /root/vm.sh '~/caido.sh gql "<query>" "<vars-json>"'               # anything else, ad hoc
@@ -71,6 +72,16 @@ request with `{{PAYLOAD}}` marker(s), payloads = one per line. Each variant send
 its own Replay session (operator-visible); output is `STATUS  bytes  session  payload`
 per line - triage by status/length differential, then pull the interesting body via
 `gql replayEntry` or re-send the variant with `send`.
+
+Authenticated batteries: templates may carry a `{{COOKIE}}` marker - `fuzz` refuses
+unless `CAIDO_COOKIE` is set, so the session is always explicit:
+`CAIDO_COOKIE="$(~/caido.sh cookies target.com)" ~/caido.sh fuzz tpl pays target.com 443 1`.
+End-to-end authed flow: log the browser in THROUGH the proxy (VM chromium, proxy
+192.168.23.128:8080) so the session lands in History -> `cookies <host>` -> `send`
+manual requests or a `{{COOKIE}}` battery -> the Autorize plugin (if enabled) diffs
+baseline/mutated/no-auth triplets on the same session = the IDOR lane
+([[hunt-idor]] class), and passive Scanner checks the traffic. Credential itself
+stays in the proxy capture, never in a vault file.
 
 Typical batteries (vary ONE thing per run): parameter values (where/filter/ID tamper),
 formats (f=json/geojson/html/pjson), headers (auth token swap, X-Original-URL,
