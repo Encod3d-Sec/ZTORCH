@@ -145,17 +145,21 @@ cmd_fuzz() {
     req="${tpl//\{\{PAYLOAD\}\}/$p}"
     # $(cat) strips the trailing blank line; restore it or the request never terminates
     raw=$(printf '%s\n\n' "$req" | base64 -w0)
+    # set -e aborts the WHOLE battery on one transient gql hiccup (seen: 8/12 lines,
+    # no error, remaining payloads silently unsent). || true on the three in-loop gql
+    # calls routes every failure to the per-variant ERR/PEND lines, so the invariant
+    # line-count == payload-count always holds.
     sid=$(gql 'mutation C($input: CreateReplaySessionInput!) { createReplaySession(input: $input) { session { id } error { __typename } } }' \
       "$(jq -cn --arg host "$host" --arg sni "$host" --arg raw "$raw" --argjson port "$port" --argjson tls "$([ "$tls" = 1 ] && echo true || echo false)" \
         '{input: {kind: "HTTP", requestSource: {raw: {connectionInfo: {host: $host, port: $port, isTLS: $tls, SNI: $sni}, raw: $raw}}}}')" \
-      | jq -r '.data.createReplaySession.session.id // empty')
+      | jq -r '.data.createReplaySession.session.id // empty' || true)
     if [ -z "$sid" ]; then printf 'ERR\t0\t-\t%s\n' "$p"; continue; fi
     eid=$(gql 'mutation S($sessionId: ID!) { startReplayTask(sessionId: $sessionId) { task { replayEntry { id } } error { __typename } } }' \
       "$(jq -cn --arg sid "$sid" '{sessionId: $sid}')" \
-      | jq -r '.data.startReplayTask.task.replayEntry.id // empty')
+      | jq -r '.data.startReplayTask.task.replayEntry.id // empty' || true)
     out=""
     for i in 1 2 3 4 5 6; do
-      out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { response { statusCode raw } } } } }' "{\"id\": \"${eid:-0}\"}")
+      out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { response { statusCode raw } } } } }' "{\"id\": \"${eid:-0}\"}" || true)
       echo "$out" | jq -e '.data.replayEntry.request.response.raw != null' >/dev/null 2>&1 && break
       sleep 1
     done
