@@ -30,6 +30,7 @@ is absent, this map IS the router.
 | External recon / OSINT / attack-surface mapping | `Skill(wiki-recon)` |
 | Targeted web fuzzing needed (deterministic wordlist pick) | `Skill(fuzz)` |
 | Driving Burp (proxy triage, Repeater/Intruder/Collaborator) | `Skill(hunt-burp)`; PoC capture from Burp: `Skill(screenshot-burp)` |
+| Burp/MCP down, per-engagement isolated proxy project wanted, or Caido-native features (Automate, Replay fuzz batteries) | `Skill(caido)` (headless Caido on the VM; same load-bearing-visibility discipline, Replay entries instead of Repeater tabs) |
 | Manual login / MFA / CAPTCHA the agent cannot do headlessly | `Skill(chrome-devtools-browser)` |
 | msfconsole work (recon DB, exploits, handler, pivots, post-ex) | `Skill(metasploit)` |
 | Fully-specified exploit compile / escalation run to hand off | `Skill(delegate)` (mechanical, cheap tier; false-root guardrail mandatory) |
