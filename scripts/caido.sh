@@ -110,11 +110,11 @@ cmd_send() {
   # poll for the response (replay entries fill in async)
   local i out=""
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { response { statusCode raw } } } } }' "{\"id\": \"$eid\"}")
+    out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { id response { statusCode raw } } } } }' "{\"id\": \"$eid\"}")
     echo "$out" | jq -e '.data.replayEntry.request.response.raw != null' >/dev/null 2>&1 && break
     sleep 1
   done
-  echo "# replay session=$sid entry=$eid"
+  echo "# replay session=$sid entry=$eid history=$(echo "$out" | jq -r '.data.replayEntry.request.id // empty')"
   echo "$out" | jq -r '.data.replayEntry.error // empty' >&2 || true
   echo "$out" | jq -r '.data.replayEntry.request.response.statusCode // empty' >&2 || true
   echo "$out" | jq -r '.data.replayEntry.request.response.raw // "NO RESPONSE (timeout)"' | base64 -d
@@ -159,15 +159,20 @@ cmd_fuzz() {
       | jq -r '.data.startReplayTask.task.replayEntry.id // empty' || true)
     out=""
     for i in 1 2 3 4 5 6; do
-      out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { response { statusCode raw } } } } }' "{\"id\": \"${eid:-0}\"}" || true)
+      out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { id response { statusCode raw } } } } }' "{\"id\": \"${eid:-0}\"}" || true)
       echo "$out" | jq -e '.data.replayEntry.request.response.raw != null' >/dev/null 2>&1 && break
       sleep 1
     done
     code=$(echo "$out" | jq -r 'if .data.replayEntry.request.response.statusCode then .data.replayEntry.request.response.statusCode elif .data.replayEntry.request then "PEND" else "ERR" end' 2>/dev/null || echo ERR)
     len=$(echo "$out" | jq -r '.data.replayEntry.request.response.raw // ""' 2>/dev/null | base64 -d 2>/dev/null | wc -c)
-    # 3rd column carries BOTH ids: session/eid - `raw <eid>` pulls the body straight
-    # from history without the manual mapping step (bit the sportas-version2 lane)
-    printf '%s\t%s\t%s/%s\t%s\n' "$code" "$len" "$sid" "${eid:-0}" "$p"
+    # 3rd column: session/history-request-id. `raw <histid>` pulls the body straight
+    # from history. NEVER feed the replayEntry id to raw: request(id:) resolves the
+    # HISTORY table, both id spaces are dense numbers, so a replayEntry id silently
+    # returns a DIFFERENT capture (bit lane-regsurface5: entry 98 -> an example.com
+    # status-check row, entry 104 -> an unrelated battery row).
+    hid=$(echo "$out" | jq -r '.data.replayEntry.request.id // empty' 2>/dev/null || true)
+    [ -n "$hid" ] || hid="?:${eid:-0}"
+    printf '%s\t%s\t%s/%s\t%s\n' "$code" "$len" "$sid" "$hid" "$p"
     sleep "$delay"
   done < "$pf"
 }
