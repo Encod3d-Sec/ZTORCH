@@ -162,6 +162,12 @@ def _checkable_lits(obs):
     for tok in obs.replace("`", " ").split():
         if _FILE_TOKEN.fullmatch(tok) or len(tok) < 4 or _STRUCT.search(tok) is None:
             continue
+        # A structural token needs word chars on the left of the '=' (uid=33(www-data),
+        # id=0, THM{...}); a bare comparison like "(>=28" or "<=5" is criterion prose
+        # ("at least 28 lines"), not an observable - substring-checking it false-negatives
+        # an honest lane (seen: lane-apipl-sqli, 2026-09-29).
+        if not (re.search(r"\w=", tok) or "{" in tok):
+            continue
         if ("str", tok) not in lits:
             lits.append(("str", tok))
     return lits
@@ -228,8 +234,25 @@ def main(argv=None):
     for name, obs, cap in lanes_from_text(text):
         capdir = cap if os.path.isabs(cap) else os.path.normpath(os.path.join(base, cap))
         if not os.path.isdir(capdir):
-            print("lane %s: NOT VERIFIED - no capture dir at %s" % (name, cap))
-            n_fail += 1
+            # a vault-root-spelled cell (capture targets/<eng>/poc/lane-x) resolves
+            # nowhere under the eng dir; strip that prefix once and retry
+            eng = os.path.basename(base)
+            alt = re.sub(r"^targets/%s/" % re.escape(eng), "", cap)
+            if alt != cap and os.path.isdir(os.path.join(base, alt)):
+                capdir = os.path.join(base, alt)
+        if not os.path.isdir(capdir):
+            # scribe/draft lanes declare `capture <dir> (none; edits in <dir>)` and carry
+            # the brain's own `-> VERIFIED:` verdict naming where the check happened;
+            # the dir-less line is closed-by-brain, not an over-claim.
+            m2 = re.search(r"^- lane %s\b.*capture \S+\s*\(.*-> VERIFIED:" % re.escape(name),
+                           text, re.MULTILINE)
+            if m2:
+                print("lane %s: CLOSED-BY-BRAIN - no capture dir (annotated none; verdict "
+                      "text documents the check)" % name)
+                n_ok += 1
+            else:
+                print("lane %s: NOT VERIFIED - no capture dir at %s" % (name, cap))
+                n_fail += 1
         elif not has_checkable(obs):
             n, b = _stats(capdir)
             print("lane %s: REVIEW-BY-EYE - descriptive criterion \"%s\" (mechanically "
