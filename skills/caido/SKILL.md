@@ -46,6 +46,7 @@ chrome-devtools MCP `evaluate_script` on that tab:
 bash /root/vm.sh '~/caido.sh history "req.host.eq:\"target.com\"" 20'   # HTTPQL-filtered history
 bash /root/vm.sh '~/caido.sh raw 15 resp'     # full raw response of captured req 15 (req for the request)
 bash /root/vm.sh '~/caido.sh send /tmp/req.txt target.com 443 1'        # Replay send, prints raw response
+bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt t.com 443 1 0.4'  # variant battery
 bash /root/vm.sh '~/caido.sh gql "<query>" "<vars-json>"'               # anything else, ad hoc
 ```
 
@@ -59,6 +60,21 @@ bash /root/vm.sh '~/caido.sh gql "<query>" "<vars-json>"'               # anythi
   fragment for request/response). On a field error, introspect first:
   `__type(name:"...")` / `__schema { mutationType { fields { name } } }`, or check
   github.com/caido/schemas. Do NOT trust older docs snippets blindly.
+
+## Fuzz batteries (request-variation through Replay)
+
+`fuzz <template> <payloads> <host> [port] [tls] [delay]`: template = full HTTP/1.1
+request with `{{PAYLOAD}}` marker(s), payloads = one per line. Each variant sends as
+its own Replay session (operator-visible); output is `STATUS  bytes  session  payload`
+per line - triage by status/length differential, then pull the interesting body via
+`gql replayEntry` or re-send the variant with `send`.
+
+Typical batteries (vary ONE thing per run): parameter values (where/filter/ID tamper),
+formats (f=json/geojson/html/pjson), headers (auth token swap, X-Original-URL,
+method override), verb/path variants. Baked-in bounds: 60-payload cap, 0.3s default
+delay; RoE still applies on top (no_bruteforce = shape variation, NEVER cred/
+password spraying; back off on 5xx; anti-lockout). Note: payloads render bash-natively,
+no URL-encoding is done for you - pre-encode (`=` -> `%3D`, space -> `+`).
 
 ## HTTPQL (filter language, used by history + GUI filters + Automate)
 

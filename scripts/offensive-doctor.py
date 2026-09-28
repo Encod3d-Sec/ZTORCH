@@ -246,6 +246,26 @@ def _smoke(off):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _caido():
+    # Advisory only: Burp stays the primary proxy lane; Caido being down never fails the doctor.
+    bridge = next((b for b in ("/root/vm.sh", os.path.join(VAULT, "scripts", "win-vm.sh"))
+                   if os.path.isfile(b)), None)
+    if bridge is None:
+        check("caido: VM bridge present (advisory)", False,
+              "no /root/vm.sh or scripts/win-vm.sh on this seat", warn=True)
+        return
+    try:
+        r = subprocess.run(["bash", bridge, "~/caido.sh status"],
+                           capture_output=True, text=True, timeout=40)
+    except Exception as e:
+        check("caido: instance status (advisory)", False, str(e)[:80], warn=True)
+        return
+    out = (r.stdout or "").strip()
+    check("caido: instance up + token valid (advisory)",
+          r.returncode == 0 and "token-valid:yes" in out,
+          (out.splitlines() or ["no output"])[0][:80], warn=True)
+
+
 def main(argv):
     verbose = "--verbose" in argv or "-v" in argv
     off = _import_offensive()
@@ -255,6 +275,7 @@ def main(argv):
     _skill_and_hook()
     _bench()
     _zg()
+    _caido()
     _smoke(off)
 
     fails = [r for r in RESULTS if r[1] == "FAIL"]

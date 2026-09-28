@@ -97,6 +97,48 @@ cmd_send() {
   echo "$out" | jq -r '.data.replayEntry.request.response.raw // "NO RESPONSE (timeout)"' | base64 -d
 }
 
+# fuzz <template-file> <payloads-file> <host> [port] [tls 0|1] [delay-s]
+# Template: full HTTP/1.1 request with one or more {{PAYLOAD}} markers; payloads file:
+# one per line. Each variant goes out as its own Replay session (operator-visible in
+# the GUI Replay tab). Prints: STATUS<TAB>bytes<TAB>session<TAB>payload per variant.
+# RoE bounds: hard cap 60 payloads, default 0.3s between sends. no_bruteforce applies:
+# this is for request-shape variation, never credential/password spraying.
+cmd_fuzz() {
+  local tf="${1:?need template file}" pf="${2:?need payloads file}" host="${3:?need host}" port="${4:-80}" tls="${5:-0}" delay="${6:-0.3}"
+  [ -r "$tf" ] || die "cannot read $tf"
+  [ -r "$pf" ] || die "cannot read $pf"
+  local tpl; tpl=$(cat "$tf")
+  grep -q '{{PAYLOAD}}' <<<"$tpl" || die "template lacks {{PAYLOAD}} marker"
+  local n; n=$(grep -c . "$pf" || true)
+  [ "$n" -gt 60 ] && die "$n payloads exceeds the 60-payload cap (RoE); split the battery"
+  [ "$tls" = 1 ] && port="${4:-443}"
+  local p req raw sid eid out code len i
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    req="${tpl//\{\{PAYLOAD\}\}/$p}"
+    # $(cat) strips the trailing blank line; restore it or the request never terminates
+    raw=$(printf '%s\n\n' "$req" | base64 -w0)
+    sid=$(gql 'mutation C($input: CreateReplaySessionInput!) { createReplaySession(input: $input) { session { id } error { __typename } } }' \
+      "$(jq -cn --arg host "$host" --arg sni "$host" --arg raw "$raw" --argjson port "$port" --argjson tls "$([ "$tls" = 1 ] && echo true || echo false)" \
+        '{input: {kind: "HTTP", requestSource: {raw: {connectionInfo: {host: $host, port: $port, isTLS: $tls, SNI: $sni}, raw: $raw}}}}')" \
+      | jq -r '.data.createReplaySession.session.id // empty')
+    if [ -z "$sid" ]; then printf 'ERR\t0\t-\t%s\n' "$p"; continue; fi
+    eid=$(gql 'mutation S($sessionId: ID!) { startReplayTask(sessionId: $sessionId) { task { replayEntry { id } } error { __typename } } }' \
+      "$(jq -cn --arg sid "$sid" '{sessionId: $sid}')" \
+      | jq -r '.data.startReplayTask.task.replayEntry.id // empty')
+    out=""
+    for i in 1 2 3 4 5 6; do
+      out=$(gql 'query G($id: ID!) { replayEntry(id: $id, sessionKind: HTTP) { error ... on ReplayEntryHttp { request { response { statusCode raw } } } } }' "{\"id\": \"${eid:-0}\"}")
+      echo "$out" | jq -e '.data.replayEntry.request.response.raw != null' >/dev/null 2>&1 && break
+      sleep 1
+    done
+    code=$(echo "$out" | jq -r 'if .data.replayEntry.request.response.statusCode then .data.replayEntry.request.response.statusCode elif .data.replayEntry.request then "PEND" else "ERR" end' 2>/dev/null || echo ERR)
+    len=$(echo "$out" | jq -r '.data.replayEntry.request.response.raw // ""' 2>/dev/null | base64 -d 2>/dev/null | wc -c)
+    printf '%s\t%s\t%s\t%s\n' "$code" "$len" "$sid" "$p"
+    sleep "$delay"
+  done < "$pf"
+}
+
 case "${1:-}" in
   start) cmd_start ;;
   stop) cmd_stop ;;
@@ -105,5 +147,6 @@ case "${1:-}" in
   history) shift; cmd_history "$@" ;;
   raw) shift; cmd_raw "$@" ;;
   send) shift; cmd_send "$@" ;;
-  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|raw|send} ..."; exit 2 ;;
+  fuzz) shift; cmd_fuzz "$@" ;;
+  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; echo; echo "usage: caido.sh {start|stop|status|gql|history|raw|send|fuzz} ..."; exit 2 ;;
 esac

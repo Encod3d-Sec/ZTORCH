@@ -2,6 +2,7 @@
 title: Caido
 tags: [tool, proxy, web]
 description: Rust web-audit proxy running headless on the Kali VM; GraphQL API + web GUI, HTTPQL filtering, Replay, Automate.
+phase: exploit
 sources:
   - https://docs.caido.io/
 ---
@@ -20,6 +21,7 @@ bash /root/vm.sh '~/caido.sh status'      # process + ui + proxy + token-valid
 bash /root/vm.sh '~/caido.sh history "req.host.eq:\"example.com\"" 20'
 bash /root/vm.sh '~/caido.sh raw 15 resp'   # full raw response of captured req 15
 bash /root/vm.sh '~/caido.sh send /tmp/req.txt example.com 80 0'   # Replay send
+bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt example.com 443 1'  # variant battery
 ```
 
 ## Setup facts (Kali VM)
@@ -39,7 +41,10 @@ bash /root/vm.sh '~/caido.sh send /tmp/req.txt example.com 80 0'   # Replay send
 ## Driving it
 
 - Helper `~/caido.sh` (source of truth `scripts/caido.sh`): `start|stop|status|gql|
-  history|raw|send`. All calls go over vm.sh as one command each.
+  history|raw|send|fuzz`. All calls go over vm.sh as one command each.
+- `fuzz <template> <payloads> <host> [port] [tls] [delay]`: template carries
+  `{{PAYLOAD}}`; each variant = one Replay session; prints status/bytes/session per
+  line. Cap 60 payloads (RoE); no URL-encoding done for you.
 - Ad hoc GraphQL: `~/caido.sh gql '<query>' '<vars-json>'` (POST
   `http://127.0.0.1:8082/graphql` with the Bearer token).
 - MITM HTTPS through the proxy needs the client to trust Caido's CA (Settings ->
