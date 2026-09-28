@@ -26,6 +26,8 @@ bash scripts/wl-pick.sh params "" bb
 ```
 It prints the seclists base, the profile flags line, and the ordered absolute paths (T0 harness -> T3 fingerprint list -> T1 surface lists, size-ordered). NEVER hand-pick a list from memory and NEVER start with `directory-list-2.3-medium` (220k). The size order is already correct in the output; run top-to-bottom, stop climbing when you have enough signal.
 
+Wordlist scanners RoE-barred (`scanners: no`)? Same two axes as serial Caido Replay batteries instead: `bash scripts/caido-battery.sh <host> <payloads-file|-> ['GET /{{PAYLOAD}} HTTP/1.1']` (one command, 60-payload cap, operator-visible in the GUI; see [[caido]] / `Skill(caido)`).
+
 ## 3. Calibrate (native first, backstop with judgment)
 - Launch every fuzz run detached in its own tmux tab: `bash scripts/vm-scan.sh --win ffuf <eng> <target> '<cmd>'` (output stays in-pane, autocard cards it; a foreground run dies with the SSH round trip).
 - Default to ffuf `-ac`/`-acc` and feroxbuster auto-filtering.

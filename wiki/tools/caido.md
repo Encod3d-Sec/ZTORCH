@@ -22,6 +22,8 @@ bash /root/vm.sh '~/caido.sh history "req.host.eq:\"example.com\"" 20'
 bash /root/vm.sh '~/caido.sh raw 15 resp'   # full raw response of captured req 15
 bash /root/vm.sh '~/caido.sh send /tmp/req.txt example.com 80 0'   # Replay send
 bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt example.com 443 1'  # variant battery
+bash scripts/caido-battery.sh example.com pays.txt   # one-command battery (ships template+payloads)
+bash /root/vm.sh '~/caido.sh findings 20'             # in-project findings (Scanner passive etc.)
 ```
 
 ## Setup facts (Kali VM)
@@ -41,7 +43,8 @@ bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt example.com 443 1' 
 ## Driving it
 
 - Helper `~/caido.sh` (source of truth `scripts/caido.sh`): `start|stop|status|gql|
-  history|raw|send|fuzz`. All calls go over vm.sh as one command each.
+  history|findings|raw|send|fuzz`. All calls go over vm.sh as one command each.
+  `scripts/caido-battery.sh` (vault side) ships a whole battery in one vm.sh call.
 - `fuzz <template> <payloads> <host> [port] [tls] [delay]`: template carries
   `{{PAYLOAD}}`; each variant = one Replay session; prints status/bytes/session per
   line. Cap 60 payloads (RoE); no URL-encoding done for you.
