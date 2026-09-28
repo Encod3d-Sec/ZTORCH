@@ -49,8 +49,15 @@ bash /root/vm.sh '~/caido.sh cookies example.com'      # Cookie hdr of latest ca
   `project <name>` creates + selects an isolated per-engagement project (the skill's
   isolation step, now one command; `project` alone lists + marks the selected one).
 - `fuzz <template> <payloads> <host> [port] [tls] [delay]`: template carries
-  `{{PAYLOAD}}`; each variant = one Replay session; prints status/bytes/session per
-  line. Cap 60 payloads (RoE); no URL-encoding done for you. Authenticated runs:
+  `{{PAYLOAD}}`; each variant = one Replay session; prints
+  status/bytes/session/history-id per line. Cap 60 payloads (RoE); no URL-encoding
+  done for you. `raw <history-id>` (the id after the slash in column 3) pulls the
+  variant body from history. NEVER feed a replayEntry id to `raw`: `request(id:)`
+  resolves the HISTORY table and both id spaces are dense numbers, so a replayEntry
+  id silently returns a different capture (lane-regsurface5: entry 98 returned an
+  example.com status-check row); when the history id is unavailable the column shows
+  `?:<entry>` and the row must be located via `history "req.host.eq:..."` instead.
+  Authenticated runs:
   template may carry `{{COOKIE}}` (refused unless `CAIDO_COOKIE` is set); the
   vault-side battery injects `Cookie:` from `CAIDO_COOKIE` into every variant.
 - Ad hoc GraphQL: `~/caido.sh gql '<query>' '<vars-json>'` (POST
