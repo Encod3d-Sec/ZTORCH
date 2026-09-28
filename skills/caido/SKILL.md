@@ -113,6 +113,13 @@ Full field/op reference: docs.caido.io/app/reference/httpql.
   Replay): per-engagement setup in the GUI, persisted in the project.
 - **Findings + Exports**: log confirmed findings in-project (GUI Findings), export
   requests to files (Exports) for the report; raw pairs still go to `targets/<eng>/poc/`.
+- **Plugins** (Pro): install headless via gql `installPluginPackage(input:
+  {source: {url: <release-zip>}})` -> `pluginPackages { plugins { id enabled } }`;
+  `togglePlugin(id, enabled)` flips them. Official ones worth installing: Scanner
+  (checks engine - passive mode adds ZERO target requests, RoE-safe; active mode
+  is scanner-class tooling, respect RoE) and Autorize (baseline/mutated/no-auth
+  request diffs = the IDOR lane; needs one authenticated session). Shift (BYO-key
+  LLM) is redundant when the agent is the LLM lane.
 
 ## Relation to Burp
 

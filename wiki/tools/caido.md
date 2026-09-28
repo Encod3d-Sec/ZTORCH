@@ -84,6 +84,7 @@ resp.code.gte:500 and req.method.eq:"POST"
 | Automate | bulk runs: wordlist payloads, extractors, rate limits (Intruder-class) |
 | Workflows | request/response pass pipelines, can emit Findings |
 | Findings / Exports | in-project issue log; request export to files |
+| Plugins | installable packages (Scanner/Autorize/Shift official); gql `installPluginPackage` with `{source:{url}}` works headless |
 | Environment / Files | per-project variables + hosted wordlists, `{{env.VAR}}` |
 | Scopes | target allowlists to cut noise |
 
