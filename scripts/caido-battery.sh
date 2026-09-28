@@ -22,6 +22,9 @@ grep -q '{{COOKIE}}' <<<"$line" && { echo "{{COOKIE}} is not substituted here; e
 ck=""
 [ -n "${CAIDO_COOKIE:-}" ] && ck="Cookie: ${CAIDO_COOKIE#Cookie: }"$'\n'
 pay=$(mktemp); [ "$pf" = - ] && cat > "$pay" || cat "$pf" > "$pay"
+# template '/{{PAYLOAD}}' + payload '/x' would ship 'GET //x' (servers answer with a
+# canonicalization 301, not the path's real response - bit the regsurface2 lane)
+case "$line" in */{{PAYLOAD}}*) sed 's#^/##' "$pay" > "$pay.n" && mv "$pay.n" "$pay" ;; esac
 trap 'rm -f "$pay" "${inner:-}"' EXIT
 n=$(grep -c . "$pay" || true)
 [ "$n" -gt 60 ] && { echo "$n payloads exceeds the 60 cap (RoE)" >&2; exit 1; }
