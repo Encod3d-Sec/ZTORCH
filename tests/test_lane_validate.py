@@ -125,3 +125,27 @@ def test_compound_criterion_and_split_end_to_end(tmp_path, capsys):
     lv.main([str(tmp_path)])
     out = capsys.readouterr().out
     assert "lane c: VERIFIED" in out
+
+
+def test_descriptive_prose_criterion_is_review_by_eye_not_overclaim(tmp_path, capsys):
+    log = tmp_path / "log.md"
+    log.write_text(LINE % ("c", "probe table + raw 200 login pages", "c", " -> done"),
+                   encoding="utf-8")
+    cap = tmp_path / "poc" / "c"
+    cap.mkdir(parents=True)
+    (cap / "battery.txt").write_text("200 558 x /login\n", encoding="utf-8")
+    lv.main([str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "lane c: REVIEW-BY-EYE" in out and "NOT VERIFIED" not in out
+
+
+def test_named_capture_file_token_must_exist_nonempty(tmp_path, capsys):
+    log = tmp_path / "log.md"
+    log.write_text(LINE % ("d", "battery.txt 12 lines landed", "d", " -> done"),
+                   encoding="utf-8")
+    cap = tmp_path / "poc" / "d"
+    cap.mkdir(parents=True)
+    (cap / "battery.txt").write_text("", encoding="utf-8")
+    lv.main([str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "lane d: NOT VERIFIED" in out          # named file empty = no evidence

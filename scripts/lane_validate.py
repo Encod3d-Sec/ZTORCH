@@ -8,10 +8,13 @@ lane's claim. Under momentum that verification is skipped - this script IS that 
 
     python3 scripts/lane_validate.py <eng-dir | log.md path>
 
-For each lane line: `VERIFIED` when the stated observable appears (plain substring) in any
-file under the capture dir, `NOT VERIFIED` when absent (the over-claim leak-through), `in
-flight` lines are skipped (status, not guess). Exit 0 always - it prints verdicts, it does
-not gate; writing the verdict line into the log stays the main agent's job.
+For each lane line: `VERIFIED` when the criterion's checkable tokens (backtick literals,
+structural tokens like uid=33(www-data) / THM{flag}, and named capture files) verify in
+the capture dir, `NOT VERIFIED` when absent (the over-claim leak-through), `REVIEW-BY-EYE`
+when the criterion is pure prose no tool can substring-match (dir stats printed instead -
+a false NOT VERIFIED trains the agent to ignore the validator). `in flight` lines are
+skipped (status, not guess). Exit 0 always - it prints verdicts, it does not gate; writing
+the verdict line into the log stays the main agent's job.
 """
 import os
 import re
@@ -142,12 +145,70 @@ def _search(dirpath, needle):
     return False
 
 
+_FILE_TOKEN = re.compile(r"\b[\w.-]+\.(?:txt|md|json|jsonl|html|log|csv)\b")
+_QUOTED = re.compile(r"`([^`]+)`")
+_STRUCT = re.compile(r"[{}=<>\[\]]")
+
+
+def _checkable_lits(obs):
+    """Tokens the validator can mechanically verify: backtick literals (substring),
+    named capture files (existence + non-empty), and bare structural tokens like
+    `uid=33(www-data)` / `THM{zzz}` (substring). Everything else is prose - a prose
+    criterion substring-match would false-negative every honest lane and train the
+    agent to ignore the validator. Returns [(kind, token)]."""
+    lits = [("str", m) for m in _QUOTED.findall(obs)]
+    for m in _FILE_TOKEN.findall(obs):
+        lits.append(("file", m))
+    for tok in obs.replace("`", " ").split():
+        if _FILE_TOKEN.fullmatch(tok) or len(tok) < 4 or _STRUCT.search(tok) is None:
+            continue
+        if ("str", tok) not in lits:
+            lits.append(("str", tok))
+    return lits
+
+
+def _stats(dirpath):
+    n = b = 0
+    for root, _dirs, files in os.walk(dirpath):
+        for f in files:
+            p = os.path.join(root, f)
+            try:
+                n += 1
+                b += os.path.getsize(p)
+            except OSError:
+                pass
+    return n, b
+
+
+def _file_present(dirpath, name):
+    for root, _dirs, files in os.walk(dirpath):
+        for f in files:
+            if f == name:
+                try:
+                    return os.path.getsize(os.path.join(root, f)) > 0
+                except OSError:
+                    return False
+    return False
+
+
 def criterion_met(cap, obs):
-    """True when EVERY AND-separated fragment of the criterion appears in the capture.
-    The delegate skill teaches compound criteria (`hostname` = x AND `id` = y); a
-    whole-string substring would never match an honest compound -> NOT VERIFIED noise
-    that trains the agent to ignore the validator."""
-    return all(_search(cap, frag.strip()) for frag in obs.split(" AND ") if frag.strip())
+    """True when every CHECKABLE token of the criterion verifies in the capture:
+    backtick literals and structural tokens as substrings, named files as existing
+    non-empty captures. The delegate skill teaches compound criteria (`hostname` = x
+    AND `id` = y); those split on AND, and each fragment's checkable tokens must all
+    be present."""
+    for frag in obs.split(" AND "):
+        for kind, tok in _checkable_lits(frag):
+            if kind == "file":
+                if not _file_present(cap, tok):
+                    return False
+            elif not _search(cap, tok):
+                return False
+    return True
+
+
+def has_checkable(obs):
+    return bool(_checkable_lits(obs))
 
 
 def main(argv=None):
@@ -169,6 +230,11 @@ def main(argv=None):
         if not os.path.isdir(capdir):
             print("lane %s: NOT VERIFIED - no capture dir at %s" % (name, cap))
             n_fail += 1
+        elif not has_checkable(obs):
+            n, b = _stats(capdir)
+            print("lane %s: REVIEW-BY-EYE - descriptive criterion \"%s\" (mechanically "
+                  "uncheckable); %d files %dB in %s, read the raws yourself" % (name, obs, n, b, cap))
+            n_ok += 1
         elif criterion_met(capdir, obs):
             print("lane %s: VERIFIED (\"%s\" present in %s)" % (name, obs, cap))
             n_ok += 1
