@@ -165,7 +165,9 @@ cmd_fuzz() {
     done
     code=$(echo "$out" | jq -r 'if .data.replayEntry.request.response.statusCode then .data.replayEntry.request.response.statusCode elif .data.replayEntry.request then "PEND" else "ERR" end' 2>/dev/null || echo ERR)
     len=$(echo "$out" | jq -r '.data.replayEntry.request.response.raw // ""' 2>/dev/null | base64 -d 2>/dev/null | wc -c)
-    printf '%s\t%s\t%s\t%s\n' "$code" "$len" "$sid" "$p"
+    # 3rd column carries BOTH ids: session/eid - `raw <eid>` pulls the body straight
+    # from history without the manual mapping step (bit the sportas-version2 lane)
+    printf '%s\t%s\t%s/%s\t%s\n' "$code" "$len" "$sid" "${eid:-0}" "$p"
     sleep "$delay"
   done < "$pf"
 }
