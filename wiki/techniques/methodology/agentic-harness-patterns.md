@@ -175,3 +175,11 @@ These are VERIFIED internals, not [uncertain]; each maps to a landed ZTorch chan
 - [claude-code leak mirror](https://github.com/tanbiralam/claude-code): claimed leaked Claude Code
   source; host-harness internals section distilled from it for architecture patterns only, no code
   copied (proprietary Anthropic source).
+
+Split-lane parallel-seat pattern: one lane's battery split across two seats writes into ONE ingest/laneNNN/ dir. Collision-avoidance contract: each seat prefixes its pairs (a*/b* vs c*/d*), the shared summary.txt is DEFERRED - each seat writes its own fragment (summary-a1a2.txt / cd-summary.txt) - and the bridge merges behind the a+b sections at pass end. Ledger self-append gap pattern: when a seat claims 'rows appended' but the envelope lacks paste text, Scribe verifies disk first and inserts rows marked DERIVED (facts quoted from the seat's own log row + card artifacts), never inventing verbatim text. Re-verify clause: any family 'unreachable' verdict needs a fresh 1-GET control before standing - walls shift between host+path classes (526-vs-200 on one zone).
+
+<!-- promoted-slug: parallel-seat-split-lane-collision-avoidance -->
+
+Response-only-capture evidence ruling -> FULL request+response pair mandate: a captured response body alone (200 43,603B shell, calcite x6) proves reachability but not request shape; every evidence capture must be a complete raw PAIR (headers + body, both directions) saved as <id>-h.txt/<id>-b.txt plus a <id>-pair.txt concat. Count corrections (calcite x13 -> x6 precedent) are applied artifact-first with a one-line log erratum; RETURN rows stay untouched (append-only audit). Count miscounts never change verdicts - record the erratum, keep the verdict.
+
+<!-- promoted-slug: response-pair-capture-mandate -->

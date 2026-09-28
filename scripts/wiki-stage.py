@@ -30,6 +30,7 @@ import _engagement  # noqa: E402
 KIND_PAGE = {
     "default-cred": "cheatsheets/default-credentials.md",
     "api-pattern": "cheatsheets/api-request-findings.md",
+    "technique": "techniques/methodology/agentic-harness-patterns.md",
 }
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SCAFFOLD = {
