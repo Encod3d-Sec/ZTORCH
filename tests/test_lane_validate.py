@@ -149,3 +149,36 @@ def test_named_capture_file_token_must_exist_nonempty(tmp_path, capsys):
     lv.main([str(tmp_path)])
     out = capsys.readouterr().out
     assert "lane d: NOT VERIFIED" in out          # named file empty = no evidence
+
+
+def test_comparison_prose_not_a_structural_token():
+    toks = lv._checkable_lits("battery.txt + verdict table in summary.txt (>=28 lines total)")
+    assert ("str", "(>=28") not in toks
+    assert ("str", "uid=33(www-data)") in lv._checkable_lits("uid=33(www-data)")
+
+
+def test_vault_root_capture_cell_resolves(tmp_path, capsys):
+    eng = tmp_path / "acme"
+    log = eng / "log.md"
+    log.parent.mkdir(parents=True)
+    log.write_text(("- lane e in flight: SUCCESS = verdict table in summary.txt"
+                    " | tmux win w1 | capture targets/acme/poc/lane-e -> done\n"),
+                   encoding="utf-8")
+    cap = eng / "poc" / "lane-e"
+    cap.mkdir(parents=True)
+    (cap / "summary.txt").write_text("VERDICT x\n", encoding="utf-8")
+    lv.main([str(eng)])
+    out = capsys.readouterr().out
+    assert "lane e: VERIFIED" in out and "NOT VERIFIED" not in out
+
+
+def test_annotated_no_capture_lane_with_brain_verdict_is_closed_not_failed(tmp_path, capsys):
+    eng = tmp_path / "acme"
+    log = eng / "log.md"
+    log.parent.mkdir(parents=True)
+    log.write_text(
+        LINE % ("f", "draft evidence-fresh, 0 markers", "lane-f (none; edits in drafts dir)",
+                " -> VERIFIED: brain re-checked drafts raw"), encoding="utf-8")
+    lv.main([str(eng)])
+    out = capsys.readouterr().out
+    assert "lane f: CLOSED-BY-BRAIN" in out and "NOT VERIFIED" not in out
