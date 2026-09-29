@@ -60,6 +60,19 @@ BASE_CLASSES = {
             "xss", "secrets", "pwn"],
 }
 
+# Base classes that only make sense when the asset's fingerprint names the tech:
+# base-fallback seeding is gated on a hint token in the asset's hay. Without this
+# gate the bb base list stamps llm/mcp/cicd onto every host (the 186-row
+# boilerplate flood disposed 2026-09-29). Fingerprint-IMPLIED classes bypass the
+# gate -- the routing match itself is the evidence.
+CLASS_FINGERPRINT_HINT = {
+    "llm": ("llm", "gpt", "openai", "anthropic", "claude", "gemini", "copilot",
+            "chatbot", "chat-", "ai-assistant", "llama", "langchain"),
+    "mcp": ("mcp", "model context protocol", "model-context-protocol"),
+    "cicd": ("jenkins", "gitlab", "github actions", "teamcity", "circleci",
+             "drone", "buildkite", "argo", "cicd", "ci/cd", "runner"),
+}
+
 # Per-type close-out chain (Skill names the agent runs in order) + wall-break
 # dry-streak threshold.
 CLOSEOUT_CHAINS = {
@@ -277,6 +290,21 @@ def _emit_row(out, seen, dead, info, asset, cls):
     })
 
 
+def _oos_hosts(eng):
+    """scope.md frontmatter `out_of_scope_hosts: ["a.lt", "b.lt"]` -> set of hosts.
+    derive_rows skips assets matching (== host or subdomain-of host): state.md can
+    carry out-of-scope recon rows (gis.vplanas.lt) that would otherwise re-seed
+    board rows nothing may ever touch."""
+    p = Path(eng) / "scope.md"
+    if not p.is_file():
+        return set()
+    m = re.search(r"(?m)^\s*out_of_scope_hosts:\s*\[([^\]]*)\]",
+                  p.read_text(encoding="utf-8", errors="ignore"))
+    if not m:
+        return set()
+    return {t.strip().strip("\"'").lower() for t in m.group(1).split(",") if t.strip()}
+
+
 def derive_rows(eng, index, etype):
     """Desired 4a rows (dicts, no id) for the engagement, in this order:
     (1) OSINT baseline rows, once, keyed to the engagement name (pre-scan, target-level --
@@ -289,6 +317,7 @@ def derive_rows(eng, index, etype):
     routing = index.get("routing") or {}
     info = _class_info(index)
     dead = _deadend_pairs(eng)
+    oos = _oos_hosts(eng)
     out, seen = [], set()
     base = BASE_CLASSES.get(etype, [])
 
@@ -301,6 +330,9 @@ def derive_rows(eng, index, etype):
     for r in _parse_table(Path(eng) / "state.md"):
         asset = (r.get("asset") or r.get("host") or r.get("target") or "").strip()
         if not asset or asset == "?":
+            continue
+        host = asset.lower()
+        if any(host == h or host.endswith("." + h) for h in oos):
             continue
         hay = " ".join(str(r.get(k, "")) for k in
                        ("tech", "services", "service", "os", "notes")).lower()
@@ -330,6 +362,9 @@ def derive_rows(eng, index, etype):
                     _emit_row(out, seen, dead, info, asset, exc_cls)
 
         for cls in [c for c in base if c not in implied and c not in sup]:
+            hints = CLASS_FINGERPRINT_HINT.get(cls)
+            if hints and not any(h in hay for h in hints):
+                continue
             _emit_row(out, seen, dead, info, asset, cls)
     return out
 

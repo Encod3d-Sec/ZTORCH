@@ -97,3 +97,38 @@ def test_no_base_row_has_blank_skill(tmp_path):
                 assert r["skill"], "%s row %r has blank skill" % (etype, r)
             assert r["arsenal"], "%s row %r has blank arsenal" % (etype, r)
             assert r["tool"], "%s row %r has blank tool" % (etype, r)
+
+
+def test_base_class_fingerprint_gate_and_oos_filter(tmp_path):
+    """llm/mcp/cicd base-fallback rows need a fingerprint hint; OOS scope.md hosts
+    seed nothing (the 2026-09-29 gis.vplanas/186-boilerplate re-seed bug)."""
+    vault, eng = _mk_eng(tmp_path, "nginx")           # plain web asset, no llm/mcp/cicd hints
+    rows = offensive.derive_rows(eng, offensive.build_index(eng, vault), "bb")
+    classes = {(r["asset"], r["vuln class"]) for r in rows}
+    assert not any(c in ("llm", "mcp", "cicd") for _a, c in classes)
+
+    # a hinted asset DOES get the row
+    state = eng / "state.md"
+    lines = state.read_text().splitlines()
+    sep = next(i for i, l in enumerate(lines)
+               if l.startswith("|") and set(l.strip("| ")) <= set("-:| "))
+    lines.insert(sep + 1, "| ai1 | http://t/ | / | | jenkins copilot | recon | |")
+    state.write_text("\n".join(lines) + "\n")
+    rows = offensive.derive_rows(eng, offensive.build_index(eng, vault), "bb")
+    classes = {(r["asset"], r["vuln class"]) for r in rows}
+    assert ("ai1", "cicd") in classes and ("ai1", "llm") in classes
+
+    # OOS frontmatter filter: subdomain + exact match skip ALL rows
+    scope = eng / "scope.md"
+    scope.write_text(scope.read_text().replace(
+        "---\n", "---\nout_of_scope_hosts: [\"vplanas.lt\", \"ai1\"]\n", 1))
+    rows = offensive.derive_rows(eng, offensive.build_index(eng, vault), "bb")
+    assets = {r["asset"] for r in rows}
+    assert "ai1" not in assets
+    lines = state.read_text().splitlines()
+    sep = next(i for i, l in enumerate(lines)
+               if l.startswith("|") and set(l.strip("| ")) <= set("-:| "))
+    lines.insert(sep + 1, "| gis.vplanas.lt | http://t/ | / | | nginx | recon | |")
+    state.write_text("\n".join(lines) + "\n")
+    rows = offensive.derive_rows(eng, offensive.build_index(eng, vault), "bb")
+    assert "gis.vplanas.lt" not in {r["asset"] for r in rows}
