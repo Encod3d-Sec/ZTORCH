@@ -942,6 +942,16 @@ def _ad_preflight_nudge(d, cmd):
             "/etc/krb5.conf` over vm.sh -- clear any stale hostname/realm line first.")
 
 
+def _oob_callback_observed(out_text, token):
+    """True when the token appears in command OUTPUT on a line that is not a
+    ledger-table row: a displayed oob.md row (or a grep/zg hit quoting it) is
+    `| token | sink | ... | waiting |` -- display, not a callback observation.
+    Listener/Collaborator poll output is json/raw lines and never table-shaped."""
+    return any(token in ln
+               and not re.search(r"\|\s*(waiting|hit|received)\b", ln, re.I)
+               for ln in out_text.splitlines())
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -969,14 +979,23 @@ def main():
     #    appears in this command's output. Runs on EVERY command, INCLUDING a cat/grep/rg
     #    poll of a saved OAST/Collaborator log (the most common poll method), so it is
     #    placed BEFORE the doc-command skip below.
-    if d and _engagement:
-        blob_oob = cmd + "\n" + _response_text(data)
+    #    Invocation gating (2026-09-29): the token must appear in the OUTPUT on a line
+    #    that is NOT a ledger-table row. A cmd that names oob.md is skipped outright;
+    #    a vault-wide grep or a zg hit re-prints waiting tokens as table rows and is
+    #    not a callback observation; grepping FOR a token with zero hits leaves it in
+    #    the cmd text only. Listener/Collaborator poll lines are json/raw and never
+    #    carry the "| ... | waiting |" cell.
+    if d and _engagement and "oob.md" not in cmd:
+        out_text = _response_text(data)
         flipped = []
         for row in _engagement.oob_rows(d):
             if row.get("status", "").strip().lower() not in ("waiting", ""):
                 continue
             token = (row.get("token", "") or "").strip()
-            if token and len(token) >= 4 and token in blob_oob:
+            if not token or len(token) < 4:
+                continue
+            if not _oob_callback_observed(out_text, token):
+                continue
                 if _engagement.flip_oob_status(d, token, "HIT",
                                                source="callback " + time.strftime("%Y-%m-%d")):
                     flipped.append(row.get("sink", token) or token)
