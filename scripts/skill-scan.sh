@@ -51,8 +51,10 @@ done
 
 for d in $CANDIDATES; do
   name=$(echo "$d" | sed 's|^\./||; s|/|__|g')
+  rm -f "$OUT/$name.json"   # drop stale report: skillspector exits 1 on findings, not only on failure
   skillspector scan "$d" --no-llm --format json "${BASELINE_FLAG[@]}" \
-    --output "$OUT/$name.json" >/dev/null 2>&1 || echo "SCAN-FAIL $d"
+    --output "$OUT/$name.json" >/dev/null 2>&1 || true   # exits 1 on findings; report file is the truth
+  [ -f "$OUT/$name.json" ] || echo "SCAN-FAIL $d (no report written)"
 done
 echo "scanned $(echo $CANDIDATES | wc -w)/$(echo $DIRS | wc -w) skill dirs (reports: $OUT)"
 
