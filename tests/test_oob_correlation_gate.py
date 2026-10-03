@@ -15,7 +15,7 @@ TOK = "ssrf-rt1.datfufknbo97rrvo76rgr1r4putru9jqc.oast.pro"
 
 
 def test_ledger_row_displayed_is_not_a_callback():
-    ledger = ("| %s | api.paslaugos.vilnius.lt POST /auth/refresh-jwt refresh_token "
+    ledger = ("| %s | api.example.test POST /auth/refresh-jwt refresh_token "
               "| ssrf | 2026-09-29 | waiting | lane-apipl-ssrf |" % TOK)
     assert rc._oob_callback_observed(ledger, TOK) is False
 
