@@ -4,7 +4,7 @@ type: technique
 tags: [methodology, agents, orchestration, reference-import, automation]
 phase: exploitation
 date_created: 2026-09-09
-date_updated: 2026-09-09
+date_updated: 2026-10-04
 sources: ["https://github.com/vxcontrol/pentagi", "https://arxiv.org/html/2504.06017v2", "https://github.com/aliasrobotics/CAI", "https://github.com/greydgl/pentestgpt"]
 ---
 
@@ -33,9 +33,13 @@ upgrade table. For the in-wiki view of multi-agent coordination failure modes se
 - **Sandbox-per-flow execution**: every agent operation runs in a per-flow Docker container
   (Docker-in-Docker over TLS; first action of a flow is an LLM tool call that selects the container
   image); core, monitoring and analytics services sit on separate Docker networks.
-- **Self-regulation loops**: an Adviser in Mentor mode fires when identical tool calls exceed a
-  threshold (5); a Reflector auto-invokes after 3 consecutive failed tool calls and steers the
-  agent toward `done`/`ask` barrier tools; an optional Planner emits a 3 to 7 step execution plan.
+- **Self-regulation loops** (corrected 2026-10-04 against `backend/pkg/templates/prompts/*.tmpl`):
+  Mentor analysis is injected INTO the tool result when same-tool calls reach a threshold (5) or a
+  total-call budget threshold trips, reset-on-fire; the Reflector is a format-recovery agent that
+  role-plays the user to steer the agent back to structured tool calls (not a failure counter);
+  the primary agent's own prompt carries the 3-identical-attempts -> pivot-strategy rule and the
+  pentester's carries max 3 identical tool calls + max 2 install attempts before switching tools;
+  an optional Planner emits a 3 to 7 step execution plan.
 - **Typed memory**: Memory entities typed `observation`/`conclusion` with vector embeddings in
   pgvector, layered long-term / working / episodic; an optional Graphiti temporal knowledge graph
   per flow (off by default).
@@ -108,7 +112,7 @@ handoff, session resume.
 | Localization-then-reasoning prompt split | Read-first mandate + the ingest skill distill raw output, but lane prompts routinely carry raw tool output straight into reasoning context | No mandated two-step inside a lane's prompt | Amend the delegate lane contract: step 1 write raw output verbatim to a file, step 2 produce a localized-fact block (host, port, observation, evidence line) that the lane's reasoning must cite (PentestGPT's parsing/reasoning split) | S |
 | Benchmark self-scoring | Landed 2026-09-09: `scripts/bench.py` + `bench-labs.json` (starter = 10 PortSwigger labs), score_engagement 0/1/2 per expected class, wired into `eval_metrics.py` (an engagement named after a scenario id auto-scores into the eval.md auto block at close-out) | Closed for the starter set | Extend bench-labs.json as labs are run; cadence = one lab a week through the full driver | done |
 | Attack-memory | Memory is the markdown state set (state/loot/Deadends/Killchain), session/hot.md, and the wiki; cross-engagement recall via qmd search and `Skill(learn)` distillation | Entries are untyped prose; there is no observation/conclusion distinction, so conclusions and raw reads carry the same weight | Type hot.md entries as observation vs conclusion (PentAGI's Memory entities) and have `Skill(learn)` harvest conclusions first; PyRIT-style multi-turn conversational memory was not evidenced in the fetched sources [uncertain]; PentestGPT's PTT + session resume is the closest evidenced shape | S |
-| Failure-triggered reflection | Partially landed: drift-guard escalates to DENY at streak >= 6 (per-segment matching, command-position driver reset); `stallcheck.py` injects starvation/stop-cracking verdicts from the cmdlog battery after curl/hashcat runs | Per-lane consecutive-failure counting (PentAGI's Reflector at 3) still open | Extend the PostToolUse hook to count consecutive failures per lane and inject a redteamlead nudge at 3 | S |
+| Failure-triggered reflection | Partially landed: drift-guard escalates to DENY at streak >= 6 (per-segment matching, command-position driver reset); `stallcheck.py` injects starvation/stop-cracking verdicts from the cmdlog battery after curl/hashcat runs | Per-lane same-tool/total-call counting (PentAGI's Mentor at >= 5, reset-on-fire, analysis injected into the tool result) still open | Extend the PostToolUse hook to count same-tool + consecutive-fail calls per lane and inject a redteamlead-style block (progress/issues/alternatives/next) at threshold, reset-on-fire | S |
 | LLM-call observability and cost | eval.md metrics at close-out; hooks log tool calls to session/log.md | No per-lane token/cost attribution mid-engagement; cost surprises surface only at close-out | Require each lane's return line to carry model tier + token count; roll into eval.md Metrics; CAI's blackboard result (routing scaffolds through one telemetry-owning proxy, 19/33 vs 15/33 on Cybench) says the payoff is real | S |
 
 ## Host-harness internals (Claude Code leak, 2026-09-09)
