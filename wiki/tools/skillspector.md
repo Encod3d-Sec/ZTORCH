@@ -35,12 +35,21 @@ ln -sf ~/.local/bin/skillspector /usr/local/bin/skillspector
 
 ```bash
 skillspector scan ./suspect-skill/ --no-llm             # vet a third-party skill
-bash scripts/skill-scan.sh                              # sweep all 57 vault skills vs baseline
+bash scripts/skill-scan.sh                              # incremental vault sweep vs baseline
+bash scripts/skill-scan.sh --all                        # force full vault sweep
+bash scripts/skill-scan.sh --root ~/.claude/plugins     # third-party tree audit
 ```
 
-The wrapper scans every `skills/**/SKILL.md` parent individually (skillspector's
-`--recursive` only treats depth-1 children as skills), auto-loads the vault
+The wrapper scans every `SKILL.md` parent dir individually (skillspector's `--recursive`
+only treats depth-1 children as skills), auto-loads the vault
 `.skillspector-baseline.yaml`, and exits non-zero when any skill has NEW findings.
+Default run is INCREMENTAL: only skill dirs with files newer than
+`session/.skill-scan-stamp` re-scan (first run or `--all` scans everything), so it is
+cheap enough for `offensive-doctor` to call every time. It also warns when the installed
+skillspector version differs from the baseline's `scanner_version` (fingerprints fail
+closed on mismatch). `--root <dir>` swaps in a third-party tree: full scan, no baseline,
+HIGH/CRITICAL findings printed as `[id SEV] skill :: file:line :: finding` one-liners for
+triage. `SHOW_SUPPRESSED=1` lists accepted findings too.
 
 ## What it detects (the categories that matter here)
 
