@@ -157,6 +157,18 @@ def _retry_key(active):
     return hashlib.sha1(norm.encode("utf-8", "ignore")).hexdigest()[:12]
 
 
+def _retry_steer(retries, deny_wanted):
+    """PentAGI identical-call steer (helpers.go:131-160): at one fire below the deny,
+    tell the model the output will not change and to re-read the first run instead.
+    Never emitted when a deny is due (the deny block owns that call)."""
+    if deny_wanted or retries != _RETRY_DENY - 1:
+        return None
+    return ("IDENTICAL-RETRY (%d/%d): this exact command already ran; the output will not "
+            "change. Re-read the first run's output in your context (or its capture file) "
+            "instead of re-running, alter the arguments, or use a different tool. The next "
+            "identical fire is denied." % (retries, _RETRY_DENY))
+
+
 def _driver_called(cmd):
     """True when a normalized SEGMENT invokes the driver in command position. The old
     whole-string `_DRIVER_RE.search(cmd)` let an echo/grep string mentioning
@@ -637,6 +649,17 @@ def main():
     # same doom loop); the STREAK deny only when no lane is open (lane flight = contact).
     deny_wanted = not post_fh and (retries >= _RETRY_DENY
                                    or (streak >= _DENY_STREAK and not lane_open))
+
+    steer = _retry_steer(retries, deny_wanted)
+    if steer:
+        try:
+            import _telemetry
+            _telemetry.drift("drift-guard", "identical-retry steer x%d" % retries)
+        except Exception:
+            pass
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+              "additionalContext": steer}}))
+        return
 
     def _deny(reason):
         st["deny_total"] = int(st.get("deny_total", 0) or 0) + 1

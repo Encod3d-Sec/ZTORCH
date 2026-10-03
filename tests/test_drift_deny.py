@@ -155,11 +155,15 @@ def test_driver_contact_clears_retry_ring(tmp_path):
 
 
 def test_second_identical_run_warns_of_imminent_block(tmp_path):
+    """Since the L1 steer (pentagi absorb), the 2nd identical fire carries the
+    IDENTICAL-RETRY advisory - which ends with the imminent-block line - instead of
+    the old throttle-path warn."""
     v = _mk(tmp_path, streak=0)
     _run(v)
     r = _run(v)
     out = _decoded(r)["hookSpecificOutput"]
-    assert "one more identical run is BLOCKED" in out.get("additionalContext", "")
+    assert "IDENTICAL-RETRY" in out.get("additionalContext", "")
+    assert "next identical fire is denied" in out.get("additionalContext", "")
 
 
 # ---- ring laundering: same-row re-serve does not clear the retry ring (driver audit) ----
@@ -218,6 +222,18 @@ def test_retry_key_quote_variance_is_same_loop(tmp_path):
     spec.loader.exec_module(dg)
     assert dg._retry_key("curl http://x/f") == dg._retry_key("curl 'http://x/f'")
     assert dg._retry_key("curl http://x/f") != dg._retry_key("curl http://x/f2")
+
+
+def test_retry_steer_advises_one_fire_below_deny():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("dg", str(HOOK))
+    dg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dg)
+    assert dg._retry_steer(1, False) is None          # first fire: silence
+    msg = dg._retry_steer(2, False)                   # second identical fire: steer
+    assert msg and "will not change" in msg and "2" in msg
+    assert dg._retry_steer(2, True) is None           # deny takes precedence, no advisory
+    assert dg._retry_steer(3, False) is None          # 3rd belongs to the deny, not the steer
 
 
 # ---- pass 14: reader-lead filenames + 4a-slice board (B5/B6) ----
