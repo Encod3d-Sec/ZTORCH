@@ -3,7 +3,7 @@ title: "Agent-Scan (Snyk)"
 type: tool
 tags: [mcp, ai, llm, scanning, automation]
 date_created: 2026-09-09
-date_updated: 2026-09-09
+date_updated: 2026-10-04
 sources: [git-snyk-agent-scan]
 phase: enumerate
 ---
@@ -25,7 +25,7 @@ GitHub Releases if uv is unwanted.
 
 ```bash
 export SNYK_TOKEN=your-api-token-here
-uvx snyk-agent-scan@latest           # or a pinned version, e.g. uvx snyk-agent-scan@0.5.17
+uvx snyk-agent-scan@0.6.8           # pinned (skillspector RP1); bump deliberately on release notes
 ```
 
 ## What it detects
@@ -71,10 +71,10 @@ callback ([[oob-callbacks]]).
 
 ```bash
 # Manifest pulled during enum: tool poisoning + scored risks
-uvx snyk-agent-scan@latest targets/<eng>/ingest/found.mcp.json
+uvx snyk-agent-scan@0.6.8 targets/<eng>/ingest/found.mcp.json
 
 # Skill-poisoning pass over a discovered skills dir
-uvx snyk-agent-scan@latest ~/path/to/skills
+uvx snyk-agent-scan@0.6.8 ~/path/to/skills
 
 # CI-style unattended run on a config you control
 snyk-agent-scan --ci --json --no-skills path/to/mcp.json

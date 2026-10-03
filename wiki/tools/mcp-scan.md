@@ -3,7 +3,7 @@ title: "MCP-Scan"
 type: tool
 tags: [mcp, ai, llm, scanning, automation]
 date_created: 2026-09-09
-date_updated: 2026-09-09
+date_updated: 2026-10-04
 sources: [invariant-mcp-scan-blog, git-invariantlabs-mcp-scan]
 phase: enumerate
 ---
@@ -25,14 +25,14 @@ install step). Runs fine on Kali.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh     # uv, once
-uvx mcp-scan@latest                                  # scan (pulls latest from PyPI)
+uvx mcp-scan@0.4.3                                  # pinned (skillspector RP1); bump deliberately
 ```
 
 By default it scans the well-known client config locations (Claude Desktop, Cursor,
 Windsurf, VS Code). Pass a discovered manifest path to scan exactly that file.
 
 ```bash
-uvx mcp-scan@latest /path/to/.mcp.json               # ponytail: unverified (path arg from the original README, not in the current docs)
+uvx mcp-scan@0.4.3 /path/to/.mcp.json               # ponytail: unverified (path arg from the original README, not in the current docs)
 ```
 
 ## What it detects
@@ -51,8 +51,8 @@ engagement loot on a third-party API.
 ## Core usage
 
 ```bash
-uvx mcp-scan@latest                 # scan all discovered configs
-uvx mcp-scan@latest inspect         # after a HIT: dump the full offending description
+uvx mcp-scan@0.4.3                 # scan all discovered configs
+uvx mcp-scan@0.4.3 inspect         # after a HIT: dump the full offending description
 ```
 
 ## What a HIT looks like
@@ -69,13 +69,13 @@ description alone is inference.
 
 ```bash
 # Enum found an MCP manifest - scan it in place
-uvx mcp-scan@latest targets/<eng>/ingest/found.mcp.json
+uvx mcp-scan@0.4.3 targets/<eng>/ingest/found.mcp.json
 
 # Re-scan an approved setup later: same tool hash = benign, changed hash = rug-pull evidence
-uvx mcp-scan@latest
+uvx mcp-scan@0.4.3
 
 # Read the exact hidden text behind a flag before writing the PoC
-uvx mcp-scan@latest inspect
+uvx mcp-scan@0.4.3 inspect
 ```
 
 ## Tips and gotchas
