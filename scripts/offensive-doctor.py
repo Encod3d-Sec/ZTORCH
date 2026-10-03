@@ -266,6 +266,27 @@ def _caido():
           (out.splitlines() or ["no output"])[0][:80], warn=True)
 
 
+def _skill_scan():
+    # Advisory only: skillspector sweep vs baseline; new findings are a triage prompt,
+    # not a broken driver. Incremental, so cheap after the first full run.
+    script = os.path.join(VAULT, "scripts", "skill-scan.sh")
+    if not os.path.isfile(script):
+        check("skill-scan: wrapper present (advisory)", False, "scripts/skill-scan.sh missing", warn=True)
+        return
+    if shutil.which("skillspector") is None:
+        check("skill-scan: skillspector installed (advisory)", False,
+              "uv tool install 'git+https://github.com/NVIDIA/skillspector.git'", warn=True)
+        return
+    try:
+        r = subprocess.run(["bash", script], capture_output=True, text=True, timeout=180)
+    except Exception as e:
+        check("skill-scan: sweep ran (advisory)", False, str(e)[:80], warn=True)
+        return
+    summary = (r.stdout or "").strip().splitlines()
+    check("skill-scan: no new findings vs baseline (advisory)", r.returncode == 0,
+          (summary[-1] if summary else "no output")[:80], warn=True)
+
+
 def main(argv):
     verbose = "--verbose" in argv or "-v" in argv
     off = _import_offensive()
@@ -276,6 +297,7 @@ def main(argv):
     _bench()
     _zg()
     _caido()
+    _skill_scan()
     _smoke(off)
 
     fails = [r for r in RESULTS if r[1] == "FAIL"]
