@@ -19,8 +19,8 @@ doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket f
 ## Tooling
 
 Scanner-first once an MCP surface is on the board (a `.mcp.json` / `claude_desktop_config.json`
-manifest, an `/mcp` or `/sse` endpoint): `uvx mcp-scan@latest <config>` for description poisoning /
-rug pull / cross-origin shadowing, then `uvx snyk-agent-scan@latest <config|skill-dir>` (SNYK_TOKEN)
+manifest, an `/mcp` or `/sse` endpoint): `uvx mcp-scan@0.4.3 <config>` for description poisoning /
+rug pull / cross-origin shadowing, then `uvx snyk-agent-scan@0.6.8 <config|skill-dir>` (SNYK_TOKEN)
 for scored risks incl. SKILL.md skill poisoning - pages: [[mcp-scan]], [[agent-scan]]. Both scanners
 CONNECT to (and may execute) the configured servers; consent-prompt per stdio server. A scanner flag
 is a LEAD, never confirmation: read the FULL flagged description, then prove execution via the client

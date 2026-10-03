@@ -30,7 +30,7 @@ Validation` below - not repeated here.
 | Mine dumped repo for verified secrets | `trufflehog filesystem ./dump --only-verified` | 2 |
 | Mine dumped repo for secrets (gitleaks) | `gitleaks detect --source ./dump --no-banner` | 2 |
 | Grep a JS bundle for key-shaped strings | `curl -s https://target.com/static/js/main.js \| grep -Eo '(AKIA[0-9A-Z]{16}\|AIza[0-9A-Za-z_-]{35}\|sk_live_[0-9A-Za-z]{24}\|ghp_[0-9A-Za-z]{36}\|xox[baprs]-[0-9A-Za-z-]+)'` | 3 |
-| Rebuild original source from a JS source map | `npx source-map-explorer main.js main.js.map` | 3 |
+| Rebuild original source from a JS source map | `npx source-map-explorer@2.5.3 main.js main.js.map` | 3 |
 | Mine rebuilt bundle source for secrets | `trufflehog filesystem ./bundles --only-verified` | 3 |
 | List an S3 bucket (public-read proof) | `aws s3 ls s3://<name> --no-sign-request` | 4 |
 | List a GCS bucket | `curl -s "https://storage.googleapis.com/<name>/"` | 4 |
@@ -74,7 +74,7 @@ gitleaks detect --source ./dump --no-banner
 curl -s https://target.com/static/js/main.js | grep -Eo \
   '(AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|sk_live_[0-9A-Za-z]{24}|ghp_[0-9A-Za-z]{36}|xox[baprs]-[0-9A-Za-z-]+)'
 # rebuild original source from a source map, then trufflehog it
-npx source-map-explorer main.js main.js.map 2>/dev/null
+npx source-map-explorer@2.5.3 main.js main.js.map 2>/dev/null
 trufflehog filesystem ./bundles --only-verified
 ```
 4. S3 / blob enumeration - **list to prove public read; pull at most one benign object as evidence, never bulk-sync real data** (per hunt-core stop conditions):
