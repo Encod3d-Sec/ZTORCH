@@ -37,6 +37,9 @@ Search rule: never read `wiki/index.md` to find pages - always search first. Wik
 - **Scope-first.** Read `targets/<eng>/scope.md` before acting; never touch an out-of-scope target or forbidden tooling (`no_bruteforce`/`no_dos`/`passive_only`).
 - **State-first.** Before any recon/spray/exploit: read `state.md`, `loot.md`, `Killchain.md`, `Deadends.md`. Never re-run a documented dead-end or re-spray a known-failed cred without new input (new cred, new pivot, new payload class).
 - **Stop condition.** A vector is exhausted after bounded effort (OOB sink: ~30-40 payloads zero callbacks; spray: full user x pass matrix once). One `Deadends.md` line + Killchain status, then switch. Do not grind, do not re-loop.
+- **Log grammar.** One-line events in `targets/<eng>/log.md` use the ASCII token
+  vocabulary + audit-line convention in `docs/log-grammar.md` (`tool X ok|fail|blocked`,
+  `[lane]` prefixes, `<TS> | category | action | result | detail`).
 - **When stuck, call `Skill(redteamlead)` BEFORE grinding.** See hunt-core's Wrong-vector tells for the two mechanical signals (target starved, >=2 verified-hash misses). A `/redteamlead` reminder in the engagement prompt is a real instruction.
 - **Read-first, not grep (recon AND post-foothold).** READ each page/source end-to-end before declaring it enumerated (the vector hides in an AJAX handler / commented route a narrow grep skips); zg to LOCATE across files, grep inside one file, then read the block. Post-foothold source-review is a full `cat` per file. **A delegation prompt MUST carry this mandate verbatim** (`cat` each file in full, zg/grep only to locate): a cheap model grep-mines by default and your prompt is its only law.
 - **OOB-gate blind bugs.** Blind SSRF/SSTI/SQLi claims need an out-of-band callback, never inference. Enforced per hunt skill.
