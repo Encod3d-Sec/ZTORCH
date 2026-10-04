@@ -327,6 +327,20 @@ def test_done_dead_advances_cursor(tmp_path, capsys):
     assert "web2" in out
 
 
+def test_done_dead_fail_class_trailing_cell(tmp_path):
+    """--fail-class types the exhaustion (Task 4); the appender emits it as the
+    TRAILING cell so legacy 6-col tables just render one extra cell."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+             arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap"),
+    ])
+    rc = _run(["--vault", str(vault), "--eng", str(eng), "done", "4a:1",
+               "--dead", "sink silent", "--fail-class", "technical"])
+    assert rc == 0
+    assert (eng / "Deadends.md").read_text().rstrip().endswith("| technical |")
+
+
 # --------------------------------------------------------------------------- park (G7)
 
 def test_park_writes_decision_and_advances(tmp_path, capsys):

@@ -60,3 +60,25 @@ def test_missing_file_clean(tmp_path):
 def test_closeout_nudges_on_placeholders():
     src = (ROOT / "skills" / "hooks" / "close-out.py").read_text(encoding="utf-8")
     assert "deadends_placeholder_rows" in src
+
+
+def test_deadends_unclassed_rows(tmp_path):
+    d = tmp_path
+    (d / "Deadends.md").write_text(
+        "# Deadends\n\n"
+        "| asset | class | what was tried | why exhausted | date | reopen-if | fail-class |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| h1 | ssrf | curl probes | sink silent | 2026-10-04 | new sink | technical |\n"
+        "| h2 | sqli | quote contexts | WAF blocked | 2026-10-04 | new payload class |  |\n"
+        "| h3 | xss | reflected points | none found | 2026-10-04 | new param | external |\n")
+    assert _engagement.deadends_unclassed_rows(str(d)) == 1   # h2 has an empty fail-class
+
+
+def test_deadends_unclassed_legacy_table_exempt(tmp_path):
+    d = tmp_path
+    (d / "Deadends.md").write_text(
+        "# Deadends\n\n"
+        "| asset | class | what was tried | why exhausted | date | reopen-if |\n"
+        "|---|---|---|---|---|---|\n"
+        "| h1 | ssrf | curl probes | sink silent | 2026-09-01 | new sink |\n")
+    assert _engagement.deadends_unclassed_rows(str(d)) == 0   # no fail-class header -> exempt

@@ -840,6 +840,31 @@ def deadends_placeholder_rows(d):
     return bad
 
 
+def deadends_unclassed_rows(d):
+    """Rows appended after the fail-class deploy that left the class cell empty.
+    Legacy tables (header lacks fail-class) are exempt - only new rows carry the duty.
+    Fail-open (0)."""
+    if not d:
+        return 0
+    try:
+        rows = _parse_table(os.path.join(d, "Deadends.md"))
+    except Exception:
+        return 0
+    # dict keys come from the header, so a row carrying the key proves the header
+    # has the column; no row carrying it = legacy header -> exempt.
+    # ponytail: a 7-col header whose EVERY row was hand-truncated to 6 cells reads
+    # as legacy; the appender always pads to 7 cells, so only that path is missed.
+    if not any("fail-class" in r for r in rows):
+        return 0
+    six = ("asset", "class", "what was tried", "why exhausted", "date", "reopen-if")
+    n = 0
+    for r in rows:
+        if not (r.get("fail-class") or "").strip() and any(
+                (r.get(k) or "").strip() for k in six):
+            n += 1
+    return n
+
+
 def _last_event_age_hours(d):
     """Age in hours of the newest .events.jsonl record, or None when there is no telemetry
     (treated as idle by the caller: work predates telemetry or was copied in)."""

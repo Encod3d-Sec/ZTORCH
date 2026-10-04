@@ -219,9 +219,11 @@ def main():
                 except Exception:
                     pass
         # Deadends quality reflex: rows whose 'why exhausted' cell is a placeholder (or that
-        # duplicate an earlier asset x class pair) pass the anti-loop gate on shape but carry
-        # no signal -- the same vector gets re-tested later. Deduped on the bad-row count.
-        bad_rows = _engagement.deadends_placeholder_rows(d)
+        # duplicate an earlier asset x class pair, or that leave the fail-class cell empty)
+        # pass the anti-loop gate on shape but carry no signal -- the same vector gets
+        # re-tested later. Deduped on the bad-row count.
+        bad_rows = (_engagement.deadends_placeholder_rows(d)
+                    + _engagement.deadends_unclassed_rows(d))
         if bad_rows:
             dmarker = os.path.join(d, ".deadends-nudged")
             dlast = 0
@@ -230,15 +232,17 @@ def main():
             except Exception:
                 dlast = 0
             if bad_rows > dlast:
-                print("Deadends quality: %d row(s) carry a placeholder 'why exhausted' cell or "
-                      "duplicate an earlier asset x class pair. A dead-end without a concrete "
+                print("Deadends quality: %d row(s) carry a placeholder 'why exhausted' cell, "
+                      "duplicate an earlier asset x class pair, or leave the fail-class cell "
+                      "empty (type it: technical | environmental | conceptual | external). "
+                      "A dead-end without a concrete "
                       "WHY is machine-read as exhaustible-but-unknown and gets re-tested later; "
                       "fill each 'why exhausted' cell (one sentence: what ruled it out) and drop "
                       "duplicates NOW." % bad_rows)
                 try:
                     open(dmarker, "w").write(str(bad_rows))
                     import _telemetry
-                    _telemetry.drift("close-out", "placeholder/duplicate Deadends rows")
+                    _telemetry.drift("close-out", "placeholder/duplicate/unclassed Deadends rows")
                     _telemetry.hook("close-out", action="deadends-quality-nudge")
                 except Exception:
                     pass

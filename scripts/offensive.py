@@ -1443,8 +1443,9 @@ def cmd_done(args):
         row["status"] = "[!]"
         writer(eng, rows)
         reason = args.dead if isinstance(args.dead, str) else "exhausted"
-        _append_line(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | |"
-                     % (row.get("asset") or "", cls, reason, _today()))
+        _append_line(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | | %s |"
+                     % (row.get("asset") or "", cls, reason, _today(),
+                        args.fail_class or ""))
         # WALL-BREAK feed: a no-find outcome bumps the dry streak (next fires
         # Skill(redteamlead) once it hits the type threshold). An administrative
         # close (reason N/A) is not a no-find signal - skip it (B4).
@@ -1732,6 +1733,9 @@ def main(argv=None):
     p_done.add_argument("--dead", nargs="?", const="exhausted",
                         help="mark the row [!] exhausted (optional reason)")
     p_done.add_argument("--park", help="defer the row [?] with a decision note (G7 no-ask)")
+    p_done.add_argument("--fail-class", choices=("technical", "environmental",
+                                                 "conceptual", "external"), default="",
+                        help="with --dead: type the exhaustion (close-out drift-count)")
     p_done.add_argument("--skill", help="G2 override: the skill that actually fired")
     p_done.add_argument("--win", help="tmux window: also record a foothold on this "
                         "row's asset + seed the 4b post-ex board")
