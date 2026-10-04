@@ -194,7 +194,7 @@ def _active_segs(cmd):
 # flags off `cat nmap-notes.md` alone). Exec-capable walkers (find -exec, xargs, awk system(),
 # sed e) are deliberately NOT readers: their arguments can still execute.
 _READER_LEAD = re.compile(
-    r"^(?:sudo\s+)?(?:cat|grep|rg|ls|head|tail|echo|less|more|wc|sort|uniq|file|jq|strings|zcat|bat)\b")
+    r"^(?:sudo\s+)?(?:cat|grep|rg|ls|head|tail|echo|printf|less|more|wc|sort|uniq|file|jq|strings|zcat|bat)\b")
 
 
 def _bins_in(cmd):
@@ -505,9 +505,12 @@ def main():
 
     # pipe-to-shell install deny-pattern: regex FIRST (only matching commands touch
     # the stamp), then _stamp_fresh (True = may inject, and it touches the stamp itself).
-    # _advise_probe splits segments on '|', so the pipe cannot survive in _probe; fall
-    # back to raw cmd but only when the probe is curl/wget-LED - an echo/grep string
-    # merely MENTIONING the pattern is dropped by the probe's reader discipline.
+    # Segmentation splits UNQUOTED pipes; QUOTED pipes survive, so a vm.sh-wrapped
+    # 'curl ... | sh' fires (the operator's dominant install shape). Fall back to raw
+    # cmd only when the probe is curl/wget-LED: an echo/printf string merely MENTIONING
+    # the pattern is reader-led and dropped from _probe, so it never fires. Ceiling:
+    # a piped install behind a non-curl/wget-led first surviving segment
+    # (`cd /tmp && curl ... | sh`) stays silent.
     _probe_txt = _probe or ""
     _inst = (_install_advisory(_probe_txt)
              or (_install_advisory(cmd)
