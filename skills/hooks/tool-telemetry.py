@@ -212,6 +212,57 @@ def _context_low(transcript, d):
     return None
 
 
+_MENTOR_SAME_TOOL = 5   # pentagi helpers.go:164-197 threshold; reset-on-fire
+
+
+def _mentor_check(d, tool, bins):
+    """PentAGI Mentor pattern: one tool/binary accumulating _MENTOR_SAME_TOOL calls inside
+    one bucket (the freshest OPEN lane line, else the brain) gets one additionalContext
+    steer - answer from the output you already have or switch approach - and its counter
+    resets. Advisory only, fail-open by construction (PostToolUse cannot block)."""
+    try:
+        bucket = "brain"
+        try:
+            sys.path.insert(0, os.path.join(
+                os.path.dirname(os.path.dirname(HERE)), "scripts"))
+            import lane_validate
+            if lane_validate.lane_lines(d):
+                bucket = "lane"
+        except Exception:
+            pass
+        keys = [b for b in (bins or []) if b] or [tool]
+        mp = os.path.join(d, ".metrics.json")
+        try:
+            m = json.load(open(mp, encoding="utf-8"))
+        except Exception:
+            m = {}
+        mc = (m.get("mentor") or {}).get(bucket) or {}
+        fired = []
+        for k in keys[:4]:
+            mc[k] = int(mc.get(k, 0) or 0) + 1
+            if mc[k] >= _MENTOR_SAME_TOOL:
+                fired.append(k)
+                mc[k] = 0
+        while len(mc) > 16:
+            mc.pop(next(iter(mc)))
+        m.setdefault("mentor", {})[bucket] = mc
+        with open(mp, "w", encoding="utf-8") as fh:
+            json.dump(m, fh, indent=1)
+        if fired:
+            try:
+                import _telemetry
+                _telemetry.drift("mentor", "same-tool threshold: %s" % ",".join(fired), d=d)
+            except Exception:
+                pass
+            return ("LANE PATTERN (mentor): %s fired %d times in this %s. Answer from the "
+                    "output you already have, switch tool or approach, or state what is "
+                    "missing before the next call."
+                    % (", ".join(fired), _MENTOR_SAME_TOOL, bucket))
+    except Exception:
+        return None
+    return None
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -248,6 +299,11 @@ def main():
                          out_bytes=_out_bytes(data))
     _telemetry.stamp_once("started_at", _telemetry.now_iso(), d=d)
     _telemetry.add_transcript(data.get("transcript_path"), d=d)
+    mentor = _mentor_check(d, tool, bins)
+    if mentor:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PostToolUse", "additionalContext": mentor,
+        }}))
     # context-remainder advisory (the one thing telemetry is positioned to see: it holds
     # the transcript path every call). Silent on the healthy ~75% of the window.
     low = _context_low(data.get("transcript_path"), d)
