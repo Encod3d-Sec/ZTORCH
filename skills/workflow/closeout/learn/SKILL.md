@@ -158,6 +158,12 @@ or rewrite; legal only inside a fence where the command itself contains one), an
 language-tagged to match its content (`sh`, `powershell`, `c`, `ruby`, `py`, `js`, `json`, `html`;
 `text` for prose payloads and value blocks) -- never a bare ``` fence.
 
+Anonymization protocol (verbatim token set; the promote gate enforces the IP half):
+- target/victim IPs -> `{target_ip}` / `{victim_ip}`; domains -> `{target_domain}` / `{victim_domain}`
+- credentials -> `{username}` / `{password}` / `{hash}`; tokens and API keys -> `{token}` / `{api_key}`
+- ports -> `{port}` ONLY when non-standard (keep 80, 443, 22 literal - standard ports carry context)
+- keep the exploitation context: a placeholder must leave the technique replayable, not strip the how
+
 ### 4. Dedup against the wiki (the skip rule)
 For each generic candidate, search the wiki first:
 ```
