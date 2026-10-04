@@ -341,6 +341,52 @@ def test_done_dead_fail_class_trailing_cell(tmp_path):
     assert (eng / "Deadends.md").read_text().rstrip().endswith("| technical |")
 
 
+def test_done_dead_row_lands_inside_machine_read_table(tmp_path):
+    """Regression (2026-10-04): the CLI appender wrote Deadends rows at EOF, past the
+    template's `## False positives` section; _engagement._parse_table (and its
+    offensive.py twin, G4, the close-out lints) reads only the FIRST table block, so
+    every `done --dead` row was invisible to all machine consumers."""
+    # plain import (not importlib exec): the _engagement <-> _engagement_classes
+    # circular pair resolves only through the import system's early sys.modules
+    # registration; a spec_from_file_location exec hits the partially-initialized
+    # module. Same path-insert idiom as tests/test_deadends_lint.py.
+    _hooks = str(ROOT / "skills" / "hooks")
+    if _hooks not in sys.path:
+        sys.path.insert(0, _hooks)
+    import _engagement as eng_mod
+
+    def _tpl_shaped(eng):
+        # the new-engagement.sh scaffold shape: 7-col table + False positives tail
+        shutil.copyfile(ROOT / "setup" / "templates" / "_deadends.md",
+                        eng / "Deadends.md")
+
+    # unclassed row: visible to the parse AND counted by the lint
+    vault, eng = _setup(tmp_path / "a")
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+             arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap")])
+    _tpl_shaped(eng)
+    assert _run(["--vault", str(vault), "--eng", str(eng), "done", "4a:1",
+                 "--dead", "sink silent"]) == 0
+    rows = eng_mod._parse_table(str(eng / "Deadends.md"))
+    assert rows and rows[0]["asset"] == "web1"              # row IS machine-read
+    assert eng_mod.deadends_unclassed_rows(str(eng)) == 1   # empty fail-class counted
+    de = (eng / "Deadends.md").read_text()
+    assert de.index("| web1 |") < de.index("## False positives")
+
+    # classed row: visible but NOT flagged
+    vault, eng = _setup(tmp_path / "b")
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+             arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap")])
+    _tpl_shaped(eng)
+    assert _run(["--vault", str(vault), "--eng", str(eng), "done", "4a:1",
+                 "--dead", "waf blocked", "--fail-class", "environmental"]) == 0
+    rows = eng_mod._parse_table(str(eng / "Deadends.md"))
+    assert rows and rows[0]["fail-class"] == "environmental"  # row IS machine-read
+    assert eng_mod.deadends_unclassed_rows(str(eng)) == 0     # classed -> not flagged
+
+
 # --------------------------------------------------------------------------- park (G7)
 
 def test_park_writes_decision_and_advances(tmp_path, capsys):

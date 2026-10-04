@@ -506,7 +506,9 @@ def main():
     # pipe-to-shell install deny-pattern: regex FIRST (only matching commands touch
     # the stamp), then _stamp_fresh (True = may inject, and it touches the stamp itself).
     # Segmentation splits UNQUOTED pipes; QUOTED pipes survive, so a vm.sh-wrapped
-    # 'curl ... | sh' fires (the operator's dominant install shape). Fall back to raw
+    # 'curl ... | sh' fires (the operator's dominant install shape); the segmenter also
+    # unwraps sudo and bridge/vm.sh inner commands, so `sudo curl ... | sh` and
+    # unwrapped inners fire via the curl/wget-led raw fallback below. Fall back to raw
     # cmd only when the probe is curl/wget-LED: an echo/printf string merely MENTIONING
     # the pattern is reader-led and dropped from _probe, so it never fires. Ceiling:
     # a piped install behind a non-curl/wget-led first surviving segment

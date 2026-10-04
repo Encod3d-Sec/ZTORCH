@@ -788,6 +788,31 @@ def _append_line(path, line):
         fh.write(line.rstrip() + "\n")
 
 
+def _append_table_row(path, line):
+    """Append a row INSIDE the file's first markdown table, not at EOF: every
+    machine consumer (_parse_table twins, G4, the close-out lints) reads only
+    the FIRST table block, and a template-shaped Deadends.md carries a
+    `## False positives` section after it - a row appended at EOF is invisible
+    to all of them. No pipe block in the file yet -> plain append (creates it)."""
+    p = Path(path)
+    try:
+        lines = p.read_text(encoding="utf-8").split("\n")
+    except OSError:
+        _append_line(p, line)
+        return
+    end = None
+    for i, ln in enumerate(lines):
+        if ln.strip().startswith("|"):
+            end = i + 1          # still inside the first contiguous pipe block
+        elif end is not None:
+            break                # block ended: the insert position is fixed
+    if end is None:
+        _append_line(p, line)    # no table yet: keep the create/append behavior
+        return
+    lines.insert(end, line.rstrip())
+    p.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _open_assets(rows):
     """Assets (board order, deduped) that still have a [ ]/[~] row."""
     seen, out = set(), []
@@ -1443,9 +1468,9 @@ def cmd_done(args):
         row["status"] = "[!]"
         writer(eng, rows)
         reason = args.dead if isinstance(args.dead, str) else "exhausted"
-        _append_line(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | | %s |"
-                     % (row.get("asset") or "", cls, reason, _today(),
-                        args.fail_class or ""))
+        _append_table_row(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | | %s |"
+                          % (row.get("asset") or "", cls, reason, _today(),
+                             args.fail_class or ""))
         # WALL-BREAK feed: a no-find outcome bumps the dry streak (next fires
         # Skill(redteamlead) once it hits the type threshold). An administrative
         # close (reason N/A) is not a no-find signal - skip it (B4).
