@@ -176,14 +176,88 @@ def facts_line(d):
     return "facts: %d (%d confirmed, %d tentative, %d neg)" % (len(live), conf, tent, neg)
 
 
+OPEN_STATUSES = ("RESEARCH", "DETECTED", "CONFIRMED", "EXPLOITED")
+_NEUTRAL_STATUSES = ("FALSE_POSITIVE", "IGNORED")
+_RISK_W = {"CRITICAL": 10.0, "HIGH": 5.0, "MEDIUM": 2.0, "LOW": 0.5}
+_SEV_RE = re.compile(r"FIND-\d+-([A-Z]+)-", re.I)
+
+
+def finding_rows(d):
+    """[(severity, status)] from Vulns/**/FIND-*.md (severity from the filename
+    per the FIND naming rule, status from frontmatter). Skipped*/False* dirs are
+    excluded exactly like find-lint.find_files."""
+    out = []
+    for p in glob.glob(os.path.join(d, "Vulns", "**", "FIND-*.md"), recursive=True):
+        low = os.path.basename(os.path.dirname(p)).lower()
+        if low.startswith("skip") or low.startswith("false"):
+            continue
+        mm = _SEV_RE.search(os.path.basename(p))
+        sev = mm.group(1).upper() if mm else "INFO"
+        try:
+            text = open(p, encoding="utf-8", errors="ignore").read()
+        except OSError:
+            continue
+        m = re.search(r"^status:\s*(\w+)", text, re.M)
+        out.append((sev.upper(), (m.group(1).upper() if m else "")))
+    return out
+
+
+def risk_line(d):
+    """Weighted OPEN risk (cyberstrikeai L2): crit*10+high*5+med*2+low*0.5 over
+    open (non-neutral) findings; fix-rate = EXPLOITED share of actionable.
+    ZTorch has no FIXED status; EXPLOITED is the terminal verified state."""
+    rows = [r for r in finding_rows(d)
+            if r[1] not in _NEUTRAL_STATUSES and r[0] in _RISK_W]
+    if not rows:
+        return None
+    open_rows = [r for r in rows if r[1] in OPEN_STATUSES]
+    score = sum(_RISK_W[s] for s, _ in open_rows)
+    n = {s: sum(1 for r in open_rows if r[0] == s) for s in _RISK_W}
+    band = ("SAFE" if score <= 3 else "LOW" if score <= 10 else
+            "MEDIUM" if score <= 30 else "HIGH" if score <= 60 else "SEVERE")
+    expl = sum(1 for _, st in rows if st == "EXPLOITED")
+    return ("risk: %s (score %g, open: %dc/%dh/%dm/%dl) fix-rate: %d%% (%d/%d)"
+            % (band, score, n["CRITICAL"], n["HIGH"], n["MEDIUM"], n["LOW"],
+               round(100 * expl / len(rows)), expl, len(rows)))
+
+
+def activity_line(d):
+    """Activity KPI from the engagement telemetry (eval_metrics.read_events - the
+    ONE loader, no second parser). Rate is executed/(executed+blocked): blocked
+    calls never executed, so they sit in the denominator only. No per-call fail
+    dimension exists in .events.jsonl; do not invent one."""
+    sys.path.insert(0, HERE)
+    import eval_metrics
+    events = eval_metrics.read_events(d)
+    if not events:
+        return None
+    executed = sum(1 for e in events if e.get("kind") == "tool")
+    blocked = sum(1 for e in events if e.get("kind") == "hook"
+                  and e.get("action") == "deny")
+    try:
+        sys.path.insert(0, HERE)
+        from offensive import changelog_pending
+        pend = changelog_pending(d)[0]
+    except Exception:
+        pend = 0
+    total = executed + blocked
+    rate = (100.0 * executed / total) if total else 100.0
+    return ("calls %d blocked %d rate %.1f%% cleanup-pending %d"
+            % (executed, blocked, rate, pend))
+
+
 def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=(),
-           died=0, spend=None, facts=None):
+           died=0, spend=None, facts=None, risk=None, kpi=None):
     """Pure formatter -> the dashboard string. All inputs are precomputed (testable)."""
     head = "=== %s (%s)%s ===" % (name, etype, "  STATUS: SOLVED" if solved else "")
     lines = [head]
     if summ:
         lines.append("hosts %d (owned %d) | creds %d | open paths %d"
                      % (summ["hosts"], summ["owned"], summ["creds"], summ["open_paths"]))
+    if risk:
+        lines.append(risk)
+    if kpi:
+        lines.append(kpi)
     if board:
         where, open_n, dead_n = board
         lines.append("board: %s | %d open | %d deadends" % (where, open_n, dead_n))
@@ -256,6 +330,8 @@ def main():
     lanes = lane_lines(d)
     spend = spend_line(d)
     facts = facts_line(d)
+    risk = risk_line(d)
+    kpi = activity_line(d)
     if "--json" in sys.argv:
         # machine-readable dashboard (brain lanes / steering; mirrors render()'s inputs).
         # moves_text stays raw prose - it is next_move.py's own output, already line-based.
@@ -265,10 +341,11 @@ def main():
             "evidence": {"poc": poc, "cards": cards, "recon": recon, "died": died},
             "deadends": deads, "lanes": [ln.strip() for ln in lanes],
             "moves": moves_text.splitlines(), "spend": spend,
+            "risk": risk, "activity": kpi,
         }, ensure_ascii=False))
         return 0
     print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text,
-                 lanes, died=died, spend=spend, facts=facts))
+                 lanes, died=died, spend=spend, facts=facts, risk=risk, kpi=kpi))
     return 0
 
 
