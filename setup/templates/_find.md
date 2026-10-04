@@ -3,7 +3,7 @@ title: "<short title>"
 type: finding
 severity: MEDIUM
 class: ""            # optional: canonical vuln class (ssrf/idor/rce/...) for chain triggers + coverage; fuzzy-inferred from title if blank
-status: RESEARCH   # ladder: DETECTED (tool hit, unverified) -> CONFIRMED (PoC validated + poc/ capture) -> EXPLOITED (used in the chain); RESEARCH = alias of DETECTED
+status: RESEARCH   # ladder: DETECTED (tool hit, unverified) -> CONFIRMED (PoC validated + poc/ capture) -> EXPLOITED (used in the chain); RESEARCH = alias of DETECTED; terminal-neutral: FALSE_POSITIVE / IGNORED (Description first sentence starts `FP:` / `IGNORED:`)
 cvss: ""
 affected: ""
 date_created: "{{DATE}}"
@@ -32,12 +32,19 @@ sources: []
 
 `<How to fix it. Specific, actionable.>`
 
+## Recommended next
+
+`<one line: next class/skill + the evidence input it needs>`
+
 ## References
 
 `<CVE / advisory / docs links.>`
 
-<!-- canonical-vocab (single source of truth; read by tests/test_skill_contract.py, do not drift)
+<!-- canonical-vocab (single source of truth; read by tests/test_find_lint_ladder.py, do not drift)
 find_filename_placeholder: FIND-XXX-SEVERITY-short-slug.md
 vuln_index_status: CONFIRMED | PARTIAL
+find_status_ladder: RESEARCH -> DETECTED -> CONFIRMED -> EXPLOITED
+find_status_neutral: FALSE_POSITIVE | IGNORED
+find_section: Recommended next
 -->
 

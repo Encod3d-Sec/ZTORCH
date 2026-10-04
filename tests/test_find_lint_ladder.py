@@ -148,3 +148,12 @@ def test_ignored_with_prefix_skips_evidence(tmp_path):
     body = body.replace("desc padding", "IGNORED: out of program scope per rules page")
     issues, _ = fl.lint_file(_write_raw(tmp_path, body))
     assert not issues
+
+
+def test_find_md_template_carries_recommended_next_and_neutral_states():
+    t = open(os.path.join(VAULT, "setup", "templates", "_find.md"),
+             encoding="utf-8").read()
+    assert "## Recommended next" in t
+    assert "FALSE_POSITIVE" in t and "IGNORED" in t
+    assert "test_find_lint_ladder.py" in t          # lock test pointer is real
+    assert "test_skill_contract.py" not in t        # stale pointer removed
