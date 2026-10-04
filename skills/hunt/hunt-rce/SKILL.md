@@ -14,6 +14,7 @@ Binary/memory-corruption RCE (a socket service or a handed-out binary) belongs t
 Hub: [[web-moc]] · Primary page: [[os-command-injection]] · Payload arsenal: `wiki/payloads/command-injection.md`
 Anchors: [[ssti]], [[insecure-deserialization]]
 **REFS:** [[os-command-injection]], wiki/payloads/command-injection.md
+- capability equations + low-severity-to-primitive map: [[wiki/techniques/capability-primitives]]
 
 qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP — ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.

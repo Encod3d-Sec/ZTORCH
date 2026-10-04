@@ -14,6 +14,7 @@ This is the BINARY exploitation class (memory corruption in compiled targets rea
 Hub: [[exploit-dev-moc]] · Primary page: [[binary-exploitation]] · Arsenal: [[binary-exploitation]] (cheatsheet)
 Anchors: [[heap-exploitation]], [[format-string]], [[rop-techniques]], [[crash-analysis]], [[ctf-jail-escapes]], [[memory-safety-bugs]]
 **REFS:** [[binary-exploitation]], [[heap-exploitation]], [[format-string]], [[rop-techniques]], [[crash-analysis]], [[ctf-jail-escapes]], [[memory-safety-bugs]]
+- capability equations + low-severity-to-primitive map: [[wiki/techniques/capability-primitives]]
 
 qmd_query "binary exploitation heap format string ROP one_gadget seccomp glibc tcache" via wiki-search MCP — ONLY for a specific signal the map above doesn't cover (a glibc version's allocator behavior, an unusual mitigation combo, an architecture quirk); not a blanket first step.
 
