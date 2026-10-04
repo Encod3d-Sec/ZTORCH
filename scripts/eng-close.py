@@ -39,6 +39,30 @@ def _active_name():
     return ""
 
 
+def _rollback_script(eng_dir):
+    """rollback.sh from changelog.md data rows, REVERSE row order (undo last
+    write first). Empty/absent table -> None (nothing generated)."""
+    import os
+    rows = []
+    p = os.path.join(eng_dir, "changelog.md")
+    if os.path.isfile(p):
+        for line in open(p, encoding="utf-8", errors="ignore"):
+            s = line.strip()
+            if not s.startswith("|") or set(s) <= {"|", "-", " ", ":"}:
+                continue
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if len(cells) < 8 or cells[0] in ("#", ""):
+                continue
+            rows.append(cells)
+    cmds = [(c[6], c[1], c[2]) for c in rows if c[6]]
+    if not cmds:
+        return None
+    out = ["#!/bin/sh", "# rollback for %s - reverse changelog order; verify each step" %
+           os.path.basename(eng_dir), "set -x"]
+    out += ["# %s %s" % (t, h) + ("\n" + rb.replace("`", "")) for rb, t, h in reversed(cmds)]
+    return "\n".join(out) + "\n"
+
+
 def main(argv):
     args = [a for a in argv[1:] if a]
     if not args or args[0].upper() not in STATUSES:
@@ -69,6 +93,29 @@ def main(argv):
           (name, status,
            ", then walkthrough build + Skill(learn)" if status != "SUSPEND"
            else " only (parked; walkthrough/learn resume when reopened)"))
+    eng_dir = os.path.join(VAULT, "targets", name)
+    rb = _rollback_script(eng_dir)
+    if rb:
+        with open(os.path.join(eng_dir, "rollback.sh"), "w", encoding="utf-8") as fh:
+            fh.write(rb)
+        print("rollback: targets/%s/rollback.sh written (reverse changelog order)." % name)
+    try:
+        sys.path.insert(0, HERE)
+        from offensive import changelog_pending
+        n, rows = changelog_pending(eng_dir)
+    except Exception:
+        n, rows = 0, []
+    if n:
+        print("CLEANUP UNCONFIRMED - %d changelog rows lack verified rollback:" % n)
+        for r in rows:
+            print("  - %s" % r)
+        with open(state_p, "a", encoding="utf-8") as fh:
+            fh.write("cleanup_unconfirmed: true\n")
+    wt = os.path.join(eng_dir, "walkthrough.md")
+    if os.path.isfile(wt):
+        t = open(wt, encoding="utf-8", errors="ignore").read()
+        if "## Cleanup" in t and "- [ ]" in t.split("## Cleanup", 1)[1].split("##", 1)[0]:
+            print("advisory: walkthrough has unchecked cleanup items (## Cleanup).")
     # advisory (pass 11 L6): nothing in the close-out chain kills the engagement's tmux
     # session on the VM - leftover scan/listener tabs silently persist into the next box.
     # Advise the operator-named kill (NEVER kill-server; VPN lives outside tmux but the

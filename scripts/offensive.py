@@ -566,6 +566,29 @@ def read_board_4b(eng):
     return _parse_table_text(text[idx:]) if idx >= 0 else []
 
 
+def changelog_pending(eng):
+    """(unverified_count, [row summaries]) from targets/<eng>/changelog.md.
+    Data rows whose `verified` cell is empty are cleanup debt: written on a
+    compromised host, rollback not yet confirmed run. (0, []) when absent."""
+    import csv
+    p = os.path.join(str(eng), "changelog.md")
+    if not os.path.isfile(p):
+        return 0, []
+    rows, out = [], []
+    for line in open(p, encoding="utf-8", errors="ignore"):
+        s = line.strip()
+        if not s.startswith("|") or set(s) <= {"|", "-", " ", ":"}:
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 8 or cells[0] in ("#", ""):
+            continue
+        rows.append(cells)
+    for c in rows:
+        if not c[7]:
+            out.append("#%s %s %s %s" % (c[0], c[2], c[3], c[4]))
+    return len(out), out
+
+
 def write_board_4b(eng, rows):
     """Replace (or append) the `### 4b` section with `rows`. The 4b section is
     always the last block, so its table body up to EOF is regenerated. The 4a
@@ -1606,6 +1629,12 @@ def cmd_closeout(args):
     print("closeout chain (%s), run in order:" % etype)
     for i, s in enumerate(chain, 1):
         print("  %d. Skill(%s)" % (i, s))
+    n, rows = changelog_pending(eng)
+    if n:
+        print("CLEANUP UNCONFIRMED - %d changelog rows lack verified rollback" % n)
+        for r in rows:
+            print("  - %s" % r)
+        print("close-out may proceed; clear the verified column or record why not.")
     return 0
 
 
