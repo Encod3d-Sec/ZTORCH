@@ -503,15 +503,23 @@ def main():
                       "additionalContext": _msg}}))
                 return
 
-    if d and not _stamp_fresh(d, ".install-stamp") and _install_advisory(cmd):
+    # pipe-to-shell install deny-pattern: regex FIRST (only matching commands touch
+    # the stamp), then _stamp_fresh (True = may inject, and it touches the stamp itself).
+    # _advise_probe splits segments on '|', so the pipe cannot survive in _probe; fall
+    # back to raw cmd but only when the probe is curl/wget-LED - an echo/grep string
+    # merely MENTIONING the pattern is dropped by the probe's reader discipline.
+    _probe_txt = _probe or ""
+    _inst = (_install_advisory(_probe_txt)
+             or (_install_advisory(cmd)
+                 if _probe_txt.startswith(("curl", "wget")) else None))
+    if d and _inst and _stamp_fresh(d, ".install-stamp"):
         try:
-            open(os.path.join(d, ".install-stamp"), "w").close()
             import _telemetry
             _telemetry.drift("drift-guard", "advisory install-pipe-sh")
         except Exception:
             pass
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-              "additionalContext": _install_advisory(cmd)}}))
+              "additionalContext": _inst}}))
         return
 
     if not d:
