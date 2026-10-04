@@ -91,6 +91,9 @@ Hard rules:
   `export-curl <id>`), never a `curl -K /tmp/...` line; the config is internal.
 - **Replay session names are mandatory**; collections for multi-request handoffs;
   refer to sessions/collections by NAME, not id.
+- **Promote EVERY load-bearing request of a chain as it lands** (each foothold,
+  pivot, privesc step; not just the first bypass), all into one named collection.
+  A chain closed with a single Replay entry is an incomplete handoff.
 - Credential values stay in the proxy capture / config file, never in a vault file.
 
 ## Primary workflow (do this by default)
