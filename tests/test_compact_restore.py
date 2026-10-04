@@ -123,3 +123,25 @@ def test_compact_reinjects_open_delegate_lanes(tmp_path):
     assert "open delegate lanes" in rb
     assert "lane sqlimap in flight" in rb
     assert "done1" not in rb
+
+
+OOB_MD = ("# OOB ledger\n\n"
+          "| token | sink | class | planted | status | source |\n"
+          "|---|---|---|---|---|---|\n"
+          "| abc123 | 1.2.3.4.n1.example | ssrf | 2026-10-04 | waiting | poc/01 |\n"
+          "| def456 | 1.2.3.4.n2.example | xxe | 2026-10-03 | HIT | poc/02 |\n"
+          "| ghi789 | old.example | ssrf | 2026-10-01 | actioned | poc/03 |\n")
+
+
+def test_compact_restore_includes_oob_sinks(tmp_path):
+    """Task 10 (pentagi absorb): OOB callback tokens/sink hosts are the one thing a
+    summarizer must not paraphrase away, so waiting/HIT oob.md rows ride the restore
+    block verbatim; actioned/expired (already landed in findings) do not."""
+    v = _mk(tmp_path)
+    (v / "targets" / "engc" / "oob.md").write_text(OOB_MD, encoding="utf-8")
+    r = _run(v, "compact")
+    # scope to the restored block: the state summary's OOB HIT line ALSO names HIT sinks
+    rb = r.stdout.split("restored post-compact")[1].split("=== Engagement")[0]
+    assert "abc123" in rb and "1.2.3.4.n1.example" in rb
+    assert "def456" in rb                    # HIT rows ride along
+    assert "ghi789" not in rb                # actioned/expired rows do not
