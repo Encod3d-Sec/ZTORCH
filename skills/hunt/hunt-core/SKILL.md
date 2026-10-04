@@ -118,6 +118,19 @@ Stop and report rather than continuing when:
 
 Stopping is not failure. "Confirmed and did not exploit" is worth more than a forfeited payout.
 
+**Blocked-handling ladder (403/429/WAF/timeout).** Climb in order, one rung per attempt:
+change UA -> reader proxy -> page cache -> archive (web.archive.org) -> alt engine ->
+SOCKS5 (if provisioned). Retrying the same conditions twice unchanged is the named
+violation `gave-up-by-repetition`. Exhausted after the full ladder: write the negative
+fact (state.md `## Facts`, `negative/` key) plus one Deadends.md row carrying
+`ladder: <steps executed>` (e.g. `ladder: UA,proxy,archive`), then switch domain - a
+Deadends row without the ladder field reads as an early give and the close-out
+drift-count separates them.
+
+**Violation vocabulary** (drift taxonomy, used by the Stop-hook close-out count and
+log.md skip-reason lines): `hallucination` (claim with no test), `gave-up` (blocked and
+not switched), `omission` (creds in hand, not sprayed/reused).
+
 ## Published chains: exact-first
 
 When a writeup / published chain exists for the box or the vuln class, fire its EXACT form first:
@@ -194,6 +207,15 @@ wraps the same qmd index (`-k` for an exact CVE/string).
 
 ## Hunt approaches (which skill for the signal)
 
+Usage order: load this index first, load the per-surface skill on demand, keep three
+permanent rules always on:
+
+1. **wiki-first** - consult the class page/MOC before dispatching a new attack-path lane.
+2. **OOB gate** - blind claims (SSRF/SSTI/SQLi-blind/deser) need an out-of-band callback,
+   never inference.
+3. **verification before status change** - a status only advances with the evidence the
+   ladder demands (see FIND output + find-lint).
+
 `hunt-core` is the hub: route from the observed signal to the class skill, load it, then use that
 skill's `## Wiki` map. The `recon-capture` fingerprint router auto-suggests many of these from tool
 output; this table is the manual reference when it does not fire or you are reasoning about approach.
@@ -255,6 +277,10 @@ Add row to Vuln-index.md
 twenty). Scale raises it, when you can show the identifier is enumerable without enumerating. State
 impact in the program's terms (customer data, account security, financial exposure), not in
 vulnerability classes.
+
+Each card ends with a `## Recommended next` line (template field): one line naming the
+next class/skill plus the evidence input it needs. The triage skill reads it as a
+ranking hint; find-lint does not gate on it.
 
 On exhaustion:
 
