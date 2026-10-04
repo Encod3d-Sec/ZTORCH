@@ -57,7 +57,9 @@ usual failure mode, not a weak sub-agent.
   the run changed (a group membership added, a registry key set) before reporting back; do not pivot
   further without the main agent. Structure the return as the lane envelope: Scope (what was
   attempted) / Result (verdict + the raw observable) / Key files (capture paths) / Issues
-  (blockers). The main model writes `SUCCESS = <exact observable>` into the
+  (blockers). A negative Result also carries `failure-class: technical | environmental | conceptual |
+  external` (tool/arg mechanics broke | seat/VM/network flaked | the vector class itself is
+  wrong for this surface | target-side change such as a WAF rule or patch). The main model writes `SUCCESS = <exact observable>` into the
   prompt BEFORE dispatch (for example: `hostname` = the target AND `id` = the expected uid, plus
   the session log path); the lane returns that observable RAW plus the capture path.
   For investigation (not fully-specified-run) dispatches, the prompt also carries a
@@ -128,6 +130,11 @@ Returned-lane processing (in order):
 - **Resume with context, not a respawn.** A follow-up on the same lane re-enters the SAME
   agent (its handle/id) carrying the prior raw output, so it continues from what it proved;
   a fresh respawn redoes discovery and re-fires the same dead ends.
+- **Type the failure before the next move.** technical -> adjust args or tool; environmental
+  -> one recovery-ladder retry, else switch seat; conceptual -> pivot vector class entirely
+  via `offensive.py next`; external -> park with a reopen-if trigger in Deadends. Two
+  failures of the same class on the same row = switch class, not a third identical attempt
+  (this types the existing 3-fail switch rather than replacing it).
 - **Three same-class failures on one lane = switch, not a fourth.** Route the lane's row
   through `offensive.py next` for a different vector; grinding a 4th attempt of the same
   class is the doom-loop the driver exists to break.
