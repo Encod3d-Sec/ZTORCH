@@ -81,6 +81,33 @@ def self_heal_board():
         return False
 
 
+def self_heal_facts(d=None):
+    """Append the ## Facts header to the active engagement's state.md when
+    missing (cyberstrikeai L3): existing engagements predate the section.
+    d defaults to the active engagement dir; tests pass an explicit path."""
+    if not d:
+        try:
+            import _engagement
+            d = _engagement.active_dir()
+        except Exception:
+            return
+    if not d:
+        return
+    p = os.path.join(d, "state.md")
+    if not os.path.isfile(p):
+        return
+    text = open(p, encoding="utf-8", errors="ignore").read()
+    if "## Facts" in text:
+        return
+    block = ("\n## Facts\n\n"
+             "One line per fact: key | confidence | summary. Negative results are facts.\n\n"
+             "| key | conf | summary |\n|---|---|---|\n")
+    if text and not text.endswith("\n"):
+        text += "\n"
+    with open(p, "a", encoding="utf-8") as fh:
+        fh.write(block)
+
+
 def regen_index():
     """Keep wiki/index.md current (writes only when stale; no churn when fresh)."""
     _run_script("gen_index.py", timeout=30)
@@ -426,6 +453,11 @@ def main():
         if self_heal_board():
             out.append("Self-heal: Approach.md board was empty - ran `offensive.py board` to "
                        "populate it.")
+    except Exception:
+        pass
+
+    try:
+        self_heal_facts()
     except Exception:
         pass
 

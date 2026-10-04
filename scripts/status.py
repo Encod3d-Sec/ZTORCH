@@ -147,8 +147,37 @@ def spend_line(d):
     return "spend: $%.2f" % v if v > 0 else None
 
 
+def facts_line(d):
+    """One 'facts: N (a confirmed, b tentative, c neg)' line from state.md's
+    ## Facts table, or None when the section is absent/empty. Deprecated rows
+    (struck keys) are counted in neither bucket."""
+    rows = []
+    p = os.path.join(d, "state.md")
+    try:
+        text = open(p, encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return None
+    if "## Facts" not in text:
+        return None
+    for line in text.split("## Facts", 1)[1].splitlines():
+        s = line.strip()
+        if not s.startswith("|") or set(s) <= {"|", "-", " ", ":"}:
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 3 or cells[0] in ("key", ""):
+            continue
+        rows.append(cells)
+    if not rows:
+        return None
+    live = [c for c in rows if "deprecated" not in c[1].lower()]
+    conf = sum(1 for c in live if c[1].lower().startswith("confirmed"))
+    tent = sum(1 for c in live if c[1].lower().startswith("tentative"))
+    neg = sum(1 for c in live if c[0].strip("`~").startswith("negative/"))
+    return "facts: %d (%d confirmed, %d tentative, %d neg)" % (len(live), conf, tent, neg)
+
+
 def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=(),
-           died=0, spend=None):
+           died=0, spend=None, facts=None):
     """Pure formatter -> the dashboard string. All inputs are precomputed (testable)."""
     head = "=== %s (%s)%s ===" % (name, etype, "  STATUS: SOLVED" if solved else "")
     lines = [head]
@@ -167,6 +196,9 @@ def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_tex
     lines.append(ev)
     if spend:
         lines.append(spend)
+    fl_ = facts
+    if fl_:
+        lines.append(fl_)
     if lanes:
         lines.append("open lanes:")
         lines += list(lanes)
@@ -223,6 +255,7 @@ def main():
         pass
     lanes = lane_lines(d)
     spend = spend_line(d)
+    facts = facts_line(d)
     if "--json" in sys.argv:
         # machine-readable dashboard (brain lanes / steering; mirrors render()'s inputs).
         # moves_text stays raw prose - it is next_move.py's own output, already line-based.
@@ -235,7 +268,7 @@ def main():
         }, ensure_ascii=False))
         return 0
     print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text,
-                 lanes, died=died, spend=spend))
+                 lanes, died=died, spend=spend, facts=facts))
     return 0
 
 
