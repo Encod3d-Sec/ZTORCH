@@ -104,6 +104,47 @@ def section_nonempty(text, header_re):
     return False
 
 
+def _section_body(text, header_re):
+    """Body lines of the first heading matching header_re, or ''."""
+    lines = text.splitlines()
+    for i, ln in enumerate(lines):
+        if re.match(header_re, ln.strip(), re.I):
+            body = []
+            for nxt in lines[i + 1:]:
+                if re.match(r"^#+\s", nxt):
+                    break
+                body.append(nxt)
+            return "\n".join(body)
+    return ""
+
+
+_POC_RE = REQUIRED["Proof of Concept"]
+_PLACEHOLDER_RE = re.compile(r"<[A-Za-z#][^>\n]{0,80}>")
+
+
+def _evidence_issues(body, base_dir):
+    """Finalization contract (cyberstrikeai L1): CONFIRMED/EXPLOITED need
+    (a) referenced poc/ files on disk, (b) a fenced block with a non-empty line,
+    (c) no unfilled <...> placeholders in the PoC section. One combined issue
+    line so the report reads as a single still-verifying verdict.
+    ponytail: 'runnable' is structural (fenced + non-empty), not a shell parse;
+    the placeholder rule carries the 'not prose' half."""
+    missing = []
+    refs = sorted(set(re.findall(r"poc/[^\s\)\]\|]+", body)))
+    gone = [r.rstrip(".,") for r in refs
+            if not os.path.isfile(os.path.join(base_dir, r.rstrip(".,")
+                                               .split("#")[0].strip()))]
+    if gone:
+        missing.append("capture files absent (%s)" % ", ".join(gone))
+    poc = _section_body(body, _POC_RE)
+    fenced = re.findall(r"```[^\n]*\n(.*?)```", poc, re.S)
+    if not any(b.strip() for b in fenced):
+        missing.append("no fenced command block in PoC")
+    if _PLACEHOLDER_RE.search(poc):
+        missing.append("unfilled placeholder in PoC")
+    return ("STILL VERIFYING - missing: %s" % ", ".join(missing)) if missing else ""
+
+
 def lint_file(path):
     text = open(path, encoding="utf-8", errors="ignore").read()
     issues = []
@@ -135,9 +176,19 @@ def lint_file(path):
     m = re.search(r"^status:\s*(\w+)", fmt, re.M)
     status = (m.group(1).upper() if m else "")
     body = text[fm.end():] if fm else text   # same frontmatter boundary as the fm match above
-    if status in ("CONFIRMED", "EXPLOITED") and "poc/" not in body.lower():
-        issues.append("status %s but no capture path (poc/...) referenced - CONFIRMED needs "
-                      "a validated PoC capture, EXPLOITED a chain use" % status)
+    if status in ("FALSE_POSITIVE", "IGNORED"):
+        prefix = "FP:" if status == "FALSE_POSITIVE" else "IGNORED:"
+        desc = re.sub(r"\s+", " ", _section_body(body, REQUIRED["Description"]).strip())
+        if not desc.upper().startswith(prefix):
+            issues.append("status %s needs a first-sentence reason starting %s in "
+                          "Description" % (status, prefix))
+    elif status in ("CONFIRMED", "EXPLOITED"):
+        if "poc/" not in body.lower():
+            issues.append("status %s but no capture path (poc/...) referenced - CONFIRMED needs "
+                          "a validated PoC capture, EXPLOITED a chain use" % status)
+        ev = _evidence_issues(body, os.path.dirname(path))
+        if ev:
+            issues.append(ev)
     return issues, warnings
 
 
