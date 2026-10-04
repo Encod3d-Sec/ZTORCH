@@ -35,6 +35,7 @@ Followed by 2-4 bullet points summarising what changed.
 - Do not add warnings or legal disclaimers to technique or cheatsheet pages.
 - Never use em-dashes (--) in any output or wiki pages. Use a comma, semicolon, or rewrite the sentence instead.
 - Never use emojis in any output or wiki pages.
+- Angle-bracket tokens (`<value>`, `<marker>`) are never bare in page prose or tables: Obsidian parses them as HTML tags and one unclosed token breaks the whole page's rendering. Always inline-backtick them (`` `<value>` ``) or put them in a fenced code block.
 
 ## Tag taxonomy
 
