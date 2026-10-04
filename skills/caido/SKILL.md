@@ -1,6 +1,6 @@
 ---
 name: caido
-description: Drive the headless Caido instance on the Kali VM (GUI http://192.168.23.128:8082) via two surfaces - the caido-mode SDK CLI (skills/caido/caido-mode, seat-side: HTTPQL history search, curl-through-proxy testing with cached auth configs, named Replay sessions/collections handoff, Match & Replace rules, findings, scopes/filters/envs) and ~/caido.sh on the VM (lifecycle, fuzz batteries, ad hoc gql). Use as the proxy layer when Burp/MCP is down, for a per-engagement isolated project, or for any Caido-native feature (Automate, workflows).
+description: Headless Caido proxy on the Kali VM: HTTPQL history triage, proxied curl probes, Replay handoff, Match & Replace, Automate, fuzz (caido-mode CLI + ~/caido.sh). Use when Burp/MCP is down or for isolated per-engagement projects.
 ---
 
 # Caido (headless instance on Kali, driven seat-side)
@@ -38,6 +38,12 @@ the GUI at http://192.168.23.128:8082. Wiki: [[caido]].
 ```
 cd skills/caido/caido-mode && npm install     # node_modules is gitignored; node 22 works
 ```
+
+Full command reference lives in the CLI itself: `npx tsx caido-client.ts --help`
+(and `<cmd> --help` per command); the upstream SKILL.md/README were deliberately
+not vendored. Seat note: the caido-mode non-.md files arrive via git clone only
+(Obsidian sync carries `.md` alone), so a synced seat needs a `git pull` of the
+vault repo before `npm install` works.
 
 Auth lives in `~/.claude/config/secrets.json` under `.caido`, keyed by instance URL
 (`.caido.default`, `.caido.instances[<url>] = {pat, proxy, cachedToken}`).
