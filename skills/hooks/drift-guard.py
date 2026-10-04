@@ -377,6 +377,19 @@ def _should_advise(streak, post_foothold):
     return streak in (1, 2, 3) or streak % 25 == 0
 
 
+# L5 recovery-ladder deny-pattern: a remote installer piped straight into a shell
+# (pentagi tool_model_fallback.md install deny-patterns). Advisory, stamp-gated.
+_CURL_PIPE_SH = re.compile(r"(?:curl|wget)[^|;\n]{0,400}\|\s*(?:sudo\s+)?(?:ba|z|da)?sh\b")
+
+
+def _install_advisory(cmd):
+    if _CURL_PIPE_SH.search(cmd or ""):
+        return ("INSTALL DENY-PATTERN (advisory): fetch the script, inspect it, then run it - "
+                "never pipe a remote installer straight into a shell; max 2 install attempts "
+                "before switching tools.")
+    return None
+
+
 def _advise_probe(cmd):
     """Executable, non-framework text for the always-on advisories: joined segments that
     are neither framework-meta (in a MIXED command only the meta part is exempt; the old
@@ -489,6 +502,17 @@ def main():
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                       "additionalContext": _msg}}))
                 return
+
+    if d and not _stamp_fresh(d, ".install-stamp") and _install_advisory(cmd):
+        try:
+            open(os.path.join(d, ".install-stamp"), "w").close()
+            import _telemetry
+            _telemetry.drift("drift-guard", "advisory install-pipe-sh")
+        except Exception:
+            pass
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+              "additionalContext": _install_advisory(cmd)}}))
+        return
 
     if not d:
         return
