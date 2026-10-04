@@ -83,7 +83,8 @@ def _heal_shared_set(etype):
 # ctf uses a slim findings list.
 OPTIONAL_FILES = {"oob": ("oob.md", "_oob.md"),
                   "vuln-index": ("Vuln-index.md", "_vuln-index.md"),
-                  "decisions": ("decisions.md", "_decisions.md")}
+                  "decisions": ("decisions.md", "_decisions.md"),
+                  "changelog": ("changelog.md", "_changelog.md")}
 
 
 def ensure_optional_file(kind, d=None):
