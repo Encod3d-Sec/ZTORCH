@@ -4,8 +4,8 @@ type: technique
 tags: [methodology, agents, coordination, campaign, planning]
 phase: exploitation
 date_created: 2026-08-06
-date_updated: 2026-08-06
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 ---
 
 # Multi-Agent Campaign Orchestration
@@ -114,6 +114,98 @@ Two checks catch this reliably:
 
 When fabrication is found, retract fully: delete every dependent artifact and record what was
 fabricated and why, in the audit trail.
+
+## Lane handoff grammar: the brief in, the completion report out
+
+The two-sided contract between an orchestrator and an execution lane, in the shape strix enforces
+in code and we enforce in the lane prompt:
+
+**The brief** carries (a) any inherited context framed explicitly as background only, do not
+continue the parent's work, (b) the task stated concretely: what to test, what success looks like,
+constraints, and (c) the already-known state: what recon already mapped, which surfaces are
+already covered, which board row the lane is picking up. A lane that is not told what is already
+known rediscovers it, and pays for the rediscovery twice.
+
+**The completion report** is written as if the recipient has no idea what the lane was doing:
+what was tested, what was confirmed, what was ruled out, what is still open. Three hard rules:
+
+- **Findings cite authoritative artifacts, not prose.** The report's finding references are ids
+  and paths read from the shared record (finding cards, capture pairs); the narrative summary is
+  color, not the record. A recipient that wants to act needs the ids.
+- **Open items are mandatory.** Anything the lane could neither confirm nor rule out is handed up
+  in an open-items list. An unresolved candidate handed up is useful; a silently dropped one is a
+  missed vulnerability. Reporting nothing and listing no open items asserts the area is clean;
+  only say that if it is.
+- **Check the board before spawning.** A duplicate specialist wastes budget and creates
+  coordination headaches; the spawn decision starts with "does an open row or a live lane already
+  cover this scope".
+
+Peer-to-peer messaging between lanes is a side channel, deliberately starved: only when essential,
+batched, never routine status. Completion flows and shared artifacts carry the coordination load.
+
+## Fleet budget: graduated bands and a close-out reserve
+
+Against a spend ceiling, warn with escalating, role-differentiated directives instead of
+truncating work mid-sentence. Bands at roughly 70 / 85 / 95 percent of a lane's or the
+engagement's budget:
+
+- at the first band: stop opening new lines of investigation;
+- at the second: drive the validated finding you have to a result;
+- at the third: wrap up NOW; an orchestrator stops spawning and starts closing, an executor
+  hands its confirmed work back immediately.
+
+Two structural rules make bands honest:
+
+- **Reserve.** Cut execution lanes at about 90 percent of total spend so the orchestrator can
+  always afford triage, the coverage census, and the report. When the reserve trips: no new lanes,
+  no waiting on stragglers; confirmed work is already on disk; wrap up.
+- **Spend is fleet-wide shared state.** Per-lane frugality does not help if the total is gone;
+  the orchestrator sees total spend, not just its own.
+
+## Anti-drift for lanes: output ends a run, nudges are bounded
+
+- A lane ends by RETURNING its result (envelope, completion report), never by a prose sign-off.
+  A turn that produces text but no work is nudged back to exactly one concrete action, with a
+  bounded recovery count (about 3). The count persists across restarts, so a restarted lane
+  cannot re-earn a fresh nudge budget by dying; only real progress (a new artifact, a real
+  message) resets it.
+- **Exactly one terminal notification per lane.** A completion report and a crash/stop notice
+  carry the same information; whichever arrives first claims the slot, and the other is skipped.
+  A lane that died still owes its parent a notice, so the orchestrator never waits out a timeout
+  on a message that cannot come. A stopped lane's already-filed findings stand; account for the
+  unfinished remainder and move on.
+
+## Close-out census returns work, it does not just pass
+
+- Before closing, list the unresolved rows (needs_follow_up): each is either work you still owe,
+  or a row somebody already resolved without updating it. A stale open item sitting next to its
+  own resolution is worse than either alone.
+- **Equipped but unrecorded means unexamined, not clean.** If a lane carried a class doctrine and
+  no coverage row textually matches that class, the report must say unexamined; a hallucinated
+  "tested and clean" is strictly less honest than no coverage record at all. Same for a lane that
+  ran and recorded nothing: whatever it examined is absent from the record.
+- **The chaining gate.** Do not close until chaining the confirmed findings into higher-impact,
+  end-to-end paths has been genuinely considered and every plausibly-related combination tested.
+  Finding no real chain after a serious attempt is acceptable; skipping the chaining reasoning,
+  or ignoring a plausibly-related combination, is not.
+- The close-out check should hand back an actionable punch list at the last moment work can still
+  be dispatched, not a bare pass/fail after the fact.
+
+## Dedupe boundary for filed findings
+
+A duplicate is: same root cause, same affected component/endpoint, and it would be fixed by the
+same patch. Explicitly NOT duplicates, even with similar titles or different payloads:
+
+- different endpoints with the same vulnerability type
+- different parameters on the same endpoint
+- different root causes (stored XSS vs reflected XSS in the same field)
+- one authenticated, the other not
+
+Deterministic identity first, judgement second: exact identities (a CVE x package x manifest
+triple, or an identical request pair) dedupe with zero model calls, and only the residue goes to
+a judge. When uncertain, lean towards NOT duplicate. A dedupe outage must never block a finding:
+fail open. The loser is refused with a pointer to the winner and told to REVISE the existing
+finding, never to re-file.
 
 ## References
 
