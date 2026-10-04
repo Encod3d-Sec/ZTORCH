@@ -1,6 +1,6 @@
 ---
 name: hunt-macos
-description: macOS hunting, foothold to root/persistence - TCC/Gatekeeper/SIP bypass, keychain + credential loot, code-signing/entitlement abuse, XPC/dylib injection, launch-constraint evasion, MDM/installer abuse. Wiki-first, FIND output.
+description: macOS hunting, foothold to root/persistence - TCC/Gatekeeper/SIP bypass, keychain + credential loot, code-signing/entitlement abuse, XPC/dylib injection, launch-constraint evasion, MDM/installer abuse. Wiki-first, FIND output. Use when the foothold is a macOS host (TCC/keychain/XPC/MDM surfaces).
 ---
 
 # Hunt: macOS

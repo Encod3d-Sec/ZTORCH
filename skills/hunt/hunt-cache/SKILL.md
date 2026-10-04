@@ -1,6 +1,6 @@
 ---
 name: hunt-cache
-description: Web cache poisoning + cache deception hunting - unkeyed input poisoning, cache-key analysis, path-confusion deception, header/parameter cloaking. Wiki-first, FIND schema output.
+description: Web cache poisoning + cache deception hunting - unkeyed input poisoning, cache-key analysis, path-confusion deception, header/parameter cloaking. Wiki-first, FIND schema output. Use when a cache layer fronts the app and input looks unkeyed.
 ---
 
 # Hunt: Web Cache Attacks

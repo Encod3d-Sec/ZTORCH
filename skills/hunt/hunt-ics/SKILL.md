@@ -1,6 +1,6 @@
 ---
 name: hunt-ics
-description: ICS/SCADA/OT exploitation - Modbus (502), S7comm (102), EtherNet/IP (44818), DNP3, OpenPLC, Node-RED, PLC/HMI coil/register attacks. Use when a target exposes industrial protocols or the goal is a plant danger-state / the HMI/CCTV flag.
+description: ICS/SCADA/OT exploitation - Modbus (502), S7comm (102), EtherNet/IP (44818), DNP3, OpenPLC, Node-RED, PLC/HMI coil/register attacks. Use when industrial protocols are exposed or the goal is a plant danger-state or the HMI/CCTV flag.
 ---
 
 # Hunt: ICS / SCADA / OT

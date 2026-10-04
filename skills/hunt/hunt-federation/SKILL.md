@@ -1,6 +1,6 @@
 ---
 name: hunt-federation
-description: OAuth and SAML attack hunting - redirect_uri bypass, state CSRF, SAML XSW (XSW1-XSW8), signature stripping, comment injection. Wiki-first, FIND schema output.
+description: OAuth and SAML attack hunting - redirect_uri bypass, state CSRF, SAML XSW (XSW1-XSW8), signature stripping, comment injection. Wiki-first, FIND schema output. Use when an OAuth redirect_uri or a SAML assertion is the surface.
 ---
 
 # Hunt: OAuth / SAML / Federation

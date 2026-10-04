@@ -1,6 +1,6 @@
 ---
 name: hunt-secrets
-description: Exposed-secrets hunting - .git history mining, .env/config exposure, keys in JS bundles + source maps, S3/blob leaks, CI/CD leakage. Live validation mandatory. Wiki-first, FIND output.
+description: Exposed-secrets hunting - .git history mining, .env/config exposure, keys in JS bundles + source maps, S3/blob leaks, CI/CD leakage. Live validation mandatory. Wiki-first, FIND output. Use when `.git`/`.env`/keys/source-maps or a secrets leak surface appears.
 ---
 
 # Hunt: Exposed Secrets / Credential Exposure

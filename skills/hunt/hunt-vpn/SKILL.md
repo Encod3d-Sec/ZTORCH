@@ -1,6 +1,6 @@
 ---
 name: hunt-vpn
-description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisco, Fortinet, Citrix, Palo Alto, Pulse/Ivanti), default credentials, pre-auth exploit commands. Wiki-first, FIND schema output.
+description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisco, Fortinet, Citrix, Palo Alto, Pulse/Ivanti), default credentials, pre-auth exploit commands. Wiki-first, FIND schema output. Use when an SSL-VPN appliance (Fortinet/Citrix/Ivanti/Cisco/PAN) is fingerprinted.
 ---
 
 # Hunt: Enterprise VPN Appliances

@@ -1,6 +1,6 @@
 ---
 name: hunt-deserialization
-description: Insecure deserialization hunting across Java / .NET / PHP / Python / Ruby / Node. Gadget-chain RCE, OOB-gated blind detection, magic-byte fingerprinting. Wiki-first, FIND schema output.
+description: Insecure deserialization hunting across Java / .NET / PHP / Python / Ruby / Node. Gadget-chain RCE, OOB-gated blind detection, magic-byte fingerprinting. Wiki-first, FIND schema output. Use when a serialized blob (`rO0`/`AAEAAAD`/`O:`/viewstate) or signed cookie appears.
 ---
 
 # Hunt: Insecure Deserialization

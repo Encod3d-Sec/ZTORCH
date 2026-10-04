@@ -1,6 +1,6 @@
 ---
 name: hunt-windows
-description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or local shell on a member) - Potato/SeImpersonate, services, autologon, scheduled tasks, DLL hijack, cred loot. Domain escalation (kerberoast/ADCS/DCSync) is hunt-ad.
+description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or local shell on a member) - Potato/SeImpersonate, services, autologon, scheduled tasks, DLL hijack, cred loot. Domain escalation (kerberoast/ADCS/DCSync) is hunt-ad. Use when a local Windows shell needs privesc to SYSTEM.
 ---
 
 # Hunt: Windows (local privilege escalation)

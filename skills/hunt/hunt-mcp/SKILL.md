@@ -1,6 +1,6 @@
 ---
 name: hunt-mcp
-description: MCP server attack hunting - tool poisoning, indirect prompt injection via tool output, rug-pull updates, cross-tool shadowing, over-permissioned/excessive-agency tools, lethal trifecta. Wiki-first, FIND schema output.
+description: MCP server attack hunting - tool poisoning, indirect prompt injection via tool output, rug-pull updates, cross-tool shadowing, over-permissioned/excessive-agency tools, lethal trifecta. Wiki-first, FIND schema output. Use when the target exposes an MCP server or tool output flows into a model.
 ---
 
 # Hunt: MCP Server Attacks

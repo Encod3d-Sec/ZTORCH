@@ -1,6 +1,6 @@
 ---
 name: hunt-rce
-description: RCE hunting - template injection, YAML/XML deserialization, dependency confusion, Kubernetes surfaces, CVE-specific exploits (Apache CVE-2021-41773, Spring CVE-2022-22963). OOB-mandatory for blind cases. Wiki-first, FIND schema output.
+description: RCE hunting - template injection, YAML/XML deserialization, dependency confusion, Kubernetes surfaces, CVE-specific exploits (Apache CVE-2021-41773, Spring CVE-2022-22963). OOB-mandatory for blind cases. Wiki-first, FIND schema output. Use when a command sink, template-to-exec path, or version+CVE pair appears.
 ---
 
 # Hunt: Remote Code Execution

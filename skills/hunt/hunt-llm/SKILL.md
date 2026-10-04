@@ -1,6 +1,6 @@
 ---
 name: hunt-llm
-description: LLM / AI application attack hunting - prompt injection (direct + indirect), excessive agency, insecure output handling, system-prompt + data leakage. OWASP LLM Top 10. Wiki-first, FIND schema output.
+description: LLM / AI application attack hunting - prompt injection (direct + indirect), excessive agency, insecure output handling, system-prompt + data leakage. OWASP LLM Top 10. Wiki-first, FIND schema output. Use when the target embeds an LLM (chat, agent, plugin) or prompt-injection surface appears.
 ---
 
 # Hunt: LLM / AI Applications

@@ -1,6 +1,6 @@
 ---
 name: hunt-injection
-description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI detection and RCE. OOB-mandatory for blind XXE. Wiki-first, FIND schema output.
+description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI detection and RCE. OOB-mandatory for blind XXE. Wiki-first, FIND schema output. Use when a template render, XXE-capable upload (SVG/DOCX/SAML), or GraphQL surface appears.
 ---
 
 # Hunt: GraphQL / XXE / SSTI

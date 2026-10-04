@@ -1,6 +1,6 @@
 ---
 name: hunt-auth
-description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, SharePoint /_vti_bin/, EWS, Citrix, etc.), JWT manipulation, password reset poisoning, SAML auth bypass, session fixation. Wiki-first, FIND schema output.
+description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, SharePoint /_vti_bin/, EWS, Citrix, etc.), JWT manipulation, password reset poisoning, SAML auth bypass, session fixation. Wiki-first, FIND schema output. Use when a login, reset, session, JWT, or legacy-protocol endpoint is the surface.
 ---
 
 # Hunt: Auth Bypass & Account Takeover

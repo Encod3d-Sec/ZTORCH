@@ -1,6 +1,6 @@
 ---
 name: hunt-idor
-description: IDOR / BOLA hunting - two-account methodology, UUID leak chaining, GraphQL and cross-tenant escalation. Trigger on IDOR, BOLA, broken access control, "read another user's data", "swap the id", or any ID-bearing endpoint.
+description: IDOR / BOLA hunting - two-account methodology, UUID leak chaining, GraphQL and cross-tenant escalation. Use when an object id, `/users/{id}`, or two-account cross-access appears.
 ---
 
 # Hunt: IDOR / Broken Object Level Authorization

@@ -1,6 +1,6 @@
 ---
 name: hunt-cloud
-description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, metadata SSRF, IAM privesc, service enumeration, persistence. Scope + billing aware. Wiki-first, FIND schema output.
+description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, metadata SSRF, IAM privesc, service enumeration, persistence. Scope + billing aware. Wiki-first, FIND schema output. Use when cloud credentials, metadata endpoints, or IAM surfaces appear.
 ---
 
 # Hunt: Cloud (AWS / Azure / GCP)

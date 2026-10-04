@@ -1,6 +1,6 @@
 ---
 name: hunt-pwn
-description: Binary exploitation hunting - stack/heap memory corruption, format string read/write, ROP, one_gadget, seccomp/jail escapes on CTF pwn services. checksec-first, gdb-gef classification, wiki arsenal before hand-rolled exploits.
+description: Binary exploitation hunting - stack/heap memory corruption, format string read/write, ROP, one_gadget, seccomp/jail escapes on CTF pwn services. checksec-first, gdb-gef classification, wiki arsenal before hand-rolled exploits. Use when a handed-out binary or a socket service crashes on crafted input.
 ---
 
 # Hunt: Binary Exploitation (pwn)

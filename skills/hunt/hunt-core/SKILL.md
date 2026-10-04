@@ -1,6 +1,6 @@
 ---
 name: hunt-core
-description: Shared discipline always loaded alongside any hunt-* skill - scope gate, confirmation gate, enum limits, stop conditions, FIND output. Trigger on "is this in scope", "is this a real bug", "how do I confirm this", "what severity".
+description: Shared discipline always loaded alongside any hunt-* skill - scope gate, confirmation gate, enum limits, stop conditions, FIND output. Trigger on "is this in scope", "is this a real bug", "how do I confirm this", "what severity". Use when any hunt-* skill fires or a scope/confirmation/severity question appears.
 ---
 
 # Hunt: Core

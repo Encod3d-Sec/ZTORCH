@@ -1,6 +1,6 @@
 ---
 name: hunt-cicd
-description: CI/CD pipeline attacks (GitHub Actions) - pwn requests (pull_request_target), script injection, runner takeover, cache poisoning, OIDC token theft. Wiki-first, FIND output.
+description: CI/CD pipeline attacks (GitHub Actions) - pwn requests (pull_request_target), script injection, runner takeover, cache poisoning, OIDC token theft. Wiki-first, FIND output. Use when a CI/CD pipeline, Actions workflow, runner, or OIDC token is reachable.
 ---
 
 # Hunt: CI/CD Pipeline Attacks

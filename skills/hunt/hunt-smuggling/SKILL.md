@@ -1,6 +1,6 @@
 ---
 name: hunt-smuggling
-description: HTTP request smuggling / desync hunting - CL.TE, TE.CL, TE.TE, CL.0, and HTTP/2 downgrade. Timing-based detection, differential confirmation, no-blind-claims. Wiki-first, FIND schema output.
+description: HTTP request smuggling / desync hunting - CL.TE, TE.CL, TE.TE, CL.0, and HTTP/2 downgrade. Timing-based detection, differential confirmation, no-blind-claims. Wiki-first, FIND schema output. Use when CL/TE discrepancies, HTTP/2 downgrade, or a front-end desync is suspected.
 ---
 
 # Hunt: HTTP Request Smuggling
