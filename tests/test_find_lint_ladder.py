@@ -127,6 +127,28 @@ def test_confirmed_real_poc_passes(tmp_path):
     assert not any("STILL VERIFYING" in i for i in issues)
 
 
+def test_confirmed_pasted_html_capture_is_not_placeholder(tmp_path):
+    body = _PLACE_POC.replace("<# step 1 ...>", "curl -s http://10.0.0.5/x")
+    body = body.replace("desc padding", "desc evidence: poc/03-ok.png padding")
+    body = body.replace("## Impact",
+                        "```html\n<img src=x onerror=alert(1)>\n```\n\n## Impact")
+    (tmp_path / "poc").mkdir()
+    (tmp_path / "poc" / "03-ok.png").write_bytes(b"x")
+    issues, _ = fl.lint_file(_write_raw(tmp_path, body))
+    assert not any("STILL VERIFYING" in i for i in issues)
+
+
+def test_placeholder_in_bash_fence_still_caught(tmp_path):
+    body = _PLACE_POC.replace("<# step 1 ...>", "curl -s http://10.0.0.5/x")
+    body = body.replace("desc padding", "desc evidence: poc/03-ok.png padding")
+    body = body.replace("## Impact",
+                        "```bash\ncurl http://<target-host>/x\n```\n\n## Impact")
+    (tmp_path / "poc").mkdir()
+    (tmp_path / "poc" / "03-ok.png").write_bytes(b"x")
+    issues, _ = fl.lint_file(_write_raw(tmp_path, body))
+    assert any("placeholder" in i for i in issues)
+
+
 def test_false_positive_needs_reason_prefix(tmp_path):
     body = _PLACE_POC.replace("status: CONFIRMED", "status: FALSE_POSITIVE")
     issues, _ = fl.lint_file(_write_raw(tmp_path, body))

@@ -98,3 +98,12 @@ def test_actionable_never_dismissed(tmp_path):
     st.attention_store(str(eng), ["oob:1"])
     rows = st.attention_rows(str(eng))
     assert any(k == "oob:1" for k, _, _, _ in rows)   # still rendered
+
+
+def test_crit_excludes_exploited(tmp_path):
+    eng = tmp_path / "e2"
+    eng.mkdir()
+    _find(eng, "FIND-09-CRITICAL-x.md", "CRITICAL", "EXPLOITED")
+    assert not any(r[0].startswith("crit:") for r in st.attention_rows(str(eng)))
+    _find(eng, "FIND-10-CRITICAL-y.md", "CRITICAL", "CONFIRMED")
+    assert any(r[0] == "crit:1" for r in st.attention_rows(str(eng)))

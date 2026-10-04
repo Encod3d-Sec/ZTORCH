@@ -36,8 +36,8 @@ A "low" finding that satisfies an equation is a foothold, not a low:
 
 Any feature that lets a user influence execution or storage is a primitive wearing a
 feature badge: task schedulers (delayed code exec), plugin/extension editors (code
-exec), SQL consoles (file read/write via `LOAD_FILE`/`COPY ... TO PROGRAM` on misconfig
-, report builders (file write), import/export endpoints (file read + write), webhook
+exec), SQL consoles (file read/write via `LOAD_FILE`/`COPY ... TO PROGRAM` on misconfig),
+report builders (file write), import/export endpoints (file read + write), webhook
 URLs (outbound net). Enumerate them BEFORE hunting CVEs - they are authorized by design.
 
 ## Usage

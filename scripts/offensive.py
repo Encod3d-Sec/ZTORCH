@@ -254,7 +254,9 @@ def _provenance_block(merged=0):
     """HTML-comment provenance header for Approach.md (cyberstrikeai L8):
     Obsidian rendering unaffected; consumed by close-out as a review checklist.
     needs-review flips true only when hand-edited rows were preserved (the G4
-    zombie path), i.e. a human/agent touched the board outside the script."""
+    zombie path), i.e. a human/agent touched the board outside the script.
+    Once true the flag carries forward through merged=0 writes until
+    acknowledged (decisions.md 'approach reviewed' line silences the advisory)."""
     warn = ("hand-edited board rows merged; review before close-out" if merged
             else "none")
     return ("<!-- provenance\n"
@@ -266,7 +268,13 @@ def _provenance_block(merged=0):
 
 
 def _apply_provenance(text, merged=0):
-    return _provenance_block(merged) + _PROV_RE.sub("", text, count=1).lstrip("\n")
+    """Regenerate the provenance block; a prior needs-review: true carries
+    forward (routine merged=0 writes must not silently clear the flag)."""
+    prior = _PROV_RE.search(text)
+    block = _provenance_block(merged)
+    if prior and "needs-review: true" in prior.group(0):
+        block = block.replace("needs-review: false", "needs-review: true", 1)
+    return block + _PROV_RE.sub("", text, count=1).lstrip("\n")
 
 
 def write_board(eng, rows, merged=0):
@@ -596,7 +604,6 @@ def changelog_pending(eng):
     """(unverified_count, [row summaries]) from targets/<eng>/changelog.md.
     Data rows whose `verified` cell is empty are cleanup debt: written on a
     compromised host, rollback not yet confirmed run. (0, []) when absent."""
-    import csv
     p = os.path.join(str(eng), "changelog.md")
     if not os.path.isfile(p):
         return 0, []

@@ -140,7 +140,9 @@ def _evidence_issues(body, base_dir):
     fenced = re.findall(r"```[^\n]*\n(.*?)```", poc, re.S)
     if not any(b.strip() for b in fenced):
         missing.append("no fenced command block in PoC")
-    if _PLACEHOLDER_RE.search(poc):
+    # pasted captures (html/xml/http/json fences) legitimately contain markup
+    scanned = re.sub(r"```(?:html|xml|http|json)[^\n]*\n.*?```", "", poc, flags=re.S)
+    if _PLACEHOLDER_RE.search(scanned):
         missing.append("unfilled placeholder in PoC")
     return ("STILL VERIFYING - missing: %s" % ", ".join(missing)) if missing else ""
 

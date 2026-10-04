@@ -24,3 +24,18 @@ def test_provenance_replace_is_idempotent():
     once = off._apply_provenance(text, merged=3)
     assert once.count("<!-- provenance") == 1
     assert "merged=3" in once or "3 hand-edited" in once
+
+
+def test_needs_review_carries_forward():
+    text = off._provenance_block(merged=2) + "\n# Approach\n\nrows\n"
+    out = off._apply_provenance(text, merged=0)
+    assert "needs-review: true" in out
+    assert "assumptions: 0" in out
+    assert out.count("<!-- provenance") == 1
+
+
+def test_write_board_keeps_needs_review(tmp_path):
+    off.write_board(str(tmp_path), [], merged=2)
+    off.write_board(str(tmp_path), [], merged=0)
+    t = (tmp_path / "Approach.md").read_text(encoding="utf-8")
+    assert "needs-review: true" in t

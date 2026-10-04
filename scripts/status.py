@@ -277,7 +277,8 @@ def attention_rows(d):
         rows.append(("cleanup:%d" % n, "p0", "ACTION REQUIRED ",
                      "changelog rows lack verified rollback"))
     crit = sum(1 for sev, st_ in finding_rows(d)
-               if sev == "CRITICAL" and st_ in OPEN_STATUSES)
+               if sev == "CRITICAL" and st_ in OPEN_STATUSES
+               and st_ != "EXPLOITED")  # done findings do not pin ATTENTION
     if crit:
         rows.append(("crit:%d" % crit, "p0", "", "%d open critical finding(s)" % crit))
     stale = sum(1 for ln in lane_lines(d) if "STALE" in ln)
