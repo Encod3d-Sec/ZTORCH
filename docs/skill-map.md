@@ -31,7 +31,7 @@ organizational only.
 | Board seeding order / vector workflow (why a row is on the board) | `vector-workflow` skill (OSINT pre-pass -> per-asset vector baseline -> base fallback, `derive_rows()`) |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
 | Driving a web target through Burp (proxy-history triage, Repeater/Intruder/Collaborator) | `hunt-burp` skill (Burp MCP; setup [[burp-mcp]])       |
-| Web-audit proxy when Burp/MCP is down, per-engagement isolated proxy project, or Caido-native features (Automate, workflows) | `caido` skill (headless Caido on the VM; [[caido]])   |
+| Web-audit proxy when Burp/MCP is down, per-engagement isolated proxy project, or Caido-native features (Automate, workflows) | `caido` skill (headless Caido on the VM; caido-mode SDK CLI + `~/caido.sh`; [[caido]])   |
 | Starting recon on any target                  | wiki-recon skill                                                                       |
 | Manual login / MFA the agent can't do headlessly (Smart-ID, Mobile-ID, captcha) + drive & observe via CDP | `chrome-devtools-browser` skill (visible chromium on the VM via `scripts/browser-visible.sh` + chrome-devtools MCP) |
 | Validating / moving finding to Completed      | triage then evidence skills                                                            |
@@ -60,7 +60,7 @@ depth):
 `skills/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
 scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,
-`research/`, `disclosure/`, `caido/` (headless Caido driver; helper `scripts/caido.sh`). `agents-md-improver/` is the offline
+`research/`, `disclosure/`, `caido/` (headless Caido driver; caido-mode SDK CLI vendored + helper `scripts/caido.sh`). `agents-md-improver/` is the offline
 instruction-file reviewer (the ZCode counterpart of the old `claude-md-improver`).
 MCP/hook/plugin troubleshooting: `skills/skills-setup.md`.
 
