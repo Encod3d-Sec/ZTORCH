@@ -134,7 +134,8 @@ def lint_file(path):
         warnings.append("no `class:` set (canonical vuln class sharpens chain triggers + coverage)")
     m = re.search(r"^status:\s*(\w+)", fmt, re.M)
     status = (m.group(1).upper() if m else "")
-    if status in ("CONFIRMED", "EXPLOITED") and "poc/" not in text.lower():
+    body = text[fm.end():] if fm else text   # same frontmatter boundary as the fm match above
+    if status in ("CONFIRMED", "EXPLOITED") and "poc/" not in body.lower():
         issues.append("status %s but no capture path (poc/...) referenced - CONFIRMED needs "
                       "a validated PoC capture, EXPLOITED a chain use" % status)
     return issues, warnings

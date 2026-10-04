@@ -54,3 +54,18 @@ def test_research_alias_and_detected_do_not_require_capture(tmp_path):
     for st in ("RESEARCH", "DETECTED"):
         issues, _ = fl.lint_file(_write(tmp_path, st))
         assert not any("capture path" in i for i in issues)
+
+
+_LADDER_COMMENT = ("   # ladder: DETECTED (tool hit, unverified) -> CONFIRMED "
+                   "(PoC validated + poc/ capture) -> EXPLOITED (used in the chain); "
+                   "RESEARCH = alias of DETECTED")
+
+
+def test_template_ladder_comment_does_not_satisfy_capture_gate(tmp_path):
+    # scaffolded from the new template: status line carries the full trailing ladder
+    # comment (verbatim from setup/templates/_find.md), body has no poc/ ref anywhere
+    p = tmp_path / "FIND-02-MEDIUM-x.md"
+    p.write_text(_BODY.format(status="CONFIRMED" + _LADDER_COMMENT,
+                              desc="desc padding to fifteen"))
+    issues, _ = fl.lint_file(str(p))
+    assert any("capture path" in i for i in issues)
