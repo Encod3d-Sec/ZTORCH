@@ -64,3 +64,9 @@ ZTORCH/
     ├── assets/                  <- screenshots and other non-text files (read-only)
     └── git/                     <- cloned repos (WSL path, not Windows mount)
 ```
+
+## Section helper
+
+Long SKILL.md and wiki pages open with a `## Sections` index, and
+`bash scripts/wiki-section.sh <page> <slug>` prints one named `## ` section body
+(`--list` prints slugs) so a caller loads only the section it needs.
