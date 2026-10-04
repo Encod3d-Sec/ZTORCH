@@ -3,7 +3,7 @@ title: "<short title>"
 type: finding
 severity: MEDIUM
 class: ""            # optional: canonical vuln class (ssrf/idor/rce/...) for chain triggers + coverage; fuzzy-inferred from title if blank
-status: RESEARCH
+status: RESEARCH   # ladder: DETECTED (tool hit, unverified) -> CONFIRMED (PoC validated + poc/ capture) -> EXPLOITED (used in the chain); RESEARCH = alias of DETECTED
 cvss: ""
 affected: ""
 date_created: "{{DATE}}"

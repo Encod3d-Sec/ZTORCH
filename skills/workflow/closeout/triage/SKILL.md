@@ -79,6 +79,8 @@ A "primitive confirmed" != exploitable. Downgrade until the gate is bypassed.
 
 | Result | Action |
 |--------|--------|
-| All 7 YES + Pre-Severity Gate clean | Move FIND to Vulns/Completed/. Update status in Vuln-index.md. Run `python3 scripts/find-lint.py` and fix any gaps (Description/PoC/Impact/Remediation + CVSS for HIGH/CRITICAL) so it is report-ready. Then run /evidence. |
+| All 7 YES + Pre-Severity Gate clean | Move FIND to Vulns/Completed/ with frontmatter status CONFIRMED or EXPLOITED (DETECTED alone stays in Research). Update status in Vuln-index.md. Run `python3 scripts/find-lint.py` and fix any gaps (Description/PoC/Impact/Remediation + CVSS for HIGH/CRITICAL) so it is report-ready. Then run /evidence. |
 | Any NO | Keep in Vulns/Research/. Update status to PARTIAL (reason) in Vuln-index.md. Document what is missing. |
 | Q7 chain required | Move to Vulns/Research/ with note "chain required: [what is needed]". |
+
+A scanner/tool hit without a validated PoC is DETECTED, never Completed; the find-lint gate refuses CONFIRMED/EXPLOITED without a poc/ capture reference.
