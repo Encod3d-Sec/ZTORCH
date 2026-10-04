@@ -247,9 +247,33 @@ def _fmt_row(r):
 _BOARD_RE = re.compile(r"(^\|\s*id\s*\|[^\n]*\n)(\|[-:| ]+\|[^\n]*\n)?((?:\|[^\n]*\n?)*)", re.M)
 
 
-def write_board(eng, rows):
+_PROV_RE = re.compile(r"<!-- provenance.*?-->\n*", re.S)
+
+
+def _provenance_block(merged=0):
+    """HTML-comment provenance header for Approach.md (cyberstrikeai L8):
+    Obsidian rendering unaffected; consumed by close-out as a review checklist.
+    needs-review flips true only when hand-edited rows were preserved (the G4
+    zombie path), i.e. a human/agent touched the board outside the script."""
+    warn = ("hand-edited board rows merged; review before close-out" if merged
+            else "none")
+    return ("<!-- provenance\n"
+            "generator: offensive.py board\n"
+            "assumptions: %d hand-edited row(s) preserved verbatim\n"
+            "risk-warnings: %s\n"
+            "needs-review: %s\n"
+            "-->\n" % (merged, warn, "true" if merged else "false"))
+
+
+def _apply_provenance(text, merged=0):
+    return _provenance_block(merged) + _PROV_RE.sub("", text, count=1).lstrip("\n")
+
+
+def write_board(eng, rows, merged=0):
     """Replace the 4a table body with `rows`, preserving the rest of Approach.md.
-    Creates Approach.md (and a 4a section) if absent."""
+    Creates Approach.md (and a 4a section) if absent. Prepends the provenance
+    block (replacing any prior one); `merged` is cmd_board's G4 zombie count so
+    park/done writes through this chokepoint carry needs-review too."""
     p = Path(eng) / "Approach.md"
     text = p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
     header = "| " + " | ".join(BOARD_COLS) + " |\n"
@@ -261,7 +285,7 @@ def write_board(eng, rows):
     else:
         base = text.rstrip() + "\n\n" if text.strip() else "# Approach\n\n"
         new = base + "### 4a. Coverage matrix\n\n" + header + sep + body
-    p.write_text(new, encoding="utf-8")
+    p.write_text(_apply_provenance(new, merged=merged), encoding="utf-8")
 
 
 def _class_info(index):
@@ -395,6 +419,7 @@ def cmd_board(args):
 
     existing = read_board(eng)
     dead = _deadend_pairs(eng)
+    merged = 0
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())
@@ -402,6 +427,7 @@ def cmd_board(args):
         if zombie:
             existing = [r for r in existing if not (_status_of(r) in ("[ ]", "[~]")
                                                     and _low(r) in dead)]
+            merged = len(zombie)
             print("G4: dropped %d open row(s) matching a Deadends.md pair (status cell "
                   "hand-edited back?) - suppressed: %s"
                   % (len(zombie), ", ".join((r.get("id") or "?") for r in zombie)))
@@ -420,7 +446,7 @@ def cmd_board(args):
         rows.append(dict(id="4a:%d" % nid, **row))
         _stamp_row_opened(state, row["asset"], row["vuln class"])
         added += 1
-    write_board(eng, rows)
+    write_board(eng, rows, merged=merged)
     if added:
         _save_state(eng, state)
     # drain AFTER derive_rows: it parses state.md/Deadends.md too, and a warning

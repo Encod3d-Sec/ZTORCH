@@ -120,6 +120,20 @@ def inflight_signals(d):
     return parts
 
 
+def _approach_needs_review(d):
+    """needs-review: true in Approach.md's provenance block blocks a CLEAN
+    close until acknowledged with an 'approach reviewed' line in decisions.md."""
+    try:
+        t = open(os.path.join(d, "Approach.md"), encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return False
+    try:
+        dec = open(os.path.join(d, "decisions.md"), encoding="utf-8", errors="ignore").read()
+    except OSError:
+        dec = ""    # decisions.md absent: still advise until acknowledged
+    return "needs-review: true" in t and "approach reviewed" not in dec.lower()
+
+
 def main():
     try:
         import _engagement
@@ -157,6 +171,9 @@ def main():
                 pass
     except Exception:
         pass
+    if _approach_needs_review(d):
+        print("APPROACH NEEDS-REVIEW - provenance block says needs-review: true; "
+              "acknowledge in decisions.md (one line: 'approach reviewed <date>')")
     solved = _engagement.is_solved(d)
     suspended = (not solved) and _engagement.is_suspended(d)
     if not solved and not suspended:
