@@ -1242,6 +1242,40 @@ def cmd_next(args):
     return 0
 
 
+def cmd_plan(args):
+    """Dry-run of next: the ranked candidate moves as numbered steps with the
+    gate made explicit (cyberstrikeai L8). Writes NOTHING - no cursor advance,
+    no gate state, no board edit. Note: candidates come from next_move.py,
+    which reads the ACTIVE engagement (targets/active.md)."""
+    import subprocess
+    eng = _resolve_eng(args.eng)
+    if eng is None or not eng.is_dir():
+        print("error: --eng <name|path> required for `plan`")
+        return 2
+    here = Path(__file__).resolve().parent
+    cmd = [sys.executable, str(here / "next_move.py")]
+    if getattr(args, "all", False):
+        cmd.append("-v")
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except Exception as e:
+        print("plan: next_move.py failed (%s)" % e, file=sys.stderr)
+        return 1
+    print("plan (%s): dry-run of next; nothing is written, the board stays "
+          "authoritative." % eng.name)
+    n = 0
+    for ln in (r.stdout or "").splitlines():
+        m = re.match(r"\s*\d+\.\s+(.+)", ln)
+        if not m:
+            continue
+        text = m.group(1).strip()
+        n += 1
+        print(" %d. %s - gate: %s" % (n, text, "oob" if "OOB-gate" in text else "none"))
+    if n == 0:
+        print(" no candidate moves (empty board or no open rows).")
+    return 0
+
+
 # --------------------------------------------------------------------------- note / done / park (record + gates)
 #
 # `next` withholds; these RECORD the outcome and enforce the evidence gates.
@@ -1770,6 +1804,9 @@ def main(argv=None):
     p_next.add_argument("--json", action="store_true",
                         help="machine-readable cursor+gate payload (brain lanes / steering)")
     p_next.set_defaults(fn=cmd_next)
+    p_plan = sub.add_parser("plan", help="dry-run of next: top-N candidate moves, writes nothing")
+    p_plan.add_argument("--all", action="store_true", help="every open row's candidate, not the top 5")
+    p_plan.set_defaults(fn=cmd_plan)
     sub.add_parser("coverage", help="per-asset untested vuln-class gaps (no [x] row)").set_defaults(fn=cmd_coverage)
     sub.add_parser("closeout", help="print the per-type close-out Skill chain").set_defaults(fn=cmd_closeout)
 
