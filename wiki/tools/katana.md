@@ -3,8 +3,8 @@ title: "katana"
 type: tool
 tags: [recon, crawler, web, bug-bounty, attack-surface]
 date_created: 2026-07-03
-date_updated: 2026-07-03
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: recon
 ---
 
@@ -45,6 +45,13 @@ katana -u https://t -field url,path -silent
 ## Related techniques
 
 [[gau]], [[wiki/tools/httpx]], [[web-attack-surface]]
+
+## Agent discipline
+
+Thin output is a selection artifact, not an empty site: check the scope filter
+(`-fs fqdn`), then run gospider as a second pass instead of raising depth blindly
+(`-kf` needs `-d 3`). Full per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent tool
+discipline).
 
 ## Sources
 

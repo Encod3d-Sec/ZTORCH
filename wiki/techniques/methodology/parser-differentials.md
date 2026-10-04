@@ -4,8 +4,8 @@ type: technique
 tags: [methodology, parser-differential, request-smuggling, ssrf, access-control, cache-poisoning, meta]
 phase: exploitation
 date_created: 2026-07-02
-date_updated: 2026-07-02
-sources: [portswigger-top10-2025]
+date_updated: 2026-10-05
+sources: [portswigger-top10-2025, github-usestrix-strix]
 ---
 
 # Parser Differentials (When Interpretation Becomes a Vulnerability)
@@ -114,6 +114,36 @@ Content-type / polyglot (declared JSON, parsed as HTML by a sniffing sink) and U
 - Burp Suite (Repeater, HTTP Request Smuggler extension, Param Miner for unkeyed inputs and cache probing).
 - `curl` / `httpx` with raw request control for framing and encoding tests.
 - Protocol/parser fuzzers and differential harnesses comparing two libraries' parse output on the same input.
+
+## Property-based differential invariants
+
+Property-based testing turns a differential hunch into a machine-checkable claim, LOCAL ONLY
+(never point unrestricted generators at a live service). Three invariant templates cover most
+parser bugs:
+
+1. **Allowlist implies canonicalized sink containment**: for every input the allowlist
+   accepts, the canonicalized form the SINK receives must still land inside the allowed set
+   (catches normalisation-after-check and parser-disagreement bypasses).
+2. **Dual-parser agreement on boundaries**: two parsers in the pipeline must agree on
+   delimiters, duplicate-key winners (first vs last), and which fields are authoritative.
+   Multipart and urlencoded bodies also carry INDEPENDENT size/field limits in some stacks:
+   a body accepted by the front-end parser can be rejected or truncated by the back-end one,
+   which is itself a differential.
+3. **Round-trip cannot introduce**: `serialize(parse(raw))` must not introduce new
+   delimiters, wildcards, traversal segments, or fields that were not in `raw` (catches
+   re-encoding and template-injection-via-parser shapes).
+
+Method rules:
+
+- **Axes follow the transformation graph, not a cartesian spray**: fuzz the mutations the
+  pipeline actually performs (decode, fold, re-serialize, truncate), not every combination of
+  every character class.
+- **Does-not-crash is a robustness result, not a security one**: crash, timeout, and
+  allocation blowup get reported as robustness; a boundary violation needs its own explicit
+  proof.
+- **qs/nested-operator payloads are gated on the parser actually building nested objects**
+  from brackets/dots; verify the query parser's mode before spending a fuzz budget on
+  `a[__proto__]`-style keys.
 
 ## Sources
 

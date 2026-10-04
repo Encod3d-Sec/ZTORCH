@@ -3,8 +3,8 @@ title: "Nuclei"
 type: tool
 tags: [recon, scanning, bug-bounty, web, automation]
 date_created: 2026-06-16
-date_updated: 2026-06-16
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: enumerate
 ---
 
@@ -55,5 +55,12 @@ nuclei -l live.txt -rl 50 -c 25 -resume
 
 ## Related techniques
 Recon pipeline with [[wiki/tools/httpx]]; findings feed the hunt skills. See [[nuclei-arsenal]] (custom + evasion), [[wordlists]], [[cve-arsenal]], [[recon-dorks]], [[web-attack-surface]].
+
+## Agent discipline
+
+An empty result set is usually template selection, not absence: distinguish `-as`
+auto-select from explicit `-t`/`-tags`, and pass `-ni` when no OAST callback host is
+reachable (blind templates are useless without egress). Concurrency flags before rate
+limiting. Full per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).
 
 ## Sources

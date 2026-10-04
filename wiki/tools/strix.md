@@ -3,7 +3,7 @@ title: "strix"
 type: tool
 tags: [ai, pentest, automation, agent]
 date_created: 2026-09-24
-date_updated: 2026-09-25
+date_updated: 2026-10-05
 sources: [github-usestrix-strix]
 phase: exploit
 ---
@@ -91,6 +91,20 @@ ln -sf /opt/strix/.venv/bin/strix /usr/local/bin/strix
 | `--workspace-file f:dest` | drop a wordlist/spec into the sandbox workspace |
 | `--target-list FILE` | one target per line |
 | `--resume RUN_NAME` | pick up a prior run with full agent history |
+
+## Exit codes and approval (consumer contract)
+
+- Headless `strix -n` exits 0 = finished with no validated vulns, 1 = fatal error,
+  2 = vulns found. 0 is not proof of coverage: a budget stop also exits 0, and
+  `run.json` can say `stopped` while `finish_scan` recorded completed. Scripted
+  consumers read `run.json` status, never the exit code alone.
+- Managed CLI (`strix scan ...` non-interactive) needs `--yes`; exit codes extend to
+  4 (auth, 401/403) and 5 (billing, 402).
+- Destructive follow-ups are digest-bound: dry-run first, capture
+  `source.archive_sha256` from the plan, then pass `--approve-sha256` so the approval
+  cannot be replayed against a different archive.
+- Reference cost point: XBEN benchmark ~19 min and ~USD 3.37 per challenge (v0.0.4
+  era), 96 percent solve rate.
 
 ## Operational notes
 

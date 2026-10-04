@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, kerberoasting, kerberos, password-cracking, reference-import, windows]
 phase: enumeration
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Roasting - Kerberoasting
@@ -149,6 +149,24 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 - [[wiki/tools/john]]
 - [[netexec]]
 - Also uses (no dedicated page yet): Rubeus, PowerView, PowerSploit
+
+## False positives that waste report space
+
+- A Kerberoastable SPN on a machine account: the password is a 120-character random value,
+  effectively uncrackable. Not a finding on its own.
+- `certipy find -vulnerable` listing a template as ESC-vulnerable when the Enrollment Rights
+  exclude your principal or `Requires Manager Approval` is set. The scanner output is the
+  candidate, not the claim; check the Enrollment Rights fields.
+- Run `certipy find -vulnerable` as its own sweep independent of the BloodHound graph; it is
+  often the shortest path to AD CS findings.
+- Computer accounts are not automatically a dead end: see [[roasting-timeroasting]] for
+  MS-SNTP-based roasting of computer-account passwords.
+
+## Ops gotchas that kill whole sessions
+
+- `KRB_AP_ERR_SKEW` means clock skew: `ntpdate` the DC before anything else.
+- Kerberos and LDAP referrals break on bare IPs; use FQDNs.
+- Point `resolv.conf` at the DC.
 
 ## Sources
 

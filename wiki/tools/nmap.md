@@ -3,8 +3,8 @@ title: "Nmap"
 type: tool
 tags: [enumeration, htb, network, nmap, recon, scanner, tool]
 date_created: 2026-05-08
-date_updated: 2026-05-08
-sources: [cpts-nmap]
+date_updated: 2026-10-05
+sources: [cpts-nmap, github-usestrix-strix]
 phase: enumerate
 ---
 
@@ -199,3 +199,10 @@ Service/version + default-script scan of a host:
 ```bash
 sudo nmap -sS -sV -sC 10.10.10.1
 ```
+
+## Agent discipline
+
+Set `--host-timeout` and `--script-timeout` so one slow host or NSE script cannot wedge a
+sweep; treat `-Pn` as a fallback after discovery fails, not a default. Division of labor:
+naabu sweeps, nmap verifies. Full per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent
+tool discipline).

@@ -4,8 +4,8 @@ type: technique
 tags: [jwt, open-registration, privilege-escalation, rls, supabase, web, websocket]
 phase: exploitation
 date_created: 2026-05-21
-date_updated: 2026-07-02
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 ---
 
 # Supabase Security Testing
@@ -210,6 +210,53 @@ A Sentry DSN gives read access to the project's error log, which often contains 
 - `curl`, Python (stdlib): auth endpoint interaction and JWT decoding
 - `wscat`: WebSocket subscription testing
 - [[burp-suite]]: intercepting anon key from bundle network requests
+
+## Key lifecycle, RLS asymmetry, and blind enumeration
+
+### Key lifecycle
+
+- Opaque keys (`sb_publishable_` / `sb_secret_`) are NOT JWTs; JWT decoding will not classify
+  them.
+- A browser 401 for a leaked `sb_secret_` key is not revocation: the browser restriction keys on
+  `User-Agent` and does not stop server-side use. Test the leaked key server-side before
+  declaring it dead.
+- Creating new keys does not disable the legacy `anon`/`service_role` JWTs; dashboard revocation
+  is a separate action. Re-test the old credential after any key migration.
+- `verify_jwt` is OR-semantics in both directions: passing the platform check with a publishable
+  key does not establish a signed-in user, and `verify_jwt=false` with explicit secret-key or
+  webhook verification is not necessarily public.
+
+### RLS and policy asymmetry
+
+- Verb-asymmetric policies: SELECT checks `auth.uid()` while INSERT/UPDATE/DELETE forgot it. Test
+  every verb, not the read path only.
+- Policies that trust client-provided columns (`user_id` in the payload) instead of the JWT are
+  forgeable by construction.
+
+### Blind enumeration through counts
+
+Where a policy applies after filters, counts and response metadata leak row existence:
+
+- `Prefer: count=exact` plus ETag or length differences infer unauthorized rows.
+- `If-None-Match` against storage objects is an existence oracle.
+
+### PostgREST surface
+
+- `Prefer: return=representation` echoes written values back (useful for blind writes and for
+  reading server-normalized data).
+- `Accept-Profile` / `Content-Profile` switch the target schema; other schemas usually lack RLS
+  policies entirely.
+- RPC functions marked SECURITY DEFINER bypass RLS unless carefully coded; `set search_path`
+  left resolving `public` lets the function reach unsafe objects.
+- Duplicate keys in JSON/query: the parser path picks first or last depending on the route; test
+  both orders before concluding which one wins.
+
+### Storage and realtime
+
+- Storage path confusion: mixed case, URL-encoding, and `..` segments rejected by the UI are
+  accepted by the API; test the API directly.
+- Realtime channel guards: joining another user's channel (`room:<user_id>`, `org:<org_id>`)
+  leaks their events when the guard is weak.
 
 ## Sources
 

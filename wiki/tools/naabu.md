@@ -3,8 +3,8 @@ title: "naabu"
 type: tool
 tags: [recon, port-scanning, network, automation, bug-bounty]
 date_created: 2026-07-03
-date_updated: 2026-07-03
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: enumerate
 ---
 
@@ -44,6 +44,12 @@ naabu -host t -p 80,443,8080,8443 -silent                      # targeted web po
 ## Related techniques
 
 [[wiki/tools/nmap]], [[wiki/tools/httpx]], [[network-discovery]]
+
+## Agent discipline
+
+`-timeout` is MILLISECONDS, not seconds; unprivileged seats need `-scan-type connect`;
+run `-verify` before piping hits into httpx/nuclei (one flaky IP poisons the downstream
+chain). Full per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).
 
 ## Sources
 

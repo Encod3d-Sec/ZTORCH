@@ -4,8 +4,8 @@ type: technique
 tags: [authentication, exploitation, h1, oauth, thm, web]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-09-10
-sources: [thm-adv-oauth-vulns, h1-scraped-oauth-attacks, payloadsallthethings-oauth, git-portswigger-all-labs, oauth21-dpop-par-rfcs, descope-noauth, semperis-noauth]
+date_updated: 2026-10-05
+sources: [thm-adv-oauth-vulns, h1-scraped-oauth-attacks, payloadsallthethings-oauth, git-portswigger-all-labs, oauth21-dpop-par-rfcs, descope-noauth, semperis-noauth, github-usestrix-strix]
 ---
 
 ## What it is
@@ -558,6 +558,26 @@ window.addEventListener('message', function(e) {
 6. Call `/me` with the stolen token to retrieve the admin API key.
 
 **Key insight:** The wildcard `"*"` in `postMessage` means any parent window receives the message, not just the intended origin. The comment form inadvertently becomes a token exfiltration proxy.
+
+## Auth0 tenant checks
+
+- **Rules-to-Actions migration trap**: Actions enforce only through `api` methods. A migrated
+  check that only mutates `event` (for example setting `event.user.app_metadata`) enforces
+  nothing. Re-test claim assignment, MFA, denial, and account-linking across every connection
+  after migration.
+- **Audience confusion**: replay a token minted for API A against API B; if B accepts any valid
+  access token without checking `scope`/`permissions`, that is the finding. One-line test.
+- **MFA on Universal Login only**: ROPG (password-grant) tokens bypass step-up entirely when the
+  legacy grant is enabled. Check grant availability, not just the login page.
+- **Claim injection**: `user.app_metadata.role = 'admin'` is exploitable only when app_metadata
+  is user-writable via signup or the profile API; writable solely by admins through the
+  Management API is the safe shape (not a finding).
+- **Organizations**: the token carries `org_id` but the API never validates it; an Org A user
+  reads Org B data.
+- **Native custom-scheme hijack**: `com.app://callback` is interceptable when Allowed Callback
+  URLs are broad (including `http://localhost:*` wildcard forms).
+- **Rule bodies are a secret store**: Rule source is readable by tenant admins and via the
+  Management API; secrets embedded in Rule code count as exposed credentials.
 
 ## Sources
 

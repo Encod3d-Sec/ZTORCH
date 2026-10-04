@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, azure, bypass, cloud, evasion, reference-import]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Azure AD - Conditional Access Policy
@@ -133,6 +133,18 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Tools
 
 - [[roadtools]]
+
+## Conditional Access and workload identities
+
+CA policies apply to workload identities only in limited cases: directly targeted, tenant-owned
+single-tenant service principals. Managed identities, Microsoft-owned service principals, most
+third-party SaaS service principals, and multitenant app registrations do NOT inherit human MFA
+semantics. Test the enterprise-application service-principal object (not just the app
+registration) and verify the control at token issuance.
+
+- Report-only evaluation is evidence of intended future control, not enforcement.
+- Distinguish policy NON-APPLICATION from policy FAILURE via the sign-in logs before reporting
+  either as a gap.
 
 ## Sources
 

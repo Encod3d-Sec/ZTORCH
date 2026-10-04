@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, adcs, certificates, esc1, exploitation, reference-import, windows]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Active Directory - Certificate ESC1
@@ -96,6 +96,20 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 - [[wiki/tools/certipy]]
 - [[wiki/tools/john]]
 - Also uses (no dedicated page yet): Rubeus, Certify
+
+## Post-KB5014754 claimability bar (strong certificate mapping)
+
+A requested privileged UPN alone does not establish a working ESC1 chain once strong certificate
+mapping (KB5014754) is enforced. Before claiming:
+
+- Establish the DC patch level and whether the strong-certificate-mapping policy is active
+  (include vendor backports in the check).
+- Inspect template SID extensions and explicit subject mappings.
+- Confirm which principal is actually selected at authentication time.
+
+BadSuccessor note (same enforcement-era rule): post-patch, the dMSA-side attribute write still
+succeeds, so an LDAP write success is NOT proof of exploitation; the KDC requires mutual
+dMSA-target linkage before any ticket flows.
 
 ## Sources
 

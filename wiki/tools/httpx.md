@@ -3,8 +3,8 @@ title: "httpx"
 type: tool
 tags: [recon, bug-bounty, http, enumeration, automation]
 date_created: 2026-06-16
-date_updated: 2026-06-16
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: recon
 ---
 
@@ -49,5 +49,11 @@ httpx -l hosts.txt -favicon                        # favicon hash -> fingerprint
 
 ## Related techniques
 [[web-attack-surface]], [[service-enumeration]]; pairs with [[wiki/tools/nuclei]], [[wiki/tools/ffuf]].
+
+## Agent discipline
+
+Route through a proxy with the `-proxy` flag rather than env vars (the flag is per-run and
+visible in the command you audit); `-path`/`-ports` multiply coverage per host in a single
+pass. Full per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).
 
 ## Sources
