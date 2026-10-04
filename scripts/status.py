@@ -246,6 +246,91 @@ def activity_line(d):
             % (executed, blocked, rate, pend))
 
 
+ACTIONABLE = ("oob", "cleanup")
+
+
+def attention_rows(d):
+    """[(key, priority, prefix, text)] for the ATTENTION block, sorted p0 first.
+    Reason keys are language-independent `kind:count` (cyberstrikeai
+    dismissal-fingerprint pattern). wedged has no live feed in status.py this
+    pass - p1 is lane-only."""
+    rows = []
+    oob_waiting = 0
+    p = os.path.join(d, "oob.md")
+    if os.path.isfile(p):
+        for line in open(p, encoding="utf-8", errors="ignore"):
+            s = line.strip()
+            if s.startswith("|") and not set(s) <= {"|", "-", " ", ":"}:
+                cells = [c.strip().lower() for c in s.strip("|").split("|")]
+                if len(cells) >= 5 and cells[4] == "waiting":
+                    oob_waiting += 1
+    if oob_waiting:
+        rows.append(("oob:%d" % oob_waiting, "p0", "ACTION REQUIRED ",
+                     "OOB callbacks pending (see oob.md)"))
+    try:
+        sys.path.insert(0, HERE)
+        from offensive import changelog_pending
+        n, det = changelog_pending(d)
+    except Exception:
+        n, det = 0, []
+    if n:
+        rows.append(("cleanup:%d" % n, "p0", "ACTION REQUIRED ",
+                     "changelog rows lack verified rollback"))
+    crit = sum(1 for sev, st_ in finding_rows(d)
+               if sev == "CRITICAL" and st_ in OPEN_STATUSES)
+    if crit:
+        rows.append(("crit:%d" % crit, "p0", "", "%d open critical finding(s)" % crit))
+    stale = sum(1 for ln in lane_lines(d) if "STALE" in ln)
+    if stale:
+        rows.append(("lane:%d" % stale, "p1", "",
+                     "%d lane line(s) stale (>45m) - resume or close" % stale))
+    return rows
+
+
+def _dismiss_path(d):
+    return os.path.join(d, ".attention-dismissed")
+
+
+def attention_store(d, keys):
+    with open(_dismiss_path(d), "a", encoding="utf-8") as fh:
+        fh.write(",".join(sorted(keys)) + "\n")
+
+
+def attention_suppressed(d, keys):
+    """Dismissal holds ONLY while the current dismissable key set equals a
+    stored fingerprint. A new key, changed count, or resolved subset re-arms."""
+    try:
+        stored = open(_dismiss_path(d), encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return False
+    cur = ",".join(sorted(keys))
+    return any(ln.strip() == cur for ln in stored.splitlines() if ln.strip())
+
+
+def attention_reset(d):
+    try:
+        os.remove(_dismiss_path(d))
+    except OSError:
+        pass
+
+
+def render_attention(rows, d):
+    """== ATTENTION == block. Actionable rows (oob, cleanup) always render;
+    dismissable rows render unless the current dismissable key set matches a
+    stored fingerprint."""
+    dismissable = [r for r in rows if r[0].split(":")[0] not in ACTIONABLE]
+    if dismissable and attention_suppressed(d, [r[0] for r in dismissable]):
+        rows = [r for r in rows if r[0].split(":")[0] in ACTIONABLE]
+    if not rows:
+        return ""
+    out = ["== ATTENTION =="]
+    for key, pri, prefix, text in rows:
+        out.append("[%s] %s%s - %s" % (pri, prefix, key, text))
+    out.append("(dismiss: python3 scripts/status.py --attention-dismiss; "
+               "reset: --attention-reset)")
+    return "\n".join(out)
+
+
 def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=(),
            died=0, spend=None, facts=None, risk=None, kpi=None):
     """Pure formatter -> the dashboard string. All inputs are precomputed (testable)."""
@@ -301,6 +386,16 @@ def main():
     if "--coverage" in sys.argv:   # full uncapped asset x class matrix (offensive.py coverage)
         print(render_coverage(*coverage_data(d, etype)))
         return 0
+    if "--attention-reset" in sys.argv:
+        attention_reset(d)
+        print("attention dismissals cleared.")
+        return 0
+    if "--attention-dismiss" in sys.argv:
+        rows = attention_rows(d)
+        attention_store(d, [r[0] for r in rows
+                            if r[0].split(":")[0] not in ACTIONABLE])
+        print("dismissed (actionable rows never dismiss).")
+        return 0
     solved = _engagement.is_solved(d)
     summ = _engagement.summary()
     board = board_phase(d)
@@ -342,10 +437,14 @@ def main():
             "deadends": deads, "lanes": [ln.strip() for ln in lanes],
             "moves": moves_text.splitlines(), "spend": spend,
             "risk": risk, "activity": kpi,
+            "attention": [r[0] for r in attention_rows(d)],
         }, ensure_ascii=False))
         return 0
-    print(render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text,
-                 lanes, died=died, spend=spend, facts=facts, risk=risk, kpi=kpi))
+    att = render_attention(attention_rows(d), d)
+    print((att + "\n" if att else "") + render(name, etype, solved, summ, board,
+                                               poc, cards, recon, deads, moves_text,
+                                               lanes, died=died, spend=spend,
+                                               facts=facts, risk=risk, kpi=kpi))
     return 0
 
 
