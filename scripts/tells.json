@@ -1,11 +1,12 @@
 {
-  "_doc": "Small-indicator battery table. Single source of truth for regex tells (small strings that instantly signal a vuln class). Add a row when you learn one (engagement close-out, research ingest); keep patterns HIGH-PRECISION (a noisy tell trains the eye to ignore the battery). class/skill route the hit; note says what to read next.",
+  "_doc": "Small-indicator battery table. Single source of truth for regex tells (small strings that instantly signal a vuln class). Add a row when you learn one (engagement close-out, research ingest); keep patterns HIGH-PRECISION (a noisy tell trains the eye to ignore the battery). class/skill route the hit; note says what to read next. Optional \"message\" per row: rendered reminder with {match}/{tool}/{rule} placeholders (falls back to note).",
   "tells": [
     {
       "re": "dangerouslySetInnerHTML|\\bv-html\\b|innerHTML\\s*=|outerHTML\\s*=|document\\.write\\(|insertAdjacentHTML",
       "class": "xss",
       "skill": "hunt-xss",
-      "note": "raw-HTML sink; read the render block + trace what feeds it"
+      "note": "raw-HTML sink; read the render block + trace what feeds it",
+      "message": "raw-HTML sink ({match}) - read the render block; see rule {rule}"
     },
     {
       "re": "\\beval\\(|new Function\\(|setTimeout\\(\\s*['\"]|setInterval\\(\\s*['\"]",

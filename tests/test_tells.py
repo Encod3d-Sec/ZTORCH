@@ -55,6 +55,21 @@ def test_list_flag_dumps_table(capsys):
     assert out.count("->") >= 10
 
 
+def test_test_flag_dry_run_no_files(capsys):
+    rc = tells.main(["--test", "document.write('<img src=x onerror=alert(1>)')"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "rule 1:" in out and "hunt-xss" in out
+
+
+def test_message_placeholders():
+    row = {"re": "onerror=", "class": "xss", "skill": "hunt-xss",
+           "note": "n", "message": "saw {match} under rule {rule}"}
+    msg = tells.render_message(row, "onerror=", "", 3)
+    assert msg == "saw onerror= under rule 3"
+    assert tells.render_message({"note": "plain"}, "x", "", 1) == "plain"
+
+
 def test_filename_rows_hit_path_not_content(tmp_path, capsys):
     d = tmp_path / "mirror"
     d.mkdir()

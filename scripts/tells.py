@@ -10,6 +10,7 @@ full read where the mandate applies (post-foothold source review).
 Usage:
   python3 scripts/tells.py <path> [<path> ...]   # scan files/dirs
   python3 scripts/tells.py --list                # dump the tracked table
+  python3 scripts/tells.py --test "<text>"       # dry-run one line of text
 
 Python 3 stdlib only. Always exits 0 (a lens, not a gate).
 """
@@ -55,7 +56,22 @@ def compile_tells(rows):
     # every file; sorting sinks/oracles ahead of them keeps the top of the output the
     # part worth reading.
     out.sort(key=lambda pair: pair[1].get("prio", 2))
+    for idx, (_rx, row) in enumerate(out):
+        row["_n"] = idx + 1                        # 1-based rule number (post-sort: matches print order)
     return out
+
+
+def render_message(row, match, tool, rule_n):
+    """Rendered reminder for a hit: the optional `message` template ({match}/{tool}/
+    {rule} placeholders), falling back to the existing note. Tool-guard pattern
+    (cyberstrikeai L8)."""
+    tpl = row.get("message") or row.get("note", "")
+    if not tpl:
+        return ""
+    try:
+        return tpl.format(match=match, tool=tool or "-", rule=rule_n)
+    except (KeyError, IndexError, ValueError):
+        return tpl
 
 
 def _files(paths):
@@ -86,7 +102,8 @@ def scan(paths, table, out=print):
             if row.get("fname") and rx.search(str(f)):
                 skill = "Skill(%s)" % row["skill"] if row.get("skill") else "no skill"
                 emit("%s  [%s] FILENAME %s  -> %s | %s"
-                     % (f, row.get("class", "?"), rx.pattern, skill, row.get("note", "")))
+                     % (f, row.get("class", "?"), rx.pattern, skill,
+                        render_message(row, rx.pattern, "", row["_n"])))
         try:
             if f.stat().st_size > MAX_FILE:
                 continue
@@ -106,7 +123,7 @@ def scan(paths, table, out=print):
                     skill = "Skill(%s)" % row["skill"] if row.get("skill") else "no skill"
                     emit("%s:%d  [%s] %s  -> %s | %s"
                          % (f, i, row.get("class", "?"), snippet, skill,
-                            row.get("note", "")))
+                            render_message(row, snippet or rx.pattern, "", row["_n"])))
     if hits[0] >= CAP:
         out("tells: cap hit (%d lines) - narrow the path; the noisy rows sit at prio 3 in --list" % CAP)
 
@@ -114,6 +131,17 @@ def scan(paths, table, out=print):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     table = compile_tells(load_tells())
+    if "--test" in argv:
+        i = argv.index("--test")
+        text = argv[i + 1] if len(argv) > i + 1 else ""
+        for rx, row in table:
+            m = rx.search(text)
+            if m:
+                print("rule %d: class=%s skill=%s" % (row["_n"], row.get("class", "?"),
+                                                      row.get("skill") or "none"))
+                print("  matched: %s" % (m.group(0)[:SNIPPET]))
+                print("  message: %s" % render_message(row, m.group(0), "", row["_n"]))
+        return 0
     if "--list" in argv or not argv:
         for _rx, row in table:
             kind = "FILENAME" if row.get("fname") else "CONTENT"
