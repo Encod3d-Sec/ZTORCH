@@ -49,7 +49,15 @@ usual failure mode, not a weak sub-agent.
   observable, step -> verify form, so drift is caught at the step, not at lane end. Lane code
   discipline: code the lane writes is minimum-code (stdlib / platform-native first, no frameworks,
   no scaffolding for later); the lane never improves target code beyond its checklist and flags
-  anything unrelated it notices in the report instead of acting on it.
+  anything unrelated it notices in the report instead of acting on it. Lane CLI discipline:
+  verify uncertain flags with `<tool> -h` before first use and re-check
+  after any failure that suggests memorized syntax is stale; the same flag means different
+  things per tool (`-p`: port in nmap, password in hydra), so never copy a flag across tools
+  and never invent an output flag the tool's own help does not document; when output must be
+  parsed or piped, request the tool's structured format (nmap `-oX`, or a `-json`/`-jsonl`
+  flag) instead of parsing free text; quote shell metacharacters; minimize at the source
+  (`msfconsole -q`, `nmap --open`) so captures stay small; maximum 2 install attempts before
+  switching tools.
 - **(c) egress/port constraints**, an egress-tested LPORT, not a guess at 4444.
 - **(d) the false-root guardrail** (next section), non-negotiable.
 - **(e) fragile-box discipline** if applicable: serial requests, long timeouts, no fuzzers.
