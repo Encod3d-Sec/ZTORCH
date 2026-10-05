@@ -45,6 +45,7 @@ skills/hooks/.enforce-off
 
 # --- Runtime stamps, telemetry, caches --------------------------------------
 .zvec-grep/
+graphify-out/
 .trigger-fire.jsonl
 .pending-*
 .wiki-stamp

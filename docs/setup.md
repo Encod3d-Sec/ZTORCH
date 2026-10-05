@@ -8,6 +8,8 @@
 
 **MCP note:** some seats carried a `caveman-shrink` wrapper registration (qmd with compressed tool descriptions); removed 2026-10-05 because it duplicated `wiki-search` (one copy pointed at a dead vault) and the harness caches tool catalogs, so the wrapper saved nothing. `wiki-search` (bare qmd at the live vault) is the single registration; bootstrap now removes stale copies.
 
+**Graphify (both machines):** relational layer over `wiki/` (paths between pages, hubs, orphans; complement to qmd content search). Install: `uv tool install graphifyy`. Build from the vault root: `graphify extract wiki/ --code-only` (structural only, no LLM, no keys); incremental `graphify update` runs automatically at wiki promote. Never point it at `targets/`. See `skills/graphify/SKILL.md`.
+
 **qmd / `wiki-search` index:** Aim the markdown collection (`wiki`, or whichever name your MCP uses) only at **`$(vault-root)/wiki`**. Set `QMD_VAULT` to your vault root (no trailing slash). Remove stale collections that still reference old absolute paths before `qmd update` so indexing never scans the wrong directory. After any bulk refresh, also run `qmd embed` or new pages stay invisible to semantic search.
 
 **Vault file reads:** Use the `Read` tool with the vault path directly. The `obsidian-vault` MCP (`mcp-obsidian`) was removed -- it required the Obsidian app running and offered no advantage over `Read`. See `skills/skills-setup.md` for details.
