@@ -40,3 +40,12 @@ def test_wrong_event_registration_fails_like_missing(tmp_path):
     hooks.setdefault("PreToolUse", []).append(
         {"hooks": [{"command": "python3 ~/.claude/vault-hooks/scope-guard.py"}]})
     assert check_hooks.missing_hooks(settings_path=_write_settings(tmp_path, hooks)) == []
+
+
+def test_check_hooks_reports_skill_lint():
+    import subprocess
+    vt = Path(__file__).resolve().parents[1]
+    r = subprocess.run([sys.executable, "scripts/check-hooks.py"],
+                       capture_output=True, text=True, cwd=vt)
+    assert r.returncode in (0, 1)
+    assert "skill-lint" in r.stdout
