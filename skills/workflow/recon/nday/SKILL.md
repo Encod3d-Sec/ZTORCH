@@ -1,6 +1,6 @@
 ---
 name: nday
-description: N-day / patch-diff workflow - diff pre- vs post-patch to locate the fixed bug, build a PoC for the unpatched version, run variant analysis for a fresh bug. Triggers "n-day", "patch diff", "diff the patch", "bindiff".
+description: N-day / patch-diff workflow for a vendor-shipped fix. Use when "n-day", "patch diff", "diff the patch", or "bindiff" comes up and the pre-patch bug needs a PoC; variant analysis extends it to fresh bugs.
 ---
 
 # N-day / Patch Diffing

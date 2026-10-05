@@ -1,6 +1,6 @@
 ---
 name: wiki-recon
-description: External recon and OSINT pipeline - subdomain enum, live host discovery, URL crawl, JS analysis, nuclei scan. Outputs to Attack-surface.md and scope/. Queries wiki before each phase. Use when starting recon on any target.
+description: External recon and OSINT for a target, feeding Attack-surface.md and scope/ (wiki queried before each phase). Use when starting recon on any target or mapping an attack surface.
 ---
 
 # Wiki-Recon: External Recon Pipeline

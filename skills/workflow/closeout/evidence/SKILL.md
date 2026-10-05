@@ -1,6 +1,6 @@
 ---
 name: evidence
-description: Evidence hygiene before any FIND moves to Completed or enters a report. Cookie redaction, PII black-bar, HAR sanitization, screenshot metadata strip. Run after /triage passes and before final report assembly.
+description: Evidence hygiene for a FIND heading to Completed or a report (redaction, PII black-bar, HAR sanitization, screenshot metadata strip). Use after /triage passes and before final report assembly.
 ---
 
 # Evidence: PoC Capture & Redaction Discipline

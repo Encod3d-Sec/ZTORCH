@@ -56,3 +56,8 @@ def test_missing_bash_prefix_fires(tmp_path):
     p.write_text(p.read_text(encoding="utf-8").replace(
         "Body.", "Run `scripts/capture.sh req` to capture.", 1), encoding="utf-8")
     assert any("bash scripts/" in i for i in skill_lint.lint_skill(p))
+
+
+def test_house_template_is_clean():
+    p = Path(__file__).resolve().parents[1] / "setup" / "templates" / "_skill.md"
+    assert skill_lint.lint_skill(p) == []

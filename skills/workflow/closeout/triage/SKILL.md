@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Finding validation gate - 7-Question triage adapted for FIND schema. Run before moving any FIND from Research to Completed. One NO = keep in Research. All YES = move to Completed, then run /evidence.
+description: Finding validation gate - 7-Question triage adapted for the FIND schema. Use before any FIND moves from Research to Completed; one NO keeps it in Research.
 ---
 
 # Triage: Finding Validation Gate

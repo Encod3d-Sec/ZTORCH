@@ -1,6 +1,6 @@
 ---
 name: ctf-category
-description: CTF challenge router - fingerprint a challenge (file type / prompt / artifacts) into its category (pwn, rev, crypto, forensics, stego, web, osint, hash) and route to the matching wiki page, tools, and first moves. Wiki-first.
+description: CTF challenge router - fingerprints a challenge into its category and routes to the matching wiki page, tools, and first moves. Use when a CTF challenge (pwn, rev, crypto, forensics, stego, web, osint, hash) needs a starting plan. Wiki-first.
 ---
 
 # CTF Category Router

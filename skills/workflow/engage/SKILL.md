@@ -1,6 +1,6 @@
 ---
 name: engage
-description: Orchestrator and skill router - the single situation -> Skill(name) map across the whole library (driver, hunt-*, process skills). Load FIRST in every session; consult whenever between phases or unsure which skill is next.
+description: Orchestrator and skill router: the single situation-to-skill map across the whole library (driver, hunt-*, process skills). Use at session start, whenever between phases, or unsure which skill is next.
 ---
 
 # engage

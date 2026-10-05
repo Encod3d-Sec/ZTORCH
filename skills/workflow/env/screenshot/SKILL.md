@@ -1,6 +1,6 @@
 ---
 name: screenshot
-description: Capture web/PoC screenshots into targets/<eng>/poc/ and embed them in walkthrough.md - live pages, authed/exploited states, rendered cards. Use when building PoC evidence or asked to "take a screenshot" / "capture the PoC".
+description: Web/PoC screenshots captured live (authed/exploited states, rendered cards) into the engagement poc/ folder and embedded in walkthrough.md. Use when building PoC evidence or asked to "take a screenshot" / "capture the PoC".
 ---
 
 # Screenshot: visual PoC capture

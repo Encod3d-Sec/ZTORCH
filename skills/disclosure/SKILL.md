@@ -1,6 +1,6 @@
 ---
 name: disclosure
-description: Responsible disclosure to a CVE - package the report, find the vendor contact, report privately, coordinate a timeline, request the CVE, publish the advisory. Triggers "disclose", "request a cve", "report this to the vendor".
+description: Responsible disclosure path from a found vulnerability to a published CVE (packaging, vendor contact, private report, timeline, advisory). Use when asked to "disclose", "request a cve", or "report this to the vendor".
 ---
 
 # Disclosure: Finding -> CVE
