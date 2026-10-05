@@ -110,6 +110,22 @@ Otherwise the shell died back to the Kali box, which runs as root; `$(...)`/back
 LOCALLY, the false-RCE trap. The fix is re-pop, not celebrate. The sub-agent MUST report `hostname`
 alongside any `id`/`whoami` output, every time, no exceptions.
 
+### Verifier lanes
+
+One cheap fresh-context read replaces a second full session re-deriving evidence.
+Input: the package file from `bash scripts/capture.sh pkg FIND-NNN`.
+
+- Scope fence: read ONLY the package file; never re-test the target.
+- Verdict per finding: CONFIRMED / NOT CONFIRMED / UNVERIFIABLE, each citing the exact
+  package line that decided it. UNVERIFIABLE routes to Skill(triage) as a named operator
+  check, never silently dropped.
+- Claims-extraction pass: list every factual, process, and quality claim in the lane
+  report; check each against the package; a claim no package line covers is UNVERIFIABLE.
+- Critique the assertion: for each check, answer "would this pass on a wrong result?";
+  if yes, the check is weak; say so in one line.
+- Fix-loop scope: re-reviews verdict only each prior finding ADDRESSED or NOT ADDRESSED
+  in the new capture range; attempted is not addressed.
+
 ## Write-back and interrupts
 
 - **PENDING-WRITE**: a lane that cannot write shared state (no file tools, read-only

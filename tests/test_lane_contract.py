@@ -41,9 +41,24 @@ def test_dispatch_hygiene_tokens():
             assert token in t, (path.name, token)
 
 
+def test_verifier_contract_tokens():
+    t = DELEGATE.read_text(encoding="utf-8")
+    for token in (
+        "read ONLY the package file",
+        "NOT CONFIRMED",
+        "UNVERIFIABLE",
+        "would this pass on a wrong result",
+        "attempted is not addressed",
+    ):
+        assert token in t, token
+    b = BRAIN.read_text(encoding="utf-8")
+    assert "package file only" in b
+
+
 if __name__ == "__main__":
     test_brain_fleet_rules()
     test_brain_return_envelope()
     test_delegate_envelope_and_read_first()
     test_dispatch_hygiene_tokens()
+    test_verifier_contract_tokens()
     print("test_lane_contract: OK")

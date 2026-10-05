@@ -53,7 +53,9 @@ unnamed execution lanes.
 - Verifier lane: glm-5.3, always. Independent re-derivation of an
   escalation-candidate finding from the recorded evidence, never trusting the
   discovering lane's verdict. A flash verifier hardening a wrong negative is
-  the delegate cheap-tier trap.
+  the delegate cheap-tier trap; package file only, verdicts
+  CONFIRMED/NOT CONFIRMED/UNVERIFIABLE citing package lines, claims-extraction pass,
+  UNVERIFIABLE routes to Skill(triage).
 - Research lane: glm-5.3-flash. CVE/PoC lookup across NVD, MITRE, CISA KEV,
   GHSA/GitHub search, Exploit-DB, vendor advisories, Packet Storm, Vulners,
   returning a credibility read plus publication/last-updated dates. Output is
