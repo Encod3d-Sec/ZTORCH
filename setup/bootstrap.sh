@@ -69,20 +69,12 @@ else
   echo "  claude plugins install ponytail@ponytail"
 fi
 
-# 5. Install caveman (output compression skill -- required on all machines)
-NODE_MAJOR=$(node -e "process.stdout.write(process.version.split('.')[0].replace('v',''))" 2>/dev/null || echo "0")
-if [ "$NODE_MAJOR" -ge 18 ]; then
-  echo "Installing caveman..."
-  curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash
-  echo "[ok] caveman installed"
-else
-  echo "[warn] Node >=18 required for caveman -- install Node first, then run:"
-  echo "  curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash"
-fi
+# 5. caveman: voice skills ship in the vault (skills/caveman/, skills/ultracave/);
+# no installer. Manual per session (/caveman, /ultracave).
 
-# 6. Register MCP servers (wiki-search + caveman-shrink wrapper)
+# 6. Register MCP server (wiki-search)
 if command -v claude >/dev/null 2>&1; then
-  echo "Registering MCP servers..."
+  echo "Registering MCP server..."
 
   # wiki-search: semantic + keyword search over the vault wiki
   if claude mcp get wiki-search >/dev/null 2>&1; then
@@ -94,19 +86,12 @@ if command -v claude >/dev/null 2>&1; then
     echo "  [ok] wiki-search registered (QMD_VAULT=$VAULT)"
   fi
 
-  # caveman-shrink: same wiki-search upstream, tool descriptions compressed
-  if claude mcp get caveman-shrink >/dev/null 2>&1; then
-    echo "  [ok] caveman-shrink already registered"
-  else
-    claude mcp add caveman-shrink -s user \
-      -e "QMD_VAULT=$VAULT" \
-      -- npx -y caveman-shrink qmd mcp
-    echo "  [ok] caveman-shrink registered (QMD_VAULT=$VAULT)"
-  fi
+  # caveman-shrink removed 2026-10-05: duplicated wiki-search at a stale vault;
+  # tool catalogs are cached by the harness, compression saved nothing.
+  claude mcp remove caveman-shrink >/dev/null 2>&1 || true
 else
-  echo "[warn] claude CLI not found -- register MCPs manually after Claude Code is set up:"
+  echo "[warn] claude CLI not found -- register the MCP manually after Claude Code is set up:"
   echo "  claude mcp add wiki-search -s user -e QMD_VAULT=$VAULT -- qmd mcp"
-  echo "  claude mcp add caveman-shrink -s user -e QMD_VAULT=$VAULT -- npx -y caveman-shrink qmd mcp"
 fi
 
 # Kali VM capture deps (screenshot + tmux scan-runner). Best-effort; needs the VM configured.
