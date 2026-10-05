@@ -35,15 +35,18 @@ The brain DISPATCHES, fully-specified execution chunks only:
 
 | Alias | Actual model | Use for |
 |---|---|---|
-| haiku | glm-5.3-flash | DEFAULT. Mechanical fully-specified runs: one-tool runs, compile+run a known PoC, watch windows, scripted evidence capture, read-and-summarize passes. |
-| sonnet | glm-5.3 | Multi-step runs whose next step depends on reading live responses: hunt-skill execution against a live surface, JS-heavy analysis, a decision-bearing exploit chain. |
+| haiku | glm-5.3-flash | DEFAULT. Mechanical fully-specified runs: one-tool runs, compile+run a known PoC, watch windows, scripted evidence capture, read-and-summarize passes, fuzz/research/graphify/wiki archetype lanes. |
+| sonnet | glm-5.3 | Multi-step runs whose next step depends on reading live responses: hunt-skill execution against a live surface, JS-heavy analysis, a decision-bearing exploit chain, discovery-shaped lanes, Verifier. |
+| opus | glm-5.3-max | RTL consults (redteamlead lanes: ranked directions + STOP, clinical verify/confirm framing), exploit development, exploit-chain construction. A `[cyber]` safeguard failure redispatches on haiku, never dropped (operator 2026-10-06; supersedes the 2026-09-02 RTL-on-MAIN rule). |
 
 Fresh agents only: `subagent_type` general-purpose, never `fork` (a fork inherits
 the main model and ignores the alias, silently voiding this table).
 
-NEVER dispatched at either tier: discovery (route/endpoint/token enumeration),
-"is this surface empty or am I querying it wrong", anything not fully specified.
-A guess wearing a checklist stays on the brain (see `Skill(delegate)`).
+Discovery (route/endpoint/token enumeration) is dispatched at sonnet/opus ONLY,
+never flash (a cheap model hardens a wrong negative into a fact); a discovery
+lane's negative is re-verified on the brain before it reaches Deadends.md. Vector
+selection and "is this surface real or am I querying it wrong" judgement stay on
+the brain (see `Skill(delegate)`).
 
 ## Dispatch archetypes (roster tiers)
 
@@ -60,6 +63,18 @@ unnamed execution lanes.
   GHSA/GitHub search, Exploit-DB, vendor advisories, Packet Storm, Vulners,
   returning a credibility read plus publication/last-updated dates. Output is
   intelligence only; the go/no-go on testing it stays on the brain.
+- Fuzz lane: glm-5.3-flash. The `fuzz` skill authors the deterministic wordlist
+  pick; the lane runs the emitted commands and returns raw hit lists.
+- Graphify lane: glm-5.3-flash. Structural wikilink-graph runs (`scripts/wiki-graph.py`,
+  no LLM): relation chains, hub/orphan reports for the current surface.
+- Wiki lane: glm-5.3-flash. qmd/BM25 lookups and arsenal pulls; returns the cards
+  and payload rows the brain asked for, never the go/no-go.
+- Redteamlead lane: glm-5.3-max (opus). An RTL consult dispatched as a lane: takes
+  the stalled-board summary, returns ranked directions + an explicit STOP. Clinical
+  framing (verify/confirm verbs); `[cyber]` failure -> redispatch on haiku.
+- Hunt lane (goal hunts): sonnet default. A goal-directed hunt-* execution lane
+  (hunt-sqli etc.) with a single SUCCESS criterion in slot (f); step up to opus
+  when the lane becomes exploit development or chain construction.
 - Scribe lane: glm-5.3-flash. Draft and merge finding entries from returned
   envelopes, dedupe, timestamp. Drafts return to the brain; the brain remains
   the only APPLIER of shared-file edits (lanes hand back paste-blocks per
@@ -166,8 +181,9 @@ minutes, not at session end.
    Deadend), records `note`/`done`/`foothold` on the driver, re-runs `next`.
 
 The closeout chain (triage, evidence, walkthrough, learn) stays on the brain.
-Below 2 open assets, plain single-agent `Skill(offensive)` execution applies:
-main model executes directly.
+New engagements OPEN in brain posture from move 0 (operator directive 2026-10-06);
+single-agent `Skill(offensive)` execution is the fallback when the board holds
+fewer than 2 genuinely disjoint rows (one asset, one vector), not the default.
 
 ## Failure handling
 

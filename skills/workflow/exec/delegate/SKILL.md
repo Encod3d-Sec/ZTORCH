@@ -24,11 +24,16 @@ otherwise the tier guidance below still tells you WHAT to hand off.)
 the CHEAP TIER (glm-5.3-flash) is the DEFAULT for a fully-specified mechanical or wait-heavy run: compile-and-run a known
 exploit, deliver an ELF, decrypt a credential store, a pspy/tcpdump watch window, a fixed-payload
 flag-read. On CTF and RoE-approved pentests the safety bar for a cheap model executing an exploit is
-already cleared, so lean into the cheap tier there and keep the main model on strategy. Step UP to the mid/high tier
-only for a genuinely judgement-heavy multi-step run (a JS-heavy per-route-CSRF authed backend RCE).
+already cleared, so lean into the cheap tier there and keep the main model on strategy. Step UP to
+the mid tier (glm-5.3) for a genuinely judgement-heavy multi-step run (a JS-heavy per-route-CSRF
+authed backend RCE, a live-surface hunt lane), and to the max tier (glm-5.3-max, `opus`) for RTL
+consults, exploit development, and exploit-chain construction (clinical verify/confirm framing; a
+`[cyber]` safeguard failure redispatches on haiku, never dropped; operator 2026-10-06).
 
-NEVER delegate DISCOVERY or judgement to a cheap model: route/endpoint/token discovery, "is this
-surface empty or am I querying it wrong", vector selection. A cheap model hardens a wrong negative
+DISCOVERY (route/endpoint/token enumeration) delegates at sonnet/opus ONLY, never the cheap tier,
+and a discovery lane's negative is re-verified on the main model before it becomes a Deadend.
+Vector selection and "is this
+surface empty or am I querying it wrong" stay on the main model. A cheap model hardens a wrong negative
 into a fact -- it reports "empty/dead" from a query mistake and you inherit it as a hard exclusion (a
 real miss: a delegated agent called a UCP voicemail "empty" because it hit the AJAX endpoint, not the
 dashboard widget that rendered the secret; that fossilized into a wrong "rabbit hole" and cost an

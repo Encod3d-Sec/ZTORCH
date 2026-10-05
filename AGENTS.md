@@ -63,7 +63,7 @@ Search rule: never read `wiki/index.md` to find pages - always search first. Wik
 
 ## Behavior hooks
 
-Output/mode plugins (optional; the harness degrades gracefully without them): **ponytail** (lazy-code discipline - YAGNI, stdlib first, shortest working diff; auto-activates at SessionStart when installed, level `full`, switch via `/ponytail lite|full|ultra`) governs what you build, not prose. **caveman** (prose compression) is a vault skill pair (`caveman`, `ultracave`), manual per session; it stays off in engagement turns, where the output caps above already govern.
+Output/mode plugins (optional; the harness degrades gracefully without them): **ponytail** (lazy-code discipline - YAGNI, stdlib first, shortest working diff; auto-activates at SessionStart when installed, level `full`, switch via `/ponytail lite|full|ultra`) governs what you build, not prose. **caveman** (prose compression) is a vault skill (ultra level in-file: `/caveman ultra`), manual per session; it stays off in engagement turns, where the output caps above already govern.
 
 SessionStart also auto-loads `session/hot.md`. No manual reads needed.
 
