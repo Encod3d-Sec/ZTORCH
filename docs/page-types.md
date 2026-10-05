@@ -106,6 +106,7 @@ One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engag
 | `Deadends.md` | Exhausted vectors + false positives, with reason; never re-run without new input |
 | `Vuln-index.md` | Finding index by severity + attack chains + severity count table |
 | `oob.md` | Out-of-band callback tracking (the blind-bug gate) |
+| `decisions.md` | Parked judgment calls (G7); decisions.md is scaffolded by init and self-created on demand by Skill(redteamlead) and `done --park`; both are true (either path works when the file is absent) |
 | `log.md` | Append-only audit trail (terse) (pentest/bugbounty; a ctf box has no separate audit log) |
 | `walkthrough.md` | Full copy-pasteable boot-to-root reproduction (scaffolded upfront for pentest/bugbounty; self-creates at close-out for every type if missing) |
 | `eval.md` | Per-engagement AGENT self-assessment (tokens/time/drift); `close-out.py` auto-writes its Metrics block at SOLVED, `Skill(learn)` fills the rest (scaffolded upfront for pentest/bugbounty; on-demand for ctf) |

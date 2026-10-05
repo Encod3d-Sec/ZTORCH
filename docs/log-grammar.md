@@ -10,6 +10,8 @@ what status.py already reads; this page is the vocabulary.
 - `retry <a>/<max> <kind>` - retry a of max, kind of failure (technical/environmental/conceptual/external)
 - `hitl ask <id>` / `hitl decided <approve|reject|edit>` - operator decision points
 - `[<lane>]` prefix at line start scopes a line to one lane
+- `Ruling: <decision> - <why> - <cost if wrong>` - a mid-run judgment call the operator
+  would rubber-stamp; lanes log it and keep going; closeout prints every `Ruling:` line.
 
 ## Audit line convention (framework events)
 

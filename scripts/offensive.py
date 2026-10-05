@@ -1685,6 +1685,16 @@ def cmd_coverage(args):
     return 0
 
 
+def collect_rulings(log_path):
+    """Every `Ruling:` line from the engagement log; a ruling that dies in a
+    lane transcript was a decision made in secret."""
+    try:
+        lines = Path(log_path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return [l.strip() for l in lines if "Ruling:" in l]
+
+
 def cmd_closeout(args):
     """Print the per-type close-out chain (Skill names, in order) for the
     engagement. G7: no question, just the ordered chain."""
@@ -1696,6 +1706,11 @@ def cmd_closeout(args):
     print("closeout chain (%s), run in order:" % etype)
     for i, s in enumerate(chain, 1):
         print("  %d. Skill(%s)" % (i, s))
+    rulings = collect_rulings(eng / "log.md")
+    if rulings:
+        print("\nrulings from this engagement (%d):" % len(rulings))
+        for r in rulings:
+            print("  " + r)
     n, rows = changelog_pending(eng)
     if n:
         print("CLEANUP UNCONFIRMED - %d changelog rows lack verified rollback" % n)

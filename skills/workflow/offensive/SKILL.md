@@ -31,6 +31,8 @@ execution is the fallback below 2 open assets, not the default.
 
 1. `python3 scripts/offensive.py init <name> --type pentest|ctf|bb` - scaffolds `targets/<name>/`
    (state.md, scope.md, loot.md, Killchain.md, Deadends.md, oob.md, decisions.md, Approach.md).
+   decisions.md is scaffolded by init and self-created on demand by Skill(redteamlead) and
+   `done --park`; both are true (either path works when the file is absent).
    Refuses a dir that already holds driver state (`.offensive.json`) -- re-init on a live
    engagement re-scaffolds over it; pass `--rebase` for the rotated-IP / repair flow (state
    file untouched, `targets/active.md` repointed).
