@@ -205,6 +205,10 @@ Three tiers, in order:
 Payload arsenals live in `wiki/payloads/`. If the MCP is down, `bash scripts/wiki-query.sh "<terms>"`
 wraps the same qmd index (`-k` for an exact CVE/string).
 
+Volume reconciliation: this tiered lookup IS the `wiki-first` rule below - the reference-map read
+(or one targeted `qmd`) per new attack-path lane satisfies it; `qmd` is a targeted deepen, not a
+pre-attack ritual, and never a per-action step.
+
 ## Hunt approaches (which skill for the signal)
 
 Usage order: load this index first, load the per-surface skill on demand, keep three

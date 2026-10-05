@@ -44,6 +44,10 @@ All 17 hooks (across 6 events) inject context, route to a skill, capture telemet
 
 Canonical set: `scripts/check-hooks.py` `EXPECTED_HOOKS`. (Removed 2026-08-04: `web-recon.py`, which auto-launched `recon-web.sh` + a chromium page render on every newly-seen in-scope surface. It fired on tool OUTPUT, so merely PRINTING a hostname re-launched scans and a render against hosts already retired, and the render leg was producing empty `poc/` dirs rather than evidence. Run `scripts/recon-web.sh <eng> <url>` by hand instead.)
 
+Dormant and offline machinery, documented so nothing looks missing:
+- `skills/hooks/eng-ckpt.py`: dormant checkpoint helper, unregistered by design; never delete (a PreToolUse Write/Edit checkpoint of the pre-edit engagement state, kept for a possible future registration; fires nowhere today).
+- Wiring subsystem (offline scripts, no hook wiring): `wiki-wiring-audit.py` (audits which wiki pages surface "by context" during an engagement: playbook refs, hunt-skill links, one hub hop), `apply-wiring.py` (applies a merged wiring-proposal JSON to `playbook.json` / `triggers.json` / hub pages / hunt SKILL.mds), `wiring-exempt.txt` (pages deliberately excluded from the wiring audit), `bench.py` (scores a completed engagement dir against an expected-coverage manifest).
+
 ---
 
 ## 2. What you TYPE -> hunt / workflow skill

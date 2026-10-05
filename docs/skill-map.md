@@ -38,6 +38,7 @@ organizational only.
 | Vuln/CVE research on a target (binary/repo/app/firmware) | `research` skill (scaffolds `raw/research/<project>/`)                      |
 | Hand a fiddly, fully-specified exploit-compile/escalation run to a sub-agent | `delegate` skill (autonomous sub-agent exploit-run; false-root/hostname guardrail mandatory) |
 | Drive msfconsole (recon, exploit search/run, reverse shells, post-ex) | `metasploit` skill (msfconsole framework-driver; cheatsheet [[metasploit]]) |
+| Windows LPE shortcut on a CTF/lab box (standard-user foothold, recompiled Nightmare_Eclipse PoCs with recorded Defender verdicts) | `nightmare` skill (authorized CTF/lab targets only; hub [[privesc-exploit-arsenal]]; routed from hunt-windows) |
 | Working the VM / WSL seat (vm.sh, tmux-on-VM, seat map) | `kali-seat` skill (Windows seat -> WSL kali -> VMware VM; `/opt/ztorch` in WSL) |
 | Stuck / which vector / "should I keep hammering this" | `redteamlead` skill (fresh RTL subagent reads state+evidence+wiki, returns ranked directions + explicit STOP) |
 | Content discovery / directory brute / hidden params / which wordlist | `fuzz` skill (adaptive wordlist selection + WAF/throttle handling) |

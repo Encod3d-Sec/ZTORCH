@@ -16,6 +16,8 @@ Read `engagement_type` from the active `targets/<eng>/state.md` frontmatter and 
 - **Surface (widen):** content, files, vhost (Host-header fuzz against one IP; catches hosts with no DNS record), api, artifacts. Recursive by default.
 - **Parameter (deepen):** once an endpoint takes input, fuzz hidden params. Triggered by OBSERVING a param-accepting endpoint, never blind.
 
+Cross-ref: the board's `content-discovery` / `recon-nuclei` / `recon-nikto` vector rows (see `Skill(vector-workflow)`) are worked through this skill; content discovery is owned here, the rows only seed the board.
+
 ## 2. Select (deterministic) - always via wl-pick.sh
 ```bash
 # what to run for a surface, given the engagement type and any fingerprint:
@@ -26,7 +28,7 @@ bash scripts/wl-pick.sh params "" bb
 ```
 It prints the seclists base, the profile flags line, and the ordered absolute paths (T0 harness -> T3 fingerprint list -> T1 surface lists, size-ordered). NEVER hand-pick a list from memory and NEVER start with `directory-list-2.3-medium` (220k). The size order is already correct in the output; run top-to-bottom, stop climbing when you have enough signal.
 
-Wordlist scanners RoE-barred (`scanners: no`)? Same two axes as serial Caido Replay batteries instead: `bash scripts/caido-battery.sh <host> <payloads-file|-> ['GET /{{PAYLOAD}} HTTP/1.1']` (one command, 60-payload cap, operator-visible in the GUI; see [[caido]] / `Skill(caido)`).
+Wordlist scanners RoE-barred (`scanners: no`)? Same two axes as serial Caido Replay batteries instead: `bash scripts/caido-battery.sh <host> <payloads-file|-> ['GET /{{PAYLOAD}} HTTP/1.1']` (one command, 60-payload cap, operator-visible in the GUI; see [[wiki/tools/caido]] / `Skill(caido)`).
 
 ## 3. Calibrate (native first, backstop with judgment)
 - Launch every fuzz run detached in its own tmux tab: `bash scripts/vm-scan.sh --win ffuf <eng> <target> '<cmd>'` (output stays in-pane, autocard cards it; a foreground run dies with the SSH round trip).
@@ -38,7 +40,7 @@ Wordlist scanners RoE-barred (`scanners: no`)? Same two axes as serial Caido Rep
 
 ## 4. Climb tiers on SIGNAL (the adaptive core)
 Climb T0 -> T1 -> T2 -> T3 when the current tier is exhausted OR a fingerprint unlocks a better list:
-- **T2 cewl** when T0/T1 run dry: `cewl -d 3 -m 5 --lowercase -w targets/<eng>/custom-words.txt https://TARGET` then feed that list back through the same axis. See [[cewl]].
+- **T2 cewl** when T0/T1 run dry: `cewl -d 3 -m 5 --lowercase -w targets/<eng>/custom-words.txt https://TARGET` then feed that list back through the same axis. See [[wiki/tools/cewl]].
 - **T3 app-specific** the moment you fingerprint a known product: re-run `wl-pick.sh <surface> <product> <type>` to jump straight to its shipped list. For a product with no shipped list, `Skill(wiki-arsenal)` for its known paths, then cewl its docs / probe `robots.txt` `sitemap.xml` `swagger.json` `openapi.json`.
 - Every vhost hit is a fresh docroot: re-run the content axis against it (its `robots.txt` Disallow entries are a free wordlist) before climbing further.
 

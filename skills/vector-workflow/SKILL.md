@@ -76,6 +76,8 @@ straight from the compiled index, no special-casing for vector rows. Current map
 | windows | hunt-windows | windows-privesc | privesc-exploit-arsenal | winpeas |
 | linux-svc-enum | hunt-rce | vuln-assessment | service-enumeration | searchsploit |
 
+Cross-ref: on the `content-discovery` / `recon-nuclei` / `recon-nikto` rows, content discovery is owned by `Skill(fuzz)` (deterministic wordlist pick + WAF/throttle handling); these rows only seed the board.
+
 `ad` and `windows` are real hunt-core classes reused as the `ad_windows` vector baseline, not
 vector-only pseudo-classes - they also fire directly off `ad`/`windows` fingerprint matches.
 `content-discovery`/`js-extract`/`recon-nuclei`/`recon-nikto`/`wpscan-scan`/`osint-subdomain`/

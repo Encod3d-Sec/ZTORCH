@@ -30,6 +30,8 @@ surface is an exact product/CVE string). Group the hits under the four areas and
 
 Cost ~1-2k tokens, no subagents. Fire it on
 every new surface to raise wiki coverage cheaply. Stop here unless the surface is worth deep prep.
+Volume: quick-arsenal arms on a genuinely new surface, not per action - the step 0 cache covers
+repeats, and per-action lookups ride the hunt skill's own reference map (hunt-core's tiered wiki lookup).
 
 ## Mode: deep (opt-in - "deep"/"full arsenal", or a whole service/target worth prepping)
 

@@ -33,6 +33,7 @@ is absent, this map IS the router.
 | Burp/MCP down, per-engagement isolated proxy project wanted, or Caido-native features (Automate, Replay fuzz batteries) | `Skill(caido)` (headless Caido on the VM; same load-bearing-visibility discipline, Replay entries instead of Repeater tabs) |
 | Manual login / MFA / CAPTCHA the agent cannot do headlessly | `Skill(chrome-devtools-browser)` |
 | msfconsole work (recon DB, exploits, handler, pivots, post-ex) | `Skill(metasploit)` |
+| Windows standard-user foothold on a CTF/lab box needs a kernel/LPE shortcut | `Skill(nightmare)` (recompiled Windows LPE arsenal with recorded Defender verdicts; authorized CTF/lab only; hub [[privesc-exploit-arsenal]]) |
 | Fully-specified exploit compile / escalation run to hand off | `Skill(delegate)` (mechanical, cheap tier; false-root guardrail mandatory) |
 | Stalled, wrong-vector tell fired, "should I keep hammering?" | `Skill(redteamlead)` - NEVER grind; ranked directions + explicit STOP |
 | A vuln class never tested on this asset (4a coverage gap) | `Skill(offensive)` - `offensive.py coverage` ranks the gaps |

@@ -21,6 +21,10 @@ python3 scripts/offensive.py --eng <name> done <row> --poc <img> --kind req   # 
 outcome with `note` (arsenal card consulted) and `done` (closed with evidence, dead, or parked).
 Re-run `next`. That is the whole cycle.
 
+Auxiliary subcommands, when you need them: `plan` (dry-run top-N of `next`; writes nothing),
+`autonomy` (set the advisory L0-L3 autonomy envelope in scope.md), `rebase` (re-point a rotated
+asset value across the engagement).
+
 Default posture (2026-09-08): once the board has 2+ open assets, run the loop under
 `Skill(brain)` - the driver, gates, and board stay in the brain; each `next` action's
 execution is dispatched to one of 2-3 concurrent disjoint-lane subagents per brain's

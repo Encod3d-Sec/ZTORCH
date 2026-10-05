@@ -94,7 +94,7 @@ Sections:
 
 ## target pages (`targets/`)
 
-One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engagement.sh <name> <pentest|bugbounty|ctf>` and self-healed by the `engagement-init` hook. The `engagement_type` in `state.md` frontmatter drives the analyzer and self-heal. A ctf engagement scaffolds a lean upfront set (`state`, `loot`, `Approach`, `scope`, `Deadends` + `ingest/`/`poc/`); pentest/bugbounty scaffold the full set below, including `Killchain.md` and `log.md`. Root files (all git-ignored; client/engagement data lives ONLY here):
+One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engagement.sh <name> <pentest|bugbounty|ctf>` and self-healed by the `engagement-init` hook. The `engagement_type` in `state.md` frontmatter drives the analyzer and self-heal. A ctf engagement scaffolds a lean upfront set (`state`, `loot`, `Approach`, `vuln-index`, `scope`, `Deadends` + `ingest/`/`poc/`); pentest/bugbounty scaffold the full set below, including `Killchain.md` and `log.md`. Root files (all git-ignored; client/engagement data lives ONLY here):
 
 | File | Purpose |
 |------|---------|
