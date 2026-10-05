@@ -30,7 +30,10 @@ def parse_frontmatter(text):
     for line in text[4:end].splitlines():
         if ":" in line and not line.startswith((" ", "\t", "-")):
             k, _, v = line.partition(":")
-            out[k.strip()] = v.strip()
+            v = v.strip()
+            if v in (">", "|", ">-", "|-", ">+", "|+"):
+                v = ""  # block-scalar indicator: content lives on indented lines
+            out[k.strip()] = v
     return out
 
 

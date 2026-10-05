@@ -37,6 +37,14 @@ def test_angle_bracket_description_fires(tmp_path):
     assert skill_lint.lint_skill(_skill(tmp_path, desc="Use when <cond> appears."))
 
 
+def test_folded_scalar_description_does_not_fire(tmp_path):
+    p = _skill(tmp_path)
+    p.write_text(
+        "---\nname: good-skill\ndescription: >\n  Folded text, no brackets.\n---\n\n# good-skill\n\nBody.\n",
+        encoding="utf-8")
+    assert skill_lint.lint_skill(p) == []
+
+
 def test_unknown_key_fires(tmp_path):
     p = _skill(tmp_path)
     p.write_text(p.read_text(encoding="utf-8").replace(
