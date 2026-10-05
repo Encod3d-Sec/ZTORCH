@@ -35,6 +35,8 @@ When the `wiki-search` MCP is active, prefer these tools over the CLI - they avo
 
 AGENTS.md rule: **never read `wiki/index.md` to find pages - always search first.**
 
+Relational queries (how pages connect, hub or orphan detection) use the `graphify` skill over the structural link graph (`graphify-out/`, rebuilt automatically at promote).
+
 ---
 
 ## Searching via CLI
