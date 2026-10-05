@@ -12,7 +12,8 @@ description: >
 
 One question class, two layers: "how do these nodes connect", not "what does
 this node say". Content questions go to qmd (`wiki-search` MCP); relations
-come here.
+come here. Multi-hop exploration composes them: wiki-graph.py first for the
+chain, then qmd to read the pages it names.
 
 ## Wiki layer: scripts/wiki-graph.py (default)
 
