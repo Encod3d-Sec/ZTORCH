@@ -1,6 +1,6 @@
 ---
 name: ctf-box
-description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF) - basic-tool recon first, wiki-first, pspy + linpeas/winpeas always. Use when handed a box/IP to own end-to-end, "root the box", "get user.txt+root.txt".
+description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF), basic-tool recon first, wiki-first, pspy + linpeas/winpeas always. Use when handed a box/IP to own end-to-end ("root the box", "get user.txt+root.txt").
 ---
 
 # CTF / Boot-to-Root Box
@@ -204,7 +204,7 @@ After each phase, write to `targets/<eng>/`: hosts/access -> `state.md`, creds -
 - [[wiki/tools/nuclei]]
 - [[nikto]]
 - [[wiki/tools/whatweb]]
-- [[arjun]]
+- [[wiki/tools/arjun]]
 - [[dalfox]]
 - [[wiki/tools/swaks]]
 - [[wiki/cheatsheets/recon]]
@@ -215,7 +215,7 @@ After each phase, write to `targets/<eng>/`: hosts/access -> `state.md`, creds -
 - [[windows-enumeration]]
 - [[windows-privesc]]
 - [[password-attacks]]
-- [[sqlmap]]
+- [[wiki/tools/sqlmap]]
 - [[pivoting-tunneling]]
 - [[web-client-attacks]]
 - [[metasploit]]

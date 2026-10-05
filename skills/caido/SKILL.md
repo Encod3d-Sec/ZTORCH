@@ -1,6 +1,6 @@
 ---
 name: caido
-description: Headless Caido proxy on the Kali VM: HTTPQL history triage, proxied curl probes, Replay handoff, Match & Replace, Automate, fuzz (caido-mode CLI + ~/caido.sh). Use when Burp/MCP is down or for isolated per-engagement projects.
+description: Caido stands in for Burp on the Kali VM: a headless proxy driven over the caido-mode CLI and `~/caido.sh` (HTTPQL history triage, proxied curl probes, Replay handoff, Match & Replace, Automate, fuzz). Use when Burp/MCP is down or for isolated per-engagement projects.
 ---
 
 # Caido (headless instance on Kali, driven seat-side)
@@ -8,7 +8,7 @@ description: Headless Caido proxy on the Kali VM: HTTPQL history triage, proxied
 Caido is a Rust web-security proxy: one `caido` binary on the VM runs the instance
 (server), serves the web GUI, and exposes the GraphQL API the GUI itself uses.
 The agent drives it through two surfaces; the operator watches the same data in
-the GUI at http://192.168.23.128:8082. Wiki: [[caido]].
+the GUI at http://192.168.23.128:8082. Wiki: [[wiki/tools/caido]].
 
 1. **caido-mode CLI** (primary API surface): vendored at `skills/caido/caido-mode/`
    (upstream github.com/caido/skills, MIT; reference clone `raw/git/caido-skills`).
@@ -173,9 +173,9 @@ npx tsx caido-client.ts replay-entries "IDOR victim 999" --limit 20
   `Vuln chain - <description>` with steps named `1. ...`, `2. ...`. Endpoints from
   one JS file -> `JS File Endpoints`; from a spec -> `Swagger - <filename>`.
 - Evidence pairs: `raw <id> --out` (or VM `~/caido.sh raw <id> req|resp`) ->
-  `targets/<eng>/poc/` (verbatim source), same policy as [[evidence]].
+  `targets/<eng>/poc/` (verbatim source), same policy as [[targets/1. Archive/vilnius/EVIDENCE]].
 - `create-finding <id> --title ... --description ...` logs confirmed finds in the
-  project so they surface in the GUI Findings tab alongside [[evidence]] cards.
+  project so they surface in the GUI Findings tab alongside [[targets/1. Archive/vilnius/EVIDENCE]] cards.
 
 ## Match & Replace (tamper rules)
 
