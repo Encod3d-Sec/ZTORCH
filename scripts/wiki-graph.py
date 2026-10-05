@@ -45,6 +45,7 @@ def build(root=WIKI):
 
 def resolve(name, pages):
     n = name.strip().lstrip("/").removesuffix(".md")
+    n = n.replace(" ", "-")
     if n in pages:
         return n
     hits = [r for r in pages if r.rsplit("/", 1)[-1].lower() == n.lower()]

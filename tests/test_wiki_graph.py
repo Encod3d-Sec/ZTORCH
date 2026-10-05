@@ -64,6 +64,13 @@ def test_resolve_exact_basename_and_substring(tmp_path):
         wiki_graph.resolve("rce", g)  # two basenames -> ambiguous
 
 
+def test_resolve_hyphenates_spaces(tmp_path):
+    _wiki(tmp_path, {"techniques/active-directory/kerberos-attacks.md": "x"})
+    g = wiki_graph.build(tmp_path)
+    assert wiki_graph.resolve("kerberos attacks", g) == \
+        "techniques/active-directory/kerberos-attacks"
+
+
 def test_cmd_path_prints_chain(capsys):
     g = {"a": {"b"}, "b": {"c"}, "c": set()}
     assert wiki_graph.cmd_path(g, "a", "c") == 0
