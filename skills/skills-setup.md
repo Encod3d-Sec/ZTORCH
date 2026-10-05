@@ -197,3 +197,22 @@ done
 |--------|--------|
 | obsidian-vault MCP | Requires Obsidian running; replaced by direct Read tool |
 | context7 (was crashing) | Fixed via lock cleanup above; now re-enabled |
+
+## Skill authoring (house rules)
+
+- Baseline-first pressure testing: run the pressure scenario WITHOUT the skill and
+  record the model's rationalizations verbatim (that is the RED); write the minimal
+  counter (GREEN); close the loopholes the run exposed. A skill edit without a recorded
+  baseline is a vibes edit.
+- Recipe over prohibition: prohibitions for discipline slips (skipped steps), positive
+  recipes for wrong-shaped output; prohibition wording measurably backfires on shape
+  problems.
+- Behavior, never text: tests assert a blocked call or a fired skill, not that a file
+  contains a line.
+- Invoke shell scripts as `bash scripts/...` (exec bits unreliable on the NTFS vault).
+- Plans under `docs/superpowers/plans/` carry a `## Review Focus` block: up to five
+  failure modes the design implies but no planned test exercises, one line each, each
+  pinned by a test in the owning task.
+- Two measured findings worth trusting: decision-only plans cost about 3x less than
+  code-writing plans at equal outcomes; persuasion prose degrades unless its content
+  lands at the point of use (rationalization-table rows, not essay paragraphs).
