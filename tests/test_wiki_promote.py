@@ -1,12 +1,15 @@
 import importlib.util
 import os
+import sys
 import tempfile
+from unittest import mock
 
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 _spec = importlib.util.spec_from_file_location(
     "wiki_promote", os.path.join(VAULT, "scripts", "wiki-promote.py"))
 wiki_promote = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(wiki_promote)
+sys.modules["wiki_promote"] = wiki_promote  # mock.patch("wiki_promote...") needs it resolvable
 
 
 def test_strip_empty_sections_drops_stub_stack():
@@ -85,3 +88,21 @@ def test_placeholder_check_refuses_raw_ips_allows_doc_ranges():
     assert not ok and "10.20.30.40" in msg      # raw engagement IP refused
     ok, _ = wiki_promote.placeholder_check("target at {target_ip}:8443, gateway 192.0.2.1")
     assert ok                                   # placeholders pass
+
+
+def test_reindex_runs_graphify_update(tmp_path):
+    with mock.patch("wiki_promote.subprocess.run") as run:
+        wiki_promote.reindex(str(tmp_path))
+    assert any(call.args and call.args[0][:1] == ["graphify"]
+               for call in run.call_args_list)
+
+
+def test_reindex_survives_missing_graphify(tmp_path):
+    def fake_run(cmd, **kw):
+        if isinstance(cmd, list) and cmd[:1] == ["graphify"]:
+            raise FileNotFoundError("graphify not installed")
+        m = mock.MagicMock()
+        m.returncode = 0
+        return m
+    with mock.patch("wiki_promote.subprocess.run", side_effect=fake_run):
+        wiki_promote.reindex(str(tmp_path))  # must not raise
