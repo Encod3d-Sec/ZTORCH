@@ -98,6 +98,10 @@ the session. The driver flips the asset to `access=foothold`. `foothold <asset> 
 seeds the 4b privesc/lateral rows (pspy/linpeas auto + the manual checklist) for that asset directly;
 `board` only refreshes the 4a matrix. `next` then routes the post-ex work off those 4b rows. `coverage` shows any base class still untested per asset.
 
+- At board time, list the attacks the scope implies that no board row exercises,
+  cross-checked against the Approach.md 4a coverage table; a gap gets a row or a
+  Ruling for why not.
+
 ## Autonomy
 
 No approvals, ever. The driver is deterministic and self-directing: run `next`, do exactly what it

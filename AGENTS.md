@@ -46,6 +46,10 @@ Search rule: never read `wiki/index.md` to find pages - always search first. Wik
   rest of the block. Lane-authored log lines are the recurring failure vector - the main session
   backtick-sweeps lane output before it lands in a `.md`.
 - **When stuck, call `Skill(redteamlead)` BEFORE grinding.** See hunt-core's Wrong-vector tells for the two mechanical signals (target starved, >=2 verified-hash misses). A `/redteamlead` reminder in the engagement prompt is a real instruction.
+- **Harness bugs get the same stops as target vectors.** Instrument
+  component boundaries (what enters and exits, config propagation) before proposing a fix to a
+  harness issue; three failed fixes on one harness bug is an architecture stop,
+  escalate instead of attempting a fourth.
 - **Read-first, not grep (recon AND post-foothold).** READ each page/source end-to-end before declaring it enumerated (the vector hides in an AJAX handler / commented route a narrow grep skips); zg to LOCATE across files, grep inside one file, then read the block. Post-foothold source-review is a full `cat` per file. **A delegation prompt MUST carry this mandate verbatim** (`cat` each file in full, zg/grep only to locate): a cheap model grep-mines by default and your prompt is its only law. It MUST also carry the Obsidian-safe rule verbatim (any `<token>` you write into a `.md` is wrapped in inline backticks; bare angle brackets break the page).
 - **OOB-gate blind bugs.** Blind SSRF/SSTI/SQLi claims need an out-of-band callback, never inference. Enforced per hunt skill.
 - **Delegate exploit EXECUTION to a cheap-tier sub-agent (cost control, default).** Main model keeps strategy/board/wiki/triage; route the fully-specified exploit/escalation RUN via `Skill(delegate)` - see its Model choice section for the cheap-vs-main-model split and the sub-agent-negative-is-a-hypothesis rule.

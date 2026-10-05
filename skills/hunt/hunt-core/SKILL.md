@@ -254,6 +254,10 @@ Process skills (not vuln classes): `Skill(ctf-box)` boot-to-root, `Skill(wiki-re
 finding validation, `Skill(hunt-burp)` drive Burp. Coverage gaps and move ranking come from the
 driver itself (`scripts/offensive.py coverage` / `offensive.py next`).
 
+- At board time, list the attacks the scope implies that no board row exercises,
+  cross-checked against the Approach.md 4a coverage table; a gap gets a row or a
+  Ruling for why not.
+
 ## Routing table (machine-readable)
 
 The fingerprint -> {class, skill, wiki, arsenal} parse contract `offensive.py index` reads
