@@ -20,6 +20,9 @@ organizational only.
 | Search vault (wiki semantic/keyword)          | `qmd_query` (semantic) or `qmd_search` (keyword) via `wiki-search` MCP                 |
 | Search workspace files (vault, targets/, raw/git) | `zg` first: `zvec_grep_search` MCP or `zg query --human "..."`; grep only inside one file |
 | Maintain wiki index (re-index, status)        | `wiki` skill                                                                           |
+| Over-engineering review of a framework diff | `ponytail-review` plugin skill (diff-scoped, one-line findings, applies nothing) |
+| Repo-wide over-engineering audit | `ponytail-audit` plugin skill (ranked biggest-cut-first) |
+| `ponytail:` marker ledger sweep | `ponytail-debt` plugin skill (harvests `ponytail:` comments; the close-out Stop hook nudges this) |
 | Load engagement playbook / FIND schema        | Read `targets/TARGETS.md`                                                              |
 | Audit AGENTS.md (full review)                 | `agents-md-improver` skill (vault-local offline reviewer)                              |
 | Update AGENTS.md (targeted session learnings) | `agents-md-improver` skill, targeted mode                                              |

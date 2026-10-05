@@ -164,7 +164,57 @@ def _open_class_census(d):
     return census, closed
 
 
+def _framework_edit_newest(vault):
+    """Newest mtime under scripts/ and skills/ (source files only)."""
+    newest = 0.0
+    for sub in ("scripts", "skills"):
+        base = os.path.join(vault, sub)
+        for root, dirs, files in os.walk(base):
+            dirs[:] = [x for x in dirs if x != "__pycache__"]
+            for f in files:
+                if f.endswith((".py", ".sh", ".md", ".json")):
+                    try:
+                        t = os.path.getmtime(os.path.join(root, f))
+                    except OSError:
+                        continue
+                    if t > newest:
+                        newest = t
+    return newest
+
+
+def _ponytail_debt_nudge(vault):
+    """Advisory: framework files changed since the last nudge -> suggest the
+    ponytail maintenance sweep. mtime-max stamp (the .wiki-stamp pattern);
+    fires once per edit burst, fails open everywhere."""
+    newest = _framework_edit_newest(vault)
+    if not newest:
+        return
+    marker = os.path.join(vault, ".ponytail-debt-stamp")
+    last = 0.0
+    try:
+        last = float(open(marker).read().strip() or "0")
+    except Exception:
+        pass
+    if newest <= last:
+        return
+    try:
+        open(marker, "w").write(str(newest))
+    except OSError:
+        return
+    print("Framework edits under scripts/ or skills/ since last sweep: run `/ponytail-debt` "
+          "(marker ledger) and `/ponytail-review` on the diff before committing.")
+    try:
+        import _telemetry
+        _telemetry.hook("close-out", action="ponytail-debt-nudge")
+    except Exception:
+        pass
+
+
 def main():
+    try:
+        _ponytail_debt_nudge(os.path.abspath(os.path.join(HERE, "..", "..")))
+    except Exception:
+        pass
     try:
         import _engagement
         d = _engagement.active_dir()
