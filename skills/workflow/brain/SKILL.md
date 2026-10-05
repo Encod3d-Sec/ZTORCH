@@ -106,6 +106,13 @@ Brain adds two fleet rules on top:
   REVERT of state the run changed); the envelope is the return shape, not a
   narrower contract.
 
+Dispatch hygiene (fleet rule): briefs and reports are file paths, never pasted bodies;
+lane returns are 15 lines or fewer; a worker never spawns its own subagent (a felt need
+for a reviewer comes back as a concern); every lane slot names its `model:` (cheap tier
+for transcription, mid for judgment; the cost metric is turn count); same-shape items
+ship as one brief enumerating every item, verified per item, and
+a listed item with no capture is a Missing finding.
+
 ## Concurrency
 
 - Up to 3 concurrent subagents, disjoint targets or vectors only; never two

@@ -27,8 +27,23 @@ def test_delegate_envelope_and_read_first():
     assert "cat each file in full, zg/grep only to locate" in t
 
 
+def test_dispatch_hygiene_tokens():
+    for path in (BRAIN, DELEGATE):
+        t = path.read_text(encoding="utf-8")
+        for token in (
+            "15 lines or fewer",
+            "never spawns its own subagent",
+            "model:",
+            "cost metric is turn count",
+            "one brief enumerating every item",
+            "a listed item with no capture is a Missing finding",
+        ):
+            assert token in t, (path.name, token)
+
+
 if __name__ == "__main__":
     test_brain_fleet_rules()
     test_brain_return_envelope()
     test_delegate_envelope_and_read_first()
+    test_dispatch_hygiene_tokens()
     print("test_lane_contract: OK")

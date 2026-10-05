@@ -40,10 +40,16 @@ keep it on the main model. Re-verify any NEGATIVE a sub-agent returns before it 
 Every delegation needs all eight slots filled. Under-specify one and the sub-agent flails; that is the
 usual failure mode, not a weak sub-agent.
 
-- **(a) confirmed access/primitive**, spelled out; don't make the sub-agent rediscover it. Alongside
-  the primitive, state the assumption set: what must hold true for the run to make sense (access
-  still valid, file still at that path, version match); a wrong assumption then surfaces as a
-  reportable mismatch, not a silent miss.
+- **(a) confirmed access/primitive**, spelled out; don't make the sub-agent rediscover it.
+  The 4-field gate (cyberstrikeai L4): the dispatch prompt is INVALID unless it carries
+  all of (1) target identifier (URL / `IP:port` / domain+path), (2) in-scope boundary
+  (what is fair game this round, what is not), (3) single subgoal for this round, (4)
+  success criteria (deliverable shape). Any missing field means do NOT dispatch; fill it
+  or ask the operator. Subagent mirror: if any required field is missing from your
+  prompt, STOP and return a MISSING-FIELDS list naming them; never guess, never reuse a
+  target from memory. Alongside the primitive, state the assumption set: what must hold
+  true for the run to make sense (access still valid, file still at that path, version
+  match); a wrong assumption then surfaces as a reportable mismatch, not a silent miss.
 - **(b) exact copy-paste commands**, real IPs/paths inline, no `$VAR`; the sub-agent cannot watch a
   live terminal to sanity-check a substitution. Each command block pairs with its expected
   observable, step -> verify form, so drift is caught at the step, not at lane end. Lane code
@@ -104,6 +110,16 @@ Otherwise the shell died back to the Kali box, which runs as root; `$(...)`/back
 LOCALLY, the false-RCE trap. The fix is re-pop, not celebrate. The sub-agent MUST report `hostname`
 alongside any `id`/`whoami` output, every time, no exceptions.
 
+## Write-back and interrupts
+
+- **PENDING-WRITE**: a lane that cannot write shared state (no file tools, read-only
+  seat) ends its return envelope with a `PENDING-WRITE` block - one entry per finding:
+  key, one-line summary, body bullets. The brain applies them to state.md/loot.md before
+  the next dependent move; a PENDING-WRITE never silently evaporates.
+- **STOP-REASON**: redirecting a running lane sends a message whose first line is
+  `STOP-REASON: <one line>`. The lane treats it as mid-task correction, incorporates the
+  reason into its next action, and does not restart from zero.
+
 ## Main-agent discipline
 
 Keep driving the board while the sub-agent works. Dispatch ONE sub-agent at a time, serial; never
@@ -146,6 +162,22 @@ Returned-lane processing (in order):
 - **Three same-class failures on one lane = switch, not a fourth.** Route the lane's row
   through `offensive.py next` for a different vector; grinding a 4th attempt of the same
   class is the doom-loop the driver exists to break.
+
+### Dispatch hygiene (context economy)
+
+- Artifacts are file paths: the brief and the report are paths, never pasted bodies;
+  the lane writes its full report to the named path.
+- Return envelope is 15 lines or fewer: status, pointers, one-line summary, concerns.
+- A worker never spawns its own subagent; a felt need for a reviewer is returned as a
+  concern instead.
+- Every lane slot carries an explicit `model:` field. Transcription-shaped work (exact
+  commands handed over) runs the cheap tier; judgment or review runs the mid tier; the
+  cost metric is turn count, not token price (a cheap model taking 2-3x the turns costs
+  more than the tier it saved).
+- Batch same-shape briefs: N identical-shape items go in
+  one brief enumerating every item; verification is per item;
+  a listed item with no capture is a Missing finding
+  regardless of the rest of the batch.
 
 ## Mechanism
 
