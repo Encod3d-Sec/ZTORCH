@@ -31,7 +31,7 @@ organizational only.
 | Board seeding order / vector workflow (why a row is on the board) | `vector-workflow` skill (OSINT pre-pass -> per-asset vector baseline -> base fallback, `derive_rows()`) |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
 | Driving a web target through Burp (proxy-history triage, Repeater/Intruder/Collaborator) | `hunt-burp` skill (Burp MCP; setup [[burp-mcp]])       |
-| Web-audit proxy when Burp/MCP is down, per-engagement isolated proxy project, or Caido-native features (Automate, workflows) | `caido` skill (headless Caido on the VM; caido-mode SDK CLI + `~/caido.sh`; [[caido]])   |
+| Web-audit proxy when Burp/MCP is down, per-engagement isolated proxy project, or Caido-native features (Automate, workflows) | `caido` skill (headless Caido on the VM; caido-mode SDK CLI + `~/caido.sh`; [[wiki/tools/caido]])   |
 | Starting recon on any target                  | wiki-recon skill                                                                       |
 | Manual login / MFA the agent can't do headlessly (Smart-ID, Mobile-ID, captcha) + drive & observe via CDP | `chrome-devtools-browser` skill (visible chromium on the VM via `scripts/browser-visible.sh` + chrome-devtools MCP) |
 | Validating / moving finding to Completed      | triage then evidence skills                                                            |
@@ -41,6 +41,7 @@ organizational only.
 | Working the VM / WSL seat (vm.sh, tmux-on-VM, seat map) | `kali-seat` skill (Windows seat -> WSL kali -> VMware VM; `/opt/ztorch` in WSL) |
 | Stuck / which vector / "should I keep hammering this" | `redteamlead` skill (fresh RTL subagent reads state+evidence+wiki, returns ranked directions + explicit STOP) |
 | Content discovery / directory brute / hidden params / which wordlist | `fuzz` skill (adaptive wordlist selection + WAF/throttle handling) |
+| `scripts/with_server.py` | Start N servers, poll ports until ready, run a command, guaranteed teardown (blind-sleep alternative) |
 
 ## Vault-local skill layout
 
