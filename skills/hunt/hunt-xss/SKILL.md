@@ -77,6 +77,9 @@ eval(  $.html(  $(location  document.referrer
 2. Classify: Reflected / Stored / DOM. Input in a `#fragment` that never appears in the
    Network tab is DOM (client-side only); markup absent from View-Source but present in the
    live Inspector was written by JS after page load. Re-fires after refresh = stored.
+   Browser-run discipline for the DOM leg: console capture before first navigation;
+   networkidle before DOM inspection; console snapshot beside the screenshot into `poc/`
+   (console artifacts are client data: they live only under `targets/<eng>/poc/`).
 3. Probe sanitizer: send `aaa"bbb'ccc<ddd` - observe which chars escaped
 4. Test allowlisted tag combos: `<math><style>`, `<svg><style>`, `<iframe srcdoc>`
 5. Hunt SVG upload vectors - often bypasses CSP

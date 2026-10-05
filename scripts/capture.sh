@@ -218,6 +218,7 @@ tmux kill-session -t $SESS 2>/dev/null || true" >&2
 # `web` for the rendered page. Runs on the VM (chromium there has the VPN path to the target). URL is
 # %q-quoted so query strings (?a=1&b=2) survive the SSH hop; a dead target makes shot.py exit non-zero
 # (net::ERR) so set -e aborts before an error-page PNG is pulled.
+# web mode: pair the shot with the console snapshot (see chrome-devtools-browser skill; networkidle before DOM reads)
 mode_web() {
   [ $# -ge 3 ] || { echo "usage: capture.sh web <eng> <slug> <url> [--no-bar] [width height]" >&2; exit 2; }
   ENG="$1"; local SLUG="$2" URL="$3"; shift 3

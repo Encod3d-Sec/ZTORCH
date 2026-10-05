@@ -10,6 +10,12 @@ Kali desktop (`:0`) the operator can click and type into, with its DevTools port
 **chrome-devtools MCP** drives and watches it. Two roles at once: the human authenticates; the agent
 observes + acts. The VM holds the VPN/egress path, so it reaches both internet and in-scope targets.
 
+Console capture ON before the first navigation; wait for `networkidle` before any DOM
+inspection; after each meaningful action, snapshot the console buffer beside the
+screenshot into `poc/` (uncaught throws, CSP violations, and stack traces become
+attached evidence instead of lucky F12 finds). Console artifacts are client data: they
+live only under `targets/<eng>/poc/`.
+
 ## 1. Bring it up (one command)
 
 ```bash
