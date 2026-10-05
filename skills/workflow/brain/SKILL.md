@@ -143,6 +143,16 @@ a listed item with no capture is a Missing finding.
   the observable wins) | `fail_fast` (one lane's failure kills the merge). Defaults when
   unstated: all_merge for board writes, first_non_empty for verifications.
 
+Pre-flight collision table (2+ lanes only): before dispatch, one row per lane pair
+sharing a host, cred, foothold, or tool - what one produces, what the other consumes,
+what was found. Rule every conflict and log it as a `Ruling:` line before launch. A
+clean-looking plan with no rows is not a scan.
+
+Child reconciliation cadence: between bounded waits, post one status line, list live
+children, and chase any lane that finished without reporting (SendMessage resume);
+no short-timeout polling, no one silent open-ended wait. A dead lane is noticed in
+minutes, not at session end.
+
 ## Offensive integration (brain mode over the driver)
 
 1. `python3 scripts/offensive.py --eng <name> next` in the main chat.

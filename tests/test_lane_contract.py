@@ -55,10 +55,18 @@ def test_verifier_contract_tokens():
     assert "package file only" in b
 
 
+def test_supervision_tokens():
+    t = BRAIN.read_text(encoding="utf-8")
+    assert "no rows is not a scan" in t
+    assert "finished without reporting" in t
+    assert "never poll" not in t.replace("never poll a running lane", "")
+
+
 if __name__ == "__main__":
     test_brain_fleet_rules()
     test_brain_return_envelope()
     test_delegate_envelope_and_read_first()
     test_dispatch_hygiene_tokens()
     test_verifier_contract_tokens()
+    test_supervision_tokens()
     print("test_lane_contract: OK")
