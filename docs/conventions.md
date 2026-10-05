@@ -24,6 +24,33 @@ Each entry must start with a consistent header (grep-parseable):
 
 Followed by 2-4 bullet points summarising what changed.
 
+## Hunt skill skeleton
+
+Canonical section set for every `skills/hunt/hunt-*/SKILL.md` (13 slots; order as
+listed, class-specific reference sections slot in where marked). Enforced in part by
+`tests/test_hunt_use_when.py`.
+
+1. Frontmatter: `name` + `description` ending with a "Use when ..." trigger sentence.
+2. `# Hunt: <Class>` opener + the assumes-`hunt-core` block (scope gate, two-account
+   rule, confirmation gate, enum limits, stop conditions, FIND output).
+3. `## Wiki`: hub, primary page, payload arsenal, anchors, REFS line.
+4. `## Confirmation gate`: what IS and IS NOT confirmation for this class.
+5. `## Attack surface (signals | ranked)`: where the class lives, ranked.
+6. `## Methodology`: numbered steps.
+7. Class-specific references (quick references, payload tables, lessons, matrices)
+   as needed.
+8. `## Chaining` / `## Evasion` where they apply to the class.
+9. `## Validation` (MANDATORY): the proof contract, the negative control, the
+   counterevidence to seek. Distinct from the confirmation gate: the gate says what
+   counts as confirmation, Validation says how to prove AND disprove the finding.
+10. `## False Positives` (MANDATORY): the ranked FP list for this class, each with the
+    distinguishing control (a safety claim names its control: encoder/sanitizer/block
+    and where observed).
+11. `## Cross-routing`: "Load hunt-X when ..." escalation lines plus at least one
+    "Not this skill when ..." negative route; must name at least one other hunt skill.
+12. `## Severity`: per-class rubric.
+13. `## Deadends`: class deadend line format (where not covered by hunt-core).
+
 ## Style guide
 
 - Write in clear, precise prose. No filler.
@@ -35,6 +62,7 @@ Followed by 2-4 bullet points summarising what changed.
 - Do not add warnings or legal disclaimers to technique or cheatsheet pages.
 - Never use em-dashes (--) in any output or wiki pages. Use a comma, semicolon, or rewrite the sentence instead.
 - Never use emojis in any output or wiki pages.
+- Angle-bracket tokens (`<value>`, `<marker>`) are never bare in page prose or tables: Obsidian parses them as HTML tags and one unclosed token breaks the whole page's rendering. Always inline-backtick them (`` `<value>` ``) or put them in a fenced code block.
 
 ## Tag taxonomy
 

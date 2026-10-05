@@ -3,8 +3,8 @@ title: "Trivy"
 type: tool
 tags: [sca, dependency-cve, sbom, containers, cve-research, supply-chain]
 date_created: 2026-06-16
-date_updated: 2026-06-16
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: enumerate
 ---
 
@@ -52,5 +52,13 @@ Alternative: **grype** (`grype dir:.` / `grype <image>`) + **syft** (SBOM) cover
 
 ## Related techniques
 [[static-code-analysis]], `cicd-attacks` / supply chain. Part of the source-repo and dependency-review path in the `research` skill. Pairs with [[semgrep]], [[codeql]].
+
+## Agent discipline
+
+Record the vuln DB `.UpdatedAt` next to the findings (a stale DB means missing CVEs, and a
+repo with clear dependencies showing zero CVEs is suspicious, not clean). Offline chain:
+`--offline-scan --list-all-pkgs`, then `--skip-db-update`. Reachability ladder before
+reporting anything: [[supply-chain-attacks]]. Full per-tool agent rules:
+[[wiki/cheatsheets/recon]] (Agent tool discipline).
 
 ## Sources

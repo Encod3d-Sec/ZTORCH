@@ -1,6 +1,6 @@
 ---
 name: hunt-windows
-description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or local shell on a member) - Potato/SeImpersonate, services, autologon, scheduled tasks, DLL hijack, cred loot. Domain escalation (kerberoast/ADCS/DCSync) is hunt-ad.
+description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or local shell on a member) - Potato/SeImpersonate, services, autologon, scheduled tasks, DLL hijack, cred loot. Domain escalation (kerberoast/ADCS/DCSync) is hunt-ad. Use when a local Windows shell needs privesc to SYSTEM.
 ---
 
 # Hunt: Windows (local privilege escalation)
@@ -77,6 +77,26 @@ Windows-local specific; adds to the `hunt-core` gate.
 **NOT confirmation:** a writable service binary / `AlwaysInstallElevated` key / `SeImpersonate` in the token / an unquoted path - these are *conditions*, not a demonstrated escalation. A reflected `whoami` that returns `root`/`kali` or your attacker host is the **false-RCE trap** (a dead reverse shell fell back to the attacker box) - re-pop, do not claim it (`win-rsh` flags this).
 
 **IS confirmation:** you actually ran code / read a file AS the higher principal and proved it - a shell or command whose `whoami` returns the service account / `nt authority\system` (from the TARGET, re-verified), the protected file read, the SYSTEM flag captured - reproduced from your own written steps in a clean session.
+
+## Validation
+
+- Proof = elevated context doing what the base user could not: `whoami` before/after
+  plus a marker file written to an admin-only path. Potato-family needs the capture
+  RELAYED (the trigger alone is not the escalation).
+
+## False Positives
+
+- SeImpersonate present but no capturing listener to relay to (dead on arrival;
+  verify a service that performs an auth handshake as SYSTEM).
+- Unquoted service path where no prefix-hijackable directory is writable.
+- AlwaysInstallElevated set but msiexec policy-restricted.
+- UAC 'bypass' that still prompts on the target build (build-specific behavior).
+
+## Cross-routing
+
+- Load hunt-ad when the escalation path crosses the domain boundary.
+- Load hunt-pwn for memory-corruption local privesc primitives.
+- Not this skill: macOS endpoints (hunt-macos).
 
 ## Severity
 

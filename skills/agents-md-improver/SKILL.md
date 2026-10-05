@@ -1,6 +1,6 @@
 ---
 name: agents-md-improver
-description: Offline reviewer for AGENTS.md - scan for AGENTS.md files, score quality against templates, report, then apply targeted updates on approval. Invoke explicitly (/agents-md-improver) when the plugin is unavailable.
+description: Offline reviewer for AGENTS.md quality against house templates. Use when an AGENTS.md needs review or targeted updates on approval; invoke explicitly (/agents-md-improver) when the plugin is unavailable.
 disable-model-invocation: true
 tools: Read, Glob, Grep, Bash, Edit
 ---

@@ -1,6 +1,6 @@
 ---
 name: hunt-xss
-description: XSS hunting - reflected, stored, DOM-based. Marker discipline to avoid false positives. Blind-XSS beacons for stored contexts. SVG/markdown/redirect vectors. Wiki-first, FIND schema output.
+description: XSS hunting - reflected, stored, DOM-based. Marker discipline to avoid false positives. Blind-XSS beacons for stored contexts. SVG/markdown/redirect vectors. Wiki-first, FIND schema output. Use when reflected/stored input or a DOM sink appears.
 ---
 
 # Hunt: XSS
@@ -77,6 +77,9 @@ eval(  $.html(  $(location  document.referrer
 2. Classify: Reflected / Stored / DOM. Input in a `#fragment` that never appears in the
    Network tab is DOM (client-side only); markup absent from View-Source but present in the
    live Inspector was written by JS after page load. Re-fires after refresh = stored.
+   Browser-run discipline for the DOM leg: console capture before first navigation;
+   networkidle before DOM inspection; console snapshot beside the screenshot into `poc/`
+   (console artifacts are client data: they live only under `targets/<eng>/poc/`).
 3. Probe sanitizer: send `aaa"bbb'ccc<ddd` - observe which chars escaped
 4. Test allowlisted tag combos: `<math><style>`, `<svg><style>`, `<iframe srcdoc>`
 5. Hunt SVG upload vectors - often bypasses CSP
@@ -117,6 +120,32 @@ aaa"bbb'ccc<ddd>eee`fff
 <!-- Markdown -->
 [Click](javascript:alert(document.domain))
 ```
+
+## Validation
+
+- Proof = execution in a real browser (`alert(window.origin)` names the executing
+  origin), or a blind beacon whose `oob.md` row flipped to HIT. DOM claims need the sink
+  observed in the live Inspector (post-load), not view-source.
+- Counterevidence to seek: the deployed CSP (enforced vs report-only), and the sink's
+  context on OTHER origins that embed the content.
+
+## False Positives
+
+- Encoded reflection (`&lt;script&gt;` in the body): the encoder IS the control;
+  name it (which encoder, at which response point) when deadending.
+- Self-XSS with no chain (no second victim).
+- Markdown rendered through an escaping renderer: probe `aaa"bbb'ccc<ddd` FIRST.
+- Reflection in a JSON response with a JSON Content-Type never rendered.
+- CSP report-only misread as enforced, or enforced misread as report-only (read the
+  header directive).
+
+## Cross-routing
+
+- Load hunt-upload for SVG/file-borne payload delivery.
+- Load hunt-cache / hunt-smuggling when the payload needs a poisoned or desynced
+  response to reach the victim.
+- Load hunt-llm when the sink renders model output (markdown render of LLM content).
+- Not this skill: stored-but-always-escaped fields (deadend with the control named).
 
 ## Severity
 

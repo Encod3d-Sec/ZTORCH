@@ -1,6 +1,6 @@
 ---
 name: hunt-burp
-description: Drive Burp Suite over its MCP server - triage proxy history, replay via Repeater, OOB-gate blind bugs with Collaborator, fuzz via Intruder, then hand off to the matching hunt. Use when Burp runs with the MCP Server BApp.
+description: Drive Burp Suite over its MCP server (proxy-history triage, Repeater replay, Collaborator OOB gates, Intruder fuzzing) with hand-off to the matching hunt. Use when Burp runs with the MCP Server BApp.
 ---
 
 # Hunt: Burp Suite via MCP

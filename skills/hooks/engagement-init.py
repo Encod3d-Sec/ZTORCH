@@ -81,6 +81,33 @@ def self_heal_board():
         return False
 
 
+def self_heal_facts(d=None):
+    """Append the ## Facts header to the active engagement's state.md when
+    missing (cyberstrikeai L3): existing engagements predate the section.
+    d defaults to the active engagement dir; tests pass an explicit path."""
+    if not d:
+        try:
+            import _engagement
+            d = _engagement.active_dir()
+        except Exception:
+            return
+    if not d:
+        return
+    p = os.path.join(d, "state.md")
+    if not os.path.isfile(p):
+        return
+    text = open(p, encoding="utf-8", errors="ignore").read()
+    if "## Facts" in text:
+        return
+    block = ("\n## Facts\n\n"
+             "One line per fact: key | confidence | summary. Negative results are facts.\n\n"
+             "| key | conf | summary |\n|---|---|---|\n")
+    if text and not text.endswith("\n"):
+        text += "\n"
+    with open(p, "a", encoding="utf-8") as fh:
+        fh.write(block)
+
+
 def regen_index():
     """Keep wiki/index.md current (writes only when stale; no churn when fresh)."""
     _run_script("gen_index.py", timeout=30)
@@ -345,7 +372,24 @@ def _compact_restore():
             lanes = lane_validate.lane_lines(d)
         except Exception:
             lanes = []
-        if not rows and not lm and not lanes:
+        # OOB sinks ride the re-inject verbatim (pentagi short_execution_context: callback
+        # values are the one thing a compaction must not paraphrase away). waiting/HIT rows
+        # only; actioned/expired already landed in findings.
+        try:
+            oob_lines = []
+            ot = os.path.join(d, "oob.md")
+            if os.path.isfile(ot):
+                for ln in open(ot, encoding="utf-8", errors="ignore").read().splitlines():
+                    cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+                    if len(cells) >= 5 and cells[0] and cells[0] != "token" \
+                            and cells[4].lower() in ("waiting", "hit"):
+                        oob_lines.append("OOB sink (verbatim): %s -> %s [%s]"
+                                         % (cells[0], cells[1], cells[4]))
+            if oob_lines:
+                oob_lines.insert(0, "OOB sinks (do NOT paraphrase tokens or sink hosts):")
+        except Exception:
+            oob_lines = []
+        if not rows and not lm and not lanes and not oob_lines:
             return None
         head = ("restored post-compact (Approach.md open rows, verbatim; re-run "
                 "`offensive.py next` before acting):\n")
@@ -353,6 +397,8 @@ def _compact_restore():
         if lanes:
             body += "\nopen delegate lanes (log.md 'in flight'; resume via handle or "
             body += "close the line):\n" + "\n".join(lanes)
+        if oob_lines:
+            body += "\n" + "\n".join(oob_lines)
         return body
     except Exception:
         return None
@@ -407,6 +453,11 @@ def main():
         if self_heal_board():
             out.append("Self-heal: Approach.md board was empty - ran `offensive.py board` to "
                        "populate it.")
+    except Exception:
+        pass
+
+    try:
+        self_heal_facts()
     except Exception:
         pass
 

@@ -1,6 +1,6 @@
 ---
 name: hunt-macos
-description: macOS hunting, foothold to root/persistence - TCC/Gatekeeper/SIP bypass, keychain + credential loot, code-signing/entitlement abuse, XPC/dylib injection, launch-constraint evasion, MDM/installer abuse. Wiki-first, FIND output.
+description: macOS hunting, foothold to root/persistence - TCC/Gatekeeper/SIP bypass, keychain + credential loot, code-signing/entitlement abuse, XPC/dylib injection, launch-constraint evasion, MDM/installer abuse. Wiki-first, FIND output. Use when the foothold is a macOS host (TCC/keychain/XPC/MDM surfaces).
 ---
 
 # Hunt: macOS
@@ -109,6 +109,26 @@ protected resource (contacts/photos/full-disk/camera) actually read; SIP-protect
 *ran* past it; an injected dylib/thread executing inside the privileged/entitled process and
 exercising its rights; a `.pkg` postinstall or XPC call yielding a root-context action you performed -
 each re-verified in a clean session and reproduced from your own written steps.
+
+## Validation
+
+- Proof = the protected asset actually read (or the binary run) with the TCC prompt
+  NOT appearing, captured twice; or exec of unsigned code through the abused mechanism
+  with `id` output proving the context.
+- Negative control: a normal app performing the same read DOES prompt.
+
+## False Positives
+
+- Prompt suppressed by MDM configuration profile (documented policy, not a bypass).
+- DYLD_* stripped: hardened runtime doing exactly its job.
+- Quarantine attribute absent because an admin tool downloaded the file.
+- LaunchAgent writable but load requires root (write is not load).
+
+## Cross-routing
+
+- Load hunt-secrets for keychain/cred harvesting post-access.
+- Load hunt-pwn for memory-corruption natives on Apple platforms.
+- Not this skill: iOS/iPadOS surfaces (different TCC model, different skill scope).
 
 ## Severity
 

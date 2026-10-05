@@ -1,6 +1,6 @@
 ---
 name: hunt-mcp
-description: MCP server attack hunting - tool poisoning, indirect prompt injection via tool output, rug-pull updates, cross-tool shadowing, over-permissioned/excessive-agency tools, lethal trifecta. Wiki-first, FIND schema output.
+description: MCP server attack hunting - tool poisoning, indirect prompt injection via tool output, rug-pull updates, cross-tool shadowing, over-permissioned/excessive-agency tools, lethal trifecta. Wiki-first, FIND schema output. Use when the target exposes an MCP server or tool output flows into a model.
 ---
 
 # Hunt: MCP Server Attacks
@@ -93,6 +93,26 @@ skims past: `<IMPORTANT>`/comment blocks, zero-width or unicode-tag characters, 
 instructions split across several tools' descriptions, and payloads in parameter descriptions rather
 than the top-level docstring. Against approval flows, the rug-pull *is* the evasion: ship benign,
 mutate after the human clicks approve.
+
+## Validation
+
+- Proof = a tool executed with an effect OUTSIDE the session: file written, request
+  sent, OOB hit, or a SECOND session reading the poisoned state. Injection claims need
+  the malicious resource content shown AND the induced tool call quoted.
+
+## False Positives
+
+- Tools listed in a manifest that require per-call user consent.
+- 'No auth' server bound to localhost only (local trust boundary holds).
+- Tool descriptions containing injection-looking text: that is documentation.
+- Rug-pull detector firing on benign version bumps (diff the tool list).
+
+## Cross-routing
+
+- Load hunt-llm for the model-side guard bypass half of an indirect injection.
+- Load hunt-api for transport/endpoint abuse of the MCP server itself.
+- Load hunt-secrets for tokens leaking through logs or telemetry.
+- Not this skill: pure model jailbreaks with no tool layer (hunt-llm).
 
 ## Severity
 

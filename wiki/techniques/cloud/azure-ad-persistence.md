@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, azure, cloud, persistence, reference-import]
 phase: post-exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Azure AD - Persistence
@@ -111,6 +111,17 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 ## Tools
 
 Tool references are inline in **Methodology**; see the `tools/` pages for CLI usage.
+
+## elevateAccess root assignment outlives PIM deactivation
+
+`Microsoft.Authorization/elevateAccess/action` (Global Administrator crossing into Azure ARM)
+grants User Access Administrator at the root scope `/`. That root-scope assignment persists after
+PIM deactivation until it is explicitly removed. During review, check for standing root-scope
+role assignments left behind by past elevations, not just current PIM state.
+
+PIM eligible assignments are a user-centric control: service principals and managed identities
+hold standing or time-bounded active assignments instead, so "not PIM-eligible" proves nothing
+about a workload identity's reach.
 
 ## Sources
 

@@ -1,11 +1,12 @@
 {
-  "_doc": "Small-indicator battery table. Single source of truth for regex tells (small strings that instantly signal a vuln class). Add a row when you learn one (engagement close-out, research ingest); keep patterns HIGH-PRECISION (a noisy tell trains the eye to ignore the battery). class/skill route the hit; note says what to read next.",
+  "_doc": "Small-indicator battery table. Single source of truth for regex tells (small strings that instantly signal a vuln class). Add a row when you learn one (engagement close-out, research ingest); keep patterns HIGH-PRECISION (a noisy tell trains the eye to ignore the battery). class/skill route the hit; note says what to read next. Optional \"message\" per row: rendered reminder with {match}/{tool}/{rule} placeholders (falls back to note).",
   "tells": [
     {
       "re": "dangerouslySetInnerHTML|\\bv-html\\b|innerHTML\\s*=|outerHTML\\s*=|document\\.write\\(|insertAdjacentHTML",
       "class": "xss",
       "skill": "hunt-xss",
-      "note": "raw-HTML sink; read the render block + trace what feeds it"
+      "note": "raw-HTML sink; read the render block + trace what feeds it",
+      "message": "raw-HTML sink ({match}) - read the render block; see rule {rule}"
     },
     {
       "re": "\\beval\\(|new Function\\(|setTimeout\\(\\s*['\"]|setInterval\\(\\s*['\"]",
@@ -535,6 +536,20 @@
       "class": "recon",
       "skill": "",
       "note": "container-indicator; escape surface = capabilities, mounts, socket (wiki: container-escape)"
+    },
+    {
+      "re": "window\\.(BaseUrl|API_URL)\\s*=|baseUrl['\"]?\\s*[:=]\\s*['\"]https?://",
+      "class": "vendor-shell",
+      "skill": "",
+      "note": "API base pointing off-target: check the domain against engagement scope BEFORE testing the host; whitelabel/vendor base = vendor shell (static for our purposes, Fjord-owned-style test fails), do not burn lanes on it",
+      "prio": 2
+    },
+    {
+      "re": "(?:<hr><center>\\w+/\\d|Ray ID: [0-9a-f]{8,}|[Vv]arnish (?:cache server|guru meditation)|upstream connect error|[Bb]ad [Rr]equest.{0,120}requires TLS)",
+      "class": "smuggling",
+      "skill": "hunt-smuggling",
+      "note": "proxy/edge error page: infrastructure (not the app) parsed and rejected the request, so a SECOND parser sits on the path; note which component answered, then diff its parsing vs the backend (CL.TE / TE.CL, path normalization, header casing) -> Skill(hunt-smuggling); empty 200 through the same edge = keep both parsers in mind, not clean",
+      "prio": 2
     }
   ]
 }

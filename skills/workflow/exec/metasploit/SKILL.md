@@ -1,6 +1,6 @@
 ---
 name: metasploit
-description: Drive msfconsole end to end - DB-backed recon, version->exploit search/check/run, multi/handler reverse shells (meterpreter-first), post-exploit, pivoting. Use for "metasploit", "msfconsole", "msfvenom", "meterpreter", "multi/handler".
+description: Drive msfconsole end to end (DB-backed recon, version-to-exploit search, multi/handler reverse shells meterpreter-first, post-exploit, pivoting). Use for "metasploit", "msfconsole", "msfvenom", "meterpreter", "multi/handler".
 ---
 
 # Metasploit: framework driver

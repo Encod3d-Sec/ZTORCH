@@ -92,6 +92,38 @@ Client retry ladder (what the host does to OUR MCP servers when they misbehave):
   description or AGENTS.md mid-engagement busts a ~20-70k-token prefix for a one-line
   change. Batch such edits between sessions, not during one.
 
+Caller-side cooldown + quarantine (our discipline when a foreign MCP server misbehaves):
+- Dispatch order: a failing server gets at most 4 tools tried before the fallback path
+  (deterministic CLI / direct API) takes over for the rest of the task; do not walk the
+  whole tool list against a dead server.
+- 3 consecutive dead calls (timeout/reset/refused) = quarantine that server for the
+  session: stop calling it, note the quarantine in `session/hot.md` (one line), route
+  around it. Re-probe at most once per cooldown window.
+- Cooldown is exponential per server: 1 min, 2, 4 ... capped at 15 min, with jitter;
+  a successful call resets it.
+- Auth/permission errors (401/403, needs-auth, scope refusal) are NEVER retried in-task:
+  they need an operator action (login, key, consent), so surface the ask and switch
+  lanes. Retrying burns the same failure.
+- Cap concurrent calls to any one MCP server at 4; queue the rest. A fan-out against a
+  local bridge (zg/qmd) just multiplies the timeout.
+
+---
+
+## Third-party skill intake (hard rule)
+
+Before registering ANY third-party skill (plugin cache, marketplace, git clone) into
+`skills/` or linking it from `~/.claude/skills`, scan it first:
+
+```bash
+skillspector scan <skill-dir> --no-llm        # vet before trusting
+bash scripts/skill-scan.sh --root <parent-dir>   # whole third-party tree at once
+```
+
+HIGH/CRITICAL (injection, exfil, unpinned fetch) = do not register; read the flagged
+lines yourself before overriding. First-party vault skills are swept against the
+baseline by `bash scripts/skill-scan.sh` (incremental; `offensive-doctor` runs it as an
+advisory check). Details: `wiki/tools/skillspector.md`.
+
 ---
 
 ## Third-party skill intake (hard rule)
@@ -182,3 +214,22 @@ done
 |--------|--------|
 | obsidian-vault MCP | Requires Obsidian running; replaced by direct Read tool |
 | context7 (was crashing) | Fixed via lock cleanup above; now re-enabled |
+
+## Skill authoring (house rules)
+
+- Baseline-first pressure testing: run the pressure scenario WITHOUT the skill and
+  record the model's rationalizations verbatim (that is the RED); write the minimal
+  counter (GREEN); close the loopholes the run exposed. A skill edit without a recorded
+  baseline is a vibes edit.
+- Recipe over prohibition: prohibitions for discipline slips (skipped steps), positive
+  recipes for wrong-shaped output; prohibition wording measurably backfires on shape
+  problems.
+- Behavior, never text: tests assert a blocked call or a fired skill, not that a file
+  contains a line.
+- Invoke shell scripts as `bash scripts/...` (exec bits unreliable on the NTFS vault).
+- Plans under `docs/superpowers/plans/` carry a `## Review Focus` block: up to five
+  failure modes the design implies but no planned test exercises, one line each, each
+  pinned by a test in the owning task.
+- Two measured findings worth trusting: decision-only plans cost about 3x less than
+  code-writing plans at equal outcomes; persuasion prose degrades unless its content
+  lands at the point of use (rationalization-table rows, not essay paragraphs).

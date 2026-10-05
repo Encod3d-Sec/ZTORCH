@@ -3,8 +3,8 @@ title: "Semgrep"
 type: tool
 tags: [static-analysis, sast, cve-research, code-audit, vuln-discovery]
 date_created: 2026-06-16
-date_updated: 2026-06-16
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: enumerate
 ---
 
@@ -60,5 +60,12 @@ rules:
 
 ## Related techniques
 [[static-code-analysis]], [[secret-hunting]], plus the matching vuln-class pages ([[os-command-injection]], [[sql-injection]], [[ssti]]). Deeper dataflow -> [[codeql]]. Drives the source-audit path of the `research` skill.
+
+## Agent discipline
+
+`--metrics=off` plus an explicit `--config` and an explicit target path every time
+(`auto` and `--metrics=off` are mutually exclusive in some versions; pick one).
+Scanner chaining order and the AST-tool feed: [[static-code-analysis]]. Full per-tool
+agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).
 
 ## Sources

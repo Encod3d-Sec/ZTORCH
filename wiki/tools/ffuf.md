@@ -3,8 +3,8 @@ title: "FFuf"
 type: tool
 tags: [enumeration, htb, recon, thm, tool, web]
 date_created: 2026-05-08
-date_updated: 2026-05-08
-sources: [cpts-ffuf, thm-ffuf]
+date_updated: 2026-10-05
+sources: [cpts-ffuf, thm-ffuf, github-usestrix-strix]
 phase: enumerate
 ---
 
@@ -293,3 +293,10 @@ ffuf -w /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.3-m
 - Combine freely: `-fs` to drop the baseline plus `-mr` to keep only marker hits.
 
 <!-- promoted-slug: ffuf-response-filtering-matching -->
+
+## Agent discipline
+
+In agent/CI runs always add `-noninteractive`: the interactive console swallows the next
+piped shell command. Write results with `-o hits.json -of json` instead of scraping live
+stdout, and narrow with `-mc`/`-fc`/`-fs` filters before touching `-t`/`-rate`. Full
+per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).

@@ -192,3 +192,18 @@ def test_coverage_type_alias_and_deadend_credit(tmp_path, capsys):
     line = [l for l in out.splitlines() if l.strip().startswith("web1")][0]
     assert "smuggling" not in line            # deadend credit cleared the driver spelling
     assert "request-smuggling" not in line    # ...and the JSON spelling
+
+
+def test_collect_rulings(tmp_path):
+    import offensive
+    log = tmp_path / "log.md"
+    log.write_text(
+        "[laneA] tool ffuf ok\n"
+        "Ruling: skip staging vhost - VPN-blocked, evidence closed - one lane re-run if access lands\n"
+        "2026-10-05 | scope | note | ok | plain audit line\n",
+        encoding="utf-8",
+    )
+    rulings = offensive.collect_rulings(log)
+    assert len(rulings) == 1
+    assert rulings[0].startswith("Ruling: skip staging")
+    assert offensive.collect_rulings(tmp_path / "nope.md") == []

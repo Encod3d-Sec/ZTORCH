@@ -1,6 +1,6 @@
 ---
 name: kali-seat
-description: WSL/Kali attack-seat procedure - the Windows -> WSL -> VMware VM chain, vm.sh rules, tmux-on-VM convention. Use for "kali seat", "the VM", "work from WSL", or before any offensive command against an in-scope target.
+description: WSL/Kali attack-seat procedure - the Windows-to-WSL-to-VMware VM chain, vm.sh rules, tmux-on-VM convention. Use for "kali seat", "the VM", "work from WSL", or before any offensive command against an in-scope target.
 ---
 
 # Kali seat: Windows host -> WSL kali -> VMware Kali VM

@@ -116,6 +116,26 @@ def leak_check(body, vault, source_eng=""):
             pass
 
 
+_IP_RE = re.compile(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b")
+_DOC_NETS = ("192.0.2.", "198.51.100.", "203.0.113.")
+
+
+def placeholder_check(body):
+    """Refuse raw engagement IPs the leak gate cannot see (client markers only). Doc ranges
+    (RFC 5737, loopback, link-local) and values already inside {placeholders} pass."""
+    for m in _IP_RE.finditer(body):
+        ip = m.group(1)
+        pre = body[max(0, m.start() - 1):m.start()]
+        if pre == "{":
+            continue
+        if ip == "127.0.0.1" or ip == "0.0.0.0" or ip.startswith("169.254.") \
+                or ip.startswith(_DOC_NETS):
+            continue
+        return False, ("raw IP %s outside doc ranges/{}placeholders - anonymize to "
+                       "{target_ip}/{victim_ip} (learn phase 3 protocol)" % ip)
+    return True, ""
+
+
 def resolve_target(vault, target_rel):
     """(target_path, ok). Resolves target_rel under wiki/ and refuses any escape
     (../ segments or an absolute path) BEFORE the caller does any read/write of it."""
@@ -279,6 +299,10 @@ def promote_one(path, fm, body, inbox, vault):
         print("  %s: LEAK-GATE REFUSED (not written to wiki):" % slug)
         for line in report.splitlines():
             print("    " + line)
+        return "refused"
+    okp, pmsg = placeholder_check(body)
+    if not okp:
+        print(f"REFUSED {os.path.basename(path)}: {pmsg}")
         return "refused"
     if kind in ("default-cred", "api-pattern"):
         row = _row_of(body)

@@ -27,8 +27,66 @@ def test_delegate_envelope_and_read_first():
     assert "cat each file in full, zg/grep only to locate" in t
 
 
+def test_dispatch_hygiene_tokens():
+    for path in (BRAIN, DELEGATE):
+        t = path.read_text(encoding="utf-8")
+        for token in (
+            "15 lines or fewer",
+            "never spawns its own subagent",
+            "model:",
+            "cost metric is turn count",
+            "one brief enumerating every item",
+            "a listed item with no capture is a Missing finding",
+        ):
+            assert token in t, (path.name, token)
+
+
+def test_verifier_contract_tokens():
+    t = DELEGATE.read_text(encoding="utf-8")
+    for token in (
+        "read ONLY the package file",
+        "NOT CONFIRMED",
+        "UNVERIFIABLE",
+        "would this pass on a wrong result",
+        "attempted is not addressed",
+    ):
+        assert token in t, token
+    b = BRAIN.read_text(encoding="utf-8")
+    assert "package file only" in b
+
+
+def test_supervision_tokens():
+    t = BRAIN.read_text(encoding="utf-8")
+    assert "no rows is not a scan" in t
+    assert "finished without reporting" in t
+    assert "never poll" not in t.replace("never poll a running lane", "")
+
+
+def test_browser_evidence_tokens():
+    for path in (
+        VT / "skills" / "workflow" / "env" / "chrome-devtools-browser" / "SKILL.md",
+        VT / "skills" / "hunt" / "hunt-xss" / "SKILL.md",
+    ):
+        t = path.read_text(encoding="utf-8").lower()
+        assert "console listener" in t or "console capture" in t, path
+        assert "networkidle" in t, path
+
+
+def test_review_focus_and_harness_stops():
+    hc = (VT / "skills" / "hunt" / "hunt-core" / "SKILL.md").read_text(encoding="utf-8")
+    assert "no board row exercises" in hc
+    ag = (VT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "architecture stop" in ag
+    assert "component boundaries" in ag
+
+
 if __name__ == "__main__":
     test_brain_fleet_rules()
     test_brain_return_envelope()
     test_delegate_envelope_and_read_first()
+    test_dispatch_hygiene_tokens()
+    test_verifier_contract_tokens()
+    test_supervision_tokens()
+    test_browser_evidence_tokens()
+    test_review_focus_and_harness_stops()
     print("test_lane_contract: OK")

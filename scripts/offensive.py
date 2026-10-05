@@ -247,9 +247,41 @@ def _fmt_row(r):
 _BOARD_RE = re.compile(r"(^\|\s*id\s*\|[^\n]*\n)(\|[-:| ]+\|[^\n]*\n)?((?:\|[^\n]*\n?)*)", re.M)
 
 
-def write_board(eng, rows):
+_PROV_RE = re.compile(r"<!-- provenance.*?-->\n*", re.S)
+
+
+def _provenance_block(merged=0):
+    """HTML-comment provenance header for Approach.md (cyberstrikeai L8):
+    Obsidian rendering unaffected; consumed by close-out as a review checklist.
+    needs-review flips true only when hand-edited rows were preserved (the G4
+    zombie path), i.e. a human/agent touched the board outside the script.
+    Once true the flag carries forward through merged=0 writes until
+    acknowledged (decisions.md 'approach reviewed' line silences the advisory)."""
+    warn = ("hand-edited board rows merged; review before close-out" if merged
+            else "none")
+    return ("<!-- provenance\n"
+            "generator: offensive.py board\n"
+            "assumptions: %d hand-edited row(s) preserved verbatim\n"
+            "risk-warnings: %s\n"
+            "needs-review: %s\n"
+            "-->\n" % (merged, warn, "true" if merged else "false"))
+
+
+def _apply_provenance(text, merged=0):
+    """Regenerate the provenance block; a prior needs-review: true carries
+    forward (routine merged=0 writes must not silently clear the flag)."""
+    prior = _PROV_RE.search(text)
+    block = _provenance_block(merged)
+    if prior and "needs-review: true" in prior.group(0):
+        block = block.replace("needs-review: false", "needs-review: true", 1)
+    return block + _PROV_RE.sub("", text, count=1).lstrip("\n")
+
+
+def write_board(eng, rows, merged=0):
     """Replace the 4a table body with `rows`, preserving the rest of Approach.md.
-    Creates Approach.md (and a 4a section) if absent."""
+    Creates Approach.md (and a 4a section) if absent. Prepends the provenance
+    block (replacing any prior one); `merged` is cmd_board's G4 zombie count so
+    park/done writes through this chokepoint carry needs-review too."""
     p = Path(eng) / "Approach.md"
     text = p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
     header = "| " + " | ".join(BOARD_COLS) + " |\n"
@@ -261,7 +293,7 @@ def write_board(eng, rows):
     else:
         base = text.rstrip() + "\n\n" if text.strip() else "# Approach\n\n"
         new = base + "### 4a. Coverage matrix\n\n" + header + sep + body
-    p.write_text(new, encoding="utf-8")
+    p.write_text(_apply_provenance(new, merged=merged), encoding="utf-8")
 
 
 def _class_info(index):
@@ -395,6 +427,7 @@ def cmd_board(args):
 
     existing = read_board(eng)
     dead = _deadend_pairs(eng)
+    merged = 0
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())
@@ -402,6 +435,7 @@ def cmd_board(args):
         if zombie:
             existing = [r for r in existing if not (_status_of(r) in ("[ ]", "[~]")
                                                     and _low(r) in dead)]
+            merged = len(zombie)
             print("G4: dropped %d open row(s) matching a Deadends.md pair (status cell "
                   "hand-edited back?) - suppressed: %s"
                   % (len(zombie), ", ".join((r.get("id") or "?") for r in zombie)))
@@ -420,7 +454,7 @@ def cmd_board(args):
         rows.append(dict(id="4a:%d" % nid, **row))
         _stamp_row_opened(state, row["asset"], row["vuln class"])
         added += 1
-    write_board(eng, rows)
+    write_board(eng, rows, merged=merged)
     if added:
         _save_state(eng, state)
     # drain AFTER derive_rows: it parses state.md/Deadends.md too, and a warning
@@ -564,6 +598,28 @@ def read_board_4b(eng):
     text = p.read_text(encoding="utf-8", errors="ignore")
     idx = text.find("### 4b")
     return _parse_table_text(text[idx:]) if idx >= 0 else []
+
+
+def changelog_pending(eng):
+    """(unverified_count, [row summaries]) from targets/<eng>/changelog.md.
+    Data rows whose `verified` cell is empty are cleanup debt: written on a
+    compromised host, rollback not yet confirmed run. (0, []) when absent."""
+    p = os.path.join(str(eng), "changelog.md")
+    if not os.path.isfile(p):
+        return 0, []
+    rows, out = [], []
+    for line in open(p, encoding="utf-8", errors="ignore"):
+        s = line.strip()
+        if not s.startswith("|") or set(s) <= {"|", "-", " ", ":"}:
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 8 or cells[0] in ("#", ""):
+            continue
+        rows.append(cells)
+    for c in rows:
+        if not c[7]:
+            out.append("#%s %s %s %s" % (c[0], c[2], c[3], c[4]))
+    return len(out), out
 
 
 def write_board_4b(eng, rows):
@@ -786,6 +842,31 @@ def _find_row_any(eng, rid):
 def _append_line(path, line):
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(line.rstrip() + "\n")
+
+
+def _append_table_row(path, line):
+    """Append a row INSIDE the file's first markdown table, not at EOF: every
+    machine consumer (_parse_table twins, G4, the close-out lints) reads only
+    the FIRST table block, and a template-shaped Deadends.md carries a
+    `## False positives` section after it - a row appended at EOF is invisible
+    to all of them. No pipe block in the file yet -> plain append (creates it)."""
+    p = Path(path)
+    try:
+        lines = p.read_text(encoding="utf-8").split("\n")
+    except OSError:
+        _append_line(p, line)
+        return
+    end = None
+    for i, ln in enumerate(lines):
+        if ln.strip().startswith("|"):
+            end = i + 1          # still inside the first contiguous pipe block
+        elif end is not None:
+            break                # block ended: the insert position is fixed
+    if end is None:
+        _append_line(p, line)    # no table yet: keep the create/append behavior
+        return
+    lines.insert(end, line.rstrip())
+    p.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _open_assets(rows):
@@ -1194,6 +1275,40 @@ def cmd_next(args):
     return 0
 
 
+def cmd_plan(args):
+    """Dry-run of next: the ranked candidate moves as numbered steps with the
+    gate made explicit (cyberstrikeai L8). Writes NOTHING - no cursor advance,
+    no gate state, no board edit. Note: candidates come from next_move.py,
+    which reads the ACTIVE engagement (targets/active.md)."""
+    import subprocess
+    eng = _resolve_eng(args.eng)
+    if eng is None or not eng.is_dir():
+        print("error: --eng <name|path> required for `plan`")
+        return 2
+    here = Path(__file__).resolve().parent
+    cmd = [sys.executable, str(here / "next_move.py")]
+    if getattr(args, "all", False):
+        cmd.append("-v")
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except Exception as e:
+        print("plan: next_move.py failed (%s)" % e, file=sys.stderr)
+        return 1
+    print("plan (%s): dry-run of next; nothing is written, the board stays "
+          "authoritative." % eng.name)
+    n = 0
+    for ln in (r.stdout or "").splitlines():
+        m = re.match(r"\s*\d+\.\s+(.+)", ln)
+        if not m:
+            continue
+        text = m.group(1).strip()
+        n += 1
+        print(" %d. %s - gate: %s" % (n, text, "oob" if "OOB-gate" in text else "none"))
+    if n == 0:
+        print(" no candidate moves (empty board or no open rows).")
+    return 0
+
+
 # --------------------------------------------------------------------------- note / done / park (record + gates)
 #
 # `next` withholds; these RECORD the outcome and enforce the evidence gates.
@@ -1443,8 +1558,9 @@ def cmd_done(args):
         row["status"] = "[!]"
         writer(eng, rows)
         reason = args.dead if isinstance(args.dead, str) else "exhausted"
-        _append_line(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | |"
-                     % (row.get("asset") or "", cls, reason, _today()))
+        _append_table_row(eng / "Deadends.md", "| %s | %s | %s | exhausted | %s | | %s |"
+                          % (row.get("asset") or "", cls, reason, _today(),
+                             args.fail_class or ""))
         # WALL-BREAK feed: a no-find outcome bumps the dry streak (next fires
         # Skill(redteamlead) once it hits the type threshold). An administrative
         # close (reason N/A) is not a no-find signal - skip it (B4).
@@ -1569,6 +1685,16 @@ def cmd_coverage(args):
     return 0
 
 
+def collect_rulings(log_path):
+    """Every `Ruling:` line from the engagement log; a ruling that dies in a
+    lane transcript was a decision made in secret."""
+    try:
+        lines = Path(log_path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return [l.strip() for l in lines if "Ruling:" in l]
+
+
 def cmd_closeout(args):
     """Print the per-type close-out chain (Skill names, in order) for the
     engagement. G7: no question, just the ordered chain."""
@@ -1580,6 +1706,17 @@ def cmd_closeout(args):
     print("closeout chain (%s), run in order:" % etype)
     for i, s in enumerate(chain, 1):
         print("  %d. Skill(%s)" % (i, s))
+    rulings = collect_rulings(eng / "log.md")
+    if rulings:
+        print("\nrulings from this engagement (%d):" % len(rulings))
+        for r in rulings:
+            print("  " + r)
+    n, rows = changelog_pending(eng)
+    if n:
+        print("CLEANUP UNCONFIRMED - %d changelog rows lack verified rollback" % n)
+        for r in rows:
+            print("  - %s" % r)
+        print("close-out may proceed; clear the verified column or record why not.")
     return 0
 
 
@@ -1715,6 +1852,9 @@ def main(argv=None):
     p_next.add_argument("--json", action="store_true",
                         help="machine-readable cursor+gate payload (brain lanes / steering)")
     p_next.set_defaults(fn=cmd_next)
+    p_plan = sub.add_parser("plan", help="dry-run of next: top-N candidate moves, writes nothing")
+    p_plan.add_argument("--all", action="store_true", help="every open row's candidate, not the top 5")
+    p_plan.set_defaults(fn=cmd_plan)
     sub.add_parser("coverage", help="per-asset untested vuln-class gaps (no [x] row)").set_defaults(fn=cmd_coverage)
     sub.add_parser("closeout", help="print the per-type close-out Skill chain").set_defaults(fn=cmd_closeout)
 
@@ -1732,6 +1872,9 @@ def main(argv=None):
     p_done.add_argument("--dead", nargs="?", const="exhausted",
                         help="mark the row [!] exhausted (optional reason)")
     p_done.add_argument("--park", help="defer the row [?] with a decision note (G7 no-ask)")
+    p_done.add_argument("--fail-class", choices=("technical", "environmental",
+                                                 "conceptual", "external"), default="",
+                        help="with --dead: type the exhaustion (close-out drift-count)")
     p_done.add_argument("--skill", help="G2 override: the skill that actually fired")
     p_done.add_argument("--win", help="tmux window: also record a foothold on this "
                         "row's asset + seed the 4b post-ex board")

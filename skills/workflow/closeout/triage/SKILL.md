@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Finding validation gate - 7-Question triage adapted for FIND schema. Run before moving any FIND from Research to Completed. One NO = keep in Research. All YES = move to Completed, then run /evidence.
+description: Finding validation gate - 7-Question triage adapted for the FIND schema. Use before any FIND moves from Research to Completed; one NO keeps it in Research.
 ---
 
 # Triage: Finding Validation Gate
@@ -50,6 +50,14 @@ If you CANNOT write the Request line as a real reproducing command -> keep in Re
 - SQLi -> show actual data extracted from a real table
 - IDOR -> show actual other-user data in response body, not just 200 status
 
+**Authz gate (two-account, hard):** an access-control finding is proven ONLY by the
+OTHER account's data appearing in your response. An empty 200 is NOT access (the server
+may null-fill or silently drop); a 200 echoing your own request is your own data. Run
+the pair: embed a unique canary as account A, request it as account B; B sees the canary
+= proven. No second account available -> ask the operator for a second address (or a
+test-pair provision) BEFORE downgrading or deadending the finding; "could not test
+cross-account" is an unresolved row, not a negative.
+
 ### Q7: Not on the Never-Promote list?
 Never promote to Completed without a chain:
 ```
@@ -79,6 +87,8 @@ A "primitive confirmed" != exploitable. Downgrade until the gate is bypassed.
 
 | Result | Action |
 |--------|--------|
-| All 7 YES + Pre-Severity Gate clean | Move FIND to Vulns/Completed/. Update status in Vuln-index.md. Run `python3 scripts/find-lint.py` and fix any gaps (Description/PoC/Impact/Remediation + CVSS for HIGH/CRITICAL) so it is report-ready. Then run /evidence. |
+| All 7 YES + Pre-Severity Gate clean | Move FIND to Vulns/Completed/ with frontmatter status CONFIRMED or EXPLOITED (DETECTED alone stays in Research). Update status in Vuln-index.md. Run `python3 scripts/find-lint.py` and fix any gaps (Description/PoC/Impact/Remediation + CVSS for HIGH/CRITICAL) so it is report-ready. Then run /evidence. |
 | Any NO | Keep in Vulns/Research/. Update status to PARTIAL (reason) in Vuln-index.md. Document what is missing. |
 | Q7 chain required | Move to Vulns/Research/ with note "chain required: [what is needed]". |
+
+A scanner/tool hit without a validated PoC is DETECTED, never Completed; the find-lint gate refuses CONFIRMED/EXPLOITED without a poc/ capture reference.

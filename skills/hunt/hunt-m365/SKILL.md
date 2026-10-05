@@ -1,6 +1,6 @@
 ---
 name: hunt-m365
-description: Microsoft 365 / Entra ID attack - tenant discovery, OneDrive-differential user enum, AADSTS code reference, Smart Lockout math (hard cap 1-2 attempts/user), ROPC validation, Conditional Access mapping. Wiki-first, FIND output.
+description: Microsoft 365 / Entra ID attack - tenant discovery, OneDrive-differential user enum, AADSTS code reference, Smart Lockout math (hard cap 1-2 attempts/user), ROPC validation, Conditional Access mapping. Wiki-first, FIND output. Use when a Microsoft 365 / Entra tenant is in scope.
 ---
 
 # Hunt: M365 / Entra ID
@@ -137,6 +137,29 @@ M365/Entra specific. Adds to the `hunt-core` gate, does not replace it.
 ## Chaining
 
 Confirmed credential + obtained token -> hand off to `hunt-cloud` (Azure / Graph post-auth enumeration) or `hunt-federation` (AiTM / token replay when CA blocks direct ROPC). A Federated namespace (ADFS) -> `hunt-auth` legacy-protocol matrix instead of ROPC.
+
+## Validation
+
+- Proof = a tenant-crossing artifact: data from another tenant, or an OAuth
+  consent/grant visible in the admin/audit surface. AADSTS codes prove REACHABILITY of
+  an endpoint, never access.
+- Counterevidence: tenant restriction banners and Conditional Access blocks that fired
+  mid-flow (read the returned claims, not just the 200).
+
+## False Positives
+
+- AADSTS code read as an auth bypass (they are diagnostics; look up the exact code).
+- OneDrive differential semantics inverted on a tenant config (verify the 403/404 split
+  per tenant before claiming user enumeration).
+- Lockout 'no MFA' claims without the smart-lockout math.
+- Guest invites enabled read as 'open tenant' (still scoped).
+
+## Cross-routing
+
+- Load hunt-federation for the token/assertion mechanics underneath.
+- Load hunt-ad for hybrid identity (AD Connect, sync accounts).
+- Load hunt-cloud for the Azure resource plane under the same tenancy.
+- Not this skill: the app's own OAuth client bugs (hunt-federation).
 
 ## Severity
 

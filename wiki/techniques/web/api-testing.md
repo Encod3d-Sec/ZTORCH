@@ -5,8 +5,8 @@ tags: [api, exploitation, web]
 phase: exploitation
 severity: high
 date_created: 2026-05-13
-date_updated: 2026-05-13
-sources: [git-portswigger-all-labs]
+date_updated: 2026-10-05
+sources: [git-portswigger-all-labs, github-usestrix-strix]
 ---
 
 # API Testing
@@ -523,3 +523,84 @@ Treat the spec only as an endpoint-discovery source. For every endpoint touching
   leftover delete handler) creates false leads; trust the catch-all oracle over the bundle.
 
 <!-- promoted-slug: spa-route-and-catchall-oracle -->
+
+## Spec-first testing
+
+When a spec exists (OpenAPI/Swagger, Postman collection), build the endpoint inventory from
+the spec itself; do not rediscover by crawling. Resolve `$ref`/`allOf` chains first so nested
+schemas are visible, and read auth requirements per OPERATION, not per spec. Then:
+
+- **Baseline the contract before abusing it.** For each endpoint, capture the normal-case
+  request/response pair first; every later abuse probe is compared against that baseline, and
+  the baseline is what makes a subtle differential provable.
+- **Under-documented write siblings.** Probe `PUT`/`DELETE`/`PATCH` (and `POST`) on every
+  documented `GET` path even when the spec omits them; auto-generated specs routinely list the
+  read side only. (The reverse rule from the catch-all oracle above still applies: confirm
+  with a real request, not `OPTIONS`.)
+- **Three spec-parameterized authorization tests**, derived mechanically from the spec:
+  1. BOLA: swap the object id across two accounts you control (same endpoint, account A's
+     token, account B's id).
+  2. BFLA: call an admin-flagged operation with a lower-privilege token from the spec's own
+     auth schemes.
+  3. Token-stripped/expired replay: replay a valid captured request with the credential
+     removed and with a garbage/expired token.
+- **Two accounts beat one**: the canonical proof of a cross-tenant/id confusion is a
+  response containing the OTHER account's data, not an empty 200 or a missing error. With one
+  account only, IDOR coverage is structurally incomplete; say so in the report rather than
+  claiming the class clean.
+- **Postman examples and environment variables are input oracles**: sample values, enum
+  members, and hidden collection variables often name ids, roles, and internal hosts the spec
+  body never mentions.
+- Keep a coverage table (endpoint x auth-context x test) so "tested" means a row exists, not a
+  memory.
+
+## Cross-transport authorization drift (NestJS-shaped, applies anywhere)
+
+Guards, validation, and auth are usually verified on the HTTP path only. When the app also
+speaks WebSockets or message queues, the same handlers can run with none of it:
+
+- **Guard layering is global -> controller -> method.** A missing `@UseGuards` on one
+  controller is found by sibling comparison (why does this one lack what its siblings have?),
+  not by reading each file in isolation.
+- **Single-transport guards fail open** when the handler is invoked over another transport: a
+  guard written for HTTP that simply `return true` for non-HTTP contexts makes every WS/RPC
+  call unauthenticated. Network-reachable Redis/NATS/Kafka turns `@MessagePattern` /
+  `@EventPattern` handlers into remote unauthenticated endpoints; the global `ValidationPipe`
+  is HTTP-only, so those payloads also skip validation.
+- **Reflector key mismatch is silent fail-open**: the guard reads `'roles'` while the
+  decorator sets `'role'`; the lookup returns undefined and the guard's default branch lets
+  the request through.
+- **`whitelist: true` without `forbidNonWhitelisted`** strips unknown properties instead of
+  rejecting, enabling second-order mass assignment: middleware/interceptors that run BEFORE the
+  pipe can persist the stripped-again payload, or the stripped object re-enters through a
+  later write path.
+- **`@ValidateNested` without `@Type(() => Child)` validates nothing** (the nested value is a
+  plain object, not a class instance); schema decorators (Zod/Standard Schema) are unenforced
+  unless a `StandardSchemaValidationPipe` is installed.
+- **qs/nested-operator attacks are gated on the parser actually building nested objects**
+  (`qs` with parsing enabled vs the default querystring); confirm the gate before probing
+  `a[__proto__]` style payloads.
+- **Request-scoped state in a default-singleton provider** (`Scope.REQUEST` overrides aside)
+  leaks across requests: one user's context bleeds into the next request the singleton serves.
+- **Version skew**: after a v2 rollout, v1 routes keep their old (possibly unguarded)
+  registration; probe the old prefix before accepting the new one as the whole surface.
+- Test matrix: route x role x content-type x channel (HTTP vs WS vs queue), asserting auth
+  CONSISTENCY, not just HTTP behavior.
+
+## FastAPI-specific checks
+
+- **`OAuth2PasswordBearer` is a parser, not a validator**: it extracts the bearer token into
+  `Depends` context and nothing more; token PRESENCE is not verification. Check what actually
+  validates the token (and that the dependency is not commented out of the route).
+- **`extra="allow"` Pydantic models are mass-assignment surface**: control fields
+  (`role`, `ownerId`, `scope`) ride along in the same model the app persists or trusts.
+- **`include_in_schema=False` routes are hidden, not gone**: prefix fuzzing finds them; they
+  frequently predate an auth middleware split.
+- **`BackgroundTasks` deferred-execution IDOR**: authorization checked at request time does
+  not carry into the deferred task; the task re-reads parameters (ids, paths) that were
+  attacker-chosen after the check passed.
+- **Mounted sub-apps bypass global middleware**: `app.mount("/admin", ...)` /
+  `/static` / `/metrics` do not inherit the parent's auth/CORS middleware; verify parity per
+  mount, both directions.
+- Coverage matrix: route x role x content-type x channel, with HTTP and WebSocket auth
+  consistency asserted explicitly.

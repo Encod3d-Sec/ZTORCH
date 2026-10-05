@@ -11,7 +11,7 @@ sources: []
 The research loop's state. **State-first: read this + `deadends.md` + `findings.md` before continuing.** Resume from the last iteration.
 
 ## Hypotheses (ranked, current)
-| # | Approach: <input/location> + <bug class> = <expected primitive> | Priority | Status |
+| # | Approach: `<input/location>` + `<bug class>` = `<expected primitive>` | Priority | Status |
 |---|---|---|---|
 | 1 |  | high | open |
 

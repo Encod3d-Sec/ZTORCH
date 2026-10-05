@@ -3,8 +3,8 @@ title: "Recon Cheatsheet"
 type: cheatsheet
 tags: [cheatsheet, enumeration, git-poc, htb, network, nmap, osint, recon, thm, web]
 date_created: 2026-05-08
-date_updated: 2026-06-18
-sources: [cpts-web-recon, cpts-nmap, thm-osint, git-claude-osint, git-One-Liners]
+date_updated: 2026-10-05
+sources: [cpts-web-recon, cpts-nmap, thm-osint, git-claude-osint, git-One-Liners, github-usestrix-strix]
 ---
 
 ## Bug Bounty Full Recon Pipeline (One-Liner Chain)
@@ -974,3 +974,43 @@ nuclei -u http://<T> -o nuclei.txt
 whatweb -a3 http://<T> ; curl -s -I http://<T>          # own tmux tab so it gets a recon card
 wpscan -u http://<T>                                    # if WordPress
 ```
+
+## Agent tool discipline (cross-cutting scanner rules)
+
+Rules that apply to every tool below, distilled from agent-driven scanning; they exist because
+agents burn tokens and targets differently than an interactive operator.
+
+**Scope and sequencing**
+
+- **Smallest port set that answers the question.** Do not scan 65535 ports to test one service.
+- **Two-pass discovery-then-enrichment**: broad light sweep first (nmap/rustscan), deep
+  service/version scan only on what answered.
+- **Verify before pipeline**: `naabu -verify` before feeding hits to httpx/nuclei; one flaky
+  IP poisons the whole downstream chain.
+- **Downshift by FILTER, not by load**: narrow with `-mc`/`-fc`/`-fs` (ffuf), path+ruleset
+  narrowing (semgrep) before touching thread/rate knobs; concurrency before rate
+  (`nuclei -c`/`-bs` before `-rl`).
+- **Suspicious per-tool empty results** (empty usually means misconfiguration, not absence):
+  trivy = check DB age; subfinder = check provider API keys in provider config; nuclei =
+  template selection (`-as` auto-select vs explicit `-t`/`-tags`); naabu = re-verify. A repo
+  with clear dependencies showing zero CVEs is the same smell.
+- **Output hygiene, reduce-then-delete**: sanity-check size (`du -sh`), distill to the
+  finding lines, then remove the raw dump.
+- Verify flags from docs once and pin them; re-running `-h/--help` before every invocation is
+  agent burn, not diligence.
+
+**Per-tool sharpest flags**
+
+| Tool | Rule |
+|---|---|
+| ffuf | `-noninteractive` always (console mode swallows the next shell command); filter with `-mc/-fc/-fs` |
+| httpx | `-proxy` flag over env vars; `-path`/`-ports` multiply coverage per host; `-nf` for dual-scheme (avoid `-nfs`) |
+| wafw00f | run AFTER liveness (routing decision, not recon) |
+| katana | NO default page cap to trust; `-fs fqdn` scope, `-mdp`, `-fsu`, `-f url -or -ob`; `-kf` needs `-d 3`; thin output -> gospider second pass |
+| naabu | `-timeout` is MILLISECONDS; `-scan-type connect` unprivileged; `-verify` before pipelines |
+| nuclei | `-ni` gates OAST egress (no callback host -> blind templates useless); concurrency flags before rate limiting |
+| semgrep | `--metrics=off` + explicit `--config` + explicit target path; Pro bounded + `--oss-only` fallback noted |
+| sqlmap | `--flush-session` on retest-after-change and on manual-conflict; narrow extraction `-D/-T/-C`; level/risk escalation ladder; keep cookie/session consistent across runs |
+| subfinder | `-nW` drops passive-only hits; `-cs` needs `-oJ` |
+| nmap | `--host-timeout` + `--script-timeout`; `-Pn` ladder (try discovery first, `-Pn` fallback); naabu sweeps, nmap verifies |
+| trivy | record DB `.UpdatedAt`; offline fallback chain `--offline-scan --list-all-pkgs` -> `--skip-db-update` |

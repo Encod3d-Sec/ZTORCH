@@ -4,8 +4,8 @@ type: technique
 tags: [cloud, gcp, iam, service-account, metadata, privesc, exploitation]
 phase: exploitation
 date_created: 2026-06-16
-date_updated: 2026-09-10
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 ---
 
 ## What it is
@@ -99,5 +99,40 @@ Least-privilege SAs (no project Editor by default), disable SA key creation (org
 
 ## Tools
 `gcloud`, `gsutil`, ScoutSuite, GCP-IAM-Privilege-Escalation (Rhino), `enumerate-iam`-style scripts. SSRF entry -> [[wiki/payloads/ssrf]], payload [[imds-cloud-metadata]]. Drive with the `hunt-cloud` skill.
+
+## GCS bucket checks without ambient credentials
+
+`gsutil` can silently use ambient `gcloud` or application-default credentials and produce false
+public-bucket verdicts. For anonymous checks, unset `GOOGLE_APPLICATION_CREDENTIALS` and use raw
+unauthenticated HTTP. The 403/404 semantics match the S3 doctrine: 403 means the bucket exists but
+is private, 404 means not found (or wrong name/region), and both URL forms must be tried:
+
+```sh
+curl -sI "https://storage.googleapis.com/<bucket>/" | head -1
+curl -sI "https://<bucket>.storage.googleapis.com/" | head -1
+```
+
+IAM and ACL layers are independent: check `gsutil iam get <bucket>` AND the anonymous curl. A
+bucket with uniform bucket-level access disabled plus a legacy ACL granting `public-read` is its
+own misconfiguration class; neither check alone surfaces it.
+
+## What to hunt in a listable bucket
+
+- `terraform.tfstate`: every resource address, and frequently secrets in plaintext.
+- `*.json` files shaped like service-account keys (`type: service_account`, `private_key`).
+
+## Org and folder IAM inheritance gaps
+
+Project-level deny policies may not apply at folder or org level, and a child project inherits
+permissive folder IAM. Always resolve the effective policy through the org/folder hierarchy, not
+just the project's own bindings.
+
+## Scope downgrades, do not discard
+
+A leaked service-account token restricted to `devstorage.read_only` on a single bucket is a
+scoped-read finding, not a full-compromise claim. Record the scope the token actually carries.
+The default compute service account follows the pattern
+`PROJECT_NUMBER-compute@developer.gserviceaccount.com`; enumerate it even when no custom SA is
+visible.
 
 ## Sources

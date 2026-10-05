@@ -1,6 +1,6 @@
 ---
 name: engage
-description: Orchestrator and skill router - the single situation -> Skill(name) map across the whole library (driver, hunt-*, process skills). Load FIRST in every session; consult whenever between phases or unsure which skill is next.
+description: Orchestrator and skill router: the single situation-to-skill map across the whole library (driver, hunt-*, process skills). Use at session start, whenever between phases, or unsure which skill is next.
 ---
 
 # engage
@@ -33,6 +33,7 @@ is absent, this map IS the router.
 | Burp/MCP down, per-engagement isolated proxy project wanted, or Caido-native features (Automate, Replay fuzz batteries) | `Skill(caido)` (headless Caido on the VM; same load-bearing-visibility discipline, Replay entries instead of Repeater tabs) |
 | Manual login / MFA / CAPTCHA the agent cannot do headlessly | `Skill(chrome-devtools-browser)` |
 | msfconsole work (recon DB, exploits, handler, pivots, post-ex) | `Skill(metasploit)` |
+| Windows standard-user foothold on a CTF/lab box needs a kernel/LPE shortcut | `Skill(nightmare)` (recompiled Windows LPE arsenal with recorded Defender verdicts; authorized CTF/lab only; hub [[privesc-exploit-arsenal]]) |
 | Fully-specified exploit compile / escalation run to hand off | `Skill(delegate)` (mechanical, cheap tier; false-root guardrail mandatory) |
 | Stalled, wrong-vector tell fired, "should I keep hammering?" | `Skill(redteamlead)` - NEVER grind; ranked directions + explicit STOP |
 | A vuln class never tested on this asset (4a coverage gap) | `Skill(offensive)` - `offensive.py coverage` ranks the gaps |
@@ -46,7 +47,24 @@ is absent, this map IS the router.
 Discipline spine for every hunt: `Skill(hunt-core)` loads alongside any hunt skill (scope gate,
 two-account rule, confirmation gate, enumeration limits, stop conditions, FIND output).
 
-## 3. Fingerprint -> hunt skill
+## 3. Scan-mode overlay (quick / standard / deep)
+
+A named mode changes the SKIP LIST and PRIORITY ORDER only - never the evidence bar: a
+CONFIRMED needs the same working PoC (OOB callback where blind) at every mode; a mode may
+defer work, never weaken proof. State the mode out loud when the engagement shifts.
+
+| Mode | What it is | Skip list | Priority order |
+|---|---|---|---|
+| quick | triage / time-boxed pass; surface map + cheap high-signal | full JS bundle reads, exhaustive param mining, chained CVE research, deep source audits | in-scope auth surfaces, known-CVE versions, tells.json hits, exposed secrets |
+| standard | the default: the flow as written, every surfaced class hunted | nothing the flow mandates | driver order (`offensive.py next`) |
+| deep | standard + full-read source passes, second-order re-tests, chained impact escalation, negative controls on every CONFIRMED | nothing | confirmed-finding neighborhoods first, then driver order |
+
+Shift up (quick -> standard -> deep) when: a confirmed finding changes the model of the
+app, the operator asks for depth, or a `status.py` budget band (70/85/95) says there is
+room. Shift down when a band says wrap-up. Whatever quick mode skipped is UNEXAMINED, not
+clean: record it as reopen-if rows in Deadends.md so close-out counts it.
+
+## 4. Fingerprint -> hunt skill
 
 `hunt-core`'s `## Hunt approaches` table is the authority (read it; do not duplicate it here).
 Memory index, one line per class, so no hunt skill is forgotten:
@@ -59,7 +77,7 @@ Memory index, one line per class, so no hunt skill is forgotten:
 - AD / DC -> `hunt-ad`; Windows local privesc -> `hunt-windows`; macOS -> `hunt-macos`; cloud metadata/IAM -> `hunt-cloud`
 - M365 / Entra tenant -> `hunt-m365`; CI/CD pipeline/runners -> `hunt-cicd`; VPN appliance -> `hunt-vpn`; PLC/Modbus -> `hunt-ics`
 
-## 4. Close-out
+## 5. Close-out
 
 Run `python3 scripts/offensive.py --eng <name> closeout` and follow its printed order - the chain
 lives only in `CLOSEOUT_CHAINS` (`scripts/offensive.py`), not restated here to avoid drift.

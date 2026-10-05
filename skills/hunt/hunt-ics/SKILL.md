@@ -1,6 +1,6 @@
 ---
 name: hunt-ics
-description: ICS/SCADA/OT exploitation - Modbus (502), S7comm (102), EtherNet/IP (44818), DNP3, OpenPLC, Node-RED, PLC/HMI coil/register attacks. Use when a target exposes industrial protocols or the goal is a plant danger-state / the HMI/CCTV flag.
+description: ICS/SCADA/OT exploitation - Modbus (502), S7comm (102), EtherNet/IP (44818), DNP3, OpenPLC, Node-RED, PLC/HMI coil/register attacks. Use when industrial protocols are exposed or the goal is a plant danger-state or the HMI/CCTV flag.
 ---
 
 # Hunt: ICS / SCADA / OT
@@ -63,6 +63,25 @@ doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket f
 **IS confirmation (control/impact finding):** a coil/register you WROTE whose effect is observed on the oracle - the HMI / Node-RED live-state flips to the intended (danger) state, the simulated process variable moves, or the interlock is demonstrably defeated - reproduced on a clean connection, culminating in the payoff (the flag the HMI/CCTV reveals). No observed effect = no control finding; log it as reachability at most.
 
 An unauthenticated READ of OT state is a valid lower-severity finding in its own right (confirmed by demonstrating the unauth read), but it is NOT a control or physical-impact claim - keep the two separate.
+
+## Validation
+
+- Proof (read-only): a point value change observed on TWO polls (cache vs live), from
+  the PLC, not the gateway's shadow. Writes/actuation need explicit operator
+  authorization BEFORE the request; default posture here is enumerate-and-stop.
+
+## False Positives
+
+- HMI running a demo/simulation mode (values move on their own).
+- Read-only registers misidentified as actuators from a register map guess.
+- Engineering port open but session-authenticated (portal, not protocol).
+- Responses from a gateway/OPC server proxying, not the controller itself.
+
+## Cross-routing
+
+- Load hunt-vpn for the remote-access path IN (historically the entry vector).
+- Load hunt-ad for domain-joined HMIs/engineering stations.
+- Not this skill: corporate IT segment behind the same firewall (route by class).
 
 ## Severity
 

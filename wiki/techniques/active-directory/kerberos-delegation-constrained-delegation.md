@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, delegation, kerberos, lateral-movement, reference-import, windows]
 phase: post-exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Kerberos Delegation - Constrained Delegation
@@ -153,5 +153,12 @@ KRB5CCNAME=Administrator@cifs_DC.<dom>@<REALM>.ccache impacket-smbclient -k -no-
 Lesson: a reset/ACL chain that "dead-ends" (terminal user's outbound edges loop) is a BloodHound-ACL
 blind spot, not a dead end - re-enumerate the terminal account's ATTRIBUTES (`--find-delegation`, SPN,
 group membership) before concluding there is no path to DA. See [[kerberos-service-for-user-extension]].
+
+## Service-class swap after S4U
+
+Once S4U2Self + S4U2Proxy succeed against the listed SPN, swap the service class for broader
+access to the same host: `cifs` (file access), `host`, `ldap`, `http`. The delegation entry lists
+one SPN, but the working ticket often unlocks sibling classes on the same machine. Test the swap
+instead of stopping at the first working ticket.
 
 <!-- promoted-slug: constrained-deleg-on-a-user-find -->

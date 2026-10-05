@@ -1,6 +1,6 @@
 ---
 name: hunt-core
-description: Shared discipline always loaded alongside any hunt-* skill - scope gate, confirmation gate, enum limits, stop conditions, FIND output. Trigger on "is this in scope", "is this a real bug", "how do I confirm this", "what severity".
+description: Shared discipline always loaded alongside any hunt-* skill - scope gate, confirmation gate, enum limits, stop conditions, FIND output. Trigger on "is this in scope", "is this a real bug", "how do I confirm this", "what severity". Use when any hunt-* skill fires or a scope/confirmation/severity question appears.
 ---
 
 # Hunt: Core
@@ -118,6 +118,19 @@ Stop and report rather than continuing when:
 
 Stopping is not failure. "Confirmed and did not exploit" is worth more than a forfeited payout.
 
+**Blocked-handling ladder (403/429/WAF/timeout).** Climb in order, one rung per attempt:
+change UA -> reader proxy -> page cache -> archive (web.archive.org) -> alt engine ->
+SOCKS5 (if provisioned). Retrying the same conditions twice unchanged is the named
+violation `gave-up-by-repetition`. Exhausted after the full ladder: write the negative
+fact (state.md `## Facts`, `negative/` key) plus one Deadends.md row carrying
+`ladder: <steps executed>` (e.g. `ladder: UA,proxy,archive`), then switch domain - a
+Deadends row without the ladder field reads as an early give and the close-out
+drift-count separates them.
+
+**Violation vocabulary** (drift taxonomy, used by the Stop-hook close-out count and
+log.md skip-reason lines): `hallucination` (claim with no test), `gave-up` (blocked and
+not switched), `omission` (creds in hand, not sprayed/reused).
+
 ## Published chains: exact-first
 
 When a writeup / published chain exists for the box or the vuln class, fire its EXACT form first:
@@ -192,7 +205,20 @@ Three tiers, in order:
 Payload arsenals live in `wiki/payloads/`. If the MCP is down, `bash scripts/wiki-query.sh "<terms>"`
 wraps the same qmd index (`-k` for an exact CVE/string).
 
+Volume reconciliation: this tiered lookup IS the `wiki-first` rule below - the reference-map read
+(or one targeted `qmd`) per new attack-path lane satisfies it; `qmd` is a targeted deepen, not a
+pre-attack ritual, and never a per-action step.
+
 ## Hunt approaches (which skill for the signal)
+
+Usage order: load this index first, load the per-surface skill on demand, keep three
+permanent rules always on:
+
+1. **wiki-first** - consult the class page/MOC before dispatching a new attack-path lane.
+2. **OOB gate** - blind claims (SSRF/SSTI/SQLi-blind/deser) need an out-of-band callback,
+   never inference.
+3. **verification before status change** - a status only advances with the evidence the
+   ladder demands (see FIND output + find-lint).
 
 `hunt-core` is the hub: route from the observed signal to the class skill, load it, then use that
 skill's `## Wiki` map. The `recon-capture` fingerprint router auto-suggests many of these from tool
@@ -232,6 +258,10 @@ Process skills (not vuln classes): `Skill(ctf-box)` boot-to-root, `Skill(wiki-re
 finding validation, `Skill(hunt-burp)` drive Burp. Coverage gaps and move ranking come from the
 driver itself (`scripts/offensive.py coverage` / `offensive.py next`).
 
+- At board time, list the attacks the scope implies that no board row exercises,
+  cross-checked against the Approach.md 4a coverage table; a gap gets a row or a
+  Ruling for why not.
+
 ## Routing table (machine-readable)
 
 The fingerprint -> {class, skill, wiki, arsenal} parse contract `offensive.py index` reads
@@ -255,6 +285,10 @@ Add row to Vuln-index.md
 twenty). Scale raises it, when you can show the identifier is enumerable without enumerating. State
 impact in the program's terms (customer data, account security, financial exposure), not in
 vulnerability classes.
+
+Each card ends with a `## Recommended next` line (template field): one line naming the
+next class/skill plus the evidence input it needs. The triage skill reads it as a
+ranking hint; find-lint does not gate on it.
 
 On exhaustion:
 
@@ -281,3 +315,28 @@ python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page <area
 **GENERIC only - no client host, no real identifier, no customer data.** Promote later via
 `scripts/wiki-promote.py`. Run `scripts/check-leaks.sh` before any push. Engagement data lives
 under `targets/` and is git-ignored.
+
+## Validation
+
+- Meta-contract for every class: a CONFIRMED names its proof artifact AND the negative
+  control that failed; the FIND carries counterevidence / confidence /
+  severity_change_conditions (find-lint enforces non-empty on CONFIRMED+).
+- Re-derive one claimed negative before it reaches Deadends.md; a subagent's negative
+  is a hypothesis until the brain re-verifies it.
+
+## False Positives
+
+- The four cross-class false-positive families:
+  1. encoded reflection read as XSS (`&lt;script&gt;` in the body);
+  2. empty 200 read as access (no other-account content);
+  3. self-effect read as cross-user (no second session);
+  4. an error page read as a vuln (it is the control doing its job).
+- The single control that kills all four: re-send the request WITHOUT the attack input
+  and diff; identical response = no finding.
+
+## Cross-routing
+
+- The 'Hunt approaches' table below is the router; when a signal names two candidate
+  skills, run the cheap distinguishing probe and negative-route the loser in one line.
+- Load the paired skill when a confirmed finding changes class (SSRF hits metadata ->
+  hunt-cloud; SSTI executes -> hunt-rce).

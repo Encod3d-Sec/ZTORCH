@@ -4,8 +4,8 @@ type: technique
 tags: [aws, cloud, exploitation, reference-import, s3, storage]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # AWS - Service - S3 Buckets
@@ -206,6 +206,56 @@ Tool references are inline in **Methodology**; see the `tools/` pages for CLI us
 
 ## Disambiguate "created a bucket" from "wrote a key" using S3 naming rules alone
 S3/MinIO bucket names must be 3-63 characters, lowercase, and contain no underscore. If an anonymous PUT/upload succeeds with a first path-segment that violates any of these rules (uppercase letters, an underscore, or fewer than 3 characters), that segment cannot be a real bucket: the write necessarily landed as an object-key prefix inside an existing bucket, not a newly created bucket. Use this to prove or refute a "this created a rogue bucket" claim purely from the naming rules, with no bucket-listing permission needed. Gotcha: the store's own AccessDenied/error XML echoing that first segment back in a `<BucketName>` field is just the server parsing the URL path, not evidence a bucket by that name exists.
+
+## Existence and public listing are different questions (two-check doctrine)
+
+They answer different questions and must not be conflated:
+
+1. **Existence** via `head-bucket` or `curl -I`: 403 means the bucket exists but is private; 404 means it does not exist under that name in that region. Never use `aws s3 ls` for existence.
+2. **Public listing** via an unauthenticated list call. This is a separate and stronger finding.
+
+```sh
+aws s3api head-bucket --bucket <name>
+curl -sI https://<name>.s3.amazonaws.com/ | head -1
+aws s3 ls s3://<name> --no-sign-request
+```
+
+A failed list does not disprove existence (a private bucket still returns 403 on list). A 403 on
+any read indicates existence but not readable content: record it as a recon note, never as a data
+breach claim.
+
+## Effective permissions: the RCP layer
+
+Organizations Resource Control Policies (RCPs) impose an org-level limit on supported resources,
+including access by external principals. RCPs never grant access and do not apply uniformly to
+every service. An identity-policy allow alone therefore does not describe the effective
+permission: map RCPs alongside SCPs, identity and resource policies, session policies, and
+permission boundaries before claiming what a principal can do.
+
+## Testing a permission before claiming it
+
+```sh
+aws iam simulate-principal-policy --policy-source-arn <arn> --action-names iam:CreateAccessKey --resource-arns "*"
+```
+
+The simulator evaluates the identity-policy layer only. Combine its output with the RCP/SCP and
+boundary mapping above for the effective answer.
+
+## IMDSv2 is on: three bypass contexts
+
+IMDSv2 being enabled is not the end of the SSRF story. Check each context before downgrading a
+finding:
+
+- SSRF with header injection: the target forwards `X-aws-ec2-metadata-token` from the request.
+- Container sidecars that do not enforce the hop limit.
+- Misconfigured proxies that still allow link-local access to `169.254.169.254`.
+
+## Cognito custom attributes
+
+Check the user-attribute write path for privilege fields (`custom:role`, `custom:admin`). When
+users can self-assign custom attributes at signup or via the profile API, and the backend trusts
+ID-token custom claims without verification, that is a full privilege-escalation chain: audit both
+the write path and the consumption path.
 
 ## Sources
 

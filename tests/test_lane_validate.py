@@ -182,3 +182,19 @@ def test_annotated_no_capture_lane_with_brain_verdict_is_closed_not_failed(tmp_p
     lv.main([str(eng)])
     out = capsys.readouterr().out
     assert "lane f: CLOSED-BY-BRAIN" in out and "NOT VERIFIED" not in out
+
+
+def test_brief_warnings_flags_captureless_success():
+    text = (
+        "lane slot (f):\n"
+        "SUCCESS = curl returns 200 on /api/users\n"
+        "SUCCESS = flag file exists, raw output lands in poc/02-flag.txt\n"
+    )
+    warns = lv.brief_warnings(text)
+    assert len(warns) == 1
+    assert "SUCCESS criterion names no capture path" in warns[0]
+
+
+def test_brief_warnings_clean():
+    text = "SUCCESS = dump lands in poc/01-dump.txt\n"
+    assert lv.brief_warnings(text) == []

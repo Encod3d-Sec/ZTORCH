@@ -75,7 +75,8 @@ PY
   if [ -n "$ENG" ]; then
     echo "- Active engagement: $ENG (keep the name VERBATIM; it keys targets/<eng>/ paths)."
   fi
-  echo "- PRESERVE: Approach.md board phase + every open ([ ]/[~]) row verbatim; each open FIND with its next action; the last offensive.py next move; OOB HIT rows + sink tokens; active/unconfirmed creds by NAME only (redact values); the tmux window map (name -> purpose)."
+  echo "- PRESERVE: Approach.md board phase + every open ([ ]/[~]) row verbatim; each open FIND with its next action; the last offensive.py next move; OOB HIT rows + sink tokens (verbatim); active/unconfirmed creds by NAME only (redact values); the tmux window map (name -> purpose); exact working commands, endpoints, file paths, and service versions; Deadends.md asset-x-class pairs with their reopen-if; the current work state (phase, in-flight lane lines)."
+  echo "- BE EXHAUSTIVE, NOT CONCISE: copy finding text, error messages, versions, and exact strings VERBATIM. A paraphrased finding or a rounded value is a lost finding; compression is for prose narration, never for evidence."
   echo "- DROP: raw tool output, scan dumps, file listings, narrated prose (one line each at most)."
   echo "- Do NOT inline full state files: the SessionStart(compact) hook re-injects engagement state after compaction."
   echo "- Framework/generic work: one-line pointers to session/hot.md only; no client specifics ever."

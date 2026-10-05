@@ -33,6 +33,8 @@
 #   snippet <eng> <slug> <url-or-file> [grep-pattern] [note] fenced source excerpt (app.js/HTML) -> poc/NN-<slug>-snippet.md
 #   burp <eng> <slug> <host> <port> <https> <method> <path> [bodyfile] [tabname]
 #                                                           Burp Repeater request/response grab (via MCP)
+#   pkg  <FIND-NNN>                                         assemble a finding card + every poc/ capture it
+#                                                           references into poc/NN-pkg.md (assembly only)
 #
 # The VM bridge is $VM_SH (default /root/vm.sh); files cross it base64-in-command (no stdin).
 set -euo pipefail
@@ -54,6 +56,7 @@ usage: capture.sh <mode> <eng> <slug> [args]
   raw  <eng> <slug> <remote-file>
   snippet <eng> <slug> <url-or-file> [grep-pattern] [reveals-note]
   burp <eng> <slug> <host> <port> <https> <method> <path> [bodyfile] [tabname]
+  pkg  <FIND-NNN>                        assemble card + referenced captures into poc/NN-pkg.md
 U
   exit 2
 }
@@ -215,6 +218,7 @@ tmux kill-session -t $SESS 2>/dev/null || true" >&2
 # `web` for the rendered page. Runs on the VM (chromium there has the VPN path to the target). URL is
 # %q-quoted so query strings (?a=1&b=2) survive the SSH hop; a dead target makes shot.py exit non-zero
 # (net::ERR) so set -e aborts before an error-page PNG is pulled.
+# web mode: pair the shot with the console snapshot (see chrome-devtools-browser skill; networkidle before DOM reads)
 mode_web() {
   [ $# -ge 3 ] || { echo "usage: capture.sh web <eng> <slug> <url> [--no-bar] [width height]" >&2; exit 2; }
   ENG="$1"; local SLUG="$2" URL="$3"; shift 3
@@ -459,6 +463,41 @@ python3 /tmp/burpshot_tab.py '$HOST' '$PORT' '$HTTPS' '$METHOD' '$RPATH' '$TABNA
   _pull_and_report "$RPNG" "$SLUG (Burp)"
 }
 
+# pkg <FIND-NNN>: assemble a finding card + every poc/ capture it references into one
+# self-contained package file poc/NN-pkg.md, ready to hand a package reviewer. Assembly only:
+# captures are fenced verbatim, nothing is re-executed. A missing ref is listed as
+# `MISSING capture:` instead of failing the run, so the package still shows what is absent.
+mode_pkg() {
+  [ $# -ge 1 ] || { echo "usage: capture.sh pkg <FIND-NNN>" >&2; exit 2; }
+  local find_id="$1" card ref p
+  card=$(ls "$VAULT"/targets/*/Vulns/"${find_id}"-*.md 2>/dev/null | head -1 || true)
+  [ -n "$card" ] || { echo "capture(pkg): no finding card matches ${find_id}" >&2; exit 1; }
+  ENG=$(basename "$(dirname "$(dirname "$card")")")   # card lives in <eng>/Vulns/
+  _poc_target "$ENG" pkg
+  {
+    echo "# package ${find_id}"
+    echo
+    echo "## card: targets/${ENG}/Vulns/$(basename "$card")"
+    echo '```markdown'
+    cat "$card"
+    echo '```'
+    for ref in $(grep -oE '[A-Za-z0-9_./-]*poc/[A-Za-z0-9_./-]+' "$card" | sort -u); do
+      p="$VAULT/targets/${ENG}/${ref}"                # card's grandparent = engagement root
+      if [ -f "$p" ]; then
+        echo
+        echo "## capture: ${ref}"
+        echo '```'
+        cat "$p"
+        echo '```'
+      else
+        echo
+        echo "## MISSING capture: ${ref}"
+      fi
+    done
+  } > "${POC}/${NN}-pkg.md" 2>/dev/null || true
+  echo "saved targets/${ENG}/poc/${NN}-pkg.md"
+}
+
 MODE="${1:-}"; [ -n "$MODE" ] || usage
 shift || true
 case "$MODE" in
@@ -473,6 +512,7 @@ case "$MODE" in
   raw)  mode_raw "$@" ;;
   snippet) mode_snippet "$@" ;;
   burp) mode_burp "$@" ;;
+  pkg)  mode_pkg "$@" ;;
   -h|--help|help) usage ;;
   *)    echo "capture: unknown mode '$MODE'" >&2; usage ;;
 esac

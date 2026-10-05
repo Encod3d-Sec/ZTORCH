@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Close-out harvest - harness retro (diff execution vs skills/hooks) then generic wiki delta via the leak gate. Use at close-out or for "extract learnings", "what did we learn", "post-mortem into the wiki", "improve the harness".
+description: Close-out harvest - harness retro against skills/hooks plus generic wiki delta through the leak gate. Use at close-out or for "extract learnings", "what did we learn", "post-mortem into the wiki", "improve the harness".
 ---
 
 # Learn: harness retrospective + wiki knowledge harvest
@@ -157,6 +157,12 @@ a failed harvest even if it promotes.
 or rewrite; legal only inside a fence where the command itself contains one), and every code fence
 language-tagged to match its content (`sh`, `powershell`, `c`, `ruby`, `py`, `js`, `json`, `html`;
 `text` for prose payloads and value blocks) -- never a bare ``` fence.
+
+Anonymization protocol (verbatim token set; the promote gate enforces the IP half):
+- target/victim IPs -> `{target_ip}` / `{victim_ip}`; domains -> `{target_domain}` / `{victim_domain}`
+- credentials -> `{username}` / `{password}` / `{hash}`; tokens and API keys -> `{token}` / `{api_key}`
+- ports -> `{port}` ONLY when non-standard (keep 80, 443, 22 literal - standard ports carry context)
+- keep the exploitation context: a placeholder must leave the technique replayable, not strip the how
 
 ### 4. Dedup against the wiki (the skip rule)
 For each generic candidate, search the wiki first:

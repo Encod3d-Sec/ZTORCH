@@ -1,6 +1,6 @@
 ---
 name: research-ingest
-description: Ingest a CVE writeup, blog post, advisory, or GitHub repo into the wiki - fetch, dedup via sources:, update the right technique/tool page(s), re-index. Generic knowledge only; never client data.
+description: External knowledge (CVE writeup, blog post, advisory, GitHub repo) entering the wiki, deduped via `sources:` and re-indexed. Use for "ingest this writeup", "add to the wiki", or after saving research material. Generic knowledge only; never client data.
 ---
 
 # Research Ingest

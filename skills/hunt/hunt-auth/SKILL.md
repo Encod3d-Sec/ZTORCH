@@ -1,6 +1,6 @@
 ---
 name: hunt-auth
-description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, SharePoint /_vti_bin/, EWS, Citrix, etc.), JWT manipulation, password reset poisoning, SAML auth bypass, session fixation. Wiki-first, FIND schema output.
+description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, SharePoint /_vti_bin/, EWS, Citrix, etc.), JWT manipulation, password reset poisoning, SAML auth bypass, session fixation. Wiki-first, FIND schema output. Use when a login, reset, session, JWT, or legacy-protocol endpoint is the surface.
 ---
 
 # Hunt: Auth Bypass & Account Takeover
@@ -115,9 +115,34 @@ When the primary login rate-limits or enforces MFA, the bypass is usually a *dif
 
 A confirmed username (default name like `admin`/`root`, an enumerated one) collapses the attack to password-only; never run a full user x password matrix when one name is known.
 
-Derive the exact password policy from registration/change-password errors first and filter the candidate list to it: a wrong-shape password cannot succeed and only burns lockout budget (grep filter chain in [[hydra]] "Custom Wordlists").
+Derive the exact password policy from registration/change-password errors first and filter the candidate list to it: a wrong-shape password cannot succeed and only burns lockout budget (grep filter chain in [[wiki/tools/hydra]] "Custom Wordlists").
 
-Before any form attack, capture one real login attempt (devtools Network tab or Burp) to fix the POST path, param names, and one reliable `F=`/`S=` success/failure condition - a wrong params string fails silently ([[hydra]] carries the condition-string mechanics).
+Before any form attack, capture one real login attempt (devtools Network tab or Burp) to fix the POST path, param names, and one reliable `F=`/`S=` success/failure condition - a wrong params string fails silently ([[wiki/tools/hydra]] carries the condition-string mechanics).
+
+## Validation
+
+- Proof = a working session/token for account B minted through the flaw, then REPLAYED
+  to read B's data. Possession of a token shape is not access.
+- Negative control: the identical flow with the flaw neutralized (correct OTP, original
+  aud) fails.
+- Counterevidence: OTP/device binding may enforce at a second tier (API gateway) even
+  when the login tier folded.
+
+## False Positives
+
+- Login-as-B using operator-provided second test creds: that is the two-account RULE,
+  not a bypass.
+- Missing rate limit alone, without one successful out-of-guess login.
+- Null session 'broken' because of an IP allowlist, not session logic.
+- alg=none token ACCEPTED by your parser but rejected server-side (send it).
+- Reset-token 'reuse' that was actually a fresh token for the same account.
+
+## Cross-routing
+
+- Load hunt-federation when the flow is SAML/OIDC/assertion based.
+- Load hunt-m365 for AADSTS-coded Entra login flows and lockout math.
+- Load hunt-api for bearer scope/audience problems on APIs.
+- Not this skill: response poisoning delivering someone a session (hunt-cache).
 
 ## Severity
 

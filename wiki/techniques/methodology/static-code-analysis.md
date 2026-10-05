@@ -4,8 +4,8 @@ type: technique
 tags: [binary, git-poc, sast]
 phase: recon
 date_created: 2026-05-08
-date_updated: 2026-09-10
-sources: [git-raptor, InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [git-raptor, InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Static Code Analysis
@@ -448,6 +448,57 @@ rules = {r['ruleId'] for r in d['runs'][0]['results']}
 print('\n'.join(sorted(rules)))
 "
 ```
+
+## Scanner chaining (source-aware SAST pipeline)
+
+Chain tools so each covers the previous one's blind spot, and let the first pass target the
+rest:
+
+1. **semgrep first** (`--config auto` or explicit packs, `--metrics=off`; note `auto` and
+   `--metrics=off` are mutually exclusive in some versions, pick one). Pro runs are bounded and
+   fall back to `--oss-only` with a coverage-loss note.
+2. **AST-targeted tools second, fed from semgrep's own `paths.scanned`** (cap ~4000 files; no
+   path guessing): pipe the scanned list through `xargs` into the next scanner so it sees
+   exactly what semgrep saw.
+3. **Secrets**: gitleaks and trufflehog over the tree; then trivy with the secret scanner
+   EXCLUDED (no double-reporting).
+
+Known-CVE restated for the SAST entry: a known CVE in a dependency does not need a dynamic
+PoC (lockfile + scanner output + advisory); see [[supply-chain-attacks]] for the reachability
+evidence ladder that still applies.
+
+Anti-patterns: scanner output is never the final truth (it is the candidate list); no full
+scan cycles on low-signal targets; no source-only findings without a validation pass; do not
+tune engine knobs before narrowing paths+rulesets.
+
+## Cross-component semantic mapping
+
+Where a request crosses components (middleware -> controller -> service -> DB driver, or
+proxy -> app -> cache), the bug is usually a semantic change BETWEEN them, not inside one
+file. Map it in five steps:
+
+1. Identify the shared request/context fields and, for each, its writers and readers across
+   components.
+2. Order the components by lifecycle phase: parse, route, authenticate, rewrite, authorize,
+   dispatch, render.
+3. Mark every point where a field's semantic TYPE changes (raw string -> parsed object ->
+   ORM entity -> SQL fragment).
+4. Trace each of normal / error / retry / subrequest / internal-redirect paths SEPARATELY;
+   they do not share checks.
+5. At each sink, compare the representation that was CHECKED against the representation that
+   is CONSUMED. They are rarely the same object after step 3, and that gap is the finding.
+
+## Minified bundle ladder
+
+For shipped-but-unreadable front ends: beautify first, then lint for structure:
+
+```bash
+js-beautify bundle.min.js > bundle.pretty.js
+jshint --reporter=unix bundle.pretty.js | tee jshint.txt
+```
+
+The beautified file is also the input for endpoint/secret mining; see
+[[javascript-source-map-exploitation]] and the JS analysis block in the recon cheatsheet.
 
 ## References
 

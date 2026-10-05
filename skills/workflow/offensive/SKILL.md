@@ -21,6 +21,10 @@ python3 scripts/offensive.py --eng <name> done <row> --poc <img> --kind req   # 
 outcome with `note` (arsenal card consulted) and `done` (closed with evidence, dead, or parked).
 Re-run `next`. That is the whole cycle.
 
+Auxiliary subcommands, when you need them: `plan` (dry-run top-N of `next`; writes nothing),
+`autonomy` (set the advisory L0-L3 autonomy envelope in scope.md), `rebase` (re-point a rotated
+asset value across the engagement).
+
 Default posture (2026-09-08): once the board has 2+ open assets, run the loop under
 `Skill(brain)` - the driver, gates, and board stay in the brain; each `next` action's
 execution is dispatched to one of 2-3 concurrent disjoint-lane subagents per brain's
@@ -31,6 +35,8 @@ execution is the fallback below 2 open assets, not the default.
 
 1. `python3 scripts/offensive.py init <name> --type pentest|ctf|bb` - scaffolds `targets/<name>/`
    (state.md, scope.md, loot.md, Killchain.md, Deadends.md, oob.md, decisions.md, Approach.md).
+   decisions.md is scaffolded by init and self-created on demand by Skill(redteamlead) and
+   `done --park`; both are true (either path works when the file is absent).
    Refuses a dir that already holds driver state (`.offensive.json`) -- re-init on a live
    engagement re-scaffolds over it; pass `--rebase` for the rotated-IP / repair flow (state
    file untouched, `targets/active.md` repointed).
@@ -95,6 +101,10 @@ When a shell lands, record it: `python3 scripts/offensive.py --eng <name> footho
 the session. The driver flips the asset to `access=foothold`. `foothold <asset> --win <n>` (or `done <row> --win <n>`)
 seeds the 4b privesc/lateral rows (pspy/linpeas auto + the manual checklist) for that asset directly;
 `board` only refreshes the 4a matrix. `next` then routes the post-ex work off those 4b rows. `coverage` shows any base class still untested per asset.
+
+- At board time, list the attacks the scope implies that no board row exercises,
+  cross-checked against the Approach.md 4a coverage table; a gap gets a row or a
+  Ruling for why not.
 
 ## Autonomy
 

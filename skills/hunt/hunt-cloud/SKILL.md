@@ -1,6 +1,6 @@
 ---
 name: hunt-cloud
-description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, metadata SSRF, IAM privesc, service enumeration, persistence. Scope + billing aware. Wiki-first, FIND schema output.
+description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, metadata SSRF, IAM privesc, service enumeration, persistence. Scope + billing aware. Wiki-first, FIND schema output. Use when cloud credentials, metadata endpoints, or IAM surfaces appear.
 ---
 
 # Hunt: Cloud (AWS / Azure / GCP)
@@ -114,6 +114,29 @@ gcloud projects get-iam-policy <proj>;  curl https://... (roadtools / ROADrecon 
 **NOT confirmation:** an enumerated bucket / blob / GCS name; a role ARN or service-account email you listed but never assumed; a metadata endpoint that merely responds; `AKIA*` / `AccountKey=` / service-account JSON found but never exercised; a `200` from a permissions enumerator that only reads policy, not access.
 
 **IS confirmation:** credentials actually retrieved AND validated with a SINGLE benign read-only call that names the principal (`aws sts get-caller-identity`, `az account show`, `gcloud auth list`), or a resource actually read cross-account / cross-tenant - reproduced in a clean session. One benign call proves control: stop there. Do NOT spin up resources or mass-enumerate to "prove more" - that only adds billing, audit noise, and abuse-detection risk without changing the finding.
+
+## Validation
+
+- Proof = the assumed identity ACTING: `sts get-caller-identity` (AWS), `az account
+  show`, `gcloud ... list` with data returned. Metadata SSRF proof = the v2 token step
+  completed, not a bare 200 on /latest/meta-data/.
+- Counterevidence: a recovered key may be a canary/decoy (check last-used, alerting);
+  a 'permissive' policy usually has an explicit Deny you have not read.
+
+## False Positives
+
+- IMDSv2 hop-limit block read as open metadata (the v1 path is dead).
+- Public-by-design bucket (static site, public dataset).
+- Policy JSON skimming that missed the Deny statement.
+- Console role assumed via your OWN test account scope.
+- Fake region/endpoint responding 200 to everything.
+
+## Cross-routing
+
+- Load hunt-ssrf first when metadata is reached through an app-side SSRF.
+- Load hunt-m365 for the Entra/identity half of the tenant.
+- Load hunt-ad for hybrid setups (AD Connect sync bridges both).
+- Not this skill: app vulns on cloud-HOSTED apps (route by class).
 
 ## Severity
 

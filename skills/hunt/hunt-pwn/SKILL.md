@@ -1,6 +1,6 @@
 ---
 name: hunt-pwn
-description: Binary exploitation hunting - stack/heap memory corruption, format string read/write, ROP, one_gadget, seccomp/jail escapes on CTF pwn services. checksec-first, gdb-gef classification, wiki arsenal before hand-rolled exploits.
+description: Binary exploitation hunting - stack/heap memory corruption, format string read/write, ROP, one_gadget, seccomp/jail escapes on CTF pwn services. checksec-first, gdb-gef classification, wiki arsenal before hand-rolled exploits. Use when a handed-out binary or a socket service crashes on crafted input.
 ---
 
 # Hunt: Binary Exploitation (pwn)
@@ -14,6 +14,7 @@ This is the BINARY exploitation class (memory corruption in compiled targets rea
 Hub: [[exploit-dev-moc]] · Primary page: [[binary-exploitation]] · Arsenal: [[binary-exploitation]] (cheatsheet)
 Anchors: [[heap-exploitation]], [[format-string]], [[rop-techniques]], [[crash-analysis]], [[ctf-jail-escapes]], [[memory-safety-bugs]]
 **REFS:** [[binary-exploitation]], [[heap-exploitation]], [[format-string]], [[rop-techniques]], [[crash-analysis]], [[ctf-jail-escapes]], [[memory-safety-bugs]]
+- capability equations + low-severity-to-primitive map: [[wiki/techniques/capability-primitives]]
 
 qmd_query "binary exploitation heap format string ROP one_gadget seccomp glibc tcache" via wiki-search MCP — ONLY for a specific signal the map above doesn't cover (a glibc version's allocator behavior, an unusual mitigation combo, an architecture quirk); not a blanket first step.
 
@@ -49,6 +50,26 @@ Rank before exploiting:
 ## Chaining
 
 Foothold via pwn usually IS the flag path: loot creds from the shell per hunt-core reuse rules; container root still means checking `/home/*/flag*`, SUID, and mounted secrets before closing. seccomp-jailed shells chain to file-read primitives for the flag ([[ctf-jail-escapes]]).
+
+## Validation
+
+- Proof = controlled instruction pointer / return address with a UNIQUE marker value
+  (not the same crash twice), or a shell whose first commands are `hostname` + `id`
+  (false-root guardrail). ASLR-dead crashes are leads, not proofs.
+- Negative control: identical input minus the overflow runs clean.
+
+## False Positives
+
+- Heap abort / stack smash REPORT with no register control (crash != exploit).
+- A single lucky ASLR guess repeated as a technique.
+- Canary LEAKED but PIE/RELRO still stand (leak != bypass).
+- one_gadget constraints unmet: execve fails silently, shell 'hangs'.
+
+## Cross-routing
+
+- Load hunt-rce for weaponization once control is shown.
+- Load hunt-core marker discipline for crash-input uniqueness.
+- Not this skill: logic bugs in the service (hunt-bizlogic), source leaks (hunt-secrets).
 
 ## Severity
 

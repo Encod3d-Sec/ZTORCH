@@ -1,6 +1,6 @@
 ---
 name: ingest
-description: Synthesize raw recon/test output from targets/<active>/ingest/ into state.md/loot.md/Killchain.md, log + archive it. Use for "ingest", "synthesize findings", "process recon", or after dropping tool output in the ingest folder.
+description: Raw recon/test output landed in the active engagement's ingest folder needs synthesizing into state, loot, and Killchain pages. Use for "ingest", "synthesize findings", "process recon", or after dropping tool output in the ingest folder.
 ---
 
 # Ingest

@@ -26,3 +26,14 @@ asset table again.
 in-scope findings triaged to Completed and reported/submitted -- and is the trigger the
 close-out reflex, walkthrough auto-assembly, and learn harvest all watch for. Without this
 marker a finished programme never auto-triggers Skill(walkthrough)/Skill(learn).
+
+## Facts
+
+One line per fact: key | confidence | summary. Summary must carry what + where + how to
+verify. Body lives on demand in the poc/ card or loot entry the key names. Deprecation is
+strike + date, never delete. Negative results are facts ("tested X, no exploitable vuln")
+and prevent retries exactly like Deadends.md.
+
+| key | conf | summary |
+|---|---|---|
+

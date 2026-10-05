@@ -1,6 +1,6 @@
 ---
 name: research
-description: Vuln-research loop toward a novel CVE - triage, surface map, ranked hypotheses, investigate (RE/fuzz/audit); findings deepen, dead-ends pivot. Use for "research", "find a cve", "analyze this binary", "audit this code for vulns".
+description: Vuln-research loop toward a novel CVE from a target or binary (RE/fuzz/audit; findings deepen, dead-ends pivot). Use for "research", "find a cve", "analyze this binary", "audit this code for vulns".
 ---
 
 # Research: CVE Discovery Loop

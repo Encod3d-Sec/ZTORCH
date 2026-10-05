@@ -76,3 +76,12 @@ def test_nontools_target_unaffected(tmp_path):
                      "---\ntitle: x\n---\n\n## What it is\n\nno fence\n",
                      "## Gotchas\n\nbody\n")
     assert st == "promoted"
+
+
+def test_placeholder_check_refuses_raw_ips_allows_doc_ranges():
+    ok, _ = wiki_promote.placeholder_check("connect to 192.0.2.10:8443 and 127.0.0.1 for the lab")
+    assert ok                                   # documentation ranges pass
+    ok, msg = wiki_promote.placeholder_check("curl http://10.20.30.40/api then relay to {target_ip}")
+    assert not ok and "10.20.30.40" in msg      # raw engagement IP refused
+    ok, _ = wiki_promote.placeholder_check("target at {target_ip}:8443, gateway 192.0.2.1")
+    assert ok                                   # placeholders pass

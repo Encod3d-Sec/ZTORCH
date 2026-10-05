@@ -1,6 +1,6 @@
 ---
 name: wiki
-description: Search, query, and maintain the qmd-indexed wiki - semantic search, keyword search, re-index after adding pages, check index status.
+description: Wiki lookups and edits over the qmd-indexed knowledge base. Use when a task needs a wiki search, a page written or updated, or a re-index after adding pages.
 type: cli
 ---
 

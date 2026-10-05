@@ -4,8 +4,8 @@ type: technique
 tags: [azure, cloud, exploitation, reference-import, storage]
 phase: exploitation
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Azure Services - Storage Blob
@@ -148,5 +148,23 @@ A read+list account SAS with `srt=sco` embedded in a static site's JS is therefo
 read primitive, not the single-container "backup" token it appears to be. Static-website storage
 accounts commonly hold a private container (service creds, backups) beside the public `$web`.
 See [[azure-services-keyvault]].
+
+## SAS token doctrine
+
+- A user delegation SAS is Entra-secured, Blob/Data Lake only, and valid at most 7 days per
+  delegation key. Only a service SAS can bind to stored access policies; a leaked
+  stored-policy-bound service SAS may outlive any visible role assignment review.
+- A SAS is a bearer credential: possession is sufficient even when the holder has no visible Azure
+  role assignment. Do not under-report a leaked SAS because "the account has no roles".
+- A redacted or expired SAS found in code or config is not current access; confirm the full token
+  and its `se` (signed expiry) before claiming reach.
+
+## Key Vault access model: enableRbacAuthorization
+
+`enableRbacAuthorization` switches the vault's data-plane authorization from legacy access
+policies to Azure RBAC. In RBAC mode, legacy access-policy evaluation is INVALID for data-plane
+access: a legacy access-policy self-grant only works in access-policy mode. In RBAC mode the
+equivalent finding depends on DataActions permissions or control over role assignments, so always
+read the vault's mode before mapping a "self-grant" path.
 
 <!-- promoted-slug: azure-sas-account-container-enum -->

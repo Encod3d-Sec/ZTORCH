@@ -172,6 +172,14 @@ def in_scope_assets(state, etype, sc):
     return out
 
 
+def format_chain_move(asset, cls, to_cls, cand, gate, sk):
+    """One chain-edge move line; renders the optional verb tag when the edge
+    carries one (cyberstrikeai L3). Absent verb renders exactly as before."""
+    verb = " [%s]" % cand["verb"] if cand.get("verb") else ""
+    move = (cand.get("move") or "").replace("{asset}", asset)
+    return f"{asset}: {cls}->{to_cls}{verb} - {move}{gate}{sk}"
+
+
 def _ranked(limit=5):
     """Core ranking: list of (score, tag, text) tuples, highest first, capped at
     limit. None when there is no active engagement. suggest()/suggest_json() wrap it."""
@@ -300,10 +308,10 @@ def _ranked(limit=5):
                     lik = 0.0
                 score = 80 + 6 * gain + round(8 * lik) - _CHAIN_COST.get(
                     (cand.get("cost") or "").lower(), 0)
-                move = (cand.get("move") or "").replace("{asset}", asset)
                 gate = " (OOB-gate: confirm callback first)" if cand.get("gate") == "oob" else ""
                 sk = " [" + cand["skill"] + "]" if cand.get("skill") else ""
-                sugg.append((score, "chain", f"{asset}: {cls}->{to_cls} - {move}{gate}{sk}"))
+                sugg.append((score, "chain",
+                             format_chain_move(asset, cls, to_cls, cand, gate, sk)))
 
     # 2+3. pentest-only: cred reuse spray + relay posture (AD-specific)
     if etype == "pentest" and not passive:

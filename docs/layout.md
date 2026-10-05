@@ -44,14 +44,16 @@ ZTORCH/
 │                                   shot.py, capture.sh (one entrypoint, modes: ev=live cmd+url card / req=curl
 │                                   request-response / tmux=real tmux-session card / burp=Burp Repeater PoC), vm-scan.sh, burp/ (burp-mcp-cli.py bridge + burp-transport.sh resolver + burp-scope-sync.py),
 │                                   build-walkthrough.py (scaffold + auto-populate the walkthrough Evidence gallery),
+│                                   wiring: wiki-wiring-audit.py (which wiki pages surface by context during an engagement) + apply-wiring.py (applies a merged wiring-proposal JSON to playbook.json/triggers.json/hubs/hunt SKILL.mds) + wiring-exempt.txt (deliberately-unwired pages) + bench.py (scores a completed engagement dir against an expected-coverage manifest),
+│                                   handroll.py (DORMANT: detects a hand-rolled request loop that should have been a tool; documented only, wired into no hook),
 │                                   playbook.json
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
 ├── tests/                       <- pytest suite for engagement + wiki automation
 ├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)
 │   │                               + hooks/ (hook scripts)
-│   ├── hunt/                    <- hunt-* vuln-class skills (25) + hunt-core (shared discipline) + triggers.json
+│   ├── hunt/                    <- hunt-* vuln-class skills (27) + hunt-core (shared discipline) + triggers.json
 │   ├── vector-workflow/         <- board-seeding pipeline reference (promoted to top-level; not a loop step)
-│   ├── workflow/                <- offensive (driver) + engage (router) + brain (subagent dispatch) at root; the rest subfoldered by role
+│   ├── workflow/                <- offensive (driver) + engage (router) + brain (subagent dispatch) + nightmare (Windows LPE arsenal, CTF/lab) at root; the rest subfoldered by role
 │   │                               (nesting is organizational only, skills are discovered by basename):
 │   │                               closeout/ (triage, evidence, learn, walkthrough)
 │   │                               recon/ (wiki-recon, wiki-arsenal, nday, research-ingest, ingest)
@@ -64,3 +66,9 @@ ZTORCH/
     ├── assets/                  <- screenshots and other non-text files (read-only)
     └── git/                     <- cloned repos (WSL path, not Windows mount)
 ```
+
+## Section helper
+
+Long SKILL.md and wiki pages open with a `## Sections` index, and
+`bash scripts/wiki-section.sh <page> <slug>` prints one named `## ` section body
+(`--list` prints slugs) so a caller loads only the section it needs.

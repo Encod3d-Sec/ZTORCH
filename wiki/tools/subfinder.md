@@ -3,8 +3,8 @@ title: "subfinder"
 type: tool
 tags: [recon, osint, subdomain-enumeration, bug-bounty, attack-surface]
 date_created: 2026-06-16
-date_updated: 2026-06-16
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 phase: recon
 ---
 
@@ -49,5 +49,11 @@ subfinder -d target.com -recursive -silent
 
 ## Related techniques
 [[web-attack-surface]], [[secret-hunting]]. Pipeline with [[wiki/tools/httpx]], [[wiki/tools/nuclei]], [[gowitness]].
+
+## Agent discipline
+
+`-nW` (wildcard removal) also drops passive-only hits; `-cs` requires `-oJ`; thin output
+means check the provider API keys in the provider config, not brute harder. Full per-tool
+agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).
 
 ## Sources

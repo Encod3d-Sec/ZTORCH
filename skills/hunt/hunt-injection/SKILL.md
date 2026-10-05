@@ -1,6 +1,6 @@
 ---
 name: hunt-injection
-description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI detection and RCE. OOB-mandatory for blind XXE. Wiki-first, FIND schema output.
+description: GraphQL IDOR/auth-bypass, XXE file-read/SSRF (SVG/DOCX/SAML), SSTI detection and RCE. OOB-mandatory for blind XXE. Wiki-first, FIND schema output. Use when a template render, XXE-capable upload (SVG/DOCX/SAML), or GraphQL surface appears.
 ---
 
 # Hunt: GraphQL / XXE / SSTI
@@ -157,6 +157,29 @@ Per `hunt-core`. Reproduce every claim in a clean session before scaffolding a F
 | <token> | <sink url+param> | xxe | <date> | waiting | |
 ```
 (columns: token | sink | class | planted | status | source; token = your unique interactsh/Collaborator label). The recon-capture hook flips the row waiting -> HIT on the incoming callback and SessionStart surfaces HITs; that HIT row is the confirmation gate to scaffold the FIND. Do NOT claim a blind XXE (or blind SSTI) without a HIT row.
+
+## Validation
+
+- Proof per sub-class: XXE = OOB file read or DNS exfil with a unique entity name;
+  SSTI = engine-specific payload computing `7*7` AND a template error naming the engine
+  (both, or it is arithmetic); GraphQL = a cross-object traversal returning data the
+  caller should not reach, with the two-account canary when objects are user-scoped.
+
+## False Positives
+
+- Input reflected in an ERROR message (echo, not evaluation).
+- GraphQL introspection open by published policy.
+- XXE blocked by parser hardening (external entities disabled at the loader).
+- Math output from a legitimate calculator/formula feature.
+- NoSQL operator injection claimed without the operator actually changing the query
+  shape (diff the response, not the request).
+
+## Cross-routing
+
+- Load hunt-rce when SSTI/template exec escalates to code.
+- Load hunt-sqli for SQL-dialect depth once the sink is SQL.
+- Load hunt-llm when the 'template' is a model prompt.
+- Not this skill: header/reflection markup issues (hunt-xss).
 
 ## Severity
 

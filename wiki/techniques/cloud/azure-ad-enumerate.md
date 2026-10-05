@@ -4,8 +4,8 @@ type: technique
 tags: [active-directory, azure, cloud, enumeration, reference-import]
 phase: enumeration
 date_created: 2026-05-13
-date_updated: 2026-07-02
-sources: [InternalAllTheThings]
+date_updated: 2026-10-05
+sources: [InternalAllTheThings, github-usestrix-strix]
 ---
 
 # Azure AD - Enumerate
@@ -301,6 +301,32 @@ Apply vendor baselines for logging, least privilege, patch cadence, and segmenta
 - [[wiki/tools/nuclei]]
 - [[roadtools]]
 - [[scoutsuite]]
+
+## Weak tokens silently under-enumerate
+
+A Graph token with weak permissions returns partial or empty results WITHOUT an error, so absence
+of results is not proof that objects do not exist. Record the exact Graph permissions the token
+carries alongside every enumeration result, and re-run with a stronger token before claiming
+something is absent.
+
+## A role name is not a summary
+
+Expand custom roles into their actual `Actions` / `NotActions` / `DataActions` / `NotDataActions`
+before reasoning about them. A role name that looks privileged can be a false positive when
+conditions, scope, or deny assignments block the claimed action; check Azure Policy and deny
+assignments before declaring a theoretical path exploitable. Conversely, a control-plane
+Contributor without data-plane actions can still reach the data through code, configuration, or a
+managed identity attached to the resource. Plane separation applies here too: an Entra directory
+role is not an Azure resource role; a principal can be weak in one plane and privileged in the
+other.
+
+## Authority and secret-metadata separations
+
+- `Application.ReadWrite.*` and `ServicePrincipal.ReadWrite.*` are different planes: authority
+  over app objects does not automatically extend to service principals (and vice versa).
+- Admin consent is a separate control plane from credential management; the ability to grant
+  consent is not the ability to add secrets.
+- A secret's metadata proves age and expiry, not that its value is retrievable.
 
 ## Sources
 

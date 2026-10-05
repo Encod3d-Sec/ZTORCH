@@ -15,7 +15,7 @@ entered_because: ""
 ---
 # Kill-Chain Board - {{ENGAGEMENT}}
 
-Status: `[ ]` todo | `[~]` doing | `[x]` done | `[-]` n/a | `[!]` deadend (-> Deadends.md)
+Status: `[ ]` todo | `[~]` doing | `[x]` done | `[-]` n/a | `[?]` parked (needs follow-up) | `[!]` deadend (-> Deadends.md)
 GATE 1 (wiki): no hand-rolled exploit until its Weaponize wiki item is `[x]`.
 GATE 2 (poc):  no exploit step goes `[~]`->`[x]` without a poc/ image.
 GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the next open item. Never re-run `[!]`.

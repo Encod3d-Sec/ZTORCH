@@ -3,8 +3,8 @@ title: "SQLMap"
 type: tool
 tags: [exploitation, htb, scanner, thm, tool, web]
 date_created: 2026-05-08
-date_updated: 2026-05-08
-sources: [cpts-sqlmap, thm-sqlmap]
+date_updated: 2026-10-05
+sources: [cpts-sqlmap, thm-sqlmap, github-usestrix-strix]
 phase: exploit
 ---
 
@@ -386,3 +386,10 @@ sqlmap -r req.txt --time-sec=1       # shorten the time-based delay (default 5s)
 Out-of-band mode: when every in-band channel is closed and time-based is too slow, sqlmap can exfiltrate via DNS. Run it on a host that is authoritative DNS for a domain you control and pass `--dns-domain=yourdomain.com`; results come back as subdomain lookups (`<answer>.yourdomain.com`), one query chunk per lookup.
 
 <!-- promoted-slug: sqlmap-tuning-delta -->
+
+## Agent discipline
+
+`--flush-session` on retest-after-change and on manual-session conflicts (the cached
+session silently reuses old injection verdicts); narrow extraction with `-D`/`-T`/`-C`;
+escalate level/risk as a ladder, not a default; keep the cookie/session identical across
+runs. Full per-tool agent rules: [[wiki/cheatsheets/recon]] (Agent tool discipline).

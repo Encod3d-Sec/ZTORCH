@@ -1,6 +1,6 @@
 ---
 name: hunt-ssrf
-description: SSRF hunting - OOB-mandatory methodology. Cloud metadata, blind SSRF via Collaborator/interactsh, redirect-based bypass, headless browser chains. Wiki-first, FIND schema output.
+description: SSRF hunting - OOB-mandatory methodology. Cloud metadata, blind SSRF via Collaborator/interactsh, redirect-based bypass, headless browser chains. Wiki-first, FIND schema output. Use when a URL/host param or a fetch/preview/import sink appears.
 ---
 
 # Hunt: SSRF
@@ -135,6 +135,27 @@ http://127.0.0.1:{3000,5000,8000,8080,8888,9000,10000}/   # app/admin ports - wh
   cron - a phantom "cron" here was self-induced and burned time.
 - File read stayed blocked (`file://` / `php://` / `data://` keyword-filtered, case-insensitive)
   and the chain needed none. Don't grind source disclosure the chain doesn't require.
+
+## Validation
+
+- Proof = OOB DNS/HTTP callback on a UNIQUE subdomain, or internal-service content in
+  the response body. Follow redirects to the FINAL host before concluding scope; cloud
+  metadata needs the IMDSv2 token step completed to count.
+
+## False Positives
+
+- Callback fired by a security sandbox/AV fetcher pre-scanning your URL (correlate
+  source IP + UA with the app's egress before claiming app-side fetch).
+- 200 from an internal IP that is the app's own health check echoing 200 to everything.
+- URL fetched but content rendered nowhere (fetch != impact; note severity).
+- Internal mirror of a public site (same content, no privilege boundary crossed).
+
+## Cross-routing
+
+- Load hunt-cloud the moment metadata is in reach (creds, IMDS chain).
+- Load hunt-smuggling when the fetch path goes through a desync-able frontend.
+- Load hunt-rce for gopher-style raw-protocol hits on exec services.
+- Not this skill: open-redirect-only chains (hunt-xss/hunt-auth by impact).
 
 ## Severity
 

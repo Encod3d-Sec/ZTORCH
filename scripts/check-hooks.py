@@ -303,6 +303,21 @@ def main():
     if orphans:
         print("WARN deleted %d orphaned .pyc (source .py gone): %s"
               % (len(orphans), ", ".join(os.path.basename(p) for p in orphans)))
+    print("skill-lint (advisory, never a gate):")
+    try:
+        # skill-lint.py has a hyphen in its filename, so a plain import can't reach it.
+        import importlib.util
+        _spec = importlib.util.spec_from_file_location(
+            "skill_lint", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                       "skill-lint.py"))
+        skill_lint = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(skill_lint)
+        issues = skill_lint.lint_all(vault_root())
+        for i in issues[:20]:
+            print("  " + i)
+        print("  %d issue(s) total" % len(issues) if issues else "  clean")
+    except Exception as e:
+        print("  skipped: %s" % e)
     return rc
 
 

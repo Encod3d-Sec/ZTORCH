@@ -1,6 +1,6 @@
 ---
 name: hunt-llm
-description: LLM / AI application attack hunting - prompt injection (direct + indirect), excessive agency, insecure output handling, system-prompt + data leakage. OWASP LLM Top 10. Wiki-first, FIND schema output.
+description: LLM / AI application attack hunting - prompt injection (direct + indirect), excessive agency, insecure output handling, system-prompt + data leakage. OWASP LLM Top 10. Wiki-first, FIND schema output. Use when the target embeds an LLM (chat, agent, plugin) or prompt-injection surface appears.
 ---
 
 # Hunt: LLM / AI Applications
@@ -74,6 +74,28 @@ A scanner FAIL is a hypothesis, never a finding: the confirmation gate below sti
 - the true system prompt leaked *and verified* (matches across sessions, contains the real instructions, not a plausible hallucination).
 
 For indirect injection specifically: prove the injected content reached the model and changed its behaviour in the victim context - the payload landing in a store is not the finding, the model acting on it is.
+
+## Validation
+
+- Proof = the SAME conversation showing refusal-then-compliance past the guard, or a
+  tool invoked outside its scope with the effect visible (file/OOB/request). System
+  prompt readback needs VERBATIM tokens (a paraphrase is a reconstruction).
+- Negative control: the same prompt without the jailbreak wrapper is refused.
+
+## False Positives
+
+- Model refusing later in a long convo: context drift, not bypass.
+- 'DAN worked' claims without the transgressing output.
+- Indirect injection that only echoes the payload (no tool call induced).
+- Eval-suite markers (deck, agentdojo strings) in TRAINING content misread as prod
+  behavior.
+
+## Cross-routing
+
+- Load hunt-mcp when the tool/executor layer actually runs the induced action.
+- Load hunt-api for endpoint abuse around the model API itself.
+- Load hunt-xss when model output renders into a markdown/HTML sink.
+- Not this skill: wrapper-app bugs that need no model (route by class).
 
 ## Severity
 

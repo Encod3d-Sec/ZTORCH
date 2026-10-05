@@ -44,4 +44,4 @@ Obsidian. On GitHub, browse via the directory links below.
 
 ## License
 
-MIT, see [../LICENSE](../LICENSE).
+MIT.

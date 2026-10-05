@@ -124,11 +124,13 @@ done
 # shared core: ctf gets only scope (log/walkthrough/eval self-create at their own
 # trigger); pentest/bugbounty keep the full shared core (SHARED_CORE in _engagement.py).
 if [ "$TYPE" != "ctf" ]; then
-  for f in log scope walkthrough eval; do
+  for f in log scope walkthrough eval changelog; do
     sub "$VAULT/setup/templates/_$f.md" "$NAME" "$TODAY" "$DEST/$f.md"
   done
 else
-  sub "$VAULT/setup/templates/_scope.md" "$NAME" "$TODAY" "$DEST/scope.md"
+  for f in scope changelog; do
+    sub "$VAULT/setup/templates/_$f.md" "$NAME" "$TODAY" "$DEST/$f.md"
+  done
 fi
 
 # stamp the precise box start time for the metrics/eval system (engagement-init back-fills

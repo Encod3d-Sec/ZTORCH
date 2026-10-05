@@ -1,6 +1,6 @@
 ---
 name: hunt-vpn
-description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisco, Fortinet, Citrix, Palo Alto, Pulse/Ivanti), default credentials, pre-auth exploit commands. Wiki-first, FIND schema output.
+description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisco, Fortinet, Citrix, Palo Alto, Pulse/Ivanti), default credentials, pre-auth exploit commands. Wiki-first, FIND schema output. Use when an SSL-VPN appliance (Fortinet/Citrix/Ivanti/Cisco/PAN) is fingerprinted.
 ---
 
 # Hunt: Enterprise VPN Appliances
@@ -135,6 +135,29 @@ A VPN foothold is network access, not the endgame. On confirmed creds / session 
 **IS confirmation:** a pre-auth file read that returns the actual sensitive contents, structure matching the target file (FortiOS `sslvpn_websession` credential blob, Ivanti `system.log`, Citrix `smb.conf`); Citrix Bleed returning real session-token material you can replay into an authenticated session; default creds that land you on an authenticated admin / management page; a pre-auth RCE whose command output you observe inline or out-of-band - reproduced in a clean session per hunt-core.
 
 A version match alone is a lead to exploit, never a finding. Demonstrate the primitive or it stays out of the FIND queue.
+
+## Validation
+
+- Proof = pre-auth exploit giving shell or file read with `hostname` + `id` output,
+  or an auth bypass minting a USABLE session (replay it). CVE claims must match the
+  EXACT build string from the admin/config surface, not the marketing version.
+- Negative control: the same request against a patched build fails (when a second
+  instance/version exists).
+
+## False Positives
+
+- Version guessed from banners behind auth (assumed reachability).
+- MFA enforced but username enumeration possible: information, not entry.
+- Default creds tested but a forced-reset intercepts first use.
+- Vendor PSIRT 'affected' with a config mitigation present (admin bound to localhost,
+  feature disabled).
+
+## Cross-routing
+
+- Load hunt-ad once internal: enterprise VPNs are commonly domain-joined.
+- Load hunt-ics when the VPN fronts an OT segment (stop conditions change).
+- Load hunt-auth for cred-based entry and MFA interactions.
+- Not this skill: the portal's own webapp bugs (route by class).
 
 ## Severity
 

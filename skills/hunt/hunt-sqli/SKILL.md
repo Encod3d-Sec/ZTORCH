@@ -1,6 +1,6 @@
 ---
 name: hunt-sqli
-description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, UNION, NoSQL operator injection. sqlmap automation after manual confirmation. Wiki-first, FIND schema output.
+description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, UNION, NoSQL operator injection. sqlmap automation after manual confirmation. Wiki-first, FIND schema output. Use when a param reaches a DB and an error/boolean/time oracle appears.
 ---
 
 # Hunt: SQL Injection
@@ -94,7 +94,7 @@ curl -o /dev/null -s -w "%{time_total}\n" "https://target.com/search?q=test' AND
 sqlmap -u "https://target.com/search?q=test" --level=3 --risk=2 --batch --dbs
 ```
 Over a non-TTY stdin (an ssh/VM pipe or an agent driver), sqlmap silently discards `-r` request files
-and the run false-negatives (baseline auth 401s); always add `--ignore-stdin` there. [[sqlmap]]
+and the run false-negatives (baseline auth 401s); always add `--ignore-stdin` there. [[wiki/tools/sqlmap]]
 Run sqlmap via `bash scripts/vm-bg.sh <eng> sqlmap-<asset> 'sqlmap ... --ignore-stdin'` and read the log back with
 `bash scripts/vm-bg.sh --read <eng> sqlmap-<asset>`; a long sqlmap over one-shot SSH dies mid-run and loses the session state.
 Retrieval stalls/corrupt dumps or a blocked 0x-cast -> rerun with `--no-cast` (or `--hex` for
@@ -128,29 +128,7 @@ with operator approval, 0 under `no_bruteforce`.
 Distill when confirmed - reusable NoSQL/ORM bypass, GENERIC, no client host:
 `python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page techniques/web/sql-injection.md`
 
-## Key Payloads
-```sql
--- Error probes
-' '' ` ') ")) ' OR '1'='1 admin'--
-
--- Time-based (MySQL)
-' AND SLEEP(5)--
-
--- Time-based (MSSQL)
-'; WAITFOR DELAY '0:0:5'--
-
--- UNION (find column count first)
-' ORDER BY 1-- ' ORDER BY 10--
-' UNION SELECT NULL,NULL,NULL--
-' UNION SELECT 1,database(),3--
-
--- NoSQL (MongoDB JSON body)
-{"username": {"$gt": ""}, "password": {"$gt": ""}}
-{"username": {"$regex": ".*"}}
-
--- NoSQL (query string)
-username[$ne]=invalid&password[$ne]=invalid
-```
+Payload tables: see `references/payloads.md`
 
 ## Chaining
 
@@ -213,6 +191,27 @@ oracle**: `user' AND 1=1-- -` -> 302 (TRUE), `AND 1=2` -> 200 (FALSE). sqlmap us
 (hex-encodes data as `0x` -> blocked; follows the 302 -> diff confusion), so hand-roll a boolean
 extractor and **clear the session cookie every probe** (a login oracle otherwise stays
 authenticated -> always-true). Don't name the script `enum.py` (shadows stdlib). See [[sql-injection]].
+
+## Validation
+
+- Proof = in-band data return with a marker (version/@@canary in output), or a blind
+  BOOLEAN pair where TRUE and FALSE branches differ ONLY on the payload char, or an OOB
+  DNS hit with a unique subdomain. Time-based needs the A/B control pair for clock skew
+  (the memory's in-band-before-blind rule exists because time lies).
+
+## False Positives
+
+- SQL error echoing your input (parse error, not injection).
+- WAF block read as not-vulnerable (blocked != clean; evasion ladder first).
+- Boolean 'diff' caused by caching: bypass cookies on the pair.
+- ORDER BY / column-position influence that reorders but returns no unauthorized data.
+- `sleep()` matched onto an inherently slow query (no control request).
+
+## Cross-routing
+
+- Load hunt-auth for auth-bypass outcomes of the injection.
+- Load hunt-cloud when the DB is managed-cloud (different blast radius/escalation).
+- Not this skill: NoSQL/GraphQL operator shapes (hunt-injection).
 
 ## Severity
 

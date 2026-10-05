@@ -1,6 +1,6 @@
 ---
 name: hunt-upload
-description: File upload attack hunting - extension/content-type/magic-byte bypass to web-shell RCE, path traversal in filename, SVG/XML XSS, zip slip, and pixel-flood DoS. Wiki-first, FIND schema output.
+description: File upload attack hunting - extension/content-type/magic-byte bypass to web-shell RCE, path traversal in filename, SVG/XML XSS, zip slip, and pixel-flood DoS. Wiki-first, FIND schema output. Use when a file upload/avatar/document-import field appears.
 ---
 
 # Hunt: File Upload
@@ -62,6 +62,28 @@ Double extension (`shell.php.jpg` / `shell.jpg.php`), null byte (`shell.php%00.j
 **NOT confirmation:** the upload was accepted; a `200` or a returned file URL; the file shows up in a listing; a stored path you have not fetched back; a script uploaded but never requested; a traversal filename accepted with nothing actually read or written outside the upload dir.
 
 **IS confirmation:** the uploaded file **executed as code** - fetch it back and it runs your command (`?cmd=id` returns output) or fires an OOB callback when blind; or the traversal demonstrably **wrote or read outside the upload dir**, proven by fetching that target back. SVG/XML: the script fires in a victim context, or the external entity returns file contents / an OOB hit. Reproduce in a clean session.
+
+## Validation
+
+- Proof = the uploaded content EXECUTES or is SERVED as active content to a browser
+  (upload + path + parser all confirmed). A file stored on disk is storage, not RCE.
+- Negative control: same upload with a benign extension lands inert; the pair isolates
+  the execution cause.
+
+## False Positives
+
+- Polyglot stored but never parsed (S3 with correct Content-Type = inert bytes).
+- Client-side validation bypassed but server re-validates (stored nothing).
+- AV quarantine read as 'upload failed' (it succeeded, then tripped).
+- Image re-encode stripping your payload (resized server-side).
+- Upload to a bucket with no public/read path at all.
+
+## Cross-routing
+
+- Load hunt-rce once code execution is confirmed (this skill ends at file exec).
+- Load hunt-xss for SVG/HTML payload impact in browsers.
+- Load hunt-deserialization for serialized-object uploads.
+- Not this skill: avatar/document storage with no render or exec sink.
 
 ## Severity
 CRITICAL if code execution; HIGH if stored XSS / XXE / arbitrary file write to a sensitive path; MEDIUM if upload of a dangerous type with no execution path proven.

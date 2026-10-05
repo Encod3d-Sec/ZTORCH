@@ -71,6 +71,18 @@ engagement dir is git-ignored, keep real creds/flags here.
 <!-- A single script/sequence that re-owns the target from clean, for verification or a report
      appendix. Point at any scripts kept in this engagement's poc/ dir. -->
 
+## Cleanup
+
+Per-layer checklist; each line carries its verification command. Mirrors changelog.md
+rows (post-foothold writes) - every row must be rollback-verified before close-out.
+
+- [ ] accounts: disabled/removed test users - `getent passwd | grep -c zt-`
+- [ ] config: restored from `.bak` - `diff /etc/x /etc/x.bak`
+- [ ] files: removed dropped payloads/webshells - `ls <paths>`
+- [ ] services: stopped persistence jobs - `systemctl list-timers | grep -c zt-`
+- [ ] network: removed listeners/forwards - `ss -tlnp | grep <lport>`
+- [ ] temp artifacts: cleared crumbs - `ls /tmp/ | grep -c zt-`
+
 ## Rabbit holes (skip on redo)
 <!-- Dead-ends that wasted time. Listing them makes the next run / re-test faster. Mirror the
      one-liners in Deadends.md. -->

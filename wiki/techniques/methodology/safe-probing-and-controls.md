@@ -4,8 +4,8 @@ type: technique
 tags: [methodology, testing, evidence, false-positives, sensitive-data, web]
 phase: exploitation
 date_created: 2026-08-04
-date_updated: 2026-08-04
-sources: []
+date_updated: 2026-10-05
+sources: [github-usestrix-strix]
 ---
 
 ## What it is
@@ -195,11 +195,105 @@ Do this before citing any single-request "disclosure" as evidence; a plausible-l
 assembled from a guess plus a real-looking suffix is easy to mistake for a resolved server path on
 one read.
 
+## Three-state closure: a candidate is closed only by naming the control
+
+Every opened candidate ends its life in exactly one explicit state: **confirmed**, **ruled_out**, or
+**open_proof_gap**. "I moved on" is not a closure state. Silently dropping an uncertain candidate is
+mislabelling an open_proof_gap as ruled_out, and that is how real bugs get missed.
+
+`ruled_out` has a mechanical test, not a feeling. You must be able to write one sentence of the form:
+
+`This is safe because <control> at <file:line or observed behavior> <does what> before <sink>, on every path an attacker can reach.`
+
+If you cannot fill in every slot, the candidate is not ruled out. The standard non-rulings:
+
+- **"It looked fine" / generic library trust.** A helper or framework being generally reputable is
+  not counterevidence for one call site.
+- **A safe sibling.** A correctly parameterized query three lines above a concatenated one proves
+  the developer knew better; it proves nothing about the concatenated one.
+- **Missing information.** No caller found, cannot tell whether it is deployed or exposed, could
+  not stand up the service, build failed: each is an open_proof_gap, never a reason to mark a
+  candidate clean. Missing information is not proof of safety; difficulty is a reason to defer,
+  not to suppress.
+- **Being internal.** Internal-only, admin-only, or authenticated-only reduces severity; it does
+  not make the finding unreal. Downgrade it; do not delete it.
+
+A negative control strengthens a closure: send the payload that SHOULD work if the bug were real
+and show it is blocked, while a benign variant succeeds (the functional-control pattern above is
+the special case). "Blocked where it should pass, passes where it should" beats "returned an
+error" every time.
+
+ZTorch mapping: a Deadends.md row IS a ruled_out and must carry the named-control sentence;
+anything you could neither confirm nor rule out stays on the board (open row or needs_follow_up
+below), never a deadend line.
+
+## Argue the other side before filing: counterevidence, confidence, severity
+
+Before a candidate is filed as a finding, spend real effort building the strongest case that it is
+NOT exploitable, and record the result as the counterevidence field. Two companions travel with it:
+
+- **confidence**, on a ladder: high only with an executed PoC against the live target or a complete
+  source-to-sink trace; strong evidence you could not fully execute is medium WITH the gap named;
+  plausible with a material unresolved gap is low. Do not inflate; an accurate medium is more
+  useful than a high that fails triage.
+- **severity_change_conditions**: the one concrete piece of evidence that would raise or lower the
+  rating. "If an admin interface were internet-facing" or "if the same request worked
+  unauthenticated". This is what makes a later re-rating a response to evidence instead of mood.
+
+Severity is a conclusion, not an opening position: calibrate AFTER reachability and the
+counterevidence pass, never before. Missing evidence about deployment or exposure lowers your
+confidence, not the severity floor. Score only the impact the PoC demonstrates; never score
+speculative pivots that require another unverified vulnerability. Two calibration rules that
+correct most drift:
+
+- Session-management weaknesses that require the attacker to already hold a victim secret are
+  usually low/medium: the acquisition of that secret is not free, and unless the same finding
+  shows how to obtain it, it does not carry that weight.
+- The acceptance test is "would you defend this rating in a client debrief / would serious audit
+  triage accept it at this band".
+
+Related filing rule (revise vs delete): a finding that turns out real but weaker than filed is
+REVISED with the reasoning updated, never deleted; deletion is for things that were never
+vulnerabilities at all. And when a rating changes, the old rationale must not survive beside it;
+stale reasoning next to a new severity is how a report contradicts itself.
+
+## Coverage rows carry outcomes, and the outcome gates evidence
+
+Record every surface you assess, including the ones that came back clean; a report that only lists
+findings cannot say what was reviewed and cleared. Each row ends in one of five outcomes:
+
+- `reported` - a finding was filed for this surface
+- `no_issue_found` - tested, nothing wrong
+- `ruled_out` - you had a specific candidate and disproved it (named-control sentence required)
+- `not_applicable` - the class cannot apply here (reason required)
+- `needs_follow_up` - unresolved; what is still missing (named)
+
+`ruled_out`, `not_applicable` and `needs_follow_up` REQUIRE an evidence/reason cell; "evidence is
+required for outcome ruled_out - name the specific control, the reason it does not apply, or what
+is still missing". Never use `no_issue_found` or `ruled_out` to close something you were simply
+unsure about: that is `needs_follow_up`. Unsure is a status, not a clean result.
+
+One row per surface. When the conclusion changes, UPDATE the row (the superseded outcome and
+author stay visible as history); never record a second row beside the first. Two rows for one
+surface leave the report showing a stale conclusion next to its replacement.
+
+## Proxy error pages are never target behavior
+
+An interception proxy under load returns its own error HTML (Caido observed: a roughly 9KB page
+carrying the proxy product's own title/status markup under 502/500), and curl, python, or a
+browser will print it as if it were the target's content. This is the tooling-manufactured
+artifact family above with a new manufacturer: NEVER treat such a page as a finding, as evidence,
+or as a WAF fingerprint. Recognize the shape (proxy branding, boilerplate body, status that
+matches a proxy failure, not an application route) and re-verify through a healthy proxy or
+direct before recording anything derived from it.
+
 ## Related
 
 - [[bug-hunting-methodology]] - where these fit in an overall test plan
 - [[vulnerability-reports]] - stating limits and inferences honestly in a write-up
 - [[access-control]] - the class most write-verb probing targets
+- [[multi-agent-campaign-orchestration]] - the fleet-level closure census and dedupe boundary
+- [[agentic-harness-patterns]] - strix framework distillation and the absorption map
 
 <!-- promoted-slug: safe-probing-and-controls -->
 
@@ -220,3 +314,15 @@ dead. Run the listener with file redirection (`> /tmp/hits.log 2>&1`) from the s
 the file; treat any zero-hit conclusion drawn from an unobservable channel as unproven.
 
 <!-- promoted-slug: oob-listener-observability -->
+
+## Equal size, different md5: CDN challenge injection is not server variance
+
+Two same-status responses of EQUAL byte length that hash differently: diff before recording "identical". A CDN (Cloudflare observed) injects a per-request inline challenge script into page bodies:
+
+```text
+<script>window.__CF$cv$params={r:'<per-request ray id>',t:'<base64 timestamp>'}</script>
+```
+
+The ray id and timestamp change every request, so body LENGTH stays constant while the md5 moves. When the diff shows this marker (or the CDN's equivalent) as the ONLY delta, record "identical modulo CDN challenge injection" and move on; any other delta line at equal size is real server-side variance and worth reading line by line.
+
+<!-- promoted-slug: cf-challenge-injection-identical-modulo-correction -->

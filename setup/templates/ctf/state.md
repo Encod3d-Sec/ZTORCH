@@ -41,3 +41,14 @@ close-out reflex, walkthrough auto-assembly, and learn harvest all watch for.
 Flags captured (mirror the table's `flag` column so the count is visible without scrolling; the
 close-out reflex still verifies the real count in loot.md against `flags_expected` above):
 -
+
+## Facts
+
+One line per fact: key | confidence | summary. Summary must carry what + where + how to
+verify. Body lives on demand in the poc/ card or loot entry the key names. Deprecation is
+strike + date, never delete. Negative results are facts ("tested X, no exploitable vuln")
+and prevent retries exactly like Deadends.md.
+
+| key | conf | summary |
+|---|---|---|
+

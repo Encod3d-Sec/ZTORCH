@@ -157,6 +157,18 @@ def _retry_key(active):
     return hashlib.sha1(norm.encode("utf-8", "ignore")).hexdigest()[:12]
 
 
+def _retry_steer(retries, deny_wanted):
+    """PentAGI identical-call steer (helpers.go:131-160): at one fire below the deny,
+    tell the model the output will not change and to re-read the first run instead.
+    Never emitted when a deny is due (the deny block owns that call)."""
+    if deny_wanted or retries != _RETRY_DENY - 1:
+        return None
+    return ("IDENTICAL-RETRY (%d/%d): this exact command already ran; the output will not "
+            "change. Re-read the first run's output in your context (or its capture file) "
+            "instead of re-running, alter the arguments, or use a different tool. The next "
+            "identical fire is denied." % (retries, _RETRY_DENY))
+
+
 def _driver_called(cmd):
     """True when a normalized SEGMENT invokes the driver in command position. The old
     whole-string `_DRIVER_RE.search(cmd)` let an echo/grep string mentioning
@@ -182,7 +194,7 @@ def _active_segs(cmd):
 # flags off `cat nmap-notes.md` alone). Exec-capable walkers (find -exec, xargs, awk system(),
 # sed e) are deliberately NOT readers: their arguments can still execute.
 _READER_LEAD = re.compile(
-    r"^(?:sudo\s+)?(?:cat|grep|rg|ls|head|tail|echo|less|more|wc|sort|uniq|file|jq|strings|zcat|bat)\b")
+    r"^(?:sudo\s+)?(?:cat|grep|rg|ls|head|tail|echo|printf|less|more|wc|sort|uniq|file|jq|strings|zcat|bat)\b")
 
 
 def _bins_in(cmd):
@@ -365,6 +377,19 @@ def _should_advise(streak, post_foothold):
     return streak in (1, 2, 3) or streak % 25 == 0
 
 
+# L5 recovery-ladder deny-pattern: a remote installer piped straight into a shell
+# (pentagi tool_model_fallback.md install deny-patterns). Advisory, stamp-gated.
+_CURL_PIPE_SH = re.compile(r"(?:curl|wget)[^|;\n]{0,400}\|\s*(?:sudo\s+)?(?:ba|z|da)?sh\b")
+
+
+def _install_advisory(cmd):
+    if _CURL_PIPE_SH.search(cmd or ""):
+        return ("INSTALL DENY-PATTERN (advisory): fetch the script, inspect it, then run it - "
+                "never pipe a remote installer straight into a shell; max 2 install attempts "
+                "before switching tools.")
+    return None
+
+
 def _advise_probe(cmd):
     """Executable, non-framework text for the always-on advisories: joined segments that
     are neither framework-meta (in a MIXED command only the meta part is exempt; the old
@@ -477,6 +502,30 @@ def main():
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                       "additionalContext": _msg}}))
                 return
+
+    # pipe-to-shell install deny-pattern: regex FIRST (only matching commands touch
+    # the stamp), then _stamp_fresh (True = may inject, and it touches the stamp itself).
+    # Segmentation splits UNQUOTED pipes; QUOTED pipes survive, so a vm.sh-wrapped
+    # 'curl ... | sh' fires (the operator's dominant install shape); the segmenter also
+    # unwraps sudo and bridge/vm.sh inner commands, so `sudo curl ... | sh` and
+    # unwrapped inners fire via the curl/wget-led raw fallback below. Fall back to raw
+    # cmd only when the probe is curl/wget-LED: an echo/printf string merely MENTIONING
+    # the pattern is reader-led and dropped from _probe, so it never fires. Ceiling:
+    # a piped install behind a non-curl/wget-led first surviving segment
+    # (`cd /tmp && curl ... | sh`) stays silent.
+    _probe_txt = _probe or ""
+    _inst = (_install_advisory(_probe_txt)
+             or (_install_advisory(cmd)
+                 if _probe_txt.startswith(("curl", "wget")) else None))
+    if d and _inst and _stamp_fresh(d, ".install-stamp"):
+        try:
+            import _telemetry
+            _telemetry.drift("drift-guard", "advisory install-pipe-sh")
+        except Exception:
+            pass
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+              "additionalContext": _inst}}))
+        return
 
     if not d:
         return
@@ -637,6 +686,17 @@ def main():
     # same doom loop); the STREAK deny only when no lane is open (lane flight = contact).
     deny_wanted = not post_fh and (retries >= _RETRY_DENY
                                    or (streak >= _DENY_STREAK and not lane_open))
+
+    steer = _retry_steer(retries, deny_wanted)
+    if steer:
+        try:
+            import _telemetry
+            _telemetry.drift("drift-guard", "identical-retry steer x%d" % retries)
+        except Exception:
+            pass
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+              "additionalContext": steer}}))
+        return
 
     def _deny(reason):
         st["deny_total"] = int(st.get("deny_total", 0) or 0) + 1
