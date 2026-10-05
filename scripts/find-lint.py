@@ -13,6 +13,7 @@ Exit 1 if any finding is incomplete (usable as a pre-report gate).
 import os
 import re
 import sys
+from pathlib import Path
 
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
@@ -160,6 +161,40 @@ def _evidence_issues(body, base_dir):
     return ("STILL VERIFYING - missing: %s" % ", ".join(missing)) if missing else ""
 
 
+SUCCESS_VERBS = (
+    "confirmed", "exploited", "dumped", "cracked", "bypassed",
+    "executed", "compromised", "exfiltrated", "rooted", "overwrote",
+)
+
+
+def _claim_issues(body, dirname):
+    """Success-verb sentences in PoC/Impact must cite a capture path that exists."""
+    issues = []
+    for header in ("Proof of Concept", "Impact"):
+        section = _section_body(body, REQUIRED[header])
+        if not section:
+            continue
+        prose = re.sub(r"```.*?```", " ", section, flags=re.S)
+        for sentence in re.split(r"(?<=[.!?])\s+|\n", prose):
+            words = sentence.split()
+            if not words:
+                continue
+            if not any(re.search(r"\b%s\b" % v, sentence.lower()) for v in SUCCESS_VERBS):
+                continue
+            cited = [w.strip("`.,;:()[]") for w in words]
+            ok = any(
+                "/" in w and len(w) > 3 and not w.startswith("http")
+                and ((dirname / w).exists() or Path(w).exists())
+                for w in cited
+            )
+            if not ok:
+                issues.append(
+                    "STILL VERIFYING - claim without fresh capture: %s"
+                    % " ".join(words[:8])
+                )
+    return issues
+
+
 def lint_file(path):
     text = open(path, encoding="utf-8", errors="ignore").read()
     issues = []
@@ -214,6 +249,7 @@ def lint_file(path):
         ev = _evidence_issues(body, os.path.dirname(path))
         if ev:
             issues.append(ev)
+        issues.extend(_claim_issues(body, Path(os.path.dirname(path))))
     return issues, warnings
 
 
