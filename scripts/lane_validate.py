@@ -217,8 +217,39 @@ def has_checkable(obs):
     return bool(_checkable_lits(obs))
 
 
+def brief_warnings(text):
+    """Warn when a lane brief's SUCCESS criterion names no capture path."""
+    warns = []
+    for line in text.splitlines():
+        if "SUCCESS" in line and "=" in line:
+            rhs = line.split("=", 1)[1]
+            # ponytail: poc/ literal matches the vault capture convention (capture poc/<lane>);
+            # widen the check if briefs start capturing outside poc/
+            if "poc/" not in rhs:
+                warns.append(
+                    "WARN: SUCCESS criterion names no capture path: " + line.strip()
+                )
+    return warns
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "--brief":
+        # warn mode: read a lane brief file, flag capture-less SUCCESS criteria; exit 0 always
+        if len(argv) < 2:
+            print("usage: lane_validate.py --brief <brief-file>")
+            return 0
+        try:
+            brief_text = open(argv[1], encoding="utf-8", errors="ignore").read()
+        except OSError:
+            print("lane_validate: no brief at %s" % argv[1])
+            return 0
+        warns = brief_warnings(brief_text)
+        for w in warns:
+            print(w)
+        if not warns:
+            print("brief OK: every SUCCESS criterion names a capture path")
+        return 0
     if not argv:
         print(__doc__.strip().splitlines()[-2])
         return 0
