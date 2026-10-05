@@ -140,6 +140,19 @@ def _evidence_issues(body, base_dir):
     fenced = re.findall(r"```[^\n]*\n(.*?)```", poc, re.S)
     if not any(b.strip() for b in fenced):
         missing.append("no fenced command block in PoC")
+    # fence sizing (strix): a backtick run inside the content that is >= the fence
+    # breaks the render; the fence must be strictly longer than the longest run.
+    for fence_lang, fbody in re.findall(r"(`{3,})[^\n]*\n(.*?)\1", poc, re.S):
+        if max((len(m) for m in re.findall(r"`+", fbody)), default=0) >= len(fence_lang):
+            missing.append("PoC fence too short: content contains a backtick run >= the "
+                           "fence; open the fence one backtick longer than the longest run")
+            break
+    # diff-base ladder (strix): a piped git lookup silently swallows a failed base
+    # resolution and diffs against the wrong ref.
+    if re.search(r"\bgit\s+(?:diff|log|show)\b[^\n]*\|", poc):
+        missing.append("piped git diff/log/show: resolve the base via the ladder "
+                       "(origin/HEAD -> origin/main|master|develop -> FAIL asking for "
+                       "DIFF_BASE); never pipe the lookup")
     # pasted captures (html/xml/http/json fences) legitimately contain markup
     scanned = re.sub(r"```(?:html|xml|http|json)[^\n]*\n.*?```", "", poc, flags=re.S)
     if _PLACEHOLDER_RE.search(scanned):
@@ -184,10 +197,20 @@ def lint_file(path):
         if not desc.upper().startswith(prefix):
             issues.append("status %s needs a first-sentence reason starting %s in "
                           "Description" % (status, prefix))
+        elif not re.search(r"because\s+\S+", desc, re.I):
+            warnings.append("%s reason names no control: name what makes it not-real "
+                            "(encoder/sanitizer/block observed where)" % status)
     elif status in ("CONFIRMED", "EXPLOITED"):
         if "poc/" not in body.lower():
             issues.append("status %s but no capture path (poc/...) referenced - CONFIRMED needs "
                           "a validated PoC capture, EXPLOITED a chain use" % status)
+        for fld, hint in (("counterevidence", "strongest case against"),
+                          ("confidence", "level + basis"),
+                          ("severity_change_conditions", "what changes the rating")):
+            mv = re.search(r"^%s:\s*(.+)$" % fld, fmt, re.M | re.I)
+            val = mv.group(1).strip().strip('"').strip("'") if mv else ""
+            if not val or _PLACEHOLDER_RE.search(val) or val.lower() in ("todo", "tbd", "n/a"):
+                issues.append("status %s needs non-empty %s: (%s)" % (status, fld, hint))
         ev = _evidence_issues(body, os.path.dirname(path))
         if ev:
             issues.append(ev)

@@ -841,6 +841,27 @@ def deadends_placeholder_rows(d):
     return bad
 
 
+def deadends_uncontrolled_rows(d):
+    """Rows whose `why exhausted` makes a SAFETY claim (not vulnerable / safe / clean /
+    not exploitable) without naming the control that makes it safe. A safety claim with
+    no control is an unproven negative: name the encoder/sanitizer/block and WHERE it
+    was observed ("safe because output is HTML-encoded at the render helper, verified
+    on /search"). Fail-open (0)."""
+    if not d:
+        return 0
+    try:
+        rows = _parse_table(os.path.join(d, "Deadends.md"))
+    except Exception:
+        return 0
+    claim = re.compile(r"not vulnerable|not exploitable|\bsafe\b|no exposure|\bclean\b")
+    bad = 0
+    for r in rows:
+        why = (r.get("why exhausted") or "").strip()
+        if claim.search(why.lower()) and not re.search(r"because\s+\S.{10,}", why, re.I):
+            bad += 1
+    return bad
+
+
 def deadends_unclassed_rows(d):
     """Rows appended after the fail-class deploy that left the class cell empty.
     Legacy tables (header lacks fail-class) are exempt - only new rows carry the duty.

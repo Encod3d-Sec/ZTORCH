@@ -140,6 +140,28 @@ token, or a forged / XSW / signature-stripped assertion that logs you in **as th
 reached). Then exercise the session, and reproduce from scratch in a clean browser profile with no cached
 SSO state (per `hunt-core`). If the session vanishes in a clean profile, you replayed your own login.
 
+## Validation
+
+- Proof = an assertion YOU forged being accepted (session for B from your crafted
+  SAML/token), or an IdP token honored by an RP outside its audience. Replay the minted
+  session and read data; a decoded token is not proof.
+- Negative control: same assertion minus the flaw (valid Audience, signed) behaves;
+  clock-skew pair for timing claims.
+
+## False Positives
+
+- Certificate rollover mismatch (transient ops window, not a flaw).
+- Unsigned-by-design IdP-initiated SSO flows (signed at exchange).
+- Multi-audience app: token valid for two RPs by product design.
+- kid confusion blocked by pinned keys / JWKS allowlist.
+
+## Cross-routing
+
+- Load hunt-auth for the downstream session fixation/ATO mechanics.
+- Load hunt-m365 for Entra-specific token flows and Conditional Access.
+- Load hunt-api for bearer scope enforcement on the RP's APIs.
+- Not this skill: password-based login flaws (hunt-auth).
+
 ## Severity
 
 Rated on the session actually obtained, not on what the server merely accepted.

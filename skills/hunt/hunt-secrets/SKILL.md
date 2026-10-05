@@ -103,7 +103,7 @@ gitleaks detect --source ./cloned-repo --no-banner
 
 **Stop condition:** validate with **ONE** minimal read-only call, observe only the auth-success signal, then stop. Never use the key a second time, never call a data/list endpoint, never write, never exfiltrate data with it. A rotated/invalid key is a Deadend (info-disclosure only if the exposure path itself is the issue).
 
-## Verification / Validation
+## Validation
 
 **One benign call per candidate.** Read the auth-success **signal only** (status code / own identity), never page or read returned records, never chain a second call, never write. A key that authenticates once is proven - stop there.
 
@@ -125,6 +125,28 @@ trufflehog `--only-verified` already performs live checks; still re-confirm scop
 ## Chaining
 
 A validated cloud key (AWS/GCP/Azure) is a foothold, not the finish line: record it and **hand off to `hunt-cloud`** for the (scope-and-billing-aware) privilege and blast-radius assessment. Do not enumerate cloud services with the key yourself here - the confirmation call is where hunt-secrets stops.
+
+## Validation
+
+- Proof = the secret USED against its real service: a login that works, an API call
+  returning account-scoped data. A regex hit is a HYPOTHESIS until used or triaged
+  against the provider's validation.
+- Counterevidence: canary/decoy keys alert on use; check last-used timestamps where a
+  console exposes them before calling the credential live.
+
+## False Positives
+
+- Example/template keys (`AKIAIOSFODNN7EXAMPLE`-class) in docs and tests.
+- Placeholders in committed sample configs (`<your-key-here>` style).
+- Rotated-and-revoked keys still present in old commits.
+- Known-public dataset keys (training corpora).
+
+## Cross-routing
+
+- Load hunt-cloud when the credential is cloud IAM (escalation lives there).
+- Load hunt-auth for cred reuse against the app's own login.
+- Load hunt-api for token scope/entitlement checks.
+- Not this skill: public-by-design API documentation endpoints.
 
 ## Severity
 

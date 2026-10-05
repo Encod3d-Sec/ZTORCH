@@ -134,6 +134,36 @@ def _approach_needs_review(d):
     return "needs-review: true" in t and "approach reviewed" not in dec.lower()
 
 
+def _open_class_census(d):
+    """finish_scan census (strix): the classes the engagement actually carried, with
+    unresolved 4a rows listed, plus a chaining-gate flag (closed vectors exist).
+    Advisory only; fail-open (([], False))."""
+    rows = []
+    try:
+        with open(os.path.join(d, "Approach.md"), encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                s = line.strip()
+                if not s.startswith("| 4a:"):
+                    continue
+                cells = [c.strip() for c in s.strip("|").split("|")]
+                if len(cells) >= 7:            # id|asset|class|arsenal|skill|tool|status...
+                    rows.append(cells)
+    except OSError:
+        return [], 0
+    by_class = {}
+    closed = 0
+    for c in rows:
+        cls = (c[2] if c[2] else "-").lower()
+        st = c[6]
+        if st in ("[ ]", "[~]", "[?]"):
+            by_class.setdefault(cls, []).append(c[0])
+        elif st == "[x]":
+            closed += 1
+    census = ["%s: %d unresolved (%s)" % (k, len(v), ", ".join(v))
+              for k, v in sorted(by_class.items())]
+    return census, closed
+
+
 def main():
     try:
         import _engagement
@@ -240,7 +270,8 @@ def main():
         # pass the anti-loop gate on shape but carry no signal -- the same vector gets
         # re-tested later. Deduped on the bad-row count.
         bad_rows = (_engagement.deadends_placeholder_rows(d)
-                    + _engagement.deadends_unclassed_rows(d))
+                    + _engagement.deadends_unclassed_rows(d)
+                    + _engagement.deadends_uncontrolled_rows(d))
         if bad_rows:
             dmarker = os.path.join(d, ".deadends-nudged")
             dlast = 0
@@ -250,8 +281,10 @@ def main():
                 dlast = 0
             if bad_rows > dlast:
                 print("Deadends quality: %d row(s) carry a placeholder 'why exhausted' cell, "
-                      "duplicate an earlier asset x class pair, or leave the fail-class cell "
-                      "empty (type it: technical | environmental | conceptual | external). "
+                      "duplicate an earlier asset x class pair, leave the fail-class cell "
+                      "empty (type it: technical | environmental | conceptual | external), "
+                      "or claim safety without naming the control ('safe because "
+                      "<control> at <location>'). "
                       "A dead-end without a concrete "
                       "WHY is machine-read as exhaustible-but-unknown and gets re-tested later; "
                       "fill each 'why exhausted' cell (one sentence: what ruled it out) and drop "
@@ -343,6 +376,20 @@ def main():
               "Skill(learn) NOW to EXTRACT DELTAS to wiki/ (the qmd-dedup -> stage -> "
               "promote harvest) + the harness retrospective. Not optional; every SOLVED "
               "box harvests its deltas automatically.")
+    # finish_scan census (strix): unresolved classes reflected back at close, and the
+    # chaining gate. Unresolved means UNEXAMINED-or-incomplete, never clean.
+    if _stale or _pend:
+        try:
+            census, closed = _open_class_census(d)
+            if census:
+                print("Close-out census: %s; unresolved = unexamined/incomplete, NOT "
+                      "clean; say so explicitly in the walkthrough." % "; ".join(census))
+            if closed:
+                print("Chaining gate: %d closed vector row(s); run the escalate-and-chain "
+                      "check before the walkthrough (can any two findings combine into one "
+                      "bigger impact, or one escalate to critical?)" % closed)
+        except Exception:
+            pass
     # fire the auto eval-metrics block once at close-out (SOLVED or SUSPEND -- a parked box is
     # still measured; observed live: a formally-suspended engagement closed with a blank eval).
     # Previously ONLY Skill(learn) Phase 0d ran eval_metrics, so a light close-out that skipped

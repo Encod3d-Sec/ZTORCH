@@ -16,7 +16,11 @@ structured for that lookup; `reopen-if` names the condition that would justify r
 credential, a new payload class, a version change), so a genuinely-closed vector is not permanent if
 the ground shifts. Put free-text nuance in `why exhausted`. fail-class types the exhaustion
 (technical | environmental | conceptual | external) so close-out drift-count can tell a wrong
-vector from a flaky seat; legacy tables without the column stay valid.
+vector from a flaky seat; legacy tables without the column stay valid. When the row claims
+SAFETY ("not vulnerable to X", "clean"), the why-exhausted cell must name the control:
+`safe because <control> at <location>` (the encoder/sanitizer/block and where it was
+observed). A safety claim without a named control is an unproven negative and close-out
+flags it.
 
 `offensive.py done <row> --dead <reason>` appends a row here automatically.
 

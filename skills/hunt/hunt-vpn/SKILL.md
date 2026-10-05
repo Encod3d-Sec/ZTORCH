@@ -136,6 +136,29 @@ A VPN foothold is network access, not the endgame. On confirmed creds / session 
 
 A version match alone is a lead to exploit, never a finding. Demonstrate the primitive or it stays out of the FIND queue.
 
+## Validation
+
+- Proof = pre-auth exploit giving shell or file read with `hostname` + `id` output,
+  or an auth bypass minting a USABLE session (replay it). CVE claims must match the
+  EXACT build string from the admin/config surface, not the marketing version.
+- Negative control: the same request against a patched build fails (when a second
+  instance/version exists).
+
+## False Positives
+
+- Version guessed from banners behind auth (assumed reachability).
+- MFA enforced but username enumeration possible: information, not entry.
+- Default creds tested but a forced-reset intercepts first use.
+- Vendor PSIRT 'affected' with a config mitigation present (admin bound to localhost,
+  feature disabled).
+
+## Cross-routing
+
+- Load hunt-ad once internal: enterprise VPNs are commonly domain-joined.
+- Load hunt-ics when the VPN fronts an OT segment (stop conditions change).
+- Load hunt-auth for cred-based entry and MFA interactions.
+- Not this skill: the portal's own webapp bugs (route by class).
+
 ## Severity
 
 Rated on the primitive demonstrated, not the version detected.

@@ -92,6 +92,21 @@ Client retry ladder (what the host does to OUR MCP servers when they misbehave):
   description or AGENTS.md mid-engagement busts a ~20-70k-token prefix for a one-line
   change. Batch such edits between sessions, not during one.
 
+Caller-side cooldown + quarantine (our discipline when a foreign MCP server misbehaves):
+- Dispatch order: a failing server gets at most 4 tools tried before the fallback path
+  (deterministic CLI / direct API) takes over for the rest of the task; do not walk the
+  whole tool list against a dead server.
+- 3 consecutive dead calls (timeout/reset/refused) = quarantine that server for the
+  session: stop calling it, note the quarantine in `session/hot.md` (one line), route
+  around it. Re-probe at most once per cooldown window.
+- Cooldown is exponential per server: 1 min, 2, 4 ... capped at 15 min, with jitter;
+  a successful call resets it.
+- Auth/permission errors (401/403, needs-auth, scope refusal) are NEVER retried in-task:
+  they need an operator action (login, key, consent), so surface the ask and switch
+  lanes. Retrying burns the same failure.
+- Cap concurrent calls to any one MCP server at 4; queue the rest. A fan-out against a
+  local bridge (zg/qmd) just multiplies the timeout.
+
 ---
 
 ## Third-party skill intake (hard rule)

@@ -62,7 +62,11 @@ unnamed execution lanes.
   envelopes, dedupe, timestamp. Drafts return to the brain; the brain remains
   the only APPLIER of shared-file edits (lanes hand back paste-blocks per
   slot (f); a lane's own capture dir under `poc/<lane>/` is its output, not a
-  shared-file write).
+  shared-file write). Dedupe judge criteria: two entries are the SAME finding
+  only when root cause AND component AND fix all match (same tainted param on
+  the same endpoint version twice = duplicate; same param on two hosts or two
+  sinks = two findings); anything uncertain keeps BOTH entries flagged for the
+  brain, never a silent merge.
 - Console / Lead Strategist: brain duties (routing, judgement, sign-off),
   never subagent roles; the main chat is glm-5.3 by definition.
 - Step-up rule: a flash lane that hits a judgement fork (vector choice,
@@ -125,6 +129,10 @@ Brain adds two fleet rules on top:
   return; after several brain-side exploit-shaped calls with no lane open, run
   driver `note` before the next wave so the streak resets through the front
   door.
+- Name the join strategy at every fan-in point in a lane plan (cyberstrikeai L4):
+  `merge: all_merge` (apply every lane's writes) | `first_non_empty` (first lane returning
+  the observable wins) | `fail_fast` (one lane's failure kills the merge). Defaults when
+  unstated: all_merge for board writes, first_non_empty for verifications.
 
 ## Offensive integration (brain mode over the driver)
 

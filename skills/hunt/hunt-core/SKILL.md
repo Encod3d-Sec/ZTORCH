@@ -307,3 +307,28 @@ python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page <area
 **GENERIC only - no client host, no real identifier, no customer data.** Promote later via
 `scripts/wiki-promote.py`. Run `scripts/check-leaks.sh` before any push. Engagement data lives
 under `targets/` and is git-ignored.
+
+## Validation
+
+- Meta-contract for every class: a CONFIRMED names its proof artifact AND the negative
+  control that failed; the FIND carries counterevidence / confidence /
+  severity_change_conditions (find-lint enforces non-empty on CONFIRMED+).
+- Re-derive one claimed negative before it reaches Deadends.md; a subagent's negative
+  is a hypothesis until the brain re-verifies it.
+
+## False Positives
+
+- The four cross-class false-positive families:
+  1. encoded reflection read as XSS (`&lt;script&gt;` in the body);
+  2. empty 200 read as access (no other-account content);
+  3. self-effect read as cross-user (no second session);
+  4. an error page read as a vuln (it is the control doing its job).
+- The single control that kills all four: re-send the request WITHOUT the attack input
+  and diff; identical response = no finding.
+
+## Cross-routing
+
+- The 'Hunt approaches' table below is the router; when a signal names two candidate
+  skills, run the cheap distinguishing probe and negative-route the loser in one line.
+- Load the paired skill when a confirmed finding changes class (SSRF hits metadata ->
+  hunt-cloud; SSTI executes -> hunt-rce).

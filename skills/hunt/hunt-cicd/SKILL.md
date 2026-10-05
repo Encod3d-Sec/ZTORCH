@@ -58,6 +58,28 @@ OIDC token theft or secret exfil hands off to `hunt-cloud` (assume the role, enu
 
 CODEOWNERS and required reviews typically guard `.github/workflows/**` only; PPE (step 7) reaches execution through a build script they do not cover. Branch-name and PR-title injection sidesteps content review entirely (the trigger fires before merge). Prefer `workflow_run` and cache paths when `pull_request_target` is locked down.
 
+## Validation
+
+- Proof = a pipeline RUN executing attacker-controlled steps: the build log shows the
+  command and its output, or a secret lands in run output. A workflow FILE you can read
+  is not execution.
+- Negative control: PR from an untrusted fork without approval runs nothing (the
+  approval gate holding).
+
+## False Positives
+
+- Workflow readable but triggers restricted (workflow_dispatch by admin only).
+- GITHUB_TOKEN scoped read-only: injection lands, exfil path dead.
+- 'pwn request' path guarded by maintainer approval environments.
+- Registry public pull: an image anyone may fetch is not a leak.
+
+## Cross-routing
+
+- Load hunt-secrets when runner env/history leaks credentials.
+- Load hunt-cloud when the runner identity is cloud IAM (keys to the kingdom).
+- Load hunt-rce for the executed-step-to-shell continuation.
+- Not this skill: vulns in the repo's own application code (route by class).
+
 ## Severity
 
 CRITICAL if OIDC-to-cloud role assumption or `GITHUB_TOKEN`/secret exfil; HIGH if pwn-request / script-injection RCE on a runner; MEDIUM if cache poisoning with limited reach.

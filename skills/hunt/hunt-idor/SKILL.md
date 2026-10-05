@@ -185,6 +185,29 @@ side.
 legitimate-access ruled out, reproduced in a clean session - and for writes, the change visible
 in B's UI.
 
+## Validation
+
+- Proof = OTHER account's data in the response: embed a unique canary as account A,
+  read it back as account B. An empty 200 is NOT access (the server may null-fill).
+- Negative control: randomized/nonexistent id -> 404/empty, proving the 200 carries a
+  real object read rather than a same-for-everyone stub.
+- Log the id SPACE (sequential, uuid, encoded) in the FIND; it feeds severity.
+
+## False Positives
+
+- Response echoing your own request params read as another's data.
+- Admin-sees-all interfaces (intended authz, not IDOR).
+- Soft-deleted/own-data confusion; the canary kills this.
+- Sequential ids that are per-user namespaced (user 47's order 1 != user 48's order 1):
+  the pair test, not the numbering, decides.
+- UUID enumeration called infeasible: mitigation to note, not a finding.
+
+## Cross-routing
+
+- Load hunt-api for BOLA/BFLA verb/mass-assignment forms of the same flaw.
+- Load hunt-auth when access differs by ROLE (authz matrix, not object id).
+- Not this skill: same-account data exposure (information disclosure, hunt-secrets).
+
 ## Severity
 
 Rated on the object, not the mechanism.

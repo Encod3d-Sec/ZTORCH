@@ -104,6 +104,29 @@ obfuscation - work the TE.TE variants (step 3) and the HTTP/2 downgrade (step 4)
 the surface a hardened HTTP/1.1 front-end closes. Header casing, line-folding, and bare-CR/LF
 tricks beyond those live in `wiki/payloads/smuggling.md`.
 
+## Validation
+
+- Proof = the smuggled SECOND request's effect: response-prefix/suffix swap across a
+  poisoned connection, the victim's request in backend-side evidence, or cache poison
+  that another visitor receives. Pair every timing claim with a content pair; timing
+  alone wobbles with network jitter.
+
+## False Positives
+
+- Backend 400 for malformed input read as desync (re-send well-formed smuggle).
+- Scanner-induced pipelining artifacts (your own client coalescing).
+- TE-CL/CL-TE confusion flipping the conclusion; verify which parser is front.
+- CDN normalizing/stripping the header so nothing reaches the backend parser.
+- The proxy-error-page tell: an edge error page NAMES the second parser; it confirms
+  topology, not a desync; it still needs the pair test.
+
+## Cross-routing
+
+- Load hunt-cache once poison persists across victims.
+- Load hunt-ssrf when desync targets internal routing/fetches.
+- Load hunt-xss when the victim-side render is the impact leg.
+- Not this skill: plain reverse-proxy misconfig headers (ops note).
+
 ## Severity
 
 | Impact | Typical |

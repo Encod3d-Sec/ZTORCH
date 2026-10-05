@@ -66,6 +66,26 @@ When you plant a blind/OOB payload, append a row to `targets/<eng>/oob.md`: `| <
 
 Per `hunt-core`, cache poisoning is a traffic-affecting primitive: poisoning the shared/production cache can serve malicious content to every real user who hits that key. Demonstrate on a benign, self-scoped cache key (a unique cache-buster or your own path) and STOP at proof. Do not mass-poison a shared key, and do not leave a live payload sitting in the production cache.
 
+## Validation
+
+- Proof = victim-visible effect: account A poisons, account B (second session, clean
+  cache) receives the payload. Single-session hits are SELF-poisoning only.
+- Negative control: the unpoisoned key variant returns clean content to B.
+- Counterevidence: X-Cache MISS on B's control request disproves persistence.
+
+## False Positives
+
+- CDN caching static assets read as 'poisoned' (cache working as designed).
+- Vary/Cookie keying already isolating users.
+- fat GET rejected by the router (413/400): the technique, not the app, failed.
+- Single-user reflected content with zero cross-user path.
+
+## Cross-routing
+
+- Load hunt-smuggling when the poison injector is a request desync.
+- Load hunt-ssrf when the unkeyed input is an internal fetch whose response gets cached.
+- Not this skill: ordinary stale TTL on public content (ops note, not a finding).
+
 ## Severity
 
 HIGH (stored XSS / redirect to all users, or PII disclosure via deception); CRITICAL if it yields mass account takeover; MEDIUM if self-only / weak impact.

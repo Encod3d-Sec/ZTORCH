@@ -118,6 +118,32 @@ aaa"bbb'ccc<ddd>eee`fff
 [Click](javascript:alert(document.domain))
 ```
 
+## Validation
+
+- Proof = execution in a real browser (`alert(window.origin)` names the executing
+  origin), or a blind beacon whose `oob.md` row flipped to HIT. DOM claims need the sink
+  observed in the live Inspector (post-load), not view-source.
+- Counterevidence to seek: the deployed CSP (enforced vs report-only), and the sink's
+  context on OTHER origins that embed the content.
+
+## False Positives
+
+- Encoded reflection (`&lt;script&gt;` in the body): the encoder IS the control;
+  name it (which encoder, at which response point) when deadending.
+- Self-XSS with no chain (no second victim).
+- Markdown rendered through an escaping renderer: probe `aaa"bbb'ccc<ddd` FIRST.
+- Reflection in a JSON response with a JSON Content-Type never rendered.
+- CSP report-only misread as enforced, or enforced misread as report-only (read the
+  header directive).
+
+## Cross-routing
+
+- Load hunt-upload for SVG/file-borne payload delivery.
+- Load hunt-cache / hunt-smuggling when the payload needs a poisoned or desynced
+  response to reach the victim.
+- Load hunt-llm when the sink renders model output (markdown render of LLM content).
+- Not this skill: stored-but-always-escaped fields (deadend with the control named).
+
 ## Severity
 
 Confirm in a real browser, not just Burp. FIND output and Deadends format per hunt-core:

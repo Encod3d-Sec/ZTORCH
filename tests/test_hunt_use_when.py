@@ -20,6 +20,21 @@ def test_every_hunt_description_ends_with_use_when():
 CORE = os.path.join(VAULT, "skills", "hunt", "hunt-core", "SKILL.md")
 
 
+def test_every_hunt_carries_validation_fp_crossrouting():
+    """strix absorb: Validation + False Positives are MANDATORY per hunt skill, and each
+    skill cross-routes (names at least one OTHER hunt skill it loads or defers to)."""
+    skills = sorted(glob.glob(os.path.join(VAULT, "skills", "hunt", "hunt-*", "SKILL.md")))
+    assert len(skills) == 27
+    for p in skills:
+        text = open(p, encoding="utf-8").read()
+        own = os.path.basename(os.path.dirname(p))
+        for head in ("## Validation", "## False Positives", "## Cross-routing"):
+            assert head in text, (p, head)
+        xrt = text.split("## Cross-routing", 1)[1]
+        others = set(re.findall(r"hunt-[a-z0-9]+", xrt)) - {own}
+        assert others, (p, "cross-routing names no other hunt skill")
+
+
 def test_hunt_core_carries_rules_ladder_violations():
     t = open(CORE, encoding="utf-8").read()
     for tok in ("wiki-first", "OOB gate", "verification before status change",

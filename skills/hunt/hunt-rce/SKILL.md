@@ -176,6 +176,28 @@ RCE is rarely the finish line. Once exec is confirmed:
 
 Report the chain, not just the primitive: pre-auth RCE plus credential reuse implicates far more than the one host.
 
+## Validation
+
+- Proof = command output carrying a unique canary (`echo <canary>`), or an OOB
+  callback; version+CVE claims additionally need the CVE's own preconditions present in
+  the build (the vulnerable code path, the config that enables it); a version string
+  match alone is where backported-fix FPs are born.
+
+## False Positives
+
+- Intended admin/exec feature used as designed (diagnostics console = feature).
+- WAF 403 read as 'patched' (blocked != fixed; retry per evasion ladder).
+- Container `whoami` output read as HOST context (check `hostname`).
+- Deserialization ERROR read as execution (error != RCE).
+- `--version` matched to a CVE whose fix was backported without a version bump.
+
+## Cross-routing
+
+- Load hunt-deserialization when the vector is a serialized object.
+- Load hunt-injection for the SSTI lineage (template -> exec).
+- Load hunt-upload when the payload ships as a file.
+- Load hunt-cicd when the exec context is a pipeline runner.
+
 ## Severity
 
 | Outcome | Severity |

@@ -64,6 +64,25 @@ doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket f
 
 An unauthenticated READ of OT state is a valid lower-severity finding in its own right (confirmed by demonstrating the unauth read), but it is NOT a control or physical-impact claim - keep the two separate.
 
+## Validation
+
+- Proof (read-only): a point value change observed on TWO polls (cache vs live), from
+  the PLC, not the gateway's shadow. Writes/actuation need explicit operator
+  authorization BEFORE the request; default posture here is enumerate-and-stop.
+
+## False Positives
+
+- HMI running a demo/simulation mode (values move on their own).
+- Read-only registers misidentified as actuators from a register map guess.
+- Engineering port open but session-authenticated (portal, not protocol).
+- Responses from a gateway/OPC server proxying, not the controller itself.
+
+## Cross-routing
+
+- Load hunt-vpn for the remote-access path IN (historically the entry vector).
+- Load hunt-ad for domain-joined HMIs/engineering stations.
+- Not this skill: corporate IT segment behind the same firewall (route by class).
+
 ## Severity
 
 | Demonstrated impact | Rating |

@@ -78,6 +78,26 @@ Windows-local specific; adds to the `hunt-core` gate.
 
 **IS confirmation:** you actually ran code / read a file AS the higher principal and proved it - a shell or command whose `whoami` returns the service account / `nt authority\system` (from the TARGET, re-verified), the protected file read, the SYSTEM flag captured - reproduced from your own written steps in a clean session.
 
+## Validation
+
+- Proof = elevated context doing what the base user could not: `whoami` before/after
+  plus a marker file written to an admin-only path. Potato-family needs the capture
+  RELAYED (the trigger alone is not the escalation).
+
+## False Positives
+
+- SeImpersonate present but no capturing listener to relay to (dead on arrival;
+  verify a service that performs an auth handshake as SYSTEM).
+- Unquoted service path where no prefix-hijackable directory is writable.
+- AlwaysInstallElevated set but msiexec policy-restricted.
+- UAC 'bypass' that still prompts on the target build (build-specific behavior).
+
+## Cross-routing
+
+- Load hunt-ad when the escalation path crosses the domain boundary.
+- Load hunt-pwn for memory-corruption local privesc primitives.
+- Not this skill: macOS endpoints (hunt-macos).
+
 ## Severity
 
 | Severity | Class |

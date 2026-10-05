@@ -75,6 +75,28 @@ Logic flaws compound. A price or quantity tamper that touches *another user's* c
 
 **IS confirmation:** the unintended end-state is realized and verified downstream - a negative or inflated balance that persists, a purchase completed at the free or discounted price (order confirmed, payment captured at the tampered amount), a workflow step skipped **and** its downstream effect confirmed (account provisioned, funds moved, access granted). For a race, the limit is actually exceeded (two redemptions both settled). Re-verify in a clean session, and confirm from the state only the successful abuse produces, not from the request the server merely accepted.
 
+## Validation
+
+- Proof = the economic/state effect demonstrated TWICE with a paired control: the
+  attack order applies the discount/coupon/overflow AND a control order without the flaw
+  behaves normally. One lucky order is an anecdote.
+- Counterevidence: reconciliation/refund reversal may catch the effect later; note the
+  window in the FIND's severity_change_conditions.
+
+## False Positives
+
+- Sandbox/test-mode amounts and sandboxes with fake gateways.
+- Client-side-only 'reuse' the server already deduplicates.
+- Race 'won' against a dev replica with different locking.
+- Quantity/currency overflow the backend rounds or rejects at settlement.
+- Feature-not-bug: bulk discount stacking that is the documented promotion.
+
+## Cross-routing
+
+- Load hunt-api when the abuse needs endpoint mechanics (verbs, mass assignment).
+- Load hunt-injection when the root cause is a parser (unit mismatch, type juggling).
+- Not this skill: plain cross-account object access (hunt-idor).
+
 ## Severity
 
 Rated on realized impact per `hunt-core`.

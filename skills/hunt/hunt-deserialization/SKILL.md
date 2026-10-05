@@ -123,6 +123,28 @@ different serialization format the same endpoint accepts (XML / JSON / YAML vs b
 payload (`SignedObject` wrapping), or - .NET - swap the formatter (`LosFormatter`, `SoapFormatter`,
 `Json.NET TypeNameHandling`). Fingerprint the exact library version before sweeping blind.
 
+## Validation
+
+- Proof = OOB DNS/HTTP callback carrying a unique gadget-chained marker, or command
+  output in-band. Sleep-based proof REQUIRES the A/B pair: two identical requests, only
+  the payload one delayed; single-request latency proves nothing (clock skew).
+
+## False Positives
+
+- A base64 blob misread as serialized Java/php (check magic bytes first).
+- Padding-oracle tooling noise on non-encrypted padding.
+- ysoserial payload rejected: wrong gadget LIB VERSION, not a dead sink; enumerate the
+  classpath before deadending.
+- ViewState with MAC/enabled validation: signed, not deserializable.
+- YAML/JSON 'deser' that never constructs an object (safe loader paths).
+
+## Cross-routing
+
+- Load hunt-rce once code exec lands (this skill ends at the sink firing).
+- Load hunt-ssrf for OOB proof mechanics and channel setup.
+- Load hunt-upload when the serialized blob ships as a file.
+- Not this skill: plain XXE (hunt-injection); that is a parser issue, not an object graph.
+
 ## Severity
 
 - **CRITICAL** - command execution or an OOB code callback from the gadget.

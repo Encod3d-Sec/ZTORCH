@@ -66,6 +66,31 @@ For object-level authorization (BOLA/IDOR) see `hunt-idor`.
 - **BFLA** - a low-priv token reaching AND executing an admin/privileged function (perform the action, do not just get a `200`).
 - **Mass assignment** - the privileged field (`role`/`isAdmin`/`balance`) verified in effect from a fresh authenticated read, not merely accepted in the request body.
 
+## Validation
+
+- Proof = content belonging to ANOTHER account/tenant in the response, with a unique
+  canary written by account A and read via account B (two-account rule).
+- Negative control: a randomized/nonexistent object id returns 404 or empty; that makes
+  the 200-on-B a real object read, not a stub response.
+- Counterevidence: 200 with redacted/null fields is server-side filtering WORKING.
+
+## False Positives
+
+- 200 with fields stripped = authorization working, not BOLA.
+- Soft-deleted object shadowing (data you own, deleted, still readable once).
+- Own-account data mistaken for another's: without a canary you cannot tell, so always
+  plant the marker first.
+- Public-by-design endpoints (docs, catalogs) read as broken authz.
+- 429 read as authz failure; it is rate limiting, not access control.
+
+## Cross-routing
+
+- Load hunt-idor for the same object-level flaw outside a formal API (UI routes,
+  direct object links).
+- Load hunt-auth when the failure is token scope/audience rather than object id.
+- Load hunt-bizlogic for quota/price/limit abuse on API endpoints.
+- Not this skill: GraphQL-specific traversal/introspection (hunt-injection).
+
 ## Severity
 
 - **CRITICAL** - unauthenticated admin action, or cross-tenant data access.

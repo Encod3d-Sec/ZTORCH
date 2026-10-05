@@ -75,6 +75,28 @@ A scanner FAIL is a hypothesis, never a finding: the confirmation gate below sti
 
 For indirect injection specifically: prove the injected content reached the model and changed its behaviour in the victim context - the payload landing in a store is not the finding, the model acting on it is.
 
+## Validation
+
+- Proof = the SAME conversation showing refusal-then-compliance past the guard, or a
+  tool invoked outside its scope with the effect visible (file/OOB/request). System
+  prompt readback needs VERBATIM tokens (a paraphrase is a reconstruction).
+- Negative control: the same prompt without the jailbreak wrapper is refused.
+
+## False Positives
+
+- Model refusing later in a long convo: context drift, not bypass.
+- 'DAN worked' claims without the transgressing output.
+- Indirect injection that only echoes the payload (no tool call induced).
+- Eval-suite markers (deck, agentdojo strings) in TRAINING content misread as prod
+  behavior.
+
+## Cross-routing
+
+- Load hunt-mcp when the tool/executor layer actually runs the induced action.
+- Load hunt-api for endpoint abuse around the model API itself.
+- Load hunt-xss when model output renders into a markdown/HTML sink.
+- Not this skill: wrapper-app bugs that need no model (route by class).
+
 ## Severity
 
 CRITICAL if excessive agency yields a privileged action (delete/reset/RCE) or insecure output -> RCE / account takeover; HIGH if stored XSS via output or sensitive data disclosure (context secrets, another user's data via RAG); MEDIUM if a verified system-prompt leak only. A content-free jailbreak (odd output, refusal bypass with nothing sensitive revealed) is not a finding - see the confirmation gate.

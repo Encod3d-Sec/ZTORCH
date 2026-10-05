@@ -51,6 +51,26 @@ Rank before exploiting:
 
 Foothold via pwn usually IS the flag path: loot creds from the shell per hunt-core reuse rules; container root still means checking `/home/*/flag*`, SUID, and mounted secrets before closing. seccomp-jailed shells chain to file-read primitives for the flag ([[ctf-jail-escapes]]).
 
+## Validation
+
+- Proof = controlled instruction pointer / return address with a UNIQUE marker value
+  (not the same crash twice), or a shell whose first commands are `hostname` + `id`
+  (false-root guardrail). ASLR-dead crashes are leads, not proofs.
+- Negative control: identical input minus the overflow runs clean.
+
+## False Positives
+
+- Heap abort / stack smash REPORT with no register control (crash != exploit).
+- A single lucky ASLR guess repeated as a technique.
+- Canary LEAKED but PIE/RELRO still stand (leak != bypass).
+- one_gadget constraints unmet: execve fails silently, shell 'hangs'.
+
+## Cross-routing
+
+- Load hunt-rce for weaponization once control is shown.
+- Load hunt-core marker discipline for crash-input uniqueness.
+- Not this skill: logic bugs in the service (hunt-bizlogic), source leaks (hunt-secrets).
+
 ## Severity
 
 | Outcome | Severity |

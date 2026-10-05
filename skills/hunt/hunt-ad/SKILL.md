@@ -183,6 +183,32 @@ impacket-secretsdump <domain>/<user>:<pass>@<dc>        # DCSync if rights
 
 **IS confirmation:** credentials validated against the DC (`nxc smb`/`ldap`/`winrm <dc> -u <user> -p <pass>` returns `[+]` / `Pwn3d!`); a TGT/TGS obtained AND used (authenticated an action, read a file, DCSynced with it); a DCSync that actually returned NT hashes; an ACL abuse executed end to end (shadow-creds -> authenticated, targeted Kerberoast -> cracked, group add -> new access gained); an ESC exploited to a certificate that authenticated as the target. Reproduced from your own written steps.
 
+## Validation
+
+- Proof = the attack's own artifact: a cracked hash from a captured ticket, a readable
+  DC-sync dump, a shell as the delegated context. A BloodHound edge alone is a HYPOTHESIS.
+- Negative control: the same request WITHOUT the abused right (no /ticket, no write ACE)
+  fails the same way; the pair is the finding.
+- Counterevidence to seek: confirm the edge against live ACL (`nxc ... --dc`), group
+  membership via `whoami /groups` on the affected context; BH caches go stale after
+  ACL rebuilds.
+
+## False Positives
+
+- BloodHound edge present but ACL since rebuilt (re-collect before reporting).
+- Kerberoastable service whose ticket cracks infeasibly (machine-length password):
+  capture is real, impact is not; note the hash, deadend the class.
+- AS-REP-roastable account that is DISABLED (no login possible).
+- Constrained delegation "open" but protocol signing enforced; relay dies.
+- Writable GPO the principal cannot link/apply: write is not execute.
+
+## Cross-routing
+
+- Load hunt-windows when you land on a member host for local privesc before DA.
+- Load hunt-m365 when the tenant is Entra/hybrid (AD Connect bridge both ways).
+- Load hunt-auth for AD FS / cert-based web auth flows.
+- Not this skill: plain local privesc with no domain in play (hunt-windows).
+
 ## Severity
 
 CRITICAL = DA / domain compromise / DCSync / ESC1 / ESC8. HIGH = user creds + lateral movement, Kerberoast cracked to a privileged account. MEDIUM = enum / info disclosure, a spray hit with no privilege.

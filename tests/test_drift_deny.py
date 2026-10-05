@@ -356,7 +356,8 @@ def test_detached_or_fast_forms_do_not_fire(tmp_path):
                 "bash scripts/vm-rsh.sh engd 'nuclei -u http://10.0.0.5'"):
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
         r = subprocess.run([sys.executable, str(HOOK)], input=payload,
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30,
+                           env=dict(os.environ, ZTORCH_VAULT=str(tmp_path / "novault")))
         assert r.stdout.strip() == "", cmd
 
 

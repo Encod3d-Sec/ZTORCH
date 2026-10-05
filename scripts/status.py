@@ -137,14 +137,39 @@ def coverage_data(d, etype):
 def spend_line(d):
     """One 'spend: $X.XX' line from .metrics.json's live spend_usd (accumulated by the
     tool-telemetry hook), or None when telemetry has not written it yet. Reading the
-    transcripts here would be too heavy for a dashboard; the hook keeps the running total."""
+    transcripts here would be too heavy for a dashboard; the hook keeps the running total.
+    With ZT_MAX_ENG_USD set, annotates the budget band (strix 70/85/95 + the 90% reserve):
+    70 = plan the finish, 85 = wrap-up mode, 90 = reserve held for evidence + report,
+    95 = stop testing. The hard deny at 100% lives in drift-guard; this is the early
+    steering that makes reaching 100% a choice instead of a surprise."""
     import json
     try:
         m = json.load(open(os.path.join(d, ".metrics.json"), encoding="utf-8"))
         v = float(m.get("spend_usd", 0) or 0)
     except Exception:
         return None
-    return "spend: $%.2f" % v if v > 0 else None
+    if v <= 0:
+        return None
+    try:
+        cap = float(os.environ.get("ZT_MAX_ENG_USD", "") or 0)
+    except ValueError:
+        cap = 0
+    if cap > 0:
+        pct = v / cap * 100
+        if pct >= 95:
+            band = "; BAND 95: STOP testing, close out now (hard deny at cap)"
+        elif pct >= 90:
+            band = ("; RESERVE 10%%: hold the last tenth for evidence packaging + report; "
+                    "open NO new lanes (%.0f%%)" % pct)
+        elif pct >= 85:
+            band = "; BAND 85: wrap-up mode - finish open rows only, no new surface"
+        elif pct >= 70:
+            band = ("; BAND 70: plan the finish - no new surface classes; list what "
+                    "close-out needs")
+        else:
+            band = " (%.0f%% of cap)" % pct
+        return "spend: $%.2f%s" % (v, band)
+    return "spend: $%.2f" % v
 
 
 def facts_line(d):
