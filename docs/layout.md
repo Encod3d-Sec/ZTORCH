@@ -51,7 +51,7 @@ ZTORCH/
 ├── tests/                       <- pytest suite for engagement + wiki automation
 ├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)
 │   │                               + hooks/ (hook scripts)
-│   ├── hunt/                    <- hunt-* vuln-class skills (26) + hunt-core (shared discipline) + triggers.json
+│   ├── hunt/                    <- hunt-* vuln-class skills (27) + hunt-core (shared discipline) + triggers.json
 │   ├── vector-workflow/         <- board-seeding pipeline reference (promoted to top-level; not a loop step)
 │   ├── workflow/                <- offensive (driver) + engage (router) + brain (subagent dispatch) + nightmare (Windows LPE arsenal, CTF/lab) at root; the rest subfoldered by role
 │   │                               (nesting is organizational only, skills are discovered by basename):
