@@ -10,6 +10,10 @@ carries the methodology mandate, not this hook. Stdout is added to the context.
   - "surface_triggers" natural attack-surface terms (login form, upload field,
                        api endpoint, ...) -> heuristic. Emit a softer "consider"
                        line, escapable when the prompt is not about testing.
+  - "relational_triggers" wiki-relation phrasing (how pages connect, hub or
+                       orphan pages) -> advisory nudge toward Skill(graphify),
+                       the structural wikilink layer; page-noun-gated so
+                       engagement prose never fires it.
 
 De-noise: on a fire we emit ONLY the directive, not the engagement summary
 (SessionStart already shows that once) so the action item is not buried.
@@ -178,6 +182,9 @@ def main():
     for s in soft_raw:
         if s not in seen:
             seen.add(s); soft.append(s)
+    # Relational wiki questions (how pages CONNECT): page-noun-gated advisory tier,
+    # never mandatory -- engagement prose ("path between two hosts") must not fire.
+    rel = [s for s in _match(data.get("relational_triggers", {}), scan) if s not in seen]
 
     # Framework-meta prompt: a prompt ABOUT the harness itself (documenting the wiki, editing
     # triggers.json, discussing methodology) is not target work -- suppress every fire so it
@@ -185,7 +192,7 @@ def main():
     try:
         import _meta
         if _meta.is_prompt_framework_meta(scan):
-            hard, soft = [], []
+            hard, soft, rel = [], [], []
     except Exception:
         pass
 
@@ -196,9 +203,9 @@ def main():
     except Exception:
         vault = os.path.dirname(os.path.dirname(HERE))
     # Log every prompt -- misses included, so trigger-stats.py shows true match rate.
-    _log(vault, hard, soft, len(prompt))
+    _log(vault, hard, soft + rel, len(prompt))
 
-    if not hard and not soft:
+    if not hard and not soft and not rel:
         return
 
     try:
@@ -220,6 +227,15 @@ def main():
             "Attack surface matched -- strongly consider loading "
             + _skills(soft)
             + " (heuristic; skip only if this prompt is not about testing that surface)."
+        )
+    if rel:
+        out.append(
+            "Relational wiki question -- consider "
+            + _skills(rel)
+            + " (scripts/wiki-graph.py: paths between pages, hubs, orphans, neighbors; "
+            "structural, no LLM). qmd answers content (which page says X), graphify "
+            "answers relations (how pages connect) -- run graphify first, then qmd "
+            "to read the pages it names."
         )
     # Co-load the shared spine whenever any hunt-* class skill fired. The per-skill
     # "Assumes hunt-core" line covers the paths the hook does not (model-judged, typed /hunt-xxx).

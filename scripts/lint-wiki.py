@@ -163,7 +163,7 @@ def check_triggers(repo):
         data = json.load(open(path, encoding="utf-8", errors="ignore"))
     except Exception as e:
         return [("skills/hunt/triggers.json", f"unreadable: {e}")]
-    for section in ("triggers", "surface_triggers"):
+    for section in ("triggers", "surface_triggers", "relational_triggers"):
         for key, val in data.get(section, {}).items():
             targets = val if isinstance(val, list) else [val]
             for sk in targets:

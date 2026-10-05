@@ -54,5 +54,10 @@
     "llm endpoint|llm feature|chatbot|chat widget|ai assistant|ai chat": "hunt-llm",
     "agent skill|skill poisoning|agent tool list": "hunt-mcp",
     "system prompt|system-prompt leak": "hunt-llm"
+  },
+  "relational_triggers": {
+    "wikilinks?|wiki[ -]graph|wiki relation|god[ -]?nodes?|orphan(?:ed)? pages?|hub pages?": "graphify",
+    "how (?:do|does) .{0,60}(?:pages?|techniques?|tools?|wiki).{0,50}(?:connect|relate|link)": "graphify",
+    "(?:path|connection)s? between .{0,50}(?:pages?|techniques?|tools?|wiki)": "graphify"
   }
 }

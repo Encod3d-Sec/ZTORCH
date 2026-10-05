@@ -88,6 +88,8 @@ Prompt contains the keyword (case-insensitive) -> that skill is suggested. Multi
 
 51 triggers total (37 vuln-type + 14 attack-surface). xxe/ssti/graphql route to hunt-injection (no separate skills). azure ad -> hunt-m365 (not hunt-cloud) by design. (Counts drift as `triggers.json` grows; recount with `python3 -c "import json;d=json.load(open('skills/hunt/triggers.json'));print(len(d['triggers']),len(d['surface_triggers']))"`.)
 
+A third advisory tier, `relational_triggers` (3 rows -> `graphify`), fires on wiki-relation phrasing (how pages connect, hub or orphan pages, the wikilink graph): page-noun-gated so engagement prose ("path between the two hosts") never fires it. It nudges `Skill(graphify)` with the lane rule baked in: qmd answers content, graphify answers relations.
+
 ---
 
 ## 3. What you RUN -> command-time triggers
