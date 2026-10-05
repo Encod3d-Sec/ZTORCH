@@ -36,7 +36,7 @@ def parse_frontmatter(text):
 
 def lint_skill(path):
     issues = []
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8-sig")  # utf-8-sig: strips a leading BOM, plain UTF-8 otherwise
     fm = parse_frontmatter(text)
     if fm is None:
         return ["%s: frontmatter missing or unparsable" % path]
