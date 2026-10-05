@@ -1,29 +1,26 @@
 #!/usr/bin/env python3
-"""PreToolUse(Bash) hook: ENFORCING scope + RoE guard.
+"""PreToolUse(Bash) hook: ENFORCING scope guard + RoE operator-ask gate.
 
-Before a shell command runs, DENY it (permissionDecision: deny -> the tool call is
-blocked, the reason is shown) when it deterministically:
-  - targets an out-of-scope host/IP (exact host/domain match or IP-in-CIDR against
-    scope.md's out_of_scope list; IPv4 and IPv6), or
-  - uses tooling forbidden by the engagement RoE flags
-    (no_bruteforce / no_dos / passive_only in scope.md).
-
-This is the harness's "enforce, don't nudge" boundary: these two are DETERMINISTIC
-(no judgement), so blocking them costs no tokens/time and prevents the wrong action
-outright. Semantic workflow steps (wiki-first, tools-not-manual, capture, intended-path)
-stay advisory elsewhere -- hard-blocking a judgement call would false-fire and make us
-MORE stuck, the opposite of the goal. (The anti-narration `echo "=== ... ==="` norm is
-CLAUDE.md guidance, not a deny: it was evadable and only added a re-run tax.)
+Before a shell command runs:
+  - out-of-scope host/IP (exact host/domain match or IP-in-CIDR against scope.md's
+    out_of_scope list; IPv4 and IPv6) -> DENY (permissionDecision: deny). This is the
+    ONE hard enforcement left in the harness (operator directive 2026-10-05: only
+    scope-guard blocks).
+  - tooling forbidden by the engagement RoE flags (no_bruteforce / no_dos /
+    passive_only in scope.md) -> OPERATOR DECISION, not a silent deny: the call is
+    routed back as permissionDecision "ask" so the operator decides. Pre-approval
+    paths: a `ZT_ROE_OK=1` env prefix on the command (operator said yes to this one),
+    or a `.roe-ok` marker file in the engagement dir (engagement-wide approval).
 
 SAFETY (this hook can block, so it must never trap the operator):
   - Fail-OPEN: any exception -> exit 0, allow. A hook bug never blocks a command.
   - Narrow matches only: out-of-scope needs an explicit out_of_scope entry (empty on a
-    typical single-target CTF -> never fires); RoE denies need the flag set. IPs/hosts that
+    typical single-target CTF -> never fires); RoE gates need the flag set. IPs/hosts that
     appear only in a URL query/fragment or a data/header-flag value (an SSRF/redirect
     payload) are exempt; the target is the host, not a param value. Option-assigned
     targets (`--url=<host>`) are NOT exempt.
   - Escape hatch: create `skills/hooks/.enforce-off` (== the hooks dir) to instantly
-    downgrade every deny back to an advisory warning, for when a false-block gets in the way.
+    downgrade every deny/ask back to an advisory warning, for when a false-block gets in the way.
 No active engagement -> nothing to deny. Any error exits 0 silent.
 """
 import ipaddress
@@ -174,6 +171,21 @@ def _enforcing():
     return not os.path.exists(marker)
 
 
+# Operator pre-approval for RoE-gated tooling: a ZT_ROE_OK=<val> env prefix on THIS
+# command (the operator just said yes) or the engagement's .roe-ok marker (approved
+# engagement-wide). RoE tooling is an operator DECISION, never a silent deny.
+_ROE_OK_ENV = re.compile(r"(?<![\w-])ZT_ROE_OK=\S")
+
+
+def _roe_approved(cmd, d):
+    if _ROE_OK_ENV.search(cmd):
+        return True
+    try:
+        return os.path.isfile(os.path.join(d, ".roe-ok"))
+    except Exception:
+        return False
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -186,14 +198,16 @@ def main():
     if not cmd:
         return
 
-    deny = []   # deterministic, block-worthy reasons (one line each)
+    deny = []   # deterministic out-of-scope blocks (the one hard enforcement)
+    roe = []    # RoE-gated tooling -> operator decision (ask), never a silent deny
 
     # scope / RoE (only when an engagement is active)
+    eng_dir = None
     try:
         import _engagement
-        d = _engagement.active_dir()
-        if d:
-            sc = _engagement.scope(d)
+        eng_dir = _engagement.active_dir()
+        if eng_dir:
+            sc = _engagement.scope(eng_dir)
             # out-of-scope targets: IP-in-CIDR (IPv4+IPv6) + exact/parent host match. URL
             # query/fragment values and data/header-flag payloads are exempt (see _strip_noise):
             # the target is the host, not an SSRF/redirect param value; `--url=<host>` is kept.
@@ -206,15 +220,15 @@ def main():
             # merely mentioned in a quoted echo/grep string is never flagged)
             scan_cmd = _scan_text(cmd)
             if sc.get("no_bruteforce") and BRUTEFORCE.search(scan_cmd):
-                deny.append("RoE no_bruteforce: command uses brute-force tooling")
+                roe.append("RoE no_bruteforce: command uses brute-force tooling")
             if sc.get("no_dos") and DOS.search(scan_cmd):
-                deny.append("RoE no_dos: command looks like high-volume/DoS tooling")
+                roe.append("RoE no_dos: command looks like high-volume/DoS tooling")
             if sc.get("passive_only") and ACTIVE.search(scan_cmd):
-                deny.append("RoE passive_only: command runs an active scanner")
+                roe.append("RoE passive_only: command runs an active scanner")
     except Exception:
         pass
 
-    if not deny:
+    if not deny and not roe:
         # escape-hatch write (advisory ONLY, never deny: the operator may legitimately be
         # driving): a Bash segment creating/modifying skills/hooks/.enforce-off downgrades
         # every hook deny to advisory with no narration otherwise; surface it + record it.
@@ -236,16 +250,24 @@ def main():
         except Exception:
             pass
         return
-    body = "\n- ".join(deny)
-    # telemetry: every block/advise is a recorded drift signal (a wrong action the guard caught)
+    body = "\n- ".join(deny + roe)
+    # telemetry: every block/ask/advise is a recorded drift signal
     try:
         import _telemetry
-        reason = ("blocked " if _enforcing() else "advised ") + " | ".join(x.split(":")[0] for x in deny)
-        _telemetry.drift("scope-guard", reason)
-        _telemetry.hook("scope-guard", action=("deny" if _enforcing() else "advise"))
+        action = ("deny" if deny else "ask") if _enforcing() else "advise"
+        _telemetry.drift("scope-guard", action + " " + " | ".join(
+            x.split(":")[0] for x in deny + roe))
+        _telemetry.hook("scope-guard", action=action)
     except Exception:
         pass
-    if _enforcing():
+    if not _enforcing():
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": "SCOPE/RoE (advisory; enforcement OFF via .enforce-off):\n- " + body,
+        }}))
+        return
+    if deny:
+        # out-of-scope: the ONE hard block (deterministic, always wrong to run)
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
@@ -253,11 +275,25 @@ def main():
                 + "\n\nFix the command and re-run. (False block? ask the OPERATOR to create "
                   "skills/hooks/.enforce-off to downgrade enforcement to advisory.)"),
         }}))
-    else:
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "additionalContext": "SCOPE/RoE/HYGIENE (advisory; enforcement OFF via .enforce-off):\n- " + body,
-        }}))
+        return
+    # RoE-gated tooling, not pre-approved: route the decision to the operator
+    if _roe_approved(cmd, eng_dir):
+        try:
+            import _telemetry
+            _telemetry.drift("scope-guard", "roe tooling pre-approved by operator")
+        except Exception:
+            pass
+        return
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "ask",
+        "permissionDecisionReason": ("OPERATOR DECISION (RoE gate):\n- " + body
+            + "\n\nscope.md restricts this tooling class for the engagement; running it is "
+              "the OPERATOR's call - ASK, don't assume and don't silently skip. Once the "
+              "operator approves: re-run with a ZT_ROE_OK=1 prefix (this command), create "
+              "the .roe-ok marker in the engagement dir (engagement-wide), or flip the "
+              "flag in scope.md."),
+    }}))
 
 
 if __name__ == "__main__":

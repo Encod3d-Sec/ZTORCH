@@ -185,6 +185,65 @@ def test_data_flag_payload_with_url_still_exempt():
     assert scope_guard.ip_out_of_scope("curl --data 'http://10.0.0.5/' http://ok.com/", sc) == []
 
 
+# ---- RoE tooling = OPERATOR DECISION gate (operator directive 2026-10-05):
+# ---- only out-of-scope host/IP denies; RoE-gated tooling asks the operator instead.
+ROE_CMD = "hydra -L users.txt -P pass.txt ssh://10.10.10.5"
+
+
+def _roe_vault(tmp_path, flags="no_bruteforce: true", oos=(), roe_ok=False):
+    t = tmp_path / "targets" / "engr"
+    t.mkdir(parents=True, exist_ok=True)
+    oos_lines = "\n".join("- " + x for x in oos)
+    (t / "scope.md").write_text(
+        "---\n%s\n---\n\n## Out of scope\n%s\n" % (flags, oos_lines), encoding="utf-8")
+    (tmp_path / "targets" / "active.md").write_text("engr\n", encoding="utf-8")
+    if roe_ok:
+        (t / ".roe-ok").write_text("", encoding="utf-8")
+    return tmp_path
+
+
+def _fire(vault, cmd, enforce_off=False):
+    env = dict(os.environ, ZTORCH_VAULT=str(vault),
+               ENFORCE_OFF_MARKER=str(vault / ".enforce-off"))
+    if enforce_off:
+        (vault / ".enforce-off").write_text("", encoding="utf-8")
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
+    r = subprocess.run([sys.executable, os.path.join(VAULT, "skills", "hooks",
+                                                    "scope-guard.py")],
+                       input=payload, capture_output=True, text=True, timeout=30, env=env)
+    return json.loads(r.stdout) if r.stdout.strip() else {}
+
+
+def test_roe_tooling_asks_operator_instead_of_denying(tmp_path):
+    out = _fire(_roe_vault(tmp_path), ROE_CMD)["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "ask"          # operator gate, not a deny
+    assert "OPERATOR DECISION" in out.get("permissionDecisionReason", "")
+    assert "no_bruteforce" in out.get("permissionDecisionReason", "")
+
+
+def test_roe_ok_env_prefix_preapproves_command(tmp_path):
+    assert _fire(_roe_vault(tmp_path), "ZT_ROE_OK=1 " + ROE_CMD) == {}
+
+
+def test_roe_ok_marker_preapproves_engagement(tmp_path):
+    assert _fire(_roe_vault(tmp_path, roe_ok=True), ROE_CMD) == {}
+
+
+def test_out_of_scope_still_denies_even_with_roe_ok(tmp_path):
+    """Scope is the one hard guard: an out-of-scope target denies regardless of RoE
+    pre-approval."""
+    v = _roe_vault(tmp_path, oos=("10.0.0.5",))
+    out = _fire(v, "ZT_ROE_OK=1 nmap -sV 10.0.0.5")["hookSpecificOutput"]
+    assert out.get("permissionDecision") == "deny"
+    assert "out-of-scope" in out.get("permissionDecisionReason", "")
+
+
+def test_roe_ask_downgrades_to_advisory_under_enforce_off(tmp_path):
+    out = _fire(_roe_vault(tmp_path), ROE_CMD, enforce_off=True)["hookSpecificOutput"]
+    assert out.get("permissionDecision") is None
+    assert "no_bruteforce" in out.get("additionalContext", "")
+
+
 def test_enforce_off_write_advisory_and_drift_event(tmp_path):
     """Finding B: a Bash command writing skills/hooks/.enforce-off must surface an
     operator-visible ADVISORY (never a deny) and record a drift event in the engagement's

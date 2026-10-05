@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""PreToolUse(Bash) hook: ENFORCING blind-sleep guard.
+"""PreToolUse(Bash) hook: ADVISORY blind-sleep guard (operator directive 2026-10-05:
+only scope-guard enforces; this guard advises).
 
-DENY a `sleep` of 10+ seconds when the command carries no while/until poll loop:
+ADVISE on a `sleep` of 10+ seconds when the command carries no while/until poll loop:
 a timed wait either wastes minutes or fires before the condition is real, and the
 condition (logfile appears, port opens, process dies) is always the actual signal.
-Poll-on-condition is the discipline (the offensive-engagement workflow); this is
-its deterministic half, same policy tier as scope-guard: no judgement, block costs
-nothing. Anything with `while` or `until` anywhere in the command passes - the loop
-IS the poll. Short sleeps (<10s, e.g. a retry backoff) pass.
+Poll-on-condition is the discipline (the offensive-engagement workflow). Anything with
+`while` or `until` anywhere in the command passes - the loop IS the poll. Short sleeps
+(<10s, e.g. a retry backoff) pass.
 
-SAFETY (this hook can block, so it must never trap the operator):
+SAFETY:
   - Fail-OPEN: any exception -> exit 0, allow.
   - Narrow match: only a literal `sleep` token with a plain numeric argument
     (optionally s/m/h suffixed). `vm-bg.sh --wait 120`, `timeout`, `ping -i` etc.
     are not sleeps.
-  - Escape hatch: `skills/hooks/.enforce-off` downgrades the deny to an advisory
-    warning, same as scope-guard.
 """
 import json
 import os
@@ -95,11 +93,6 @@ def blind_sleeps(cmd):
     return hits
 
 
-def _enforcing():
-    marker = os.environ.get("ENFORCE_OFF_MARKER") or os.path.join(HERE, ".enforce-off")
-    return not os.path.exists(marker)
-
-
 def main():
     raw = sys.stdin.read()
     try:
@@ -117,25 +110,16 @@ def main():
     reason = "blind sleep (" + ", ".join(sorted(set(hits))) + ") with no while/until poll"
     try:
         import _telemetry
-        _telemetry.drift("sleep-guard", ("blocked " if _enforcing() else "advised ") + reason)
-        _telemetry.hook("sleep-guard", action=("deny" if _enforcing() else "advise"))
+        _telemetry.drift("sleep-guard", "advised " + reason)
+        _telemetry.hook("sleep-guard", action="advise")
     except Exception:
         pass
-    if _enforcing():
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": ("BLOCKED by harness enforcement: " + reason
-                + ".\n\nPoll on a CONDITION instead (until-loop / output-file check) - e.g. "
-                  "`until grep -q Ready app.log; do sleep 2; done`. (False block? ask "
-                  "the OPERATOR to create skills/hooks/.enforce-off to downgrade "
-                  "enforcement to advisory.)"),
-        }}))
-    else:
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "additionalContext": "HYGIENE (advisory; enforcement OFF via .enforce-off): " + reason,
-        }}))
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "additionalContext": ("HYGIENE (advisory): " + reason
+            + ". Poll on a CONDITION instead (until-loop / output-file check) - e.g. "
+              "`until grep -q Ready app.log; do sleep 2; done`."),
+    }}))
 
 
 if __name__ == "__main__":

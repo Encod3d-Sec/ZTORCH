@@ -38,6 +38,16 @@ def _set_autonomy(eng, value):
     p.write_text("\n".join(lines) + "\n")
 
 
+def _set_mode(eng, value):
+    """Rewrite the scaffolded scope.md's mode line (None strips it)."""
+    p = eng / "scope.md"
+    lines = [l for l in p.read_text().splitlines()
+             if not l.strip().startswith("mode:")]
+    if value is not None:
+        lines.append("mode: %s" % value)
+    p.write_text("\n".join(lines) + "\n")
+
+
 def _next(vault, eng, **kw):
     row = {"id": "4a:1", "asset": "web1", "vuln class": "sqli", "arsenal": "payloads/sqli",
            "skill": "hunt-sqli", "tool": "sqlmap", "status": "[ ]", "poc": "", "poc_kind": ""}
@@ -60,21 +70,21 @@ def test_parse_present():
         assert offensive.autonomy_of(eng)[0] == "L3"
 
 
-def test_parse_absent_defaults_l2():
+def test_parse_absent_defaults_l3():
     with tempfile.TemporaryDirectory() as tmp:
         vault, eng = _vault(tmp)
         _set_autonomy(eng, None)            # back-compat: old engagements
         lvl, note = offensive.autonomy_of(eng)
-        assert lvl == "L2"
+        assert lvl == "L3"
         assert "no autonomy" in note
 
 
-def test_parse_invalid_defaults_l2():
+def test_parse_invalid_defaults_l3():
     with tempfile.TemporaryDirectory() as tmp:
         vault, eng = _vault(tmp)
         _set_autonomy(eng, "banana")
         lvl, note = offensive.autonomy_of(eng)
-        assert lvl == "L2"
+        assert lvl == "L3"
         assert "unknown" in note
 
 
@@ -114,6 +124,48 @@ def test_l0_no_advisory_on_non_exploit_row():
                                        "skill": "", "tool": "nmap"})
         assert rc == 0
         assert "AUTONOMY L0 advisory" not in out
+
+
+def test_mode_present_parses():
+    with tempfile.TemporaryDirectory() as tmp:
+        vault, eng = _vault(tmp)
+        assert offensive.mode_of(eng) == ("deep", "")   # scaffolded default
+        _set_mode(eng, "standard")
+        assert offensive.mode_of(eng) == ("standard", "")
+        _set_mode(eng, "QUICK")                         # case-insensitive
+        assert offensive.mode_of(eng)[0] == "quick"
+
+
+def test_mode_absent_defaults_deep():
+    with tempfile.TemporaryDirectory() as tmp:
+        vault, eng = _vault(tmp)
+        _set_mode(eng, None)            # back-compat: old engagements
+        mode, note = offensive.mode_of(eng)
+        assert mode == "deep"
+        assert "no mode" in note
+
+
+def test_mode_invalid_defaults_deep():
+    with tempfile.TemporaryDirectory() as tmp:
+        vault, eng = _vault(tmp)
+        _set_mode(eng, "banana")
+        mode, note = offensive.mode_of(eng)
+        assert mode == "deep"
+        assert "unknown" in note
+
+
+def test_banner_carries_mode_and_deep_posture():
+    with tempfile.TemporaryDirectory() as tmp:
+        vault, eng = _vault(tmp)
+        rc, out = _next(vault, eng)              # scaffolded mode = deep
+        assert rc == 0
+        assert "MODE deep" in out                # PASS banner line
+        assert "DEEP:" in out                    # no-early-stop posture line
+        _set_mode(eng, "quick")
+        rc, out = _next(vault, eng)
+        assert rc == 0
+        assert "MODE quick" in out
+        assert "DEEP:" not in out
 
 
 if __name__ == "__main__":

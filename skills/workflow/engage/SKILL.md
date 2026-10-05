@@ -53,15 +53,21 @@ A named mode changes the SKIP LIST and PRIORITY ORDER only - never the evidence 
 CONFIRMED needs the same working PoC (OOB callback where blind) at every mode; a mode may
 defer work, never weaken proof. State the mode out loud when the engagement shifts.
 
+**deep is the DEFAULT** (operator directive 2026-10-05): every new engagement opens in
+deep mode (scope.md `mode: deep`) and runs LONG autonomous phases - a bb/pentest/
+engagement does not stop a few minutes after it begins. The loop stops on a documented
+stop condition (bounded-effort sinks, a Deadends row, the folded board) or an operator
+decision, not on elapsed time. `offensive.py next` carries the mode in its banner.
+
 | Mode | What it is | Skip list | Priority order |
 |---|---|---|---|
+| deep | the DEFAULT: standard + full-read source passes, second-order re-tests, chained impact escalation, negative controls on every CONFIRMED | nothing | confirmed-finding neighborhoods first, then driver order |
+| standard | the flow as written, every surfaced class hunted | nothing the flow mandates | driver order (`offensive.py next`) |
 | quick | triage / time-boxed pass; surface map + cheap high-signal | full JS bundle reads, exhaustive param mining, chained CVE research, deep source audits | in-scope auth surfaces, known-CVE versions, tells.json hits, exposed secrets |
-| standard | the default: the flow as written, every surfaced class hunted | nothing the flow mandates | driver order (`offensive.py next`) |
-| deep | standard + full-read source passes, second-order re-tests, chained impact escalation, negative controls on every CONFIRMED | nothing | confirmed-finding neighborhoods first, then driver order |
 
-Shift up (quick -> standard -> deep) when: a confirmed finding changes the model of the
-app, the operator asks for depth, or a `status.py` budget band (70/85/95) says there is
-room. Shift down when a band says wrap-up. Whatever quick mode skipped is UNEXAMINED, not
+Shift down (deep -> standard -> quick) only when the operator asks or a `status.py` budget
+band (70/85/95) says wrap-up; shift back up when a confirmed finding changes the model of
+the app or the operator asks for depth. Whatever quick mode skipped is UNEXAMINED, not
 clean: record it as reopen-if rows in Deadends.md so close-out counts it.
 
 ## 4. Fingerprint -> hunt skill

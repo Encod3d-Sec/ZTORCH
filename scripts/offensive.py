@@ -687,10 +687,11 @@ VISUAL_CLASSES = {
 
 # CAI-style autonomy envelope (scope.md frontmatter `autonomy:`). ADVISORY only:
 # the driver carries the level in the `next` banner and advises on exploit-class
-# rows at L0/L1; it never hard-denies (the RoE flags stay enforced by the
-# scope-guard hook). Missing field = L2 (back-compat: old engagements keep working).
+# rows at L0/L1; it never hard-denies (RoE tooling is an operator-ask gate in the
+# scope-guard hook). Missing field = L3 (operator directive 2026-10-05: engagements
+# open at full autonomy).
 AUTONOMY_LEVELS = ("L0", "L1", "L2", "L3")
-AUTONOMY_DEFAULT = "L2"
+AUTONOMY_DEFAULT = "L3"
 _AUTONOMY_MAP = {"l0": "L0", "l1": "L1", "l2": "L2", "l3": "L3", "full": "L3"}
 AUTONOMY_DESC = {
     "L0": "passive-only (no active packets beyond fetches, no payload delivery)",
@@ -698,6 +699,37 @@ AUTONOMY_DESC = {
     "L2": "exploit attempts allowed",
     "L3": "full (chained ops, anything short of forbidden RoE classes)",
 }
+
+# Hunt-mode overlay (scope.md frontmatter `mode:`, engage skill sec 3). Default deep
+# (operator directive 2026-10-05): every new engagement opens in DEEP posture and runs
+# long autonomous phases - it stops on a documented stop condition or an operator
+# decision, not minutes in.
+MODES = ("quick", "standard", "deep")
+MODE_DEFAULT = "deep"
+MODE_DESC = {
+    "quick": "triage pass: surface map + cheap high-signal (skips are UNEXAMINED, "
+             "record reopen-if rows in Deadends.md)",
+    "standard": "the flow as written, every surfaced class hunted",
+    "deep": "full-read source passes, per-route probing with negative controls, "
+            "chained impact escalation, second-order re-tests",
+}
+
+
+def mode_of(eng):
+    """scope.md frontmatter `mode:` -> (mode, note). Default deep; unknown values fall
+    back to MODE_DEFAULT with a one-line note (the doctor surfaces it)."""
+    p = Path(eng) / "scope.md"
+    raw = ""
+    if p.is_file():
+        m = re.search(r"(?m)^\s*mode:\s*(\S+)\s*$",
+                      p.read_text(encoding="utf-8", errors="ignore"))
+        if m:
+            raw = m.group(1).strip().lower()
+    if raw in MODES:
+        return raw, ""
+    if raw:
+        return MODE_DEFAULT, "scope.md mode=%s unknown, assumed %s" % (raw, MODE_DEFAULT)
+    return MODE_DEFAULT, "scope.md has no mode: field, assumed %s" % MODE_DEFAULT
 
 
 def autonomy_of(eng):
@@ -1158,8 +1190,12 @@ def cmd_next(args):
     }
     _save_state(eng, state)
     lvl, _lvl_note = autonomy_of(eng)
-    print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s"
-          % (state.get("pass", 0), asset, rid, cls, lvl))
+    mode, _mode_note = mode_of(eng)
+    print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s | MODE %s"
+          % (state.get("pass", 0), asset, rid, cls, lvl, mode))
+    if mode == "deep":
+        print("DEEP: %s. Long autonomous phases are the posture - stop on a documented "
+              "stop condition or an operator decision, not minutes in." % MODE_DESC["deep"])
     tsc = ts.get(rid, 0)
     if tsc == 2 and (state.get("last_move") or {}).get("row") == rid:
         print("RE-SERVE: row %s served again while you still hold its last move - if the "

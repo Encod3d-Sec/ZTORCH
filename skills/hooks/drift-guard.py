@@ -9,21 +9,23 @@ exploit-shaped Bash command during an active campaign, if the agent is OFF-BOARD
 exploit/scan binary the driver never emitted, and the board is NOT empty), it ESCALATES a
 counter and ADVISES the agent back to the driver.
 
-ESCALATE-TO-DENY (approach B, board-bypass drift ~17x across 2 months): advice alone was
-ignored for whole boxes, so a REPEAT PATTERN now denies. Streak 1-3 (then every 25th) stays
-advisory - a probe is not a pattern - but streak >= _DENY_STREAK exploit-shaped calls with
-ZERO driver contact is no longer a judgement call, it DENIES naming the driver step that
-clears it. Post-foothold boxes never deny (the board is a pre-foothold planning aid), and the
-shared escape hatch applies: skills/hooks/.enforce-off downgrades the deny to advisory.
+HARD ADVISORIES (operator directive 2026-10-05: only scope-guard denies; this guard
+advises at every tier - the repeat-pattern tiers just speak louder and name the way out).
+Streak 1-3 (then every 25th) is the ordinary advisory; streak >= _DENY_STREAK
+exploit-shaped calls with ZERO driver contact, or an identical command re-fired
+_RETRY_DENY times, gets the un-throttled loop-break advisory (capped at 5 fires per
+engagement so it cannot flood context). Post-foothold boxes stay quiet after one
+reminder (the board is a pre-foothold planning aid). The operator-opt-in spend cap
+(ZT_MAX_ENG_USD) is the one deny this hook still issues; .enforce-off downgrades it.
 
 Policy:
   - off_board_streak N -> INJECT an advisory warning ("run offensive.py next; N calls since")
     for streak 1,2,3 then every 25th (the counter is kept and reported every time)
-  - off_board_streak >= _DENY_STREAK (and not post-foothold, and enforcing) -> DENY
+  - off_board_streak >= _DENY_STREAK (and not post-foothold) -> HARD advisory
   - identical off-board command re-run >= _RETRY_DENY times (retry ring, reset by driver
-    contact) -> DENY (loop-break): change one variable / close the row dead / run the driver
-  - every _DENY_TOTAL_ESCALATE cumulative denies the deny message grows a Skill(redteamlead)
-    escalation (repeating the same lane that keeps denying is the doom loop)
+    contact) -> HARD advisory (loop-break): change one variable / close the row dead / run the driver
+  - every _DENY_TOTAL_ESCALATE cumulative hard advisories the message grows a Skill(redteamlead)
+    escalation (repeating the same lane that keeps advising is the doom loop)
   - `offensive.py next|board|done|note|init|foothold` seen in the command -> reset the streak to 0
   - an OPEN, FRESH lane line (`in flight @<HH:MM>` younger than the 45-min stale window,
     delegate contract) in log.md is driver contact too: calls during lane flight (the
@@ -166,7 +168,7 @@ def _retry_steer(retries, deny_wanted):
     return ("IDENTICAL-RETRY (%d/%d): this exact command already ran; the output will not "
             "change. Re-read the first run's output in your context (or its capture file) "
             "instead of re-running, alter the arguments, or use a different tool. The next "
-            "identical fire is denied." % (retries, _RETRY_DENY))
+            "identical fire gets the loop-break advisory." % (retries, _RETRY_DENY))
 
 
 def _driver_called(cmd):
@@ -698,61 +700,51 @@ def main():
               "additionalContext": steer}}))
         return
 
-    def _deny(reason):
+    def _hard_advise(reason):
         st["deny_total"] = int(st.get("deny_total", 0) or 0) + 1
+        st["soft_deny_total"] = int(st.get("soft_deny_total", 0) or 0) + 1
         _save_state(sp, st)
+        if st["soft_deny_total"] > 5:
+            return
         try:
             import _telemetry
-            _telemetry.hook("drift-guard", action="deny")
+            _telemetry.hook("drift-guard", action="advise-hard")
         except Exception:
             pass
         if st["deny_total"] % _DENY_TOTAL_ESCALATE == 0:
-            reason += ("\n\nThis is deny %d with no lane change - stop iterating solo: call "
-                       "`Skill(redteamlead)` for a ranked re-plan." % st["deny_total"])
+            reason += ("\n\nThis is hard advisory %d with no lane change - stop iterating "
+                       "solo: call `Skill(redteamlead)` for a ranked re-plan."
+                       % st["deny_total"])
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
+            "additionalContext": reason,
         }}))
 
-    if deny_wanted and _enforcing():
+    if deny_wanted:
         if retries >= _RETRY_DENY:
-            _deny(
-                "BLOCKED by harness enforcement (doom-loop break):\n"
+            _hard_advise(
+                "DRIFT-HARD (doom-loop break):\n"
                 "- this exact command has now been run %d times unchanged. Re-running it "
                 "identically cannot produce a different result.\n"
-                "- do NOT re-attempt the exact same call. Change one variable, close the row "
-                "dead (`Deadends.md` line + `python3 scripts/offensive.py done <row> --dead`), "
-                "or run `python3 scripts/offensive.py next` to switch vector.\n\n"
-                "(False block? ask the OPERATOR to create skills/hooks/.enforce-off to "
-                "downgrade enforcement to "
-                "advisory.)" % retries)
+                "- change one variable, close the row dead (`Deadends.md` line + "
+                "`python3 scripts/offensive.py done <row> --dead`), or run `python3 "
+                "scripts/offensive.py next` to switch vector.\n"
+                "- stop re-attempting the exact same call." % retries)
         else:
-            _deny(
-                "BLOCKED by harness enforcement:\n- off-board: %d exploit-shaped calls since "
-                "the last driver step (%s not emitted by the board). The offensive driver is "
-                "authoritative. Run `python3 scripts/offensive.py next` to get the required "
-                "row + tool (this also resets the counter), or `offensive.py note` if this is "
-                "a legitimate off-board lane, then re-run the command.\n\n"
-                "(False block? ask the OPERATOR to create skills/hooks/.enforce-off to "
-                "downgrade enforcement to "
-                "advisory.)" % (streak, off))
+            _hard_advise(
+                "DRIFT-HARD (off-board):\n- %d exploit-shaped calls since the last driver "
+                "step (%s not emitted by the board). The offensive driver is authoritative. "
+                "Run `python3 scripts/offensive.py next` to get the required row + tool "
+                "(this also resets the counter), or `offensive.py note` if this is a "
+                "legitimate off-board lane, then re-run the command." % (streak, off))
         return
 
     if lane_open:
         return
 
     # THROTTLE the context injection (the count above still fired for eval accuracy).
-    if not deny_wanted and not _should_advise(streak, post_fh):
+    if not _should_advise(streak, post_fh):
         return
-    if deny_wanted:
-        # not enforcing (.enforce-off): the would-be deny prints as an UN-THROTTLED
-        # advisory so the operator sees what would have blocked -- capped at 5 fires so
-        # a long off-board run under the hatch cannot flood context either.
-        st["soft_deny_total"] = int(st.get("soft_deny_total", 0) or 0) + 1
-        _save_state(sp, st)
-        if st["soft_deny_total"] > 5:
-            return
 
     try:
         import _telemetry
@@ -760,8 +752,8 @@ def main():
     except Exception:
         pass
 
-    warn = (" This exact command has been run %d times; one more identical run is BLOCKED - "
-            "change a variable or close the row dead." % retries
+    warn = (" This exact command has been run %d times; the next identical run gets the "
+            "loop-break advisory - change a variable or close the row dead." % retries
             ) if retries == _RETRY_DENY - 1 else ""
     print(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",

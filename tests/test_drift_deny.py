@@ -1,9 +1,8 @@
-"""Batch 5: board escalate-to-deny. The board-bypass drift (~17x): drift-guard ADVISES the agent
-back to the driver and the advice was ignored for whole boxes (85 raw exploit calls observed).
-Policy: deterministic guards enforce; streak 1-3/25 stays advisory (a probe is not a pattern),
-but streak >= 6 exploit-shaped calls with zero driver contact is no longer a judgement call --
-it DENIES, naming the driver step that clears it. Escape hatches: any offensive.py driver call
-resets the streak; .enforce-off downgrades to advisory."""
+"""Drift-guard tiers (operator directive 2026-10-05: only scope-guard denies; drift-guard
+advises at every tier). Streak 1-3/25 = ordinary advisory; streak >= 6 with zero driver
+contact, or an identical command re-fired 3x, = the un-throttled DRIFT-HARD advisory
+naming the way out. The operator-opt-in spend cap (ZT_MAX_ENG_USD) is the one deny left.
+Any offensive.py driver call resets the streak."""
 import json
 import os
 import pathlib
@@ -56,18 +55,20 @@ def test_low_streak_stays_advisory(tmp_path):
     assert "additionalContext" in out.get("hookSpecificOutput", {})
 
 
-def test_streak_six_denies_with_driver_fix(tmp_path):
+def test_streak_six_hard_advises_with_driver_fix(tmp_path):
     r = _run(_mk(tmp_path, streak=5))          # increments to 6 inside the hook
     out = _decoded(r)["hookSpecificOutput"]
-    assert out.get("permissionDecision") == "deny"
-    assert "offensive.py" in out.get("permissionDecisionReason", "")
+    assert out.get("permissionDecision") is None        # advisory-only now
+    assert "DRIFT-HARD" in out.get("additionalContext", "")
+    assert "offensive.py" in out.get("additionalContext", "")
 
 
-def test_enforce_off_downgrades_deny_to_advisory(tmp_path):
+def test_enforce_off_same_advisory_shape(tmp_path):
+    """The streak tier advises identically with or without the hatch (it never denies)."""
     r = _run(_mk(tmp_path, streak=5, enforce_off=True))
     out = _decoded(r)["hookSpecificOutput"]
     assert out.get("permissionDecision") is None
-    assert "additionalContext" in out
+    assert "DRIFT-HARD" in out.get("additionalContext", "")
 
 
 def test_post_foothold_never_denies(tmp_path):
@@ -105,7 +106,8 @@ def test_mixed_meta_and_exploit_counts(tmp_path):
     r = _run(v, cmd="git status && nmap -sV 10.0.0.5")
     out = _decoded(r)["hookSpecificOutput"]
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
-    assert out.get("permissionDecision") == "deny"
+    assert out.get("permissionDecision") is None
+    assert "DRIFT-HARD" in out.get("additionalContext", "")
     assert st["off_board_streak"] > 5             # the nmap segment counted
 
 
@@ -121,17 +123,17 @@ def test_pure_meta_command_still_exempt(tmp_path):
 
 # --- pass-6 additions: identical-retry ring (doom-loop break) --------------------------
 
-def test_identical_retry_three_times_denies_as_doom_loop(tmp_path):
-    """Same unchanged command 3x: the retry deny fires at streak 3 (< 6), proving the
-    loop-break trigger is independent of the streak pattern trigger."""
+def test_identical_retry_three_times_hard_advises_doom_loop(tmp_path):
+    """Same unchanged command 3x: the loop-break advisory fires at streak 3 (< 6), proving
+    the retry trigger is independent of the streak pattern trigger."""
     v = _mk(tmp_path, streak=0)
     _run(v)
     _run(v)
     r = _run(v)
     out = _decoded(r)["hookSpecificOutput"]
-    assert out.get("permissionDecision") == "deny"
-    assert "doom-loop" in out.get("permissionDecisionReason", "")
-    assert "dead" in out.get("permissionDecisionReason", "")     # names the close-the-row way out
+    assert out.get("permissionDecision") is None
+    assert "doom-loop" in out.get("additionalContext", "")
+    assert "dead" in out.get("additionalContext", "")     # names the close-the-row way out
 
 
 def test_changed_command_avoids_retry_deny(tmp_path):
@@ -163,7 +165,7 @@ def test_second_identical_run_warns_of_imminent_block(tmp_path):
     r = _run(v)
     out = _decoded(r)["hookSpecificOutput"]
     assert "IDENTICAL-RETRY" in out.get("additionalContext", "")
-    assert "next identical fire is denied" in out.get("additionalContext", "")
+    assert "loop-break advisory" in out.get("additionalContext", "")
 
 
 # ---- ring laundering: same-row re-serve does not clear the retry ring (driver audit) ----
@@ -288,10 +290,10 @@ def test_board_is_4a_slice_not_first_table(tmp_path):
     (t / "Approach.md").write_text(preamble, encoding="utf-8")
     r = _run(v, "sqlmap -u http://10.0.0.5/?x=1 --batch")
     out = _decoded(r).get("hookSpecificOutput", {})
-    assert out.get("permissionDecision") == "deny"   # not whitelisted by the preamble
+    assert "DRIFT-HARD" in out.get("additionalContext", "")   # not whitelisted by the preamble
     r2 = _run(v, "nuclei -u http://10.0.0.5/")
     out2 = _decoded(r2).get("hookSpecificOutput", {})
-    assert out2.get("permissionDecision") != "deny"  # the real board whitelists it
+    assert out2.get("additionalContext", "") == ""             # the real board whitelists it
 
 
 def test_long_foreground_scan_through_bridge_advises_detached(tmp_path):
@@ -401,7 +403,7 @@ def test_closed_lane_does_not_exempt(tmp_path):
     off-board calls count again."""
     v = _mk(tmp_path, streak=5, log_text=_lane_line(5, closed=True))
     out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
-    assert out.get("permissionDecision") == "deny"
+    assert "DRIFT-HARD" in out.get("additionalContext", "")
 
 
 def test_retry_ring_still_denies_mid_lane(tmp_path):
@@ -412,8 +414,8 @@ def test_retry_ring_still_denies_mid_lane(tmp_path):
     _run(v, cmd=OFFBOARD_CMD)
     _run(v, cmd=OFFBOARD_CMD)
     out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
-    assert out.get("permissionDecision") == "deny"
-    assert "doom-loop" in out.get("permissionDecisionReason", "")
+    assert out.get("permissionDecision") is None
+    assert "doom-loop" in out.get("additionalContext", "")
     st = json.loads((v / "targets" / "engd" / ".offensive.json").read_text())
     assert st["off_board_streak"] == 0
 
@@ -422,7 +424,7 @@ def test_stale_lane_stops_exempting(tmp_path):
     deny forever - past the 45-min stale window the exemption is gone."""
     v = _mk(tmp_path, streak=5, log_text=_lane_line(90))
     out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
-    assert out.get("permissionDecision") == "deny"
+    assert "DRIFT-HARD" in out.get("additionalContext", "")
 
 
 def test_untimestamped_lane_not_exempt(tmp_path):
@@ -431,7 +433,7 @@ def test_untimestamped_lane_not_exempt(tmp_path):
     v = _mk(tmp_path, streak=5,
             log_text="- lane lane6 (portal) in flight: SUCCESS = x | tmux win - | capture /tmp/l6\n")
     out = _decoded(_run(v, cmd=OFFBOARD_CMD))["hookSpecificOutput"]
-    assert out.get("permissionDecision") == "deny"
+    assert "DRIFT-HARD" in out.get("additionalContext", "")
 
 
 def test_windowless_lane_line_still_parses(tmp_path):
