@@ -173,9 +173,9 @@ npx tsx caido-client.ts replay-entries "IDOR victim 999" --limit 20
   `Vuln chain - <description>` with steps named `1. ...`, `2. ...`. Endpoints from
   one JS file -> `JS File Endpoints`; from a spec -> `Swagger - <filename>`.
 - Evidence pairs: `raw <id> --out` (or VM `~/caido.sh raw <id> req|resp`) ->
-  `targets/<eng>/poc/` (verbatim source), same policy as [[targets/1. Archive/vilnius/EVIDENCE]].
+  `targets/<eng>/poc/` (verbatim source), same policy as the engagement EVIDENCE cards.
 - `create-finding <id> --title ... --description ...` logs confirmed finds in the
-  project so they surface in the GUI Findings tab alongside [[targets/1. Archive/vilnius/EVIDENCE]] cards.
+  project so they surface in the GUI Findings tab alongside the EVIDENCE cards.
 
 ## Match & Replace (tamper rules)
 
