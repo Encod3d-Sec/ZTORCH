@@ -1,68 +1,67 @@
 ---
 name: graphify
 description: >
-  Relational queries over the wiki link graph: paths between techniques, hub
-  (god-node) detection, orphans, neighbors. Structural only, local, no LLM.
-  Use when the question is how pages CONNECT; which page mentions a term is
-  qmd's job. Never run over targets/.
+  Relational queries over link graphs: how pages or code files CONNECT (paths,
+  hubs, orphans, neighbors). Wiki layer is scripts/wiki-graph.py (stdlib
+  wikilink parser, live read, no LLM, no keys); the graphify CLI covers code
+  trees (raw/git clones, scripts/) in structural code-only mode. Which page
+  mentions a term is qmd's job. Never run over targets/.
 ---
 
-# Graphify: wiki relation layer
+# Graphify: relation queries (wiki wikilinks + code trees)
 
-`graphify` builds and queries a structural link graph over `wiki/` (pages,
-headings, wikilinks, frontmatter attributes). It is the relational complement
-to qmd: qmd answers "which page is about X", graphify answers "how do X and Y
-connect".
+One question class, two layers: "how do these nodes connect", not "what does
+this node say". Content questions go to qmd (`wiki-search` MCP); relations
+come here.
+
+## Wiki layer: scripts/wiki-graph.py (default)
+
+Zero dependencies; reads `wiki/` live on every run, so there is no index to
+build and nothing to rebuild after promote. Resolves `[[target]]`,
+`[[target|alias]]`, `[[target#anchor]]` by relative path then unique
+basename; code fences are skipped so quoted link syntax adds no edges.
+
+```bash
+python3 scripts/wiki-graph.py path "SSRF" "RCE"    # shortest link chain (undirected)
+python3 scripts/wiki-graph.py hubs 15              # degree-ranked god-nodes (in/out)
+python3 scripts/wiki-graph.py orphans              # zero in-links (isolated flagged)
+python3 scripts/wiki-graph.py neighbors "kerberos relay"  # direct links in + out
+```
+
+Page arguments accept a relative path, a unique basename, or a unique
+substring; ambiguous names list candidates. `orphans` finds unlinked pages
+(`scripts/wiki-gaps.py` covers missing pages); `hubs` spots pages that became
+dumping grounds; `path` answers multi-hop pivot questions the MOC hubs miss.
+
+## Code layer: graphify CLI (code trees ONLY)
+
+The `graphify` CLI (uv tool `graphifyy`) builds AST-level code graphs:
+imports, calls, definitions. It hard-classifies markdown as prose and skips
+it in structural mode, so it is useless for `wiki/`; the script above owns
+that.
+
+```bash
+uv tool install graphifyy                            # once per seat
+graphify extract raw/git/<repo> --code-only          # structural, no LLM
+graphify update raw/git/<repo>                       # incremental, code-only
+graphify query "auth" --graph raw/git/<repo>/graphify-out/graph.json
+graphify path moduleA moduleB --graph raw/git/<repo>/graphify-out/graph.json
+```
+
+Use it when mapping a cloned codebase: entry points, dead code, who calls
+the auth function. Verify flags on the installed build with `graphify --help`
+(subcommand `-h` output is unreliable in 0.9.76).
 
 ## Rules
 
-- Scope is `wiki/` ONLY. Never point graphify at `targets/`, `session/`, or
-  the vault root: client data must not enter the graph or any of its caches.
-- Structural mode only (`--code-only`): deterministic, local, no LLM, no API
-  keys. The semantic LLM pass stays OFF unless the operator explicitly asks;
-  if ever run, still `wiki/`-only.
-- `graphify-out/` is derived state, gitignored, rebuilt incrementally.
+- NEVER run `graphify extract` without `--code-only`: the semantic tier
+  dispatches every document through the configured LLM provider (metered when
+  ANTHROPIC_* is set in the environment). Structural mode only.
+- Never point either layer at `targets/`, `session/`, or the vault root:
+  client data must not enter a graph or its caches.
+- `graphify-out/` dirs are derived state, gitignored.
 
-## Build / update
-
-One-time seat install (isolated env):
-
-```bash
-uv tool install graphifyy
-```
-
-First build, from the vault root:
-
-```bash
-graphify extract wiki/ --code-only
-```
-
-Incremental rebuild (also runs automatically at promote via
-`scripts/wiki-promote.py`):
-
-```bash
-graphify update
-```
-
-Verify flag spelling on the installed version before relying on any command:
-
-```bash
-graphify extract -h
-graphify query -h
-```
-
-## Queries
-
-```bash
-graphify query "kerberos relay"    # free-text entry into the graph
-graphify path "SSRF" "RCE"         # multi-hop connection between pages
-graphify explain "god-nodes"       # hub report: over-connected pages
-```
-
-## When to use
-
-- "What connects A to B": multi-hop pivots between technique pages.
-- Hub or orphan detection feeding `scripts/wiki-gaps.py`.
-- Cross-community links the hand-maintained MOC hubs miss.
-
-Source: https://github.com/Graphify-Labs/graphify (Apache-2.0), absorbed 2026-10-05.
+Source: https://github.com/Graphify-Labs/graphify (Apache-2.0), absorbed
+2026-10-05. Wiki layer re-scoped to a local stdlib script 2026-10-05 after
+0.9.76 proved unable to build a keyless markdown graph (markdown rides the
+LLM tier).
