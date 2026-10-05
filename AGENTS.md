@@ -138,7 +138,7 @@ Read `docs/workflows.md` before performing any ingest, target session, lint, or 
 - Ladder, stop at the first rung that holds: does it need to exist -> already in this codebase -> stdlib / platform-native -> one line -> minimum code that works.
 - Root cause before edit: grep every caller of the function you are about to touch.
 - Clean up orphans your own change created; flag pre-existing dead code in one line, never delete it unsolicited.
-- Mark deliberate shortcuts `ponytail:` naming the ceiling and the upgrade path.
+- Mark only shortcuts that cut a real corner with a known ceiling (global lock, O(n^2) scan, naive heuristic) with a `ponytail:` comment naming the ceiling and the upgrade path.
 - Non-trivial logic leaves one runnable check behind (an assert-based `__main__` or one small `test_*`).
 - Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, anything explicitly requested.
 - Push back in one line when a simpler path exists than the one requested.
