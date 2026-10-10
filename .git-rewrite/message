@@ -1,0 +1,6 @@
+chore(wave1): delete scripts/check-engagement.py
+
+Zero inbound references anywhere in the repo (standalone CLI, no caller,
+no doc pointer, no test).
+
+Claude-Session: https://claude.ai/code/session_01JLGn8hjwbSy5zLdSoT8emw

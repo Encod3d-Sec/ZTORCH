@@ -1,0 +1,13 @@
+tree 72f8ae0f0fff60e0f5d09d86c59d7ae0d90eace1
+parent 301839249cd31ba53d65efa864a4810b74d35998
+author root <root@DESKTOP-MD2V8F3.localdomain> 1788336891 +0300
+committer root <root@DESKTOP-MD2V8F3.localdomain> 1788336891 +0300
+
+chore(wave1): delete scripts/playbook-tools-backfill.py, drop its stale regex literal
+
+One-off backfill script already applied, zero functional callers. Its name
+survived only as a dead literal in the capture-poc/drift-guard framework-meta
+exemption regex (duplicated in both files) — stripped from both.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01JLGn8hjwbSy5zLdSoT8emw

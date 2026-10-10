@@ -126,6 +126,23 @@ advisory check). Details: `wiki/tools/skillspector.md`.
 
 ---
 
+## Third-party skill intake (hard rule)
+
+Before registering ANY third-party skill (plugin cache, marketplace, git clone) into
+`skills/` or linking it from `~/.claude/skills`, scan it first:
+
+```bash
+skillspector scan <skill-dir> --no-llm        # vet before trusting
+bash scripts/skill-scan.sh --root <parent-dir>   # whole third-party tree at once
+```
+
+HIGH/CRITICAL (injection, exfil, unpinned fetch) = do not register; read the flagged
+lines yourself before overriding. First-party vault skills are swept against the
+baseline by `bash scripts/skill-scan.sh` (incremental; `offensive-doctor` runs it as an
+advisory check). Details: `wiki/tools/skillspector.md`.
+
+---
+
 ## Plugin Troubleshooting
 
 ### context7 - stale lock files crash the plugin
