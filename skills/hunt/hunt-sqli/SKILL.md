@@ -5,6 +5,11 @@ description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, U
 
 # Hunt: SQL Injection
 
+> Current emphasis (update on wiki harvest): pre-auth write-path injection and
+> the login-redirect oracle over classic in-param quote probing - models over-
+> index on over-represented old methods; the newest harvested technique leads
+> the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[sql-injection]] · Payload arsenal: `wiki/pa
 Anchors: [[nosql-injection]], [[orm-injection]]
 **REFS:** [[sql-injection]], wiki/payloads/sqli.md
 
-qmd_query "SQL injection SQLi NoSQL union boolean-blind time-based error-based" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "SQL injection SQLi NoSQL union boolean-blind time-based error-based" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Confirmation gate

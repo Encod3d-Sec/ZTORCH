@@ -5,6 +5,11 @@ description: API attack hunting (REST / GraphQL / gRPC) - BOLA/IDOR, BFLA, mass 
 
 # Hunt: API Security
 
+> Current emphasis (update on wiki harvest): mass assignment on PUT/PATCH
+> update paths and API version downgrade (/v1/ under /v2/ middleware) over
+> GET-param BOLA swaps - models over-index on over-represented old methods;
+> the newest harvested technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[api-security]] · Payload arsenal: `wiki/pay
 Anchors: [[api-testing]], [[graphql-attacks]], [[grpc-web-attacks]], [[rsql-injection]], [[rsql]], [[rate-limit-bypass]], [[redos]], [[jwt-attacks]]
 **REFS:** [[api-security]], wiki/payloads/api.md
 
-qmd_query "API REST GraphQL gRPC BOLA BFLA mass assignment excessive data exposure OWASP API Top 10" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "API REST GraphQL gRPC BOLA BFLA mass assignment excessive data exposure OWASP API Top 10" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 For object-level authorization (BOLA/IDOR) see `hunt-idor`.

@@ -96,14 +96,33 @@ def leak_check(body, vault, source_eng=""):
     scope-host markers from THAT engagement - the candidate's actual source -
     instead of only whichever engagement happens to be active.
     Fails CLOSED: a missing gate script must refuse, never read as clean."""
-    script = os.path.join(vault, "scripts", "check-leaks.sh")
+    script = os.path.join(vault, "scripts", "check-leaks.sh").replace("\\", "/")
     if not os.path.isfile(script):
         return False, "check-leaks.sh not found; failing closed"
     fd, tmp = tempfile.mkstemp(suffix=".md")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(body)
-        cmd = ["bash", script, "--file", tmp]
+        # bash on Windows cannot exec a "C:/..." argv path (colon = drive). Route the
+        # script through bash -c with positional params, which converts cleanly.
+        def _msys(path):
+            """bash on PATH may be WSL bash, which cannot exec 'C:/...' argv paths and
+            mounts drives under /mnt/<drive>. Convert; fall back unchanged if the drive
+            mount does not exist (git-bash /c/ form)."""
+            if len(path) > 2 and path[1] == ":":
+                try:
+                    probe = subprocess.run(
+                        ["bash", "-c", "test -d /mnt/c && echo WSL"],
+                        capture_output=True, text=True, timeout=10)
+                    is_wsl = probe.stdout.strip() == "WSL"
+                except (OSError, subprocess.TimeoutExpired):
+                    is_wsl = False
+                if is_wsl:
+                    return "/mnt/" + path[0].lower() + path[2:].replace("\\", "/")
+                return "/" + path[0].lower() + path[2:].replace("\\", "/")
+            return path
+
+        cmd = ["bash", _msys(script), "--file", _msys(tmp)]
         if source_eng:
             cmd += ["--eng", source_eng]
         r = subprocess.run(cmd, cwd=vault,
@@ -295,7 +314,11 @@ def promote_one(path, fm, body, inbox, vault):
                   "REFUSED (offensive_index dies without one; add the fence to the "
                   "staged body or the page first)" % slug)
             return "refused"
-    ok, report = leak_check(body, vault, fm.get("source_eng", ""))
+    # the slug lands in the tracked page as `<!-- promoted-slug: ... -->`, so it must
+    # pass the same gate as the body (a client-named slug was a leak channel: clean
+    # body + slug `acme-corp-router-default` shipped the marker into wiki/)
+    ok, report = leak_check(slug + "\n" + target_rel + "\n" + body, vault,
+                            fm.get("source_eng", ""))
     if not ok:
         print("  %s: LEAK-GATE REFUSED (not written to wiki):" % slug)
         for line in report.splitlines():

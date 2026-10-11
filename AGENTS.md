@@ -22,6 +22,10 @@ Search rule: never read `wiki/index.md` to find pages - always search first. Wik
 
 `session/memory.md` holds long-term editorial patterns. Load it when making editorial or tagging decisions.
 
+Per-generation diet: when the default model changes, re-baseline the hunt
+checklists (safe-mode run, no skills/context files), then DELETE every step
+the new model performs unaided - skills get leaner each generation.
+
 ---
 
 ## Hunt Skill Auto-Triggers

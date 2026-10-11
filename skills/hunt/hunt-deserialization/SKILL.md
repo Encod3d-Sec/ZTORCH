@@ -5,6 +5,11 @@ description: Insecure deserialization hunting across Java / .NET / PHP / Python 
 
 # Hunt: Insecure Deserialization
 
+> Current emphasis (update on wiki harvest): OOB-first probes (URLDNS /
+> JRMPClient) and runtime-matched gadget generators over blind payload firing
+> - models over-index on over-represented old methods; the newest harvested
+> technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[insecure-deserialization]] · Payload arsena
 Anchors: [[ml-model-deserialization]]
 **REFS:** [[insecure-deserialization]], wiki/payloads/deserialization.md
 
-qmd_query "insecure deserialization gadget chain Java .NET PHP Python Ruby Node ysoserial" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "insecure deserialization gadget chain Java .NET PHP Python Ruby Node ysoserial" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Gadget quick reference (use this, don't hand-roll)

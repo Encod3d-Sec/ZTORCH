@@ -5,6 +5,11 @@ description: File upload attack hunting - extension/content-type/magic-byte bypa
 
 # Hunt: File Upload
 
+> Current emphasis (update on wiki harvest): sink-proof baselines before
+> bypass work and combined polyglot / magic-byte layers over single extension
+> swaps - models over-index on over-represented old methods; the newest
+> harvested technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[file-upload]] · Payload arsenal: `wiki/payl
 Anchors: [[path-traversal-lfi]], [[xxe]]
 **REFS:** [[file-upload]], wiki/payloads/file-upload.md
 
-qmd_query "file upload webshell extension content-type magic-byte bypass SVG XXE zip slip path traversal" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "file upload webshell extension content-type magic-byte bypass SVG XXE zip slip path traversal" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface

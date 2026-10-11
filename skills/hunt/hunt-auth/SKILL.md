@@ -5,6 +5,11 @@ description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, Share
 
 # Hunt: Auth Bypass & Account Takeover
 
+> Current emphasis (update on wiki harvest): IdP-redirect windows and
+> parameter-name brute forcing on set-password endpoints - models over-index
+> on over-represented old methods; the newest harvested technique leads the
+> checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[authentication-attacks]] · Payload arsenal:
 Anchors: [[session-management-attacks]], [[jwt-attacks]], [[cryptography-attacks]]
 **REFS:** [[authentication-attacks]], wiki/payloads/auth-bypass.md
 
-qmd_query "authentication bypass account takeover password reset poisoning session fixation legacy protocol" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "authentication bypass account takeover password reset poisoning session fixation legacy protocol" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked)

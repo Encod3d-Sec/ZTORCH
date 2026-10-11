@@ -371,7 +371,7 @@ See [[binary-exploitation]] for buffer construction.
 
 ## Importing an Exploit-DB module that local MSF lacks
 
-DELTA vs the single custom-module tip on this page and [[searchsploit]]: the full import path.
+DELTA vs the single custom-module tip on this page and [[wiki/tools/searchsploit]]: the full import path.
 
 When `msfconsole search <product>` comes up empty, an MSF-format module may still exist in
 Exploit-DB. Find it with searchsploit and keep only `.rb` files (Python standalones cannot load

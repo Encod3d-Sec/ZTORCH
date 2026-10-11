@@ -19,12 +19,12 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[forensics-moc|Forensics]] (6)
 - [[linux-moc|Linux]] (10)
 - [[macos-moc|Macos]] (19)
-- [[methodology-moc|Methodology]] (14)
+- [[methodology-moc|Methodology]] (15)
 - [[mobile-iot-moc|Mobile Iot]] (5)
 - [[network-moc|Network]] (16)
 - [[osint-moc|Osint]] (6)
 - [[red-team-moc|Red Team]] (15)
-- [[web-moc|Web]] (84)
+- [[web-moc|Web]] (85)
 
 ## Reference
 

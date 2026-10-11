@@ -23,8 +23,6 @@ Related lineage: Diamorphine, KoviD, Basilisk, Reptile.
 Distinguish this from [[kernel-exploitation]] (how you get to ring 0). A rootkit is what you
 install once you are already there, to stay hidden.
 
-## How it works
-
 ### Loading mechanism (LKM via ftrace)
 
 The module is compiled against the running kernel's headers and inserted with `insmod`. It
@@ -137,3 +135,25 @@ Detection (artifacts a ftrace rootkit cannot fully suppress):
 `insmod`/`rmmod`/`lsmod`, `depmod`; ftrace via `/sys/kernel/debug/tracing`; Volatility 3
 Linux plugins; LKRG (both a target and a partial defense); auditd. Related: [[linux-persistence]],
 [[linux-evasion]], [[kernel-exploitation]].
+
+## ftrace record-offset dispatch (6.12+ kernels: callback ip != kallsyms symbol address)
+
+On kernels around 6.12 (observed on Debian trixie 6.12.x), ftrace records for compiled-with-CC_HAS_FENTRY functions can sit a few bytes PAST the kallsyms symbol start (endbr64 + alignment padding; observed offsets +4/+5/+9). A hook engine that resolves targets via kallsyms and then matches the callback's `ip` argument with exact `ip == address` NEVER fires: hooks arm (sites appear in enabled_functions, ops register) but every dispatch misses the registry, so all hooked syscalls run stock while install reports success. Fix pattern: match `ip - addr` against a tight offset set `{0,4,5,9}` (all under 10, so no foreign symbol start can collide), unconditional, no kernel-version gate. On x86_64 the `struct ftrace_regs` embeds `struct pt_regs` as its FIRST member, so casting `fregs` to `pt_regs*` and rewriting `regs->ip` stays layout-correct on 5.11+ (same layout livepatch relies on).
+
+Diagnostics that pin this class in one load cycle (build them in from day one, not post-mortem): four-stage counters in the shared thunk (entries / within_module-guard-rejects / registry-misses / hits, plus first-miss ip symbolized), and a load-time selftest that fires one guaranteed-hooked syscall (e.g. a root UMH child raising the magic signal on its own pid) and reports `SELFTEST:DEAD` on the C2 banner if the dispatch counter never moved. A silent-deaf engine otherwise looks identical to a working install.
+
+Debugging trap: distinguish the per-ops trampoline dispatch path from the list-func path before theorizing; a standalone probe module that counts dispatches WITHOUT comparing the ip it receives against the registry will exonerate the kernel and teach nothing about the convention (burned one full reboot cycle that way).
+
+## Fork/variant trees: silent channel death, diff build inputs before code
+
+When a patched fork of a working rootkit loads but its C2 channel goes silent while transport still answers, diff the fork's BUILD INPUTS against the stock tree before reading code: a placeholder key/table copied from upstream (e.g. an XOR key table the injector does not know) fails silently in the wire codec (observed as a parse returning -1 with no ring line). Bake operator-side secrets into the box-side staged copy as an explicit install step, never at runtime by argv.
+
+## Detection deltas (beyond the enabled_functions baseline IOC)
+
+- enabled_functions stock count VARIES per boot (2-3 lines from stock BPF/direct trampolists on a minimal server): detection thresholds must be RANGE-based, not exact-match.
+- `/proc/net/snmp` Icmp InEchos/OutEchos counts every ICMP covert-channel packet even when the rootkit filters AF_PACKET taps (and even while taps are blinded): the counters ride the stock ICMP stack. A rate anomaly on snmp with clean taps is the tell.
+- AF_PACKET tap masking is typically HOST-scoped, not channel-keyed: ALL ICMP to/from the C2 host vanishes from local taps while unrelated hosts stay visible, and the mask can outlive the unhide verb by 100s+. A total per-host ICMP blackout on local taps is itself an IOC.
+- Unsigned-module insmod prints its 2-line banner (out-of-tree taint + signature-verification-failed) BEFORE module init: the module can clear the taint flag but cannot unprint those lines, so they persist in the ring until wrap. Alert on codec/generic-driver-named modules that failed signature verification.
+- Signal-magic triggers (kill with an unusual rt-signal) MUST be probed syscall-origin (`python3 -c 'import os; os.kill(pid,SIG)'` or a raw `syscall(62,...)`): the bash kill BUILTIN validates the signal number client-side and rejects it without ever issuing the syscall, producing a false "hook dead" verdict.
+
+<!-- promoted-slug: ftrace-record-offset-dispatch -->

@@ -5,6 +5,11 @@ description: Shared discipline always loaded alongside any hunt-* skill - scope 
 
 # Hunt: Core
 
+> Current emphasis (update on wiki harvest): clean-session re-verification and
+> proven-observable channels for negative results over response-body inference
+> - models over-index on over-represented old methods; the newest harvested
+> technique leads the checklist until superseded.
+
 The discipline every `hunt-*` skill assumes. Class-specific technique lives in the hunt skills and
 the wiki; this file holds what is true regardless of which bug class you are chasing.
 
@@ -303,6 +308,18 @@ Before recording a class exhausted app-wide, diff the endpoints you actually pro
 app's full route/parameter inventory; the verdict covers only the endpoints in it, and the one
 route never touched (a pre-auth register/dup-check path is the classic) is usually where the class
 was actually live.
+
+## Run completion gate
+
+A dispatched run is COMPLETE only when its checklist says so - never on the
+lane's narrative. Author a run ledger at dispatch
+(`python3 scripts/completion-gate.py init <lane-dir> --title "<vector>"`,
+steps from the hunt skill's checklist, artifacts declared inline after ` @ `),
+and on return verify mechanically
+(`python3 scripts/completion-gate.py check <lane-dir> --capture <dir>`):
+UNCHECKED / MISSING / EMPTY verdicts mean the run is not done; re-dispatch
+with the printed generic nudge rather than a re-written brief. An empty
+capture dir is a failed lane, not a quiet success.
 
 ## Distillation
 

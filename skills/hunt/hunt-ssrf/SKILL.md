@@ -5,6 +5,11 @@ description: SSRF hunting - OOB-mandatory methodology. Cloud metadata, blind SSR
 
 # Hunt: SSRF
 
+> Current emphasis (update on wiki harvest): localhost-hosted admin panels and
+> internal service ports over cloud-metadata classics - models over-index on
+> over-represented old methods; the newest harvested technique leads the
+> checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration
 limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
@@ -14,7 +19,7 @@ Hub: [[web-moc]] · Primary page: [[wiki/payloads/ssrf]] · Payload arsenal: `wi
 Anchors: [[dns-rebinding]], [[open-redirect]], [[werkzeug-debug-console-rce]]
 **REFS:** [[wiki/payloads/ssrf]], wiki/payloads/ssrf.md
 
-qmd_query "SSRF server-side request forgery cloud metadata" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "SSRF server-side request forgery cloud metadata" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Confirmation gate

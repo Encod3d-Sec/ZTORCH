@@ -185,7 +185,7 @@ def _parse_table(path):
 # and cmd_board/cmd_next drain it. The clone's filterInvalidPermissionRules
 # coerce+warn pattern: one bad member never poisons the file silently.
 BOARD_WARNINGS = []
-_STATUS_CELLS = ("[ ]", "[~]", "[x]", "[?]", "[!]")
+_STATUS_CELLS = ("[ ]", "[~]", "[x]", "[-]", "[?]", "[!]")
 
 
 def _warn_ragged(src, lineno, header, cells):

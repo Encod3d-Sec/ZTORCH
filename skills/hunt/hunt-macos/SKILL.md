@@ -5,6 +5,11 @@ description: macOS hunting, foothold to root/persistence - TCC/Gatekeeper/SIP by
 
 # Hunt: macOS
 
+> Current emphasis (update on wiki harvest): keychain / credential loot and
+> XPC-dylib injection over grinding TCC or SIP bypasses first - models over-
+> index on over-represented old methods; the newest harvested technique leads
+> the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[macos-moc]] · Primary page: [[macos-tcc]] · Payload arsenal: `wiki/payl
 Anchors: [[macos-privesc]], [[macos-keychain]]
 **REFS:** [[macos-tcc]], wiki/payloads/macos-app-injection.md
 
-qmd_query "macOS TCC SIP Gatekeeper AMFI keychain XPC dylib injection sandbox escape code signing entitlements" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "macOS TCC SIP Gatekeeper AMFI keychain XPC dylib injection sandbox escape code signing entitlements" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Environment note

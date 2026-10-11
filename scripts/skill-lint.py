@@ -51,6 +51,15 @@ def lint_skill(path):
         issues.append("%s: description over 1024 chars (%d)" % (path, len(desc)))
     if "<" in desc or ">" in desc:
         issues.append("%s: bare angle bracket in description" % path)
+    # Obsidian-safe prose: em-dashes and smart quotes break vault sync rendering.
+    # Checked OUTSIDE code fences (commands legitimately carry dashes).
+    stripped = FENCE_RE.sub("", text)
+    n_em = stripped.count("\u2014")
+    n_sq = sum(stripped.count(c) for c in ("\u2018", "\u2019", "\u201c", "\u201d"))
+    if n_em:
+        issues.append("%s: %d em-dash(es) in prose (use ' - '; Obsidian-sync rendering)" % (path, n_em))
+    if n_sq:
+        issues.append("%s: %d smart quote(s) in prose (use straight quotes)" % (path, n_sq))
     for key in fm:
         if key not in ALLOWED_KEYS:
             issues.append("%s: unknown frontmatter key %r (add to VAULT_KEYS if intentional)"

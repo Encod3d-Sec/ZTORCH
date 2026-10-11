@@ -195,7 +195,11 @@ def _claim_issues(body, dirname):
     return issues
 
 
-def lint_file(path):
+def lint_file(path, base_dir=None):
+    # base_dir defaults to the card's dir (tests co-locate cards+captures); the
+    # main loop passes the engagement root so `poc/...` refs in Vulns/ resolve.
+    if base_dir is None:
+        base_dir = os.path.dirname(path)
     text = open(path, encoding="utf-8", errors="ignore").read()
     issues = []
     m = FNAME_RE.search(os.path.basename(path))
@@ -246,10 +250,10 @@ def lint_file(path):
             val = mv.group(1).strip().strip('"').strip("'") if mv else ""
             if not val or _PLACEHOLDER_RE.search(val) or val.lower() in ("todo", "tbd", "n/a"):
                 issues.append("status %s needs non-empty %s: (%s)" % (status, fld, hint))
-        ev = _evidence_issues(body, os.path.dirname(path))
+        ev = _evidence_issues(body, base_dir)
         if ev:
             issues.append(ev)
-        issues.extend(_claim_issues(body, Path(os.path.dirname(path))))
+        issues.extend(_claim_issues(body, Path(base_dir)))
     return issues, warnings
 
 
@@ -266,7 +270,7 @@ def main():
         return 0
     bad = 0
     for f in files:
-        issues, warnings = lint_file(f)
+        issues, warnings = lint_file(f, d)
         rel = os.path.relpath(f, d)
         if issues:
             bad += 1

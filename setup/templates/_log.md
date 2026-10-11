@@ -13,4 +13,10 @@ Append-only, per-engagement audit trail. **All client-specific narrative goes he
 
 Newest first. One block per session.
 
+## Run ledgers
+
+Each dispatched lane gets `run-ledger.md` in its lane dir at dispatch
+(`python3 scripts/completion-gate.py init <lane-dir> --title "<run>"`);
+completion-gate verdicts are appended to this log as `Ruling:` lines.
+
 ---

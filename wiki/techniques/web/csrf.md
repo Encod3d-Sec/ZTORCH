@@ -32,8 +32,6 @@ The attacker hosts a page (or sends an email) that causes the victim's browser t
 - The application has no (or bypassable) CSRF defences
 - Attacker can deliver a payload to the victim via email, malicious webpage, or stored content
 
-## Types
-
 ### Traditional CSRF (form-based)
 State-changing form submissions — money transfers, password changes, account modifications.
 
@@ -63,8 +61,6 @@ When the CSRF token is simply `base64(account_number)` or another predictable/re
 | Token not tied to user session | Token belongs to global pool | Use own valid token in victim's request |
 | Token tied to non-session cookie | `csrfKey` cookie separate from session | Inject attacker's `csrfKey` via header injection |
 | Token duplicated in cookie | Cookie value == body value | Set both to any identical value |
-
-## Key Payloads / Examples
 
 ### GET-based CSRF (hidden link/image)
 
@@ -462,8 +458,6 @@ Shopify's endpoint to update a store's business/legal name accepted POST request
 
 - THM Advanced CSRF room (`https://tryhackme.com/r/room/csrfV2`)
 
-## From the Wild
-
 ### HTB — CrossFit (2020)
 - **Technique variant**: XSS to CORS to CSRF, FTP upload, command injection
 - **Attack path**: Chain XSS through CORS to forge admin account on subdomain, upload webshell via FTP
@@ -479,8 +473,6 @@ Shopify's endpoint to update a store's business/legal name accepted POST request
 ### HTB — SecNotes (2018)
 - **Technique variant**: CSRF to Change Password, SMB Write, WSL
 - **Attack path**: CSRF in contact form to change admin password, SMB share write for webshell, WSL bash.exe for root
-
-## PortSwigger Labs
 
 ### LAB 1 — CSRF vulnerability with no defenses (Apprentice)
 
@@ -760,3 +752,23 @@ Also works by adding response header on exploit server: `Referrer-Policy: unsafe
 - [[xss]] (any XSS on the target defeats CSRF token protection entirely)
 - [[cors-sop]] (SOP and CORS decide which cross-origin requests a CSRF can forge)
 - [[clickjacking]] (sibling forced-action attack, shares the SameSite and frame-busting defenses)
+
+## Probing anonymous POST routes with the free Laravel CSRF pair
+
+Laravel apps that set an `XSRF-TOKEN` cookie on an anonymous GET hand out valid CSRF material for every POST route, no account needed. This makes "is this POST route mounted, and is anything besides CSRF in front of it" a two-request question:
+
+```sh
+curl -sc jar 'https://target.com/some-page' >/dev/null   # mint the anon pair
+XSRF=$(awk '$6=="XSRF-TOKEN"{print $7}' jar | python3 -c 'import sys,urllib.parse;print(urllib.parse.unquote(sys.stdin.read().strip()))')
+curl -sb jar -H "X-XSRF-TOKEN: $XSRF" -H 'Content-Type: application/json' \
+  -d '{}' -X POST 'https://target.com/some-route'          # with pair
+curl -sb jar -H 'Content-Type: application/json' \
+  -d '{}' -X POST 'https://target.com/some-route'          # control: no header
+```
+
+- The header wants the cookie value URL-DECODED; the encrypted `{iv,value,mac,tag}` envelope fails validation when passed verbatim.
+- Control returns `419` ("Page Expired", often localized) = CSRF middleware is bound, the route IS mounted; a plain 404 means unmounted.
+- Pair-included response vs control at same status AND size still needs an md5 diff before "identical" (CDN challenge injection moves bytes at constant length; see [[safe-probing-and-controls]]).
+- A 200 options-shaped body (full lists, nothing echoed, no ack field) is a read/options endpoint, not a proven write; on a write-looking route, fire the shape once and vary nothing further until a write is confirmed.
+
+<!-- promoted-slug: laravel-anon-csrf-pair-post-differential -->

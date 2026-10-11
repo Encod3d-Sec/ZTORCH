@@ -5,6 +5,12 @@ description: Local Windows privesc to SYSTEM on a standalone/workgroup host (or 
 
 # Hunt: Windows (local privilege escalation)
 
+> Current emphasis (update on wiki harvest): token-privilege abuse
+> (SeImpersonate -> Potato) and weak service DACL reconfiguration over
+> AlwaysInstallElevated checks - models over-index on over-represented old
+> methods; the newest harvested technique leads the checklist until
+> superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 **Scope of this skill vs `hunt-ad`:** this is LOCAL privesc on ONE Windows host - a standalone/workgroup box, or getting from a low-priv user to SYSTEM on a domain member. **DOMAIN** escalation (user enum, AS-REP/Kerberoast, delegation, ADCS, DCSync, BloodHound) is `Skill(hunt-ad)`. Tell them apart from the SMB/enum banner: a **single-label** `domain:` that equals the hostname (e.g. `domain:PRIVESC`) or `WORKGROUP` = standalone -> this skill; a **dotted FQDN** realm (`domain:corp.local`) or a DC (kerberos/88) = AD -> hunt-ad. On a domain member both can apply (local SYSTEM here, domain moves there).
@@ -16,7 +22,7 @@ Anchors: [[windows-enumeration]], [[netexec]], [[network-service-attacks]]
 **REFS:** [[windows-privesc]], [[privesc-exploit-arsenal]]
 Recompiled-LPE shortcut (CTF, standard-user session): Skill(nightmare)
 
-qmd_query "Windows local privilege escalation service misconfig unquoted path SeImpersonate potato AlwaysInstallElevated autologon scheduled task DLL hijack UAC bypass" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "Windows local privilege escalation service misconfig unquoted path SeImpersonate potato AlwaysInstallElevated autologon scheduled task DLL hijack UAC bypass" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 [[netexec]] is the remote-side workhorse even on a standalone box: `--local-auth` cred checks, `--sam`/`--lsa`/`--dpapi` looting, `-M enum_av` before dropping a payload, and the stored-cred loot modules (winscp/putty/rdcman/keepass/eventlog_creds).

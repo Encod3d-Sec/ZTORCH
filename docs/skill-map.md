@@ -34,6 +34,7 @@ organizational only.
 | Check the offensive driver is set up on this machine | `offensive-doctor` (`scripts/offensive-doctor.py`)                              |
 | Board seeding order / vector workflow (why a row is on the board) | `vector-workflow` skill (OSINT pre-pass -> per-asset vector baseline -> base fallback, `derive_rows()`) |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
+| Dispatching a lane / verifying a lane returned | completion gate: `python3 scripts/completion-gate.py init <lane-dir> --title "<run>"` at dispatch, `... check <lane-dir> --capture <dir>` on return (hunt-core "Run completion gate"; UNCHECKED/MISSING/EMPTY = not done, re-dispatch with the printed nudge) |
 | Driving a web target through Burp (proxy-history triage, Repeater/Intruder/Collaborator) | `hunt-burp` skill (Burp MCP; setup [[burp-mcp]])       |
 | Web-audit proxy when Burp/MCP is down, per-engagement isolated proxy project, or Caido-native features (Automate, workflows) | `caido` skill (headless Caido on the VM; caido-mode SDK CLI + `~/caido.sh`; [[wiki/tools/caido]])   |
 | Starting recon on any target                  | wiki-recon skill                                                                       |

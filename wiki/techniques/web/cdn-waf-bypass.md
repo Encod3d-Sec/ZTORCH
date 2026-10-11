@@ -27,8 +27,6 @@ Recon (origin IP discovery), then exploitation (unrestricted attack delivery).
 - The target application is CDN-proxied
 - The origin server accepts inbound connections from the internet (port 80/443 open to all source IPs)
 
-## Methodology
-
 ### 1. Discover the origin IP
 
 Use multiple passive methods in parallel; origin IPs are rarely discoverable via a single source.
@@ -363,3 +361,65 @@ ownership from the TLS certificate subject/SAN before sending a single request.
 <!-- promoted-slug: inserting-an-invalid-utf-8-byte-in-the-middle-of-a-waf-block -->
 
 <!-- promoted-slug: mx-records-and-urlscan-io-find-the-origin-ip-that-certificat -->
+
+## Edge-blocked dotfile class: when a uniform WAF block closes the lane
+
+Probing the secrets class (`/.git/HEAD`, `/.env`, `/.git/credentials`, `/.aws/credentials`) on a CDN/WAF-fronted origin can hit the WAF block page on every path: same status (typically 403), same byte size, block-page body. Two dispositions:
+
+- Origin IP known or discoverable: re-test the paths at direct origin (the standard move on this page); edge blocks routinely vanish there.
+- Origin IP out of reach from your vantage: a UNIFORM block response across the whole path class, recorded with status + size + body hash per path, legitimately closes the secrets class for that vantage. The uniformity IS the evidence; a single path answering differently (any status or size delta) reopens the class.
+
+<!-- promoted-slug: cdn-waf-edge-blocked-dotfile-disposition -->
+
+## Edge-special-cased paths: the ACME carve-out class (Oct 2025, patched Jan 2026)
+
+CDN edges special-case a small set of well-known paths for operational reasons, and a special-cased
+path is a WAF-skip carve-out until the vendor closes it. Named instance: Cloudflare whitelisted
+`/.well-known/acme-challenge/` (ACME HTTP-01 certificate validation) from WAF inspection so
+certificates renew without friction; in October 2025 this was used to "tunnel" path-traversal / LFI
+payloads past the WAF to origins (e.g. `/.well-known/acme-challenge/../<target-path>` — the edge
+sees the ACME prefix and skips inspection, the origin normalizes the traversal). Cloudflare disclosed
+and patched the logic error in January 2026; there is no evidence of mass exploitation.
+
+Generic lessons that outlive the patch:
+
+- Enumerate the edge's operational carve-outs and re-test blocked paths behind them: well-known
+  prefixes (`/.well-known/*`), health-check paths, CDN-feature paths (cache purge, tiered cache),
+  challenge/JS-insertion endpoints. Each is a candidate "edge trusts this prefix" zone.
+- The bypass only removes the shield: the payload still needs a real origin-side flaw (the LFI /
+  traversal itself). A carve-out win converts "WAF-blocked" into "origin reachable with payload",
+  it is not an exploit by itself.
+- Send path-traversal variants with `--path-as-is` (or raw-file sends) — a normalizing client
+  collapses `../` locally and the probe never tests the edge at all.
+- When the specific carve-out is patched, it costs two requests to keep as a control: one plain
+  blocked request, one carve-out-prefixed request; a differential (different status/size/body)
+  means SOME special handling still exists on that prefix.
+
+Sources: thehackernews Jan 2026 disclosure (via aviatrix.ai threat-research summary), cyberoverwatch
+analysis (Oct 2025 event mechanics).
+
+<!-- promoted-slug: edge-special-cased-paths-are-waf-skip-carve-outs-acme-class -->
+
+## Invalid-byte split vs a managed ruleset: transport channel, not payload semantics
+
+Field-verified sibling of the invalid-byte keyword split above, against a CDN MANAGED ruleset
+(the vendor default block set, not a custom rule):
+
+- One `%80`-range byte inside the blocked token passes the edge where the intact token draws
+  the uniform managed-ruleset 403 block page; the app answered 200 with its normal JSON and
+  rate-limit headers = payload bytes reached the origin.
+- The split travels across params: the same one-byte split evaded identically from a
+  filter-array sub-param and a numeric param (whose garbage value drew a plain app redirect),
+  so the rule keys on the decoded keyword, not on where the keyword sits.
+- The caveat that decides finding vs nothing: the evasion is TRANSPORT, not semantics. The
+  invalid byte may survive to the app verbatim (keyword dead), be replaced (keyword dead), or
+  be stripped and reassembled (keyword live) - and if the param reflects nothing, strip-vs-keep
+  is unanswerable from outside. Field case: every SSTI split shape reached the app, zero
+  evaluation markers (no arithmetic result anywhere in any capture) = channel proven, sink
+  absent, the payload family stays closed. Do not upgrade "WAF evaded" to "payload class
+  reopened" without an evaluation marker or a reflection.
+- Controls to send with any use: (1) intact keyword = block signature (rule still live),
+  (2) split benign token = app baseline shape, (3) a TRUE/FALSE semantic pair when any
+  reflection exists - before building the real payload.
+
+<!-- promoted-slug: invalid-byte-split-managed-ruleset-transport-only -->

@@ -42,6 +42,7 @@ is absent, this map IS the router.
 | Evidence hygiene before a report or any share | `Skill(evidence)`; screenshots: `Skill(screenshot)` |
 | Confirmed/proven finding needs responsible disclosure | `Skill(disclosure)` |
 | "Why is this row on the board" / which vector baseline applies | `Skill(vector-workflow)` |
+| Dispatching a lane or verifying what a lane returned | completion gate (hunt-core "Run completion gate"): `python3 scripts/completion-gate.py init <lane-dir> --title "<run>"` at dispatch, `... check <lane-dir> --capture <dir>` on return; UNCHECKED/MISSING/EMPTY = not done, re-dispatch with the printed nudge |
 | Wiki maintenance (re-index, status, page types) | `Skill(wiki)` |
 
 Discipline spine for every hunt: `Skill(hunt-core)` loads alongside any hunt skill (scope gate,

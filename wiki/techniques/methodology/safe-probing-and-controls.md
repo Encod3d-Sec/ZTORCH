@@ -326,3 +326,11 @@ Two same-status responses of EQUAL byte length that hash differently: diff befor
 The ray id and timestamp change every request, so body LENGTH stays constant while the md5 moves. When the diff shows this marker (or the CDN's equivalent) as the ONLY delta, record "identical modulo CDN challenge injection" and move on; any other delta line at equal size is real server-side variance and worth reading line by line.
 
 <!-- promoted-slug: cf-challenge-injection-identical-modulo-correction -->
+
+## Never install a non-scoped intercept rule on the agent seat
+
+A root-scoped `iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT` on a WSL2 host also redirects the API stream of any LLM-agent CLI running on that same host, killing the session mid-run: agent traffic to its own provider matches the same rule.
+
+Rule: never install a non-uid-scoped intercept rule on the seat an agent session runs on. Prefer passive capture (tcpdump for plaintext SNI) and offline data pulls (app cache tar) when the analysis seat and the agent seat are the same machine. If active interception is unavoidable, scope the rule to the target app uid and exclude agent traffic first.
+
+<!-- promoted-slug: wsl-iptables-redirect-kills-agent-session -->

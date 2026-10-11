@@ -5,6 +5,11 @@ description: RCE hunting - template injection, YAML/XML deserialization, depende
 
 # Hunt: Remote Code Execution
 
+> Current emphasis (update on wiki harvest): config / template-editor
+> arbitrary writes and version-pinned CVE exploits over blind SSTI probing -
+> models over-index on over-represented old methods; the newest harvested
+> technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 Binary/memory-corruption RCE (a socket service or a handed-out binary) belongs to `Skill(hunt-pwn)`; if you were routed here for one, say so in one line and re-route.
@@ -16,7 +21,7 @@ Anchors: [[ssti]], [[insecure-deserialization]]
 **REFS:** [[os-command-injection]], wiki/payloads/command-injection.md
 - capability equations + low-severity-to-primitive map: [[wiki/techniques/capability-primitives]]
 
-qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "remote code execution command injection template injection deserialization CVE" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## RCE quick reference (use this, don't hand-roll)

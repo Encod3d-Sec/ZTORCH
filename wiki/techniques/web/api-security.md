@@ -33,8 +33,6 @@ APIs accept structured requests (usually JSON over HTTP) against well-defined en
 
 ---
 
-## Methodology
-
 ### API1:2023 — BOLA (Broken Object Level Authorization)
 
 BOLA is IDOR at the API layer, but made systematic: for every endpoint that takes an object ID in the path or query string, substitute IDs owned by a different role/user and observe whether the server enforces ownership.
@@ -260,8 +258,6 @@ X-Custom-IP-Authorization: 127.0.0.1
 
 ---
 
-## Key Payloads / Examples
-
 ### BOLA Enumeration Script
 
 ```python
@@ -438,3 +434,30 @@ do not return full secrets outside the single create response; audit/alert on mi
 <!-- promoted-slug: a-google-cloud-api-key-leaked-in-a-public-js-bundle-that-is -->
 
 <!-- promoted-slug: a-public-documentation-directory-or-leaked-postman-collectio -->
+
+## Search-index snippets beat per-row gates (the engine cache as disclosure channel)
+
+When an API per-row authorization gate holds (403/404 on gated ids), the search-engine index
+of those same URLs may still be the live disclosure channel: engines that crawled the rows
+during an open window keep cached snippet text after the origin tightens access. The finding
+lives in the index, not the API.
+
+Procedure:
+1. Take the gated URL pattern including row ids (`/api/.../files/{id}` class).
+2. Query engines (DDG, Bing, Google) with `site:` + distinctive content terms for the
+   document class (document-type words in the target language, e.g. decision titles).
+3. Read the snippets for PII markers: full names, street addresses, property sizes, amounts.
+4. Live-confirm the origin still gates the SAME ids (unauth 403/404) - this attributes the
+   disclosure to the index, not to a broken API, and separates it from an authz finding.
+5. Hunt a full-bytes channel for a severity raise: engine cache pages, archive.today,
+   Wayback, Common Crawl. Snippet-only tops out LOW; full cached bytes of a gated doc is HIGH.
+
+Tell: AUTH-marked file/document routes appearing in a search index at all means the responses
+lack `X-Robots-Tag: noindex` - an independent disclosure indicator worth reporting even when
+snippets carry no PII.
+
+Remediation: `X-Robots-Tag: noindex, nofollow` on every file-download response; removal
+requests to the engines for indexed API URLs carrying personal data; audit which other
+auth-marked routes are crawlable.
+
+<!-- promoted-slug: search-index-snippets-beat-row-gates -->

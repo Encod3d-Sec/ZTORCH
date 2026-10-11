@@ -446,7 +446,7 @@ Combine with absent login lockout/rate-limit for same-day account takeover requi
 - [[passkey-webauthn-attacks]]
 
 <!-- auto-wired: context-reachable sub-technique pages -->
-- [[account-takeover]]
+- [[wiki/techniques/web/account-takeover]]
 - [[rate-limit-bypass]]
 - [[webauthn-passkey]]
 - [[captcha-bypass]]

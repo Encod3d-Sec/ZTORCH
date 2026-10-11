@@ -37,7 +37,7 @@ Proven end-to-end paths from how real engagements actually win. Each step links 
 ## 4. Perimeter n-day -> internal pivot
 1. Dork/Shodan a vulnerable edge box ([[recon-dorks]]): Fortinet/Citrix/Confluence/Ivanti.
 2. Pre-auth RCE from [[cve-arsenal]] (e.g. CVE-2024-21762, Citrix Bleed, CVE-2023-22515).
-3. Foothold -> tunnel internal: [[ligolo-ng]] / [[chisel]] -> [[pivoting-tunneling]].
+3. Foothold -> tunnel internal: [[ligolo-ng]] / [[wiki/tools/chisel]] -> [[pivoting-tunneling]].
 4. Internal recon -> AD (chain 3) or sensitive apps.
 **Impact:** internet -> internal network from one CVE.
 

@@ -141,6 +141,13 @@ a listed item with no capture is a Missing finding.
 - Few long lanes beat many short forks: prefer a lane that owns a whole vector
   over a fresh subagent per step (every fresh dispatch re-pays the prompt
   prefix); re-dispatch only on stall/refusal, per Failure handling.
+- Discovery multiplication: LLM runs are non-deterministic - identical skills on
+  identical targets return different findings per pass. A discovery-shaped lane
+  (class/endpoint enumeration, content discovery) runs 2-3 passes on SEPARATE
+  sessions, merged and deduped by the brain before triage; a single-pass
+  discovery negative is the weakest negative in the harness and needs the
+  brain-side re-verify even more than a flash lane's does. Verification lanes
+  stay single-shot (their check is deterministic; repetition adds nothing).
 - Lane completions arrive as notifications; never poll a running lane. Integrate
   in return order; persist to `state.md`/`loot.md` before the next dependent
   move.

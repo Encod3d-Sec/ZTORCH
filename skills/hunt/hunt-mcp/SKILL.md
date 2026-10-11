@@ -5,6 +5,11 @@ description: MCP server attack hunting - tool poisoning, indirect prompt injecti
 
 # Hunt: MCP Server Attacks
 
+> Current emphasis (update on wiki harvest): indirect injection via tool
+> output and cross-tool shadowing over manifest description poisoning - models
+> over-index on over-represented old methods; the newest harvested technique
+> leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[mcp-server-attacks]] · Arsenal: [[llm-promp
 Anchors: [[llm-attacks]], [[adversarial-ml]]
 **REFS:** [[mcp-server-attacks]], [[llm-attacks]]
 
-qmd_query "MCP server tool poisoning indirect prompt injection rug pull cross-tool shadowing excessive agency lethal trifecta" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "MCP server tool poisoning indirect prompt injection rug pull cross-tool shadowing excessive agency lethal trifecta" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Tooling

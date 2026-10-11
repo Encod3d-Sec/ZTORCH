@@ -5,6 +5,12 @@ description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, 
 
 # Hunt: Cloud (AWS / Azure / GCP)
 
+> Current emphasis (update on wiki harvest): instance-metadata credential
+> theft (IMDS / managed identity) and over-privileged role assumption over
+> public-bucket enumeration - models over-index on over-represented old
+> methods; the newest harvested technique leads the checklist until
+> superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +19,7 @@ Hub: [[cloud-moc]] · Primary page: [[cloud-iam-attacks]] · Payload arsenal: `w
 Anchors: [[aws-metadata-ssrf]], [[azure-ad-iam]]
 **REFS:** [[cloud-iam-attacks]], wiki/payloads/imds-cloud-metadata.md
 
-qmd_query "cloud AWS Azure GCP metadata SSRF IAM privilege escalation credential discovery persistence" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "cloud AWS Azure GCP metadata SSRF IAM privilege escalation credential discovery persistence" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Cloud CLI quick reference (use this, don't hand-roll)

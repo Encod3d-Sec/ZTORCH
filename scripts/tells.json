@@ -130,6 +130,12 @@
       "note": "weak JWT verification config; forge/bypass path"
     },
     {
+      "re": "X-Error: 404|X-Content: json",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "PanteraCRM-style reminder/reset XHR answers account existence on 4 channels at once (status 200-vs-404, X-Content header, content-type JSON-vs-HTML, body shape): registered account -> 200 JSON + X-Content: json, nonexistent -> 404 HTML + X-Error: 404. Unauth email-existence oracle; confirm with a real-deliverable unregistered control address before claiming"
+    },
+    {
       "re": "ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|xox[baprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|glpat-[A-Za-z0-9_-]{20,}",
       "class": "secrets",
       "skill": "hunt-secrets",

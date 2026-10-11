@@ -309,7 +309,11 @@ def judgement_filled(eval_text):
     # The judgement sections sit BEFORE the auto block in the scaffold layout, so search the
     # whole text: the template's own "- one thing to change next box:" stub has nothing after
     # the colon, so a real fill still matches and a bare template still fails.
-    if re.search(r"one thing to change next box:\s*\S", eval_text):
+    # SAME-LINE only ([ \t]+\\S, not \\s*\\S): the stub is followed by a blank line and then the
+    # auto block's "<!-- eval-metrics:auto BEGIN -->" comment, and \\s*\\S crossed that newline
+    # so a bare template matched its own scaffold (learn self-cleared on a real box with the
+    # judgement half visibly blank).
+    if re.search(r"one thing to change next box:[ \t]+\S", eval_text):
         return True
     # fallback: a real Drift-moments bullet (a "- " line with >10 chars of content, not the "-" stub)
     m = re.search(r"##\s*Drift moments.*?\n(.*?)(?:\n##\s|\Z)", eval_text, re.S | re.I)

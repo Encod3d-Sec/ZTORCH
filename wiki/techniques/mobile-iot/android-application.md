@@ -37,8 +37,6 @@ The following imported sections retain upstream ordering, tables, and copy-pasta
 * [HTB VIP - Pinned](https://app.hackthebox.com/challenges/282) - Hack The Box challenge
 * [HTB VIP - Manager](https://app.hackthebox.com/challenges/283) - Hack The Box challenge
 
-## Extract APK
-
 ### ADB Method
 
 Connect to ADB shell and list/download packages.
@@ -64,8 +62,6 @@ Download APK from Google Play using a 3rd Party:
 
 * [apkcombo.com](https://apkcombo.com/downloader/)
 * [apps.evozi.com](https://apps.evozi.com/apk-downloader/)
-
-## Static Analysis
 
 ### Extract Contents From APK
 
@@ -1065,3 +1061,46 @@ downloaded APK into full disclosure for the whole user base.
 - [[ios-application]]
 
 <!-- promoted-slug: flutter-dart-mobile-apps-commonly-ship-their-runtime-config -->
+
+## Stale emulator proxy makes apps look offline-only
+
+An emulator proxy experiment persists: the global proxy (`settings global http_proxy`) stays set in the AVD after the experiment ends. NetworkMonitor validation probes then fail against the dead proxy, Android marks the network unvalidated, and the target app makes ZERO backend connections while still rendering a full UI from cache.
+
+The trap: concluding the app is offline-only or has no backend.
+
+Check and clear before concluding anything:
+- `adb shell settings get global http_proxy` (empty output = clean)
+- `adb shell settings delete global http_proxy`
+- force-stop the app and relaunch so it re-resolves the network
+
+<!-- promoted-slug: emulator-stale-proxy-offline-apps -->
+
+## Flutter and Dart apps bypass the Android proxy and CA stores
+
+Flutter/Dart apps ignore the Android system HTTP proxy: dart:io does not read proxy settings, so a proxy set in Wi-Fi settings or via `settings global http_proxy` never receives app traffic. The Flutter engine also validates TLS against its own bundled Mozilla root store, ignoring both system and user CA stores.
+
+Symptom of a failed MITM: `Client TLS handshake failed` ... the client does not trust the proxy certificate.
+
+This is trust-store isolation, NOT certificate pinning: pinning-bypass tools and Frida unpinning scripts will not help. Working alternatives:
+- Passive SNI harvest: the TLS ClientHello SNI field is plaintext; capture with tcpdump and parse to enumerate backend hostnames without decryption.
+- At-rest cache pull: `adb root` plus tar of `/data/data/<package>` for cached responses, tokens, and local databases.
+- Frida hooking of the Dart TLS layer: possible but unreliable under libndk arm64 translation on x86 emulators.
+
+<!-- promoted-slug: flutter-tls-trust-store-isolation -->
+
+## WSL2 emulator: arm64 translation support varies by API level
+
+On WSL2 with KVM, google_apis x86_64 system images differ in arm64 translation by API level:
+- API 31 includes libndk arm64 translation (`ro.product.cpu.abilist` reports `x86_64,arm64-v8a`); arm-only split APKs install.
+- API 33 does NOT: arm-only APKs fail with `INSTALL_FAILED_NO_MATCHING_ABIS`.
+
+Install XAPK splits explicitly:
+
+`adb install-multiple --no-streaming base.apk config.arm64_v8a.apk config.*.apk`
+
+Overlay a MITM CA on the emulator (non-persistent; survives until reboot):
+1. `adb root`
+2. push the CA file named by its `openssl x509 -subject_hash_old` hash
+3. `mount -t tmpfs tmpfs /system/etc/security/cacerts`, copy the store plus the new cert, `chmod 644`
+
+<!-- promoted-slug: wsl2-arm64-translation-emulator-setup -->

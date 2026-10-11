@@ -1,6 +1,6 @@
 ---
 name: kali-seat
-description: WSL/Kali attack-seat procedure - the Windows-to-WSL-to-VMware VM chain, vm.sh rules, tmux-on-VM convention. Use for "kali seat", "the VM", "work from WSL", or before any offensive command against an in-scope target.
+description: Kali attack-seat procedure - Windows-to-WSL-to-VMware VM chain, direct-ssh and vm.sh rules, tmux-on-VM convention. Use for "kali seat", "the VM", "work from WSL", or before any offensive command against an in-scope target (Hermes or ZCode seat).
 ---
 
 # Kali seat: Windows host -> WSL kali -> VMware Kali VM
@@ -25,20 +25,27 @@ The vault is ONE working copy seen under three paths:
 
 - **Agent session (Windows):** everything cognitive - wiki-first, offensive driver, hooks. Hooks
   and skill links are already wired for this seat (`.zcode/config.json`, `~/.claude/skills/`).
-- **Target commands: ALWAYS on the VM through vm.sh.** Never scan or attack from WSL or
-  Windows directly - they have no VPN route and would leak the host IP.
+- **Target commands: ALWAYS on the VM.** Hermes seat: `ssh kali-vm '<cmd>'` (form 0). ZCode seat:
+  through vm.sh. Never scan or attack from WSL or Windows directly - they have no VPN route
+  and would leak the host IP.
 - **Harness scripts:** run from either side. Windows seat uses the bridge
   (`scripts/win-vm.sh`); inside WSL everything is direct
   (`bash /root/vm.sh '<cmd>'`, `qmd`).
 
 ## Invocation forms (pick by need)
 
-0. **Fastest: direct ssh, Windows -> VM.** Key-based (SSH key auth, armed once manually), no WSL hop, fails fast:
-   ```
-   bash scripts/vm-ssh.sh '<remote command>'          # root@VM, VPN + tools + chromium live here
-   VM_SH="$(pwd)/scripts/vm-ssh.sh" bash scripts/win-rsh.sh <session> '<ps cmd>'
-   ```
-   Use this for quick tool calls and driver runs. Fallbacks below cover WSL state and key loss.
+0. **Fastest: direct ssh, Windows -> VM (Hermes seat).** `ssh kali-vm '<remote command>'` -
+   alias in Windows `~/.ssh/config` (host 192.168.23.128, user `tz`, key `~/.ssh/ztorch_vm`).
+   No WSL hop, key auth, fails fast. Health-check the channel with
+   `ssh -o BatchMode=yes kali-vm 'whoami'` (expect `tz`; BatchMode so a key
+   failure errors instead of hanging on a password prompt). Use for quick tool calls and driver runs; long/live work
+   still goes in tmux ON the VM (form 3, via ssh + tmux send-keys/capture-pane).
+   - Login user is `tz` (sudo group): sudo prompts for a password, so root-level commands are
+     unavailable over this path unless SUDO_PASSWORD is set in the agent's .env.
+   - `scripts/vm-ssh.sh` claims key auth as root via `/root/.ssh/ztorch_vm` on the WSL side;
+     that key does not exist. Without it the script silently falls back to the creds.txt
+     password path (user `tz`, not root). Do not trust its "root@VM" comment.
+   Fallbacks below cover WSL state and key loss.
 1. **One-shot via WSL.** The agent reaches WSL as root directly - no sudo needed, run vm.sh straight:
    ```
    bash scripts/win-vm.sh '<remote command>'                                  # Windows seat bridge
@@ -70,8 +77,16 @@ The vault is ONE working copy seen under three paths:
 - **MSYS gotcha (hand-typed wsl.exe only):** Git Bash rewrites leading-slash args into Windows
   paths. The repo wrappers already set `MSYS_NO_PATHCONV=1`; if you type raw
   `wsl.exe ... ls /root/x` yourself, prefix it.
-- **The RoE gate crosses the bridge:** `scope-guard.py` parses vm.sh/ssh/wsl-wrapped commands,
-  so out-of-scope hosts and forbidden tooling are denied no matter which form you use.
+- **Windows seat: run the bridge as `OUTPUT_ECON=0 bash scripts/win-vm.sh ...`** - the script's
+  output-economy step resolves `python3` to the WindowsApps store alias, which cannot read the
+  MSYS path and fails every call. The WSL-side `vm.sh` path is unaffected.
+- **The RoE gate is live on BOTH seats now.** On Hermes, scope-guard runs as a native
+  pre_tool_call shell hook (adapter: Torchv2 `hermes/agent-hooks/torch-hook-adapter.py`,
+  registered in `%LOCALAPPDATA%/hermes/config.yaml`): out-of-scope terminal commands are REALLY
+  blocked, RoE-gated tooling raises the human-approval gate, and it is all driven by the active
+  engagement's scope.md. Advisory nudges arrive one turn late (sidecar drain). The
+  `skills/hooks/.enforce-off` marker still downgrades enforcement to advisory when a false block
+  is in the way.
 - Evidence still lands in the vault (`targets/<eng>/poc/` via `capture.sh` / `shot.py`) - the
   seat changes the transport, never the discipline.
 

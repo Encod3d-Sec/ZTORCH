@@ -104,6 +104,11 @@ usual failure mode, not a weak sub-agent.
   never foreground one-shot SSH; confirm-worthy request/response pairs are returned RAW
   so the main agent can push them to Burp Repeater. A lane that returns only a one-line
   verdict with no capture path is a failed lane.
+  The main agent runs the completion gate on return (hunt-core "Run completion
+  gate"): ledger boxes ticked, every declared artifact non-zero. A lane that
+  ticked a box whose artifact is missing or 0 bytes has OVER-CLAIMED - treat the
+  verdict like a failed false-root check, redispatch with the generic nudge,
+  never with a narration of what the lane "probably" did wrong.
 
 Every delegation prompt also carries the read-first mandate verbatim: `cat each file in full, zg/grep only to locate`. A cheap model grep-mines by default; the prompt is its only law.
 

@@ -498,6 +498,6 @@ grep -E '^.{8,}$' list.txt | grep -E '[A-Z]' | grep -E '[a-z]' | \
     grep -E '[0-9]' | grep -E '([!@#$%^&*].*){2,}' > policy-filtered.txt
 ```
 
-Per-service mechanics: [[hydra]], [[medusa]]; AD spraying: [[password-spraying]].
+Per-service mechanics: [[wiki/tools/hydra]], [[medusa]]; AD spraying: [[password-spraying]].
 
 <!-- promoted-slug: brute-force-attack-class-selection -->

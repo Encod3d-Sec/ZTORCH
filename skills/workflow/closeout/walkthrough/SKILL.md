@@ -111,7 +111,7 @@ The walkthrough is read in Obsidian's preview, not a terminal. Hard rules:
   mangles images inside table cells (squeezed columns, broken aspect) and table-formatter
   plugins re-pad the markup. Non-image evidence (log excerpts, decoded output) is referenced as
   a plain markdown link in the narrative, not as a gallery row.
-- **No em-dashes, ever.** A `—`/`–` in prose is replaced with a comma, semicolon, colon, or a
+- **No em-dashes, ever.** A ` - `/`–` in prose is replaced with a comma, semicolon, colon, or a
   rewrite (gallery captions use `![...](...) (description)` parens, not a dash). Em-dashes are
   legal ONLY inside a code fence where the command itself contains one (a literal CLI value).
 - **Language-tag every code fence, chosen to match its content.** `sh` for shell commands,

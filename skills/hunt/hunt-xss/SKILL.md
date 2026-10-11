@@ -5,6 +5,10 @@ description: XSS hunting - reflected, stored, DOM-based. Marker discipline to av
 
 # Hunt: XSS
 
+> Current emphasis (update on wiki harvest): framework-gadget chains over
+> reflected sinks - models over-index on over-represented old methods; the
+> newest harvested technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration
 limits, stop conditions, wiki protocol, FIND output, and Deadends. Marker discipline (unique 8+
 char canaries, check the baseline first) lives in hunt-core.
@@ -15,7 +19,7 @@ Hub: [[web-moc]] · Primary page: [[techniques/web/xss]] · Payload arsenal: `wi
 Anchors: [[dangling-markup]], [[xssi]], [[browser-extension-attacks]], [[prototype-pollution]]
 **REFS:** [[techniques/web/xss]], wiki/payloads/xss.md
 
-qmd_query "XSS cross-site scripting DOM CSP bypass sanitizer" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "XSS cross-site scripting DOM CSP bypass sanitizer" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Confirmation gate

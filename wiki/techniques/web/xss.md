@@ -1065,3 +1065,7 @@ engagement the same chain doubles as a phishing-simulation exercise on a page th
 already trust, which is a reportable awareness finding.
 
 <!-- promoted-slug: xss-phishing-fake-login-chain -->
+
+Fingerprinting a write-time HTML sanitizer to char-class depth before deadending a stored-XSS sink. Method: plant one report per variant (so one variant's truncation cannot mask the rest; put any unterminated-tag variant LAST), then diff stored readback vs submitted. Observed control class (2026-10 municipal-platform engagement, generic form): tag-span removal case-insensitive; an UNTERMINATED `<` truncates the rest of the string (data-loss, not encoding); character strip of `=` `&` `;` `%` `_` and both quotes. Consequences that close classes in one pass: no `=` means no handler/attribute assignment is expressible even if a tag span survived; `&`+`;` gone kills entity re-materialization; `%` gone kills percent re-materialization; JSON `\u003c` decodes pre-filter (same strip); `_` stripping corrupts JS markers. Alternate write paths matter: check PATCH/edit immutability (424-after-registration = DMS forward) before hunting a second write lane. Variant battery: nested `<scr<script>ipt>`, mixed-case, unclosed, entity, percent, JSON-unicode, bare.
+
+<!-- promoted-slug: char-class-write-sanitizer-fingerprint -->

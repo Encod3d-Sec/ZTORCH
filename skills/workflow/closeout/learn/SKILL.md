@@ -1,9 +1,27 @@
 ---
 name: learn
-description: Close-out harvest - harness retro against skills/hooks plus generic wiki delta through the leak gate. Use at close-out or for "extract learnings", "what did we learn", "post-mortem into the wiki", "improve the harness".
+description: "DEPRECATED on Hermes - use Skill(engagement-retro) plus Hermes-native memory instead. ZCode-era close-out harvest; kept only for the wiki stage/promote mechanics reference."
 ---
 
 # Learn: harness retrospective + wiki knowledge harvest
+
+> **DEPRECATED (2026-10-11, operator directive):** Hermes covers this skill's job natively.
+> Route the work as follows and do NOT run this file's workflow wholesale:
+>
+> - Phase 0 (harness retro) -> `Skill(engagement-retro)` (Hermes-side skill: same drift ->
+>   root-cause -> fix loop, writes via skill_manage + memory instead of hand-edited prose).
+> - Cross-session facts -> Hermes `memory` tool (auto-loaded every session; replaces the
+>   reread-harness-retro.md discipline).
+> - "Have we hit this before" -> Hermes `session_search` (replaces failures.md archaeology).
+> - Wiki knowledge delta (Phases 1-7) -> STILL VALID: keep the wiki-stage.py ->
+>   wiki-promote.py leak-gate mechanics below; that pipeline remains the only path for
+>   engagement-derived content into the canonical wiki.
+>
+> The close-out chain (`offensive.py closeout`) still names `learn`; on Hermes, run
+> `Skill(engagement-retro)` for Phase 0 and the wiki-stage/promote commands directly for
+> the delta. This file remains as the mechanics reference for that pipeline.
+
+(Original ZCode-era workflow preserved below for the gate mechanics.)
 
 The close-out retrospective, in two phases:
 - **Phase 0 (process):** diff how the engagement was EXECUTED against the discipline the

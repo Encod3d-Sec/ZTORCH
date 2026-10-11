@@ -81,6 +81,11 @@ Missing headers alone (no impact PoC)
 
 A "primitive confirmed" != exploitable. Downgrade until the gate is bypassed.
 
+Independent-industry corroboration (Armada talk, HermesTORCH docs/hackbot-port.md 2.1):
+"the AI drastically overrates the criticality of the vulnerability" - expect
+the finding to be a class lower than the discovering agent claimed, and rate
+from the demonstrated template in Q6, not the lane's adjective.
+
 ---
 
 ## Decision
@@ -92,3 +97,9 @@ A "primitive confirmed" != exploitable. Downgrade until the gate is bypassed.
 | Q7 chain required | Move to Vulns/Research/ with note "chain required: [what is needed]". |
 
 A scanner/tool hit without a validated PoC is DETECTED, never Completed; the find-lint gate refuses CONFIRMED/EXPLOITED without a poc/ capture reference.
+
+Chaining pass: when an engagement records 2+ findings that each scored low,
+run ONE explicit low-chain prompt before closing the class (redirect + auth
+bypass + token-in-URL class chains): "combine the recorded lows into
+primitives and test the chains." The model does not chain lows unprompted;
+left unchained they stay breadcrumbs.

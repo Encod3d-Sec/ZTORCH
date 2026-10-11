@@ -178,8 +178,20 @@ _ROE_OK_ENV = re.compile(r"(?<![\w-])ZT_ROE_OK=\S")
 
 
 def _roe_approved(cmd, d):
-    if _ROE_OK_ENV.search(cmd):
-        return True
+    # Operator pre-approval must sit in ENV-PREFIX POSITION on the RAW command:
+    # start of a `;|&&||`-separated segment (or after a sudo/env/nohup/timeout
+    # wrapper). _cmdnorm.segments() deliberately PEELS env assignments before
+    # rule matching, so approval is checked against the raw outer segments here -
+    # `echo 'export ZT_ROE_OK=1' && hydra ...` (token buried inside another
+    # statement's quotes) must NOT count as approval.
+    import re as _re
+    segments = _re.split(r";|\|\||&&|\|\n|\n", cmd)
+    for seg in segments:
+        s = seg.strip()
+        if _re.match(r"ZT_ROE_OK=\S", s):
+            return True
+        if _re.match(r"(?:sudo\s+|env\s+|nohup\s+|timeout\s+\S+\s+|sudo\s+-E\s+env\s+\S+\s+)ZT_ROE_OK=\S", s):
+            return True
     try:
         return os.path.isfile(os.path.join(d, ".roe-ok"))
     except Exception:
@@ -203,6 +215,7 @@ def main():
 
     # scope / RoE (only when an engagement is active)
     eng_dir = None
+    scope_error = None
     try:
         import _engagement
         eng_dir = _engagement.active_dir()
@@ -213,6 +226,11 @@ def main():
             # the target is the host, not an SSRF/redirect param value; `--url=<host>` is kept.
             flagged = set(ip_out_of_scope(cmd, sc))
             flagged |= host_out_of_scope(cmd, sc, _engagement.out_of_scope_match)
+            # specificity precedence via resolve_scope: exact in-scope > exact oos >
+            # parent in-scope > parent oos > unknown. Only "out" denies; "unknown"
+            # (prose-only bullets, unnamed hosts) is advisory and never fires.
+            flagged = {f for f in flagged
+                       if _engagement.resolve_scope(f, sc) == "out"}
             if flagged:
                 deny.append("out-of-scope: command targets " + ", ".join(sorted(flagged))
                             + " which match an OUT-OF-SCOPE entry in scope.md")
@@ -225,8 +243,26 @@ def main():
                 roe.append("RoE no_dos: command looks like high-volume/DoS tooling")
             if sc.get("passive_only") and ACTIVE.search(scan_cmd):
                 roe.append("RoE passive_only: command runs an active scanner")
-    except Exception:
-        pass
+    except Exception as e:
+        # NOT silent: an engagement IS active (active_dir returned or was reached) and its
+        # state could not be read. Silent fail-open here would disable the one hard
+        # enforcement while a target is live. No-engagement (eng_dir falsy) stays allow.
+        scope_error = f"{type(e).__name__}: {e}"
+        try:
+            import _telemetry
+            _telemetry.drift("scope-guard", f"scope state unreadable: {scope_error}")
+        except Exception:
+            pass
+
+    if scope_error and not deny and not roe:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": ("SCOPE-GUARD (degraded): engagement state unreadable ("
+                                  + scope_error + ") - scope/RoE checking DID NOT RUN this "
+                                  "command. Fix scope.md/_engagement state; do not rely on "
+                                  "this session's enforcement until resolved."),
+        }}))
+        return
 
     if not deny and not roe:
         # escape-hatch write (advisory ONLY, never deny: the operator may legitimately be

@@ -5,6 +5,11 @@ description: Web cache poisoning + cache deception hunting - unkeyed input poiso
 
 # Hunt: Web Cache Attacks
 
+> Current emphasis (update on wiki harvest): parameter cloaking and cache-key
+> normalization gaps over plain unkeyed X-Forwarded-Host reflection - models
+> over-index on over-represented old methods; the newest harvested technique
+> leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[web-cache-poisoning]] · Payload arsenal: `w
 Anchors: [[web-cache-deception]], [[web-cache-attacks]], [[http-host-header-attacks]], [[http-request-smuggling]]
 **REFS:** [[web-cache-poisoning]], wiki/payloads/web-cache.md
 
-qmd_query "web cache poisoning deception unkeyed input cache-key path confusion" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "web cache poisoning deception unkeyed input cache-key path confusion" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface

@@ -5,6 +5,11 @@ description: Exposed-secrets hunting - .git history mining, .env/config exposure
 
 # Hunt: Exposed Secrets / Credential Exposure
 
+> Current emphasis (update on wiki harvest): source-map rebuilt-source mining
+> and --only-verified live validation over raw regex key greps - models over-
+> index on over-represented old methods; the newest harvested technique leads
+> the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[secret-hunting]] · Arsenal: [[recon-dorks]]
 Anchors: [[javascript-source-map-exploitation]], [[git-exposure]], [[static-code-analysis]], [[supply-chain-attacks]], [[aws-service-s3-buckets]], [[aws-access-token-secrets]]
 **REFS:** [[secret-hunting]]
 
-qmd_query "exposed secrets git directory .env config hardcoded API keys JS bundle source maps S3 CI leakage" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "exposed secrets git directory .env config hardcoded API keys JS bundle source maps S3 CI leakage" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Secret-hunting quick reference (use this, don't hand-roll)

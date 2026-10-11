@@ -1001,7 +1001,7 @@ netsh trace start capture=yes report=disabled Ethernet.Type=IPv4 IPv4.Address=10
 - dnscat2 — DNS tunneling
 - netsh — Windows built-in port proxy
 - proxychains — force tools through SOCKS/HTTP proxy
-- [[chisel]]
+- [[wiki/tools/chisel]]
 - [[ligolo-ng]]
 
 ---

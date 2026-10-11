@@ -5,6 +5,11 @@ description: Binary exploitation hunting - stack/heap memory corruption, format 
 
 # Hunt: Binary Exploitation (pwn)
 
+> Current emphasis (update on wiki harvest): checksec-first mitigation-driven
+> technique selection and glibc-era heap methods (tcache / safe-linking) over
+> memorized offsets - models over-index on over-represented old methods; the
+> newest harvested technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 This is the BINARY exploitation class (memory corruption in compiled targets reached over a socket or a handed-out binary). Web-shaped code execution (command injection, SSTI, deser) belongs to `hunt-rce`; if the row routed here but the target is a web app, say so in one line and re-route.
@@ -16,7 +21,7 @@ Anchors: [[heap-exploitation]], [[format-string]], [[rop-techniques]], [[crash-a
 **REFS:** [[binary-exploitation]], [[heap-exploitation]], [[format-string]], [[rop-techniques]], [[crash-analysis]], [[ctf-jail-escapes]], [[memory-safety-bugs]]
 - capability equations + low-severity-to-primitive map: [[wiki/techniques/capability-primitives]]
 
-qmd_query "binary exploitation heap format string ROP one_gadget seccomp glibc tcache" via wiki-search MCP — ONLY for a specific signal the map above doesn't cover (a glibc version's allocator behavior, an unusual mitigation combo, an architecture quirk); not a blanket first step.
+qmd_query "binary exploitation heap format string ROP one_gadget seccomp glibc tcache" via wiki-search MCP - ONLY for a specific signal the map above doesn't cover (a glibc version's allocator behavior, an unusual mitigation combo, an architecture quirk); not a blanket first step.
 
 ## Tooling
 

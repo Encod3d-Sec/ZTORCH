@@ -5,6 +5,11 @@ description: ICS/SCADA/OT exploitation - Modbus (502), S7comm (102), EtherNet/IP
 
 # Hunt: ICS / SCADA / OT
 
+> Current emphasis (update on wiki harvest): HMI-oracle register mapping and
+> bounded, reverting, one-coil interlock probes over blind Modbus write loops
+> - models over-index on over-represented old methods; the newest harvested
+> technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## SAFETY - hard stop, overrides everything below
@@ -17,7 +22,7 @@ Hub: [[network-moc]] · Primary page: [[ics-scada-modbus]] · Payload arsenal: `
 Anchors: [[iot-attacks]], [[firmware-hardware]], [[modbus]]
 **REFS:** [[ics-scada-modbus]], wiki/payloads/modbus.md
 
-qmd_query "ICS SCADA OT Modbus S7comm EtherNet/IP DNP3 OpenPLC Node-RED PLC HMI coil holding register" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "ICS SCADA OT Modbus S7comm EtherNet/IP DNP3 OpenPLC Node-RED PLC HMI coil holding register" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked by exploitation value)

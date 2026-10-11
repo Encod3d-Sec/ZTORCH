@@ -5,6 +5,11 @@ description: IDOR / BOLA hunting - two-account methodology, UUID leak chaining, 
 
 # Hunt: IDOR / Broken Object Level Authorization
 
+> Current emphasis (update on wiki harvest): trusted-identifier tests and
+> opaque-identifier decoding (base64 / hash reversal) over sequential integer
+> ID swapping - models over-index on over-represented old methods; the newest
+> harvested technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration
 limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
@@ -14,7 +19,7 @@ Hub: [[web-moc]] · Primary page: [[access-control]] · Payload arsenal: `wiki/p
 Anchors: [[uuid-insecurities]], [[jwt-attacks]]
 **REFS:** [[access-control]], wiki/payloads/idor.md
 
-qmd_query "IDOR BOLA insecure direct object reference access control" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "IDOR BOLA insecure direct object reference access control" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface signals

@@ -5,6 +5,11 @@ description: HTTP request smuggling / desync hunting - CL.TE, TE.CL, TE.TE, CL.0
 
 # Hunt: HTTP Request Smuggling
 
+> Current emphasis (update on wiki harvest): HTTP/2 downgrade desync (H2.CL /
+> H2.TE) and differential confirmation over timing-only CL.TE probing - models
+> over-index on over-represented old methods; the newest harvested technique
+> leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[web-moc]] · Primary page: [[http-request-smuggling]] · Payload arsenal:
 Anchors: [[reverse-proxy-attacks]], [[web-cache-poisoning]]
 **REFS:** [[http-request-smuggling]], wiki/payloads/smuggling.md
 
-qmd_query "HTTP request smuggling desync CL.TE TE.CL TE.TE CL.0 HTTP/2 downgrade" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "HTTP request smuggling desync CL.TE TE.CL TE.TE CL.0 HTTP/2 downgrade" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface signals

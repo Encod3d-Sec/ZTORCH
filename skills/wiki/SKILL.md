@@ -77,6 +77,13 @@ Expected output: `Indexing wiki... Done. N chunks indexed.`
 
 The CUDA warning about an old driver is harmless - the model runs on CPU.
 
+Embed quirks on this seat (VRAM 0, `--no-gpu`): long embed passes die partway with
+`LLM session expired before embedding chunk` (~150-400 chunks per pass). Vectors still
+catch up a few hundred per pass - just re-run `qmd embed --no-gpu` later (or on a nightly
+cron) until `qmd status` Vectors stops climbing. Never block a session on embed: the
+BM25/keyword lane is fully current after `qmd update` alone and is the primary search
+path per doctrine; vectors only serve the semantic rung.
+
 **Check index size:**
 
 ```bash

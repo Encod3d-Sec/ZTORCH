@@ -5,6 +5,11 @@ description: Microsoft 365 / Entra ID attack - tenant discovery, OneDrive-differ
 
 # Hunt: M365 / Entra ID
 
+> Current emphasis (update on wiki harvest): OneDrive-differential user
+> enumeration and AADSTS code reading over credential spraying - models over-
+> index on over-represented old methods; the newest harvested technique leads
+> the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[cloud-moc]] · Primary page: [[azure-ad-enumerate]] · Arsenal: [[azure-a
 Anchors: [[azure-ad-conditional-access-policy]], [[azure-ad-iam]]
 **REFS:** [[azure-ad-enumerate]], [[azure-ad-conditional-access-policy]]
 
-qmd_query "Microsoft 365 Entra ID Azure AD tenant discovery user enumeration OneDrive AADSTS smart lockout conditional access ROPC" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "Microsoft 365 Entra ID Azure AD tenant discovery user enumeration OneDrive AADSTS smart lockout conditional access ROPC" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## Attack surface (ranked - spend the zero-auth signal before any auth attempt)

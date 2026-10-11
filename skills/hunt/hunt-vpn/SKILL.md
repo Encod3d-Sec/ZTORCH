@@ -5,6 +5,11 @@ description: Enterprise SSL VPN attack - vendor fingerprinting, CVE matrix (Cisc
 
 # Hunt: Enterprise VPN Appliances
 
+> Current emphasis (update on wiki harvest): version-fingerprinted pre-auth
+> CVEs (token leak / file read) over banner-only CVE matching - models over-
+> index on over-represented old methods; the newest harvested technique leads
+> the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,7 +18,7 @@ Hub: [[network-moc]] · Primary page: [[network-service-attacks]] · CVE arsenal
 Anchors: [[network-discovery]], [[cve-arsenal]], [[default-credentials]]
 **REFS:** [[network-service-attacks]], [[cve-arsenal]], [[default-credentials]]
 
-qmd_query "SSL VPN Fortinet Citrix Cisco Palo Alto Pulse Ivanti CVE default credentials pre-auth exploit" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "SSL VPN Fortinet Citrix Cisco Palo Alto Pulse Ivanti CVE default credentials pre-auth exploit" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 ## When to Use

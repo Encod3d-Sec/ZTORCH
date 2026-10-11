@@ -502,13 +502,164 @@ def _scope_entry_match(e, o, strict=False):
     return False
 
 
+_MACHINE_ENTRY = re.compile(
+    r"^\*?\.[A-Za-z0-9._-]+\.[A-Za-z]{2,}$"   # wildcard domain: *.x.com
+    r"|^[A-Za-z0-9._-]+\.[A-Za-z]{2,}$"        # bare domain: x.com / sub.x.com
+    r"|^[0-9a-fA-F.:]+/\d{1,3}$"               # CIDR (v4/v6)
+    r"|^[0-9a-fA-F.:]+$")                      # bare IP (v4/v6)
+
+
+def _machine_token(o):
+    """The machine-matchable head of an out-of-scope bullet, or None.
+
+    scope.md bullets are written `token - prose` (or bare token). Only a head that
+    parses as a wildcard domain / bare domain / CIDR / bare IP is returned; a prose
+    sentence bullet ('Infrastructure-level attacks ...') returns None so it can never
+    silently half-match. This is what made prose-only out-of-scope lists no-op: the
+    matcher received whole sentences.
+    """
+    o = (o or "").strip().lower()
+    if not o:
+        return None
+    # Style 1: `token` backticked inside the bullet - extract every backticked span
+    # and return the first that is a machine token (active-engagement scope style).
+    # EXCEPTION-CLAUSE GUARD: a bullet like 'every hostname under `x.com` NOT named above'
+    # semantically excludes the in-scope hosts; machine-matching its parent token would deny
+    # EVERYTHING under x.com including the in-scope siblings (the matcher has no negation).
+    # Such except-clause bullets contribute only their OTHER backticked tokens; the parent
+    # is skipped, and the residual risk ('unknown future subdomains') stays advisory prose.
+    except_clause = bool(re.search(r"not named|except|other hostname", o, re.I))
+    for bt in re.findall(r"`([^`]+)`", o):
+        bt = bt.strip()
+        if not _MACHINE_ENTRY.match(bt):
+            continue
+        if except_clause and bt in (
+                re.findall(r"under\s+`?([a-z0-9.-]+\.[a-z]{2,})`?", o, re.I) or [None]):
+            continue  # this token is the except-clause parent - not a deny entry
+        return bt
+    # Style 2: bare token head, prose after ' - '
+    head = re.split(r"\s+-\s+|\s+--\s+", o, maxsplit=1)[0].strip().strip("`")
+    if _MACHINE_ENTRY.match(head):
+        return head
+    return None
+
+
 def out_of_scope_match(entity, sc):
     """True if entity (host/ip/asset) matches any out-of-scope entry."""
     e = (entity or "").lower().strip()
     if not e:
         return False
-    return any(_scope_entry_match(e, (o or "").lower().strip())
-               for o in sc.get("out_of_scope", []))
+    for raw in sc.get("out_of_scope", []):
+        o = (raw or "").lower().strip()
+        token = _machine_token(o)
+        if token and _scope_entry_match(e, token):
+            return True
+    return False
+
+
+def oos_exact_match(entity, sc):
+    """True when `entity` matches an out-of-scope entry EXACTLY (bare-host equal after
+    normalization, or the entity's IP sits in a listed CIDR). An exact deny beats a
+    parent-domain in-scope match (common pattern: apex in scope, but a specific
+    staging host is named out-of-scope)."""
+    e = (entity or "").lower().strip()
+    if not e:
+        return False
+    for raw in sc.get("out_of_scope", []):
+        token = _machine_token(raw)
+        if not token:
+            continue
+        if token == _host_of(e):
+            return True
+        if "/" in token:
+            try:
+                if ipaddress.ip_address(e) in ipaddress.ip_network(token, strict=False):
+                    return True
+            except ValueError:
+                pass
+    return False
+
+
+def resolve_scope(entity, sc):
+    """Three-way scope resolution with SPECIFICITY precedence.
+
+    1. exact in-scope entry  -> "in"   (operator named this host in scope)
+    2. exact out-of-scope    -> "out"  (operator named this host out - beats parent in-scope)
+    3. in-scope match (any)  -> "in"   (parent/wildcard in-scope beats parent oos)
+    4. out-of-scope match    -> "out"
+    5. else                  -> "unknown" (advisory prose only; deny never fires)
+    Callers enforcing the deny act on "out" only. "unknown" is UNEXAMINED, never clean.
+    """
+    e = (entity or "").lower().strip()
+    if not e:
+        return "unknown"
+    e_host = _host_of(e)
+
+    def _tokens(o):
+        """All machine tokens in a bullet: the head (after ' - ') plus any backticked
+        spans. Handles bare entries, 'token - prose', and prose-wrapped `token` style."""
+        o = (o or "").lower().strip()
+        if not o:
+            return []
+        toks = []
+        for bt in re.findall(r"`([^`]+)`", o):
+            bt = bt.strip()
+            if _MACHINE_ENTRY.match(bt):
+                toks.append(bt)
+        # OUT-of-scope exception bullets ('every hostname under `x.com` NOT named above
+        # (incl. `sub.x.com`)') enumerate exceptions under a parent: the parent token there
+        # is CONTEXT, not a deny rule - keeping it would deny the in-scope siblings. Drop a
+        # token that is a parent of another token from the same bullet. IN-scope bullets
+        # keep parents (an apex entry legitimately covers apex+www forms).
+        if len(toks) > 1 and "not named" in o:
+            toks = [t for t in toks
+                    if not any(o2 != t and o2.endswith("." + t) for o2 in toks)]
+        head = re.split(r"\s+-\s+|\s+--\s+", o.strip("`"), maxsplit=1)[0].strip("`").strip()
+        if _MACHINE_ENTRY.match(head):
+            toks.append(head)
+        return list(dict.fromkeys(toks))
+
+    def _exact_tok(o):
+        return any(t == e_host for t in _tokens(o))
+
+    def _any_tok(o):
+        return any(_scope_entry_match(e, t, strict=True) for t in _tokens(o))
+
+    in_exact = any(_exact_tok(i) for i in sc.get("in_scope", []))
+    out_exact = any(_exact_tok(o) for o in sc.get("out_of_scope", []))
+    if in_exact:
+        return "in"
+    if out_exact:
+        return "out"
+    out_any = any(_any_tok(o) for o in sc.get("out_of_scope", []))
+    if out_any:
+        return "out"
+    in_any = any(_any_tok(i) for i in sc.get("in_scope", []))
+    if in_any:
+        return "in"
+    return "unknown"
+
+
+def in_scope_override(entity, sc):
+    """True when `entity` matches an IN-SCOPE entry (strict machine match). An explicit
+    in-scope host beats a parent-domain out-of-scope entry (common pattern: one named host
+    in scope while all sibling subdomains under the parent domain are denied). Callers
+    enforcing the deny (scope-guard) check this BEFORE out_of_scope_match."""
+    e = (entity or "").lower().strip()
+    if not e:
+        return False
+    for raw in sc.get("in_scope", []):
+        i = (raw or "").lower().strip()
+        # whole-bullet strict match first (bare-token in-scope entries)
+        if _scope_entry_match(e, i, strict=True):
+            return True
+        # prose-wrapped entries: any backticked machine token inside counts
+        # (common style: '- `host.example` (HTTPS 443) - the web application ...')
+        for bt in re.findall(r"`([^`]+)`", i):
+            bt = bt.strip()
+            if _MACHINE_ENTRY.match(bt) and _scope_entry_match(e, bt, strict=True):
+                return True
+    return False
 
 
 def scope_text():
@@ -972,8 +1123,8 @@ def walkthrough_stale(d):
             return True
         m = re.search(r"^##\s+Evidence\s*$(.*?)(?=^##\s|\Z)", text, re.MULTILINE | re.DOTALL)
         section = m.group(1) if m else ""
-        if "![](" not in section:
-            return True
+        if not re.search(r"!\[[^\]]*\]\([^)]+\)", section):
+            return True  # no markdown image row at all (any alt text counts; a bare '![](' check missed real galleries like '![auto laneFF](x.png)')
         # repro-command floor (pass 13): stubs cleared + one image can still be an
         # images-only gallery that cannot reproduce the box. Reuse build-walkthrough's
         # own counter (the check its WARNING prints, previously swallowed under DEVNULL
@@ -1044,7 +1195,10 @@ def web_evidence_gaps(d):
         if not glob.glob(os.path.join(d, "recon", "*.png")):
             gaps.append("recon cards (scripts/capture.sh recon <eng> <slug> <tab> for EACH scan tab)")
         poc = os.path.join(d, "poc")
-        if not (glob.glob(os.path.join(poc, "*source*")) + glob.glob(os.path.join(poc, "*.html"))):
+        # recursive: captures live in per-lane subdirs (poc/<slug>/...), not poc/ root;
+        # a depth-0 glob reported "evidence missing" on a fully-captured box.
+        if not (glob.glob(os.path.join(poc, "**", "*source*"), recursive=True)
+                + glob.glob(os.path.join(poc, "**", "*.html"), recursive=True)):
             gaps.append("website render + source (scripts/capture.sh web <eng> <slug> <url>)")
         return gaps
     except Exception:

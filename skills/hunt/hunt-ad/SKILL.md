@@ -5,6 +5,11 @@ description: Active Directory attack hunting - enumeration to domain dominance. 
 
 # Hunt: Active Directory
 
+> Current emphasis (update on wiki harvest): ADCS ESC1-16 abuse and resource-
+> based constrained delegation over classic Kerberoast/AS-REP roasting -
+> models over-index on over-represented old methods; the newest harvested
+> technique leads the checklist until superseded.
+
 **Assumes `hunt-core`** for the scope gate, two-account rule, confirmation gate, enumeration limits, stop conditions, wiki protocol, FIND output, and Deadends. Do not re-derive any of that here.
 
 ## Wiki
@@ -13,14 +18,14 @@ Hub: [[active-directory-moc]] · Primary page: [[active-directory]] · Tooling: 
 Anchors: [[adcs]], [[kerberos-attacks]], [[ad-lateral-movement]], [[default-credentials]]
 **REFS:** [[active-directory]], [[adcs]], [[kerberos-attacks]]
 
-qmd_query "Active Directory kerberoast AS-REP ADCS ESC delegation DCSync lateral movement BloodHound" via wiki-search MCP — ONLY when you have a concrete hint the map above
+qmd_query "Active Directory kerberoast AS-REP ADCS ESC delegation DCSync lateral movement BloodHound" via wiki-search MCP - ONLY when you have a concrete hint the map above
 doesn't cover (a specific sink/version/CVE, an observed escape); not a blanket first step.
 
 Read [[netexec]]'s LDAP + SMB sections before hand-rolling any AD enumeration; most steps below are one nxc flag.
 
 ## Impacket quick reference (use this, don't hand-roll)
 
-Every impacket-* invocation below is a real, tested subcommand — the SAME primitive a hand-rolled
+Every impacket-* invocation below is a real, tested subcommand - the SAME primitive a hand-rolled
 python-ldap/socket script would reimplement worse. Look the operation up here first; full context for
 each lives in the numbered methodology step. `[[impacket]]` has the general auth-string syntax.
 
@@ -46,7 +51,7 @@ each lives in the numbered methodology step. `[[impacket]]` has the general auth
 
 Pass-the-hash: swap `<user>:<pass>` for `-hashes :<NTLM_hash> <domain>/<user>`. Pass-the-ticket: swap the
 whole auth string for `-k -no-pass` with `KRB5CCNAME` exported. Every op needs `-dc-ip <dc>` (and
-`-target-ip <dc>` for Kerberos-only ops) — see the stale-`/etc/hosts` gotcha below.
+`-target-ip <dc>` for Kerberos-only ops) - see the stale-`/etc/hosts` gotcha below.
 
 ## Attack surface signals
 

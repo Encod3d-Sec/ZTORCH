@@ -48,6 +48,19 @@ Authoritative bounds for this engagement. **Read before any action.** next-move 
 -
 
 ## Out of scope
+
+<!-- Out-of-scope entries drive the ENFORCING scope-guard deny. Each bullet that should
+block commands must carry a machine-matchable token: a bare domain (`x.com`), wildcard
+(`*.staging.x.com`), CIDR (`10.0.0.0/16`), or bare IP - alone on the line, after a
+' -- ' separator before your prose comment, or backticked inside the sentence
+(`x.com` style). A bullet with NO
+machine token (pure prose like 'infrastructure attacks') is ADVISORY ONLY: scope-guard
+cannot match it and will never deny on it.
+
+Precedence (resolve_scope): exact in-scope > exact out-of-scope > parent out-of-scope >
+parent in-scope. A parent IN-scope entry (`x.com` apex) authorizes its subdomains; list
+subdomains that must stay untested as explicit out-of-scope machine entries. -->
+
 -
 
 ## Allowed tooling
