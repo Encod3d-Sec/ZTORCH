@@ -125,6 +125,11 @@ Read `docs/workflows.md` before performing any ingest, target session, lint, or 
 
 ## Output rules
 
+- **All files under targets/ are .md** (operator rule, Obsidian vault): documents,
+  briefs, ledgers, raw recon drops, notes - everything the operator reads. Raw tool
+  output goes into fenced blocks or `ingest/<name>.md`. Machine state files
+  (dot-prefixed `.offensive.json`, `.offensive-index.json`, `.events.jsonl`) are the
+  only exception: driver-owned, hidden from Obsidian, never hand-edited.
 - **Brevity during engagements/tool-loops (output tokens are billed).** Working a target or any multi-step tool loop: one short line before a tool batch stating intent (<=25 words); whole engagement-turn text <=100 words; then lead the next turn with the RESULT, not a recap. Emit text only for (a) decisions needing the operator, (b) milestone status, (c) errors/blockers that change the plan. No per-step paragraphs, no restating what a command will do, no re-narrating the plan. Full prose is for deliverables that need it (a report, a walkthrough, a design/brainstorm, an explanation the user asked for). A 40-min box should not cost a paragraph per step.
 - Never use em-dashes (`--`). Use a comma, semicolon, or rewrite the sentence. (`--` is permitted inside code blocks as a CLI flag.)
 - Never use emojis.
