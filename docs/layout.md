@@ -33,6 +33,7 @@ ZTORCH/
 │   ├── conventions.md           <- cross-referencing, log format, style guide
 │   ├── auto-triggers.md         <- what auto-fires (hooks, triggers.json, playbook) and when
 │   ├── skill-map.md             <- task -> skill/tool dispatch table (relocated from AGENTS.md)
+│   ├── hermes.md                <- hermes external-engine seat: design, config, safety model, test evidence
 │   ├── superpowers/             <- design specs/plans (git-ignored; machine paths, scrub before sharing)
 │   └── layout.md                <- this file: full annotated directory tree
 ├── scripts/                     <- automation (self-documenting via docstrings): next_move,
@@ -46,8 +47,9 @@ ZTORCH/
 │                                   build-walkthrough.py (scaffold + auto-populate the walkthrough Evidence gallery),
 │                                   wiring: wiki-wiring-audit.py (which wiki pages surface by context during an engagement) + apply-wiring.py (applies a merged wiring-proposal JSON to playbook.json/triggers.json/hubs/hunt SKILL.mds) + wiring-exempt.txt (deliberately-unwired pages) + bench.py (scores a completed engagement dir against an expected-coverage manifest),
 │                                   handroll.py (DORMANT: detects a hand-rolled request loop that should have been a tool; documented only, wired into no hook),
+│                                   hermes.sh (hermes lane wrapper: one headless `hermes -z` one-shot per dispatched lane; `check` subcommand = static seat checks),
 │                                   playbook.json
-├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
+├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh), hermes-seat-init.sh (seeds the isolated ~/.hermes-ztorch seat: gateway provider, vault skills mount, qmd MCP, curator off)
 ├── tests/                       <- pytest suite for engagement + wiki automation
 ├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)
 │   │                               + hooks/ (hook scripts)
@@ -57,7 +59,7 @@ ZTORCH/
 │   │                               (nesting is organizational only, skills are discovered by basename):
 │   │                               closeout/ (triage, evidence, learn, walkthrough)
 │   │                               recon/ (wiki-recon, wiki-arsenal, nday, research-ingest, ingest)
-│   │                               exec/ (delegate, metasploit, redteamlead, fuzz)
+│   │                               exec/ (delegate, metasploit, redteamlead, fuzz, hermes)
 │   │                               ctf/ (ctf-box, ctf-category)
 │   │                               env/ (kali-seat, chrome-devtools-browser, screenshot)
 │   └── burp/                    <- hunt-burp (MCP driver) + screenshot-burp (Repeater PoC capture)

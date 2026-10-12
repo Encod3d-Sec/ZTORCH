@@ -41,6 +41,7 @@ organizational only.
 | Validating / moving finding to Completed      | triage then evidence skills                                                            |
 | Vuln/CVE research on a target (binary/repo/app/firmware) | `research` skill (scaffolds `raw/research/<project>/`)                      |
 | Hand a fiddly, fully-specified exploit-compile/escalation run to a sub-agent | `delegate` skill (autonomous sub-agent exploit-run; false-root/hostname guardrail mandatory) |
+| Run a lane on the external hermes engine (research/wiki/code-read/offline; never live-target) | `hermes` skill (seat seed `setup/hermes-seat-init.sh`, wrapper `bash scripts/hermes.sh`; tier aliases mirror the brain table) |
 | Drive msfconsole (recon, exploit search/run, reverse shells, post-ex) | `metasploit` skill (msfconsole framework-driver; cheatsheet [[metasploit]]) |
 | Windows LPE shortcut on a CTF/lab box (standard-user foothold, recompiled Nightmare_Eclipse PoCs with recorded Defender verdicts) | `nightmare` skill (authorized CTF/lab targets only; hub [[privesc-exploit-arsenal]]; routed from hunt-windows) |
 | Working the VM / WSL seat (vm.sh, tmux-on-VM, seat map) | `kali-seat` skill (Windows seat -> WSL kali -> VMware VM; `/opt/ztorch` in WSL) |
@@ -59,7 +60,7 @@ organizational only -- the Skill tool discovers every skill by basename regardle
 depth):
 - `closeout/` -- `triage`, `evidence`, `learn`, `walkthrough`
 - `recon/` -- `wiki-recon`, `nday`, `research-ingest`, `wiki-arsenal`, `ingest`
-- `exec/` -- `delegate`, `metasploit`, `redteamlead`, `fuzz`
+- `exec/` -- `delegate`, `metasploit`, `redteamlead`, `fuzz`, `hermes`
 - `ctf/` -- `ctf-box`, `ctf-category`
 - `env/` -- `kali-seat`, `chrome-devtools-browser`, `screenshot`
 
