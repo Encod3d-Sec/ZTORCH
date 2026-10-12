@@ -10,6 +10,8 @@
 | Ingest skip check | Read frontmatter only; skip page if ingest slug already in `sources:` |
 | Re-index / wiki status | `wiki` skill |
 | Session memory / search history | `python3 scripts/memory.py view` (two stores, budgets); `python3 scripts/session_search.py query '<text>'` over engagement+session logs |
+| Sandbox a lane locally (docker) | `bash scripts/lane-run.sh targets/<eng>/lanes/<lane>.json '<cmd>'` (hermes baseline flags, network default off; docs/port-specs/sandbox-tooling.md) |
+| Snapshot / restore engagement state | `python3 scripts/checkpoint.py snapshot|list|restore <eng> ...` (shadow-git store, 3-fail repair ledger) |
 | Record a reusable procedure mid-engagement | `python3 scripts/skill_manage.py create/patch` (guarded; umbrella-first); lifecycle via `scripts/curator.py` |
 | Git clone | Windows seat: clone normally; into WSL: `wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>` (MSYS: prefix MSYS_NO_PATHCONV=1) |
 | Run tooling against a target | Kali VM over SSH, fastest first: `bash scripts/vm-ssh.sh '<cmd>'` (direct, key-based) or `bash scripts/win-vm.sh '<cmd>'` (WSL bridge fallback; execs /root/vm.sh in WSL kali -> the VMware VM; VPN route + tools + chromium live on the VM) -> `docs/virtual-machine.md`. Manual WSL seat (PowerShell -> `wsl.exe` kali:kali -> `sudo -s` -> `/opt/ztorch`): `Skill(kali-seat)` |

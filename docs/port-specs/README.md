@@ -30,3 +30,21 @@ Goal: incorporate every hermes capability that improves this harness, as NATIVE 
 Skipped with rationale: subsystems-triage.md. Specs: memory.md, self-improvement.md, sandbox-tooling.md.
 
 Each wave: implement, assert-based tests (tests/test_*.py), wiring (AGENTS.md/engage/skill-map/layout as needed), commit. Iterate until test-green.
+
+## Status (2026-10-12)
+
+| Port | State | Tests |
+|---|---|---|
+| memory.py + SessionStart injection + Stop nudge | DONE (wave 1) | 7 |
+| session_search.py | DONE (wave 1) | 3 |
+| skill_manage.py + ledger | DONE (wave 1) | 4 |
+| curator.py lifecycle | DONE (wave 1) | 4 |
+| lane-run.sh + lane_manifest.py (docker sandbox) | DONE (wave 2a, live-verified once) | 15 |
+| lane-guard.py hardline/dangerous hook (registered x4) | DONE (wave 2b, head-position rule) | 12 |
+| delegate steer/missed-steer + usage telemetry | DONE (wave 3a, doctrine) | - |
+| PreCompact must-survive data block | DONE (wave 3a) | - |
+| checkpoint.py shadow-git manager | DONE (wave 3b) | 7 (+9 eng-ckpt coexist) |
+| offensive-doctor Finding rework | in flight (agent) | - |
+| watcher.py + pmonitor.py | in flight (agent) | - |
+
+Full-suite sweep after waves 1-2: 90 test files, 0 failures.
