@@ -3,6 +3,10 @@ name: learn
 description: Close-out harvest - harness retro against skills/hooks plus generic wiki delta through the leak gate. Use at close-out or for "extract learnings", "what did we learn", "post-mortem into the wiki", "improve the harness".
 ---
 
+## Memory sweep (always, first)
+
+Before the wiki retro: re-read this session for DURABLE facts (not client data): operator corrections/preferences -> `python3 scripts/memory.py add --store operator "..."`; environment gotchas/paths/tool quirks -> `--store environment`. One fact to one store, declarative, short. "Nothing to save" is valid; deferring is not.
+
 ## Sections
 - [[#When it fires]]
 - [[#Phase 0: Process retrospective (harness self-improvement) - DO FIRST]]

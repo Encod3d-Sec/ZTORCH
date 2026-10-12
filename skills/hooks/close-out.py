@@ -231,7 +231,12 @@ def _memory_nudge(vault):
     open(counter, "w").write("0")
     if fresh:
         return
-    print("Memory nudge (10 turns): worth persisting? Two stores, one fact to ONE: "
+    print("Memory nudge (10 turns, UNANSWERED): the saving discipline failed this "
+          "window - do it NOW, do not defer: re-scan the last 10 turns for durable facts "
+          "(user corrections/preferences -> operator; tool quirks/env gotchas -> "
+          "environment) and write them with "
+          "`python3 scripts/memory.py add --store operator|environment \"fact\"`. "
+          "Two stores, one fact to ONE: "
           "Operator = who they are (persona, preferences, style, expectations); "
           "Environment = tool quirks, conventions, config gotchas, paths. "
           "python3 scripts/memory.py add --store operator|environment \"fact\" "
