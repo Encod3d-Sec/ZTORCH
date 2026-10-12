@@ -84,6 +84,11 @@
             },
             {
               "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/write-guard.py\"",
+              "timeout": 10
+            },
+            {
+              "type": "command",
               "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/eng-ckpt.py\"",
               "timeout": 10
             }

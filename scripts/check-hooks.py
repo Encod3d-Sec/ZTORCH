@@ -48,6 +48,7 @@ EXPECTED_HOOKS = [
     ("PreToolUse", "lane-guard.py"),
     ("PreToolUse", "sleep-guard.py"),
     ("PreToolUse", "session-guard.py"),
+    ("PreToolUse", "write-guard.py"),
     ("PreToolUse", "drift-guard.py"),
     ("PreToolUse", "eng-ckpt.py"),
     ("PreToolUse", "zg-nudge.py"),

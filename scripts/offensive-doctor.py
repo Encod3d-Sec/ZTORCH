@@ -474,6 +474,33 @@ def _skill_scan():
           (summary[-1] if summary else "no output")[:80], warn=True)
 
 
+def _skill_guard():
+    """Curated advisory battery over skills/ for agent-subversion patterns (hermes
+    skills_guard port, docs/port-specs/proposals-aux-eval-guards.md #2). The vault
+    IS an offensive knowledge base, so only subvert-the-AGENT / exfil-the-OPERATOR
+    shapes are scanned; findings are a manual advisory (triage prompt), never a FAIL."""
+    try:
+        sg = _load_mod("skill-guard.py", "skill_guard")
+        findings, n = sg.scan_root(os.path.join(VAULT, "skills"))
+    except Exception as e:
+        CURRENT.warn("skill-guard battery runs over skills/", str(e)[:80])
+        return
+    if not findings:
+        CURRENT.ok("skill-guard: skills/ clean (%d file(s) scanned)" % n)
+        return
+    counts = {}
+    for f in findings:
+        counts[f[2]] = counts.get(f[2], 0) + 1
+    # the ack id keys on the pattern-CLASS set (no counts), so count churn never
+    # invalidates an ack; a genuinely NEW class re-trips the advisory
+    classes = ", ".join(sorted(counts))
+    CURRENT.rows.append(("WARN", "skills/ agent-subversion scan (skill-guard)",
+                         "%d finding(s) in %d file(s) (advisory; triage: python3 "
+                         "scripts/skill-guard.py scan)" % (len(findings), n)))
+    CURRENT.manual_issues.append(("skills/ agent-subversion scan (skill-guard)",
+                                  "pattern classes present: " + classes))
+
+
 # ----------------------------------------------- 8. hook registration (canonical set)
 
 def _hooks():
@@ -728,6 +755,7 @@ CHECKS = (
     _caido,
     _skill_scan,
     _smoke,
+    _skill_guard,
     _hooks,
     _symlinks,
     _pycache,
