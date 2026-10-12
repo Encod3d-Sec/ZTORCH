@@ -84,11 +84,6 @@ unnamed execution lanes.
   the same endpoint version twice = duplicate; same param on two hosts or two
   sinks = two findings); anything uncertain keeps BOTH entries flagged for the
   brain, never a silent merge.
-- Hermes lane: external engine, tier mirrors this table. One headless
-  `bash scripts/hermes.sh` one-shot (`hermes -z`) per lane on the Z.ai gateway; same SKILL.md doctrine mounted, qmd
-  wiki MCP wired, cost/context fully outside this session. Research/wiki/code-read/offline
-  lanes ONLY, never live-target packets (scope-guard cannot see inside the hermes process);
-  toolsets are the permission boundary (default has no terminal). Dispatch contract: `Skill(hermes)`.
 - Console / Lead Strategist: brain duties (routing, judgement, sign-off),
   never subagent roles; the main chat is glm-5.3 by definition.
 - Step-up rule: a flash lane that hits a judgement fork (vector choice,
