@@ -57,6 +57,7 @@ ZTORCH/
 │                                   lane_envelope.py + lane_worktree.py (envelope.json schema/validate; opt-in per-lane git worktree, proof-only prune),
 │                                   skill-guard.py (advisory agent-subversion battery over skills/, doctor check),
 │                                   eng-postmortem.py (offline engagement replay: durations, failure classes, tool tallies, usage-cell token totals),
+│                                   cost-log.py + harness-bench.sh (run-cost A/B: transcript tokens + event activity + outcome per window),
 │                                   token-audit.py (context cost report: session load, skill fire cost ~chars/4, OVERSIZED flags, memory budgets, turn bytes)
 │                                   watcher.py + pmonitor.py (engagement observability, both default-inert: digest watcher over log.md/oob.md grammar events, flock single-ticker, claim-once Telegram delivery, dry w/o env vars; watch-pattern process monitor over rolling 64KB run tails -> `watch-hit` log lines, dead-pid pruning),
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
