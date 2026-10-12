@@ -2,6 +2,9 @@
 name: engage
 description: Orchestrator and skill router: the single situation-to-skill map across the whole library (driver, hunt-*, process skills). Use at session start, whenever between phases, or unsure which skill is next.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # engage
 
@@ -43,6 +46,7 @@ is absent, this map IS the router.
 | Confirmed/proven finding needs responsible disclosure | `Skill(disclosure)` |
 | "Why is this row on the board" / which vector baseline applies | `Skill(vector-workflow)` |
 | Wiki maintenance (re-index, status, page types) | `Skill(wiki)` |
+| Persist a durable fact (operator/environment) or record a reusable procedure mid-engagement | `scripts/memory.py` / `scripts/skill_manage.py` (native hermes-ports; specs in `docs/port-specs/`) |
 
 Discipline spine for every hunt: `Skill(hunt-core)` loads alongside any hunt skill (scope gate,
 two-account rule, confirmation gate, enumeration limits, stop conditions, FIND output).

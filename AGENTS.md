@@ -9,6 +9,8 @@
 | Query | `qmd_query "..."` via `wiki-search` MCP -> read results -> synthesise |
 | Ingest skip check | Read frontmatter only; skip page if ingest slug already in `sources:` |
 | Re-index / wiki status | `wiki` skill |
+| Session memory / search history | `python3 scripts/memory.py view` (two stores, budgets); `python3 scripts/session_search.py query '<text>'` over engagement+session logs |
+| Record a reusable procedure mid-engagement | `python3 scripts/skill_manage.py create/patch` (guarded; umbrella-first); lifecycle via `scripts/curator.py` |
 | Git clone | Windows seat: clone normally; into WSL: `wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>` (MSYS: prefix MSYS_NO_PATHCONV=1) |
 | Run tooling against a target | Kali VM over SSH, fastest first: `bash scripts/vm-ssh.sh '<cmd>'` (direct, key-based) or `bash scripts/win-vm.sh '<cmd>'` (WSL bridge fallback; execs /root/vm.sh in WSL kali -> the VMware VM; VPN route + tools + chromium live on the VM) -> `docs/virtual-machine.md`. Manual WSL seat (PowerShell -> `wsl.exe` kali:kali -> `sudo -s` -> `/opt/ztorch`): `Skill(kali-seat)` |
 
@@ -57,6 +59,7 @@ Search rule: never read `wiki/index.md` to find pages - always search first. Wik
 - **No claim without fresh capture.** A lane or finding claim is claimable only if the proving command ran and its raw output was read this session; `scripts/find-lint.py` checks the finding-card side, `python3 scripts/lane_validate.py --brief <file>` warns on the lane-brief side.
 - **Run 2-3 agents by default (brain posture).** Once the board has 2+ open assets/vectors, the engagement runs under `Skill(brain)`: main session keeps the driver/board/wiki/triage, execution goes to 2-3 concurrent disjoint-lane subagents (lane contract = delegate slots a-h). Serial single-agent execution is the fallback for < 2 disjoint rows, not the default; `offensive.py next` prints the `PARALLEL` line when the posture applies.
 - **Reuse loot.** Captured creds across `state.md` hosts before new research; default/known creds first (context7, [[default-credentials]]); broad spraying last resort.
+- **Memory + skills as you go (hermes port).** Durable facts (operator preferences, environment gotchas) -> `scripts/memory.py add --store operator|environment` (budgets enforced, SessionStart-injected); a repeated procedure -> `scripts/skill_manage.py create` (60-char desc rule, archive-only deletes, curator ages at 14d/30d); past-session recall -> `scripts/session_search.py query`.
 - **Distill reusable knowledge.** A default cred or reusable API pattern -> add the GENERIC form to `wiki/cheatsheets/default-credentials.md` / `api-request-findings.md` (check these first next engagement); a new small indicator (a regex tell that would have caught the vector early) -> add a row to `scripts/tells.json` (the tracked tell battery; hunt-core runs it before big reads); at close-out `Skill(learn)` sweeps the rest through `wiki-stage.py` -> `wiki-promote.py`.
 
 ---

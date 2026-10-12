@@ -46,7 +46,13 @@ ZTORCH/
 │                                   build-walkthrough.py (scaffold + auto-populate the walkthrough Evidence gallery),
 │                                   wiring: wiki-wiring-audit.py (which wiki pages surface by context during an engagement) + apply-wiring.py (applies a merged wiring-proposal JSON to playbook.json/triggers.json/hubs/hunt SKILL.mds) + wiring-exempt.txt (deliberately-unwired pages) + bench.py (scores a completed engagement dir against an expected-coverage manifest),
 │                                   handroll.py (DORMANT: detects a hand-rolled request loop that should have been a tool; documented only, wired into no hook),
+│                                   checkpoint.py (shadow-git engagement-dir snapshots: snapshot/list/restore/prune; GIT_DIR store at the vault root, never inside the working tree),
+│                                   lane-run.sh + lane_manifest.py (docker-wrapped lane execution: hermes-baseline container flags, manifest validation, network fail-closed, tee to `ingest/lane-<ts>.out`),
 │                                   playbook.json
+│                                   memory.py (two-store session memory: operator/environment, budgets, hermes store semantics),
+│                                   skill_manage.py (guarded skill authoring: 60-char desc rule, read-before-write sha, archive-only delete),
+│                                   curator.py (skill lifecycle: seed/stale 14d/archive 30d, telemetry-fed, no daemon),
+│                                   session_search.py (query/scroll/read/browse over engagement+session history, automation demoted, lineage dedup)
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
 ├── tests/                       <- pytest suite for engagement + wiki automation
 ├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)

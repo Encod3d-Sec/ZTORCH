@@ -210,7 +210,40 @@ def _ponytail_debt_nudge(vault):
         pass
 
 
+
+def _memory_nudge(vault):
+    """Every 10 user turns without a memory write, nudge the two-store routing
+    (hermes memory port; see scripts/memory.py). Advisory, fail-open."""
+    import time
+    counter = os.path.join(vault, "session", ".memory-turns")
+    mem = os.path.join(vault, "session", "memory.md")
+    try:
+        n = int(open(counter).read().strip() or 0) + 1
+        open(counter, "w").write(str(n))
+    except OSError:
+        return
+    if n < 10:
+        return
+    try:
+        fresh = os.path.getmtime(mem) > os.path.getmtime(counter) - 10 * 86400
+    except OSError:
+        fresh = False
+    open(counter, "w").write("0")
+    if fresh:
+        return
+    print("Memory nudge (10 turns): worth persisting? Two stores, one fact to ONE: "
+          "Operator = who they are (persona, preferences, style, expectations); "
+          "Environment = tool quirks, conventions, config gotchas, paths. "
+          "python3 scripts/memory.py add --store operator|environment \"fact\" "
+          "('Nothing to save' is also valid).")
+
+
 def main():
+    try:
+        _v = os.path.abspath(os.path.join(HERE, "..", ".."))
+        _memory_nudge(_v)
+    except Exception:
+        pass
     try:
         _ponytail_debt_nudge(os.path.abspath(os.path.join(HERE, "..", "..")))
     except Exception:

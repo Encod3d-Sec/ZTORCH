@@ -63,4 +63,15 @@ PYEOF
   # cap inside it never ran and cat would inject the whole file (failure-path audit)
   head -c 25600 "$HOT"
 fi
+# Two-store memory snapshot (frozen at load; writes land next session) + the
+# no-daemon curator gate (runs at most every 7d; prints only when it acts).
+# Both fail open - a missing memory file is seeded once, never fatal.
+MEM="$VAULT/session/memory.md"
+if [ ! -f "$MEM" ]; then
+  printf '# Session memory (two stores; see scripts/memory.py)\n\n## Operator\n- (empty)\n\n## Environment\n- (empty)\n' > "$MEM" 2>/dev/null || true
+fi
+if [ -f "$MEM" ]; then
+  sed -n '/^## Operator$/,$p' "$MEM" 2>/dev/null | head -40 || true
+fi
+python3 "$VAULT/scripts/curator.py" 2>/dev/null || true
 exit 0   # fail open: never let a missing hot.md make the SessionStart hook exit non-zero
