@@ -2,6 +2,9 @@
 name: vector-workflow
 description: Docs the derive_rows() board-seeding order in offensive.py (OSINT pre-pass, web/ad_windows/linux vector baselines). Use for "vector workflow", "board seeding order", "why is this row on the board", "VECTOR_PRIORITY".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # vector-workflow
 

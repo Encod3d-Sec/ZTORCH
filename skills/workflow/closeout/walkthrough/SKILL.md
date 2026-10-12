@@ -2,6 +2,9 @@
 name: walkthrough
 description: Assemble walkthrough.md for a SOLVED engagement - Evidence gallery from poc/ images, repro steps drafted from state/loot/log, never fabricated. Use for "write the walkthrough", "assemble the walkthrough", "close out the box".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Walkthrough auto-assembly
 

@@ -2,6 +2,9 @@
 name: redteamlead
 description: Senior red-team lead advisor - a fresh subagent reads state + evidence + wiki, returns ranked directions with an explicit STOP. Use for "redteamlead", "RTL", "I'm stuck", "which vector", "should I keep hammering this".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-06
 
 # RedTeamLead (RTL)
 

@@ -2,6 +2,9 @@
 name: hunt-upload
 description: File upload attack hunting - extension/content-type/magic-byte bypass to web-shell RCE, path traversal in filename, SVG/XML XSS, zip slip, and pixel-flood DoS. Wiki-first, FIND schema output. Use when a file upload/avatar/document-import field appears.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Hunt: File Upload
 

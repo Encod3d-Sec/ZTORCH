@@ -2,6 +2,9 @@
 name: research-ingest
 description: External knowledge (CVE writeup, blog post, advisory, GitHub repo) entering the wiki, deduped via `sources:` and re-indexed. Use for "ingest this writeup", "add to the wiki", or after saving research material. Generic knowledge only; never client data.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Research Ingest
 

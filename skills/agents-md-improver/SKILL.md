@@ -4,6 +4,9 @@ description: Offline reviewer for AGENTS.md quality against house templates. Use
 disable-model-invocation: true
 tools: Read, Glob, Grep, Bash, Edit
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # AGENTS.md Improver
 

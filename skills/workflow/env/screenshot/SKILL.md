@@ -2,6 +2,9 @@
 name: screenshot
 description: Web/PoC screenshots captured live (authed/exploited states, rendered cards) into the engagement poc/ folder and embedded in walkthrough.md. Use when building PoC evidence or asked to "take a screenshot" / "capture the PoC".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Screenshot: visual PoC capture
 

@@ -2,6 +2,9 @@
 name: hunt-api
 description: API attack hunting (REST / GraphQL / gRPC) - BOLA/IDOR, BFLA, mass assignment, excessive data exposure, auth/JWT, introspection + batching, rate-limit abuse. OWASP API Top 10. Wiki-first, FIND schema output. Use when the target is a REST/GraphQL/gRPC API or a swagger/openapi doc surfaces.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-06
 
 # Hunt: API Security
 

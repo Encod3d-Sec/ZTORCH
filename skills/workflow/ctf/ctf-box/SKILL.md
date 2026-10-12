@@ -2,6 +2,9 @@
 name: ctf-box
 description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF), basic-tool recon first, wiki-first, pspy + linpeas/winpeas always. Use when handed a box/IP to own end-to-end ("root the box", "get user.txt+root.txt").
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # CTF / Boot-to-Root Box
 

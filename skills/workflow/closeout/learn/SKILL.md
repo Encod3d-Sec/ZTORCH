@@ -2,6 +2,9 @@
 name: learn
 description: Close-out harvest - harness retro against skills/hooks plus generic wiki delta through the leak gate. Use at close-out or for "extract learnings", "what did we learn", "post-mortem into the wiki", "improve the harness".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Learn: harness retrospective + wiki knowledge harvest
 

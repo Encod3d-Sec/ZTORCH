@@ -2,6 +2,9 @@
 name: fuzz
 description: Adaptive web fuzzing - deterministic wordlist pick (wl-pick.sh), tier climbing, WAF handling. Use for "fuzz", "content discovery", "directory brute", "vhost fuzz", "find hidden params", "which wordlist", "gobuster/ffuf/feroxbuster".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-06
 
 # fuzz - adaptive web fuzzing
 

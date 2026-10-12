@@ -2,6 +2,9 @@
 name: metasploit
 description: Drive msfconsole end to end (DB-backed recon, version-to-exploit search, multi/handler reverse shells meterpreter-first, post-exploit, pivoting). Use for "metasploit", "msfconsole", "msfvenom", "meterpreter", "multi/handler".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Metasploit: framework driver
 

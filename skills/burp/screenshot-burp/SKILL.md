@@ -2,6 +2,9 @@
 name: screenshot-burp
 description: Burp Repeater request/response captured as a PoC image into the engagement poc/ folder by driving the Burp MCP + Kali GUI. Use when the evidence should come from Burp rather than a curl/terminal card; pairs with hunt-burp.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Screenshot: Burp Repeater request/response PoC
 

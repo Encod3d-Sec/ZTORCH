@@ -2,6 +2,9 @@
 name: hunt-sqli
 description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, UNION, NoSQL operator injection. sqlmap automation after manual confirmation. Wiki-first, FIND schema output. Use when a param reaches a DB and an error/boolean/time oracle appears.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Hunt: SQL Injection
 

@@ -2,6 +2,9 @@
 name: evidence
 description: Evidence hygiene for a FIND heading to Completed or a report (redaction, PII black-bar, HAR sanitization, screenshot metadata strip). Use after /triage passes and before final report assembly.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Evidence: PoC Capture & Redaction Discipline
 

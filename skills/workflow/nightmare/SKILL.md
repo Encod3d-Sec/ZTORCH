@@ -2,6 +2,9 @@
 name: nightmare
 description: Recompiled Windows LPE arsenal (Nightmare_Eclipse PoCs, Defender verdicts recorded) for CTF/lab privesc. Use when a standard-user Windows foothold needs a kernel/LPE shortcut on a CTF box.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Nightmare Arsenal (Windows LPE, CTF)
 

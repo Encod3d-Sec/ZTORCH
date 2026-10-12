@@ -3,6 +3,9 @@ name: wiki
 description: Wiki lookups and edits over the qmd-indexed knowledge base. Use when a task needs a wiki search, a page written or updated, or a re-index after adding pages.
 type: cli
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Wiki Search and Maintenance
 

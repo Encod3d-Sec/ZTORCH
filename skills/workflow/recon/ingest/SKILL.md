@@ -2,6 +2,9 @@
 name: ingest
 description: Raw recon/test output landed in the active engagement's ingest folder needs synthesizing into state, loot, and Killchain pages. Use for "ingest", "synthesize findings", "process recon", or after dropping tool output in the ingest folder.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-06
 
 # Ingest
 

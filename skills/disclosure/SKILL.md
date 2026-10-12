@@ -2,6 +2,9 @@
 name: disclosure
 description: Responsible disclosure path from a found vulnerability to a published CVE (packaging, vendor contact, private report, timeline, advisory). Use when asked to "disclose", "request a cve", or "report this to the vendor".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Disclosure: Finding -> CVE
 

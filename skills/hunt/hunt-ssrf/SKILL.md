@@ -2,6 +2,9 @@
 name: hunt-ssrf
 description: SSRF hunting - OOB-mandatory methodology. Cloud metadata, blind SSRF via Collaborator/interactsh, redirect-based bypass, headless browser chains. Wiki-first, FIND schema output. Use when a URL/host param or a fetch/preview/import sink appears.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Hunt: SSRF
 

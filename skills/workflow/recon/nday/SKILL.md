@@ -2,6 +2,9 @@
 name: nday
 description: N-day / patch-diff workflow for a vendor-shipped fix. Use when "n-day", "patch diff", "diff the patch", or "bindiff" comes up and the pre-patch bug needs a PoC; variant analysis extends it to fresh bugs.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # N-day / Patch Diffing
 

@@ -2,6 +2,9 @@
 name: wiki-arsenal
 description: Parallel wiki lookup for a surface/vuln-class across techniques/payloads/tools/cheatsheets; quick (one qmd search) or deep (4 parallel subagents). Use for "what do I use against X", "arsenal for X", "deep/full arsenal".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # wiki-arsenal
 

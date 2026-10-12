@@ -2,6 +2,9 @@
 name: chrome-devtools-browser
 description: Visible chromium on the Kali VM for MANUAL login (MFA/CAPTCHA/Smart-ID), driven live via chrome-devtools MCP; captures authed sessions/API calls. Use for "open a browser", "log in manually", "mfa / 2fa login", "solve the captcha".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # chrome-devtools-browser
 

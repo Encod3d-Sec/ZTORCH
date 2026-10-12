@@ -2,6 +2,9 @@
 name: offensive
 description: Autonomous offensive driver - offensive.py owns the board, gates, and exact next action every turn. Use to start/resume any engagement, "work this target", "root this box", "hunt this program", or when handed a scope/IP/domain.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # offensive
 

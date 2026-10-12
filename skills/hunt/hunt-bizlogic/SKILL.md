@@ -2,6 +2,9 @@
 name: hunt-bizlogic
 description: Business-logic hunting - workflow/state bypass, price tampering, negative values, coupon abuse, mass assignment, logic races. Top-paying class, no scanner coverage. Wiki-first, FIND output. Use when checkout/pricing/coupon/workflow state or a race condition is in play.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Hunt: Business Logic
 

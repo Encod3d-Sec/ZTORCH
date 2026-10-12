@@ -7,6 +7,9 @@ description: >
   (in this file, not a separate skill). Stays on until "stop caveman" or
   "normal mode".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # caveman
 

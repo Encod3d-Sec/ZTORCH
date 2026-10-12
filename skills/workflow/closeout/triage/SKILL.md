@@ -2,6 +2,9 @@
 name: triage
 description: Finding validation gate - 7-Question triage adapted for the FIND schema. Use before any FIND moves from Research to Completed; one NO keeps it in Research.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Triage: Finding Validation Gate
 

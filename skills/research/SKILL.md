@@ -2,6 +2,9 @@
 name: research
 description: Vuln-research loop toward a novel CVE from a target or binary (RE/fuzz/audit; findings deepen, dead-ends pivot). Use for "research", "find a cve", "analyze this binary", "audit this code for vulns".
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Research: CVE Discovery Loop
 

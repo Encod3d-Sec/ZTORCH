@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
-"""offensive-doctor.py [--verbose] - health check for the /offensive driver subsystem.
+"""offensive-doctor.py [--verbose] [--fix] [--ack <n>] - health check for the /offensive driver subsystem.
 
 Verifies a machine has the /offensive driver correctly set up so every machine runs the
 same driver, then runs a live init->index->board->next smoke test on a throwaway fixture
-engagement. Modelled on the retired campaign-doctor lineage.
+engagement. Reworked onto the hermes-doctor Finding pattern (port spec design 3): every
+check accumulates into a Finding (issues / manual_issues / fixed), each check prints its
+own pass/warn/fail rows, and the run ends with a NUMBERED list of manual-intervention
+items.
 
-Checks (each a PASS/WARN/FAIL line; exit 1 if any FAIL):
-  1. scripts/offensive.py present + importable.
-  2. scripts/routing.json parses (non-empty) + every hunt-skill cell names a real
-     skills/hunt/hunt-* dir (dangling-skill-ref).
-  3. every wiki/tools/*.md carries phase: + a runnable ## Core usage fence (tool index resolves).
-  4. skills/workflow/offensive/SKILL.md present with `name: offensive`.
-  5. tool-telemetry.py hook present (G2 depends on it) - WARN if absent (G2 fails open).
-  6. 4b privesc not hollow: each OS route (windows/macos/ad) has its class with a non-empty
-     arsenal - WARN if missing.
-  7. live smoke test: init->index->board->next on a throwaway copy of tests/fixtures/offensive,
-     including the scope.md `autonomy:` envelope parse (WARN when absent/invalid).
+Row classes and exit code:
+  FAIL  issue            real breakage; always gates the exit, numbered, NOT ackable.
+  WARN  manual advisory  needs operator action; gates the exit until --ack suppresses
+                         it (numbered, ackable, --fix may clear it).
+  WARN  advisory-only    legacy seat-tool notes (zg/caido/skill-scan/4b-hollow/wiki
+                         lint); printed and counted, never gate.
+  SKIP  unchecked        the thing this seat cannot check (no VM creds, no engagement).
+  ACKED suppressed       a manual advisory silenced via --ack; rendered, never gates.
 
-WARN never fails the run. Exit 0 = all green (warns allowed); 1 = at least one FAIL.
+--fix applies the safe auto-repairs: missing optional engagement files (scaffolded via
+skills/hooks/_engagement.py ensure_optional_file), skills-symlink drift (relink that
+skill into ~/.claude/skills), orphaned __pycache__ bytecode (deleted).
+--ack <n> persists a numbered advisory's suppression into the ACTIVE engagement's
+.doctor-acks.json (id + acked_at); delete the file to un-ack. Exit code =
+int(bool(unacked issues or manual advisories)). Fail-open: an error inside a check
+becomes a manual_issue note, never a crash.
 """
+import argparse
+import hashlib
 import json
 import os
 import re
@@ -27,22 +35,191 @@ import socket
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VAULT = os.path.dirname(HERE)
 FIX = os.path.join(VAULT, "tests", "fixtures", "offensive")
 
-RESULTS = []
+VERBOSE = False
+FIX_MODE = False
+OFF = None            # imported offensive module (set by _import_offensive)
+ENG_DIR = None        # active engagement dir (pointer targets/active.md or --eng)
+ACKS = {}             # stable-id -> {"acked_at": ...} from <eng>/.doctor-acks.json
+FINDINGS = []         # (check_fn_name, Finding) in run order
+
+
+class Finding:
+    """hermes-doctor accumulator: issues = hard failures (gate the exit, numbered,
+    not ackable); manual_issues = manual-intervention advisories (gate until --ack);
+    fixed = --fix auto-repairs applied. Rows carry the printed pass/warn/fail markers."""
+
+    def __init__(self, issues=None, manual_issues=None, fixed=0):
+        self.issues = issues or []
+        self.manual_issues = manual_issues or []
+        self.fixed = fixed
+        self.rows = []          # (status, name, detail): PASS/WARN/FAIL/SKIP/ACKED
+
+    def ok(self, name, detail=""):
+        self.rows.append(("PASS", name, detail))
+
+    def skip(self, name, detail=""):
+        self.rows.append(("SKIP", name, detail))
+
+    def advice(self, name, detail=""):           # WARN row, never gates
+        self.rows.append(("WARN", name, detail))
+
+    def warn(self, name, detail=""):             # manual advisory: gates until acked
+        self.rows.append(("WARN", name, detail))
+        self.manual_issues.append((name, detail))
+
+    def fail(self, name, detail=""):             # issue: always gates
+        self.rows.append(("FAIL", name, detail))
+        self.issues.append((name, detail))
+
+
+CURRENT = Finding()
 
 
 def check(name, ok, detail="", warn=False):
-    RESULTS.append((name, "WARN" if (warn and not ok) else ("PASS" if ok else "FAIL"), detail))
+    """Legacy row helper: FAIL counts as an issue; warn rows are advisory-only."""
+    if ok:
+        CURRENT.ok(name)
+    elif warn:
+        CURRENT.advice(name, detail)
+    else:
+        CURRENT.fail(name, detail)
     return ok
+
+
+def _aid(name, detail):
+    """Stable advisory id (survives renumbering between runs)."""
+    return hashlib.sha1(("%s|%s" % (name, detail)).encode()).hexdigest()[:8]
+
+
+def run_check(fn):
+    """Run one check into a fresh Finding; fail-open (a crashed check becomes a
+    manual_issue note); apply acks; print the check's own rows; accumulate."""
+    global CURRENT
+    CURRENT = Finding()
+    ret = None
+    try:
+        ret = fn()
+    except Exception as e:
+        CURRENT.warn("%s: check crashed (fail-open)" % fn.__name__, str(e)[:100])
+    keep = []
+    for item in CURRENT.manual_issues:
+        if _aid(*item) in ACKS:
+            CURRENT.rows.append(("ACKED", item[0], item[1]))
+        else:
+            keep.append(item)
+    CURRENT.manual_issues = keep
+    FINDINGS.append((fn.__name__, CURRENT))
+    for status, name, detail in CURRENT.rows:
+        if status == "PASS" and not VERBOSE:
+            continue
+        print("%-5s %s%s" % (status, name, ("  - " + detail) if detail else ""))
+    return ret
+
+
+# ------------------------------------------------------------- acks ledger
+
+def _acks_path():
+    return os.path.join(ENG_DIR, ".doctor-acks.json") if ENG_DIR else None
+
+
+def _load_acks():
+    try:
+        with open(_acks_path(), encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
+
+
+# ------------------------------------------------------------- engagement
+
+def _resolve_eng(name=None):
+    """Active engagement dir: --eng <name|path>, else the targets/active.md pointer."""
+    if not name:
+        p = os.path.join(VAULT, "targets", "active.md")
+        if not os.path.isfile(p):
+            return None
+        for line in open(p, encoding="utf-8", errors="ignore"):
+            s = line.strip()
+            if s and not s.startswith(("#", "<!--", "-", "*")):
+                name = s
+                break
+        if not name:
+            return None
+    cand = name if os.path.isdir(name) else os.path.join(VAULT, "targets", name)
+    return cand if os.path.isdir(cand) else None
+
+
+def _load_mod(fname, modname):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(modname, os.path.join(HERE, fname))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_CH = None
+
+
+def _check_hooks_mod():
+    global _CH
+    if _CH is None:
+        _CH = _load_mod("check-hooks.py", "check_hooks")
+    return _CH
+
+
+_ENGMOD = False
+
+
+def _engagement_mod():
+    """skills/hooks/_engagement.py (ensure_optional_file / engagement_type), or None."""
+    global _ENGMOD
+    if _ENGMOD is False:
+        _ENGMOD = None
+        sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
+        try:
+            import _engagement  # noqa
+            _ENGMOD = _engagement
+        except Exception:
+            _ENGMOD = None
+    return _ENGMOD
+
+
+_TYPES = ("pentest", "bugbounty", "ctf")
+
+
+def _eng_type(d):
+    m = _engagement_mod()
+    if m is not None:
+        try:
+            return m.engagement_type(d)
+        except Exception:
+            pass
+    for fn in ("state.md", "loot.md", "Approach.md", "Killchain.md"):   # lightweight fallback
+        p = os.path.join(d, fn)
+        if not os.path.isfile(p):
+            continue
+        for line in open(p, encoding="utf-8", errors="ignore"):
+            if line.startswith("engagement_type:"):
+                v = line.split(":", 1)[1].strip().lower()
+                if v in _TYPES:
+                    return v
+    try:
+        v = json.load(open(os.path.join(d, ".offensive.json"), encoding="utf-8"))["type"]
+        return {"bb": "bugbounty"}.get(v, v)
+    except Exception:
+        return "pentest"
 
 
 # --------------------------------------------------------------------------- 1. offensive.py
 
 def _import_offensive():
+    global OFF
     if HERE not in sys.path:
         sys.path.insert(0, HERE)
     if not check("scripts/offensive.py present", os.path.isfile(os.path.join(HERE, "offensive.py"))):
@@ -50,6 +227,7 @@ def _import_offensive():
     try:
         import offensive  # noqa
         check("offensive.py importable", True)
+        OFF = offensive
         return offensive
     except Exception as e:
         check("offensive.py importable", False, str(e)[:80])
@@ -62,7 +240,11 @@ def _import_offensive():
 OS_ROUTES = [("windows", "hunt-windows"), ("macos", "hunt-macos"), ("ad", "hunt-ad")]
 
 
-def _routing(off):
+def _routing():
+    off = OFF
+    if off is None:
+        CURRENT.skip("routing table", "offensive.py not importable - skipped")
+        return
     try:
         routing = off.parse_routing_table(VAULT)
     except Exception as e:
@@ -94,7 +276,11 @@ def _routing(off):
 
 # --------------------------------------------------------------------------- 3. tool index
 
-def _tools(off):
+def _tools():
+    off = OFF
+    if off is None:
+        CURRENT.skip("tool index", "offensive.py not importable - skipped")
+        return
     tdir = os.path.join(VAULT, "wiki", "tools")
     if not check("wiki/tools/ present", os.path.isdir(tdir)):
         return
@@ -212,7 +398,8 @@ def _zg():
 
 # --------------------------------------------------------------------------- 7. live smoke test
 
-def _smoke(off):
+def _smoke():
+    off = OFF
     if not check("fixture present for smoke test", os.path.isdir(FIX)):
         return
     tmp = tempfile.mkdtemp(prefix="offensive-doctor-")
@@ -287,34 +474,358 @@ def _skill_scan():
           (summary[-1] if summary else "no output")[:80], warn=True)
 
 
-def main(argv):
-    verbose = "--verbose" in argv or "-v" in argv
-    off = _import_offensive()
-    if off is not None:
-        _routing(off)
-        _tools(off)
-    _skill_and_hook()
-    _bench()
-    _zg()
-    _caido()
-    _skill_scan()
-    _smoke(off)
+# ----------------------------------------------- 8. hook registration (canonical set)
 
-    fails = [r for r in RESULTS if r[1] == "FAIL"]
-    warns = [r for r in RESULTS if r[1] == "WARN"]
-    for name, status, detail in RESULTS:
-        if status == "PASS" and not verbose:
+def _hooks():
+    """Registration matches the canonical EXPECTED_HOOKS set. Reuses check-hooks.py
+    via import (single source of truth); its advisory classes stay advisory."""
+    ch = _check_hooks_mod()
+    miss = ch.missing_hooks()
+    if miss:
+        CURRENT.fail("all canonical vault hooks registered",
+                     "missing/mis-registered: %s (run: bash setup/install-hooks.sh)"
+                     % ", ".join(miss))
+    else:
+        CURRENT.ok("all canonical vault hooks registered (%d)" % len(ch.EXPECTED_HOOKS))
+    stale = ch.stale_hooks()
+    if stale:
+        CURRENT.fail("no stale vault hooks (script deleted upstream)",
+                     "still registered: %s (run: bash setup/install-hooks.sh)" % ", ".join(stale))
+    else:
+        CURRENT.ok("no stale vault hooks")
+    unreg = ch.unregistered_scripts()
+    if unreg:
+        CURRENT.advice("no unregistered skills/hooks scripts",
+                       "advisory: %s (intentional library, or missing .zcode/config.json row)"
+                       % ", ".join(unreg))
+    else:
+        CURRENT.ok("no unregistered skills/hooks scripts")
+
+
+# ----------------------------------------------- 9. skills symlink drift + --fix
+
+def _relink_skill(name):
+    """Re-run the install-skills link for ONE skill; False when it must stay manual."""
+    src = None
+    for dirpath, _d, files in os.walk(os.path.join(VAULT, "skills")):
+        if os.path.basename(dirpath) == name and "SKILL.md" in files:
+            src = dirpath
+            break
+    if not src:
+        return False
+    dest = os.path.join(os.path.expanduser("~/.claude/skills"), name)
+    if os.path.lexists(dest):
+        if not os.path.islink(dest):
+            return False          # a real copy: the installer replaces it, doctor never rm -rf's
+        os.remove(dest)
+    os.symlink(src, dest)
+    return True
+
+
+def _symlinks():
+    """Vault skills vs ~/.claude/skills drift: missing links (check-hooks) and
+    dangling ones. --fix relinks each drifted skill."""
+    ch = _check_hooks_mod()
+    miss = ch.missing_skills(skills_root=os.path.join(VAULT, "skills"))
+    dangling = []
+    dest = os.path.expanduser("~/.claude/skills")
+    try:
+        for n in os.listdir(dest):
+            p = os.path.join(dest, n)
+            if os.path.islink(p) and not os.path.exists(p):
+                dangling.append(n)
+    except OSError:
+        pass
+    miss, dangling = sorted(miss), sorted(dangling)
+    if not miss and not dangling:
+        CURRENT.ok("vault skills symlinked into ~/.claude/skills (no drift)")
+        return
+    names = sorted(set(miss + dangling))
+    if FIX_MODE:
+        fixed = sum(1 for n in names if _relink_skill(n))
+        CURRENT.fixed = fixed
+        if fixed == len(names):
+            CURRENT.ok("skills symlinks relinked (--fix): %s" % ", ".join(names))
+            return
+    CURRENT.warn("skills symlink drift (vault vs ~/.claude/skills)",
+                 "%s (run: bash setup/install-skills.sh, or --fix)" % ", ".join(names))
+
+
+# ----------------------------------------------- 10. orphaned __pycache__ + --fix
+
+def _orphan_pyc():
+    out = []
+    for root in (os.path.join(VAULT, "skills", "hooks"), os.path.join(VAULT, "scripts")):
+        for dirpath, _d, files in os.walk(root):
+            if os.path.basename(dirpath) != "__pycache__":
+                continue
+            src_dir = os.path.dirname(dirpath)
+            for fn in files:
+                if not fn.endswith(".pyc"):
+                    continue
+                stem = fn[:-4].split(".cpython-")[0]
+                if stem and not os.path.exists(os.path.join(src_dir, stem + ".py")):
+                    out.append(os.path.join(dirpath, fn))
+    return out
+
+
+def _pycache():
+    orphans = _orphan_pyc()
+    if not orphans:
+        CURRENT.ok("no orphaned __pycache__ bytecode")
+        return
+    if FIX_MODE:
+        n = 0
+        for p in orphans:
+            try:
+                os.remove(p)
+                n += 1
+            except OSError:
+                pass
+        CURRENT.fixed = n
+        if n == len(orphans):
+            CURRENT.ok("orphaned __pycache__ deleted (--fix): %d .pyc" % n)
+            return
+    CURRENT.warn("orphaned __pycache__ bytecode",
+                 "%d orphaned .pyc (source .py gone); --fix deletes them" % len(orphans))
+
+
+# ----------------------------------------------- 11. qmd index health
+
+def _qmd():
+    """qmd (wiki-search) index health. The MCP server is not probeable from a plain
+    script context, so shell out to `qmd status` (bounded)."""
+    qmd = shutil.which("qmd")
+    if not qmd:
+        CURRENT.warn("qmd index health", "qmd CLI not on PATH (wiki-search MCP + `qmd status` need it)")
+        return
+    try:
+        r = subprocess.run([qmd, "status"], capture_output=True, text=True, timeout=15)
+    except Exception as e:
+        CURRENT.warn("qmd index health", "qmd status failed: %s" % str(e)[:60])
+        return
+    if r.returncode == 0:
+        CURRENT.ok("qmd index health (qmd status ok)")
+    else:
+        CURRENT.warn("qmd index health",
+                     "qmd status rc=%d: %s" % (r.returncode, (r.stdout or r.stderr or "").strip()[:60]))
+
+
+# ----------------------------------------------- 12. active-engagement files + --fix
+
+ENG_CORE = ("scope.md", "state.md", "loot.md", "Approach.md")
+ENG_OPT = (("oob", "oob.md"), ("vuln-index", "Vuln-index.md"))
+
+
+def _engfiles():
+    """Active engagement carries its per-type core files (scope/state/loot/Approach,
+    + Killchain for non-ctf); optional oob/Vuln-index are advisories a non-ctf
+    engagement should have (--fix scaffolds them). File NAMES only in output."""
+    if ENG_DIR is None:
+        CURRENT.skip("active-engagement files", "no active engagement on this vault - unchecked")
+        return
+    etype = _eng_type(ENG_DIR)
+    core = list(ENG_CORE) + ([] if etype == "ctf" else ["Killchain.md"])
+    missing = [fn for fn in core if not os.path.isfile(os.path.join(ENG_DIR, fn))]
+    if missing:
+        CURRENT.fail("active engagement core files present (%s)" % etype,
+                     "missing: %s (SessionStart self-heals these; restart the session)"
+                     % ", ".join(missing))
+    else:
+        CURRENT.ok("active engagement core files present (%s)" % etype)
+    if etype == "ctf":
+        return
+    for kind, fn in ENG_OPT:
+        if os.path.isfile(os.path.join(ENG_DIR, fn)):
+            CURRENT.ok("optional file %s present" % fn)
             continue
-        print("%-5s %s%s" % (status, name, ("  - " + detail) if (detail and status != "PASS") else ""))
+        if FIX_MODE:
+            m = _engagement_mod()
+            created = ""
+            if m is not None:
+                try:
+                    created = m.ensure_optional_file(kind, d=ENG_DIR)
+                except Exception:
+                    created = ""
+            if created:
+                CURRENT.fixed += 1
+                CURRENT.ok("optional file %s scaffolded (--fix)" % fn)
+                continue
+        CURRENT.warn("optional engagement file %s" % fn,
+                     "missing for a %s engagement; --fix scaffolds it from setup/templates"
+                     % etype)
+
+
+# ----------------------------------------------- 13. VM SSH reachability
+
+def _vmssh():
+    """vm-ssh.sh round-trip; SKIP-with-note when this seat has no VM creds. Never
+    hangs: the whole probe is capped at 5s."""
+    script = os.path.join(HERE, "vm-ssh.sh")
+    if not os.path.isfile(script):
+        CURRENT.skip("VM SSH reachability", "scripts/vm-ssh.sh absent - unchecked")
+        return
+    if not (os.path.isfile("/root/.ssh/ztorch_vm") or os.path.isfile("/root/vm.sh")):
+        CURRENT.skip("VM SSH reachability",
+                     "no VM creds on this seat (/root/.ssh/ztorch_vm + /root/creds.txt unreadable) - unchecked")
+        return
+    try:
+        r = subprocess.run(["bash", script, "echo doctor-vm-ok"],
+                           capture_output=True, text=True, timeout=5)
+    except subprocess.TimeoutExpired:
+        CURRENT.warn("VM SSH reachability", "vm-ssh.sh timed out after 5s (VM down or wedged?)")
+        return
+    except Exception as e:
+        CURRENT.warn("VM SSH reachability", str(e)[:60])
+        return
+    if r.returncode == 0 and "doctor-vm-ok" in (r.stdout or ""):
+        CURRENT.ok("VM SSH reachability (vm-ssh.sh round-trip)")
+    else:
+        CURRENT.warn("VM SSH reachability",
+                     "vm-ssh.sh rc=%d: %s" % (r.returncode, (r.stdout or r.stderr or "").strip()[:60]))
+
+
+# ----------------------------------------------- 14. wiki lint
+
+def _wikilint():
+    """scripts/lint-wiki.py when present (advisory count, never a gate: the wiki is
+    agent-owned and carries known refs), else the skill-lint advisory count."""
+    lint = os.path.join(HERE, "lint-wiki.py")
+    if os.path.isfile(lint) and os.path.isdir(os.path.join(VAULT, "wiki")):
+        try:
+            r = subprocess.run([sys.executable, lint, "-q"],
+                               capture_output=True, text=True, timeout=120)
+        except Exception as e:
+            CURRENT.advice("wiki lint", "lint-wiki.py failed to run: %s" % str(e)[:60])
+            return
+        if r.returncode == 0:
+            CURRENT.ok("wiki lint clean (lint-wiki.py -q)")
+        else:
+            lines = [l for l in (r.stdout or r.stderr or "").strip().splitlines() if l.strip()]
+            CURRENT.advice("wiki lint", "%s (run: python3 scripts/lint-wiki.py -v)"
+                           % (lines[-1] if lines else "rc=%d" % r.returncode)[:120])
+        return
+    try:
+        m = _load_mod("skill-lint.py", "skill_lint")
+        n = len(m.lint_all(VAULT))
+        if n:
+            CURRENT.advice("skill lint", "%d advisory issue(s) (skill-lint)" % n)
+        else:
+            CURRENT.ok("skill lint clean")
+    except Exception as e:
+        CURRENT.skip("wiki lint", "lint-wiki.py/skill-lint.py not runnable: %s" % str(e)[:60])
+
+
+# ------------------------------------------------------------- ordered checks tuple
+
+CHECKS = (
+    _import_offensive,
+    _routing,
+    _tools,
+    _skill_and_hook,
+    _bench,
+    _zg,
+    _caido,
+    _skill_scan,
+    _smoke,
+    _hooks,
+    _symlinks,
+    _pycache,
+    _qmd,
+    _engfiles,
+    _vmssh,
+    _wikilint,
+)
+
+
+def _numbered_items():
+    """FAIL rows + open manual advisories, in emission order = the numbered list."""
+    out = []
+    for _title, f in FINDINGS:
+        for status, name, detail in f.rows:
+            if status == "FAIL":
+                out.append(("FAIL", name, detail))
+            elif status == "WARN" and (name, detail) in f.manual_issues:
+                out.append(("WARN", name, detail))
+    return out
+
+
+def main(argv):
+    global VERBOSE, FIX_MODE, ENG_DIR, ACKS
+    ap = argparse.ArgumentParser(description="offensive driver subsystem health check")
+    ap.add_argument("--verbose", "-v", action="store_true", help="also print PASS rows")
+    ap.add_argument("--fix", action="store_true",
+                    help="apply safe auto-repairs (optional engagement files, skill symlinks, orphaned __pycache__)")
+    ap.add_argument("--ack", metavar="N",
+                    help="suppress numbered advisory N (persists into the active engagement's .doctor-acks.json)")
+    ap.add_argument("--eng", help="engagement name (targets/<name>) or path the engagement checks target")
+    args = ap.parse_args(argv)
+    VERBOSE, FIX_MODE = args.verbose, args.fix
+    ENG_DIR = _resolve_eng(args.eng)
+    if args.eng and ENG_DIR is None:
+        print("warning: --eng %s not found under targets/; engagement checks skip" % args.eng)
+    ACKS = _load_acks()
+
+    for fn in CHECKS:
+        run_check(fn)
+
+    rows = [row for _t, f in FINDINGS for row in f.rows]
+    issues = [i for _t, f in FINDINGS for i in f.issues]
+    manual = [m for _t, f in FINDINGS for m in f.manual_issues]
+    fixed = sum(f.fixed for _t, f in FINDINGS)
+    counts = {s: sum(1 for r in rows if r[0] == s) for s in ("PASS", "WARN", "FAIL", "SKIP", "ACKED")}
     print("\noffensive-doctor: %d checks, %d PASS, %d WARN, %d FAIL"
-          % (len(RESULTS), sum(1 for r in RESULTS if r[1] == "PASS"), len(warns), len(fails)))
-    if fails:
+          % (len(rows), counts["PASS"], counts["WARN"], counts["FAIL"]))
+    if counts["SKIP"] or counts["ACKED"]:
+        print("offensive-doctor: %d SKIP, %d ACKED" % (counts["SKIP"], counts["ACKED"]))
+    if fixed:
+        print("offensive-doctor: --fix applied %d auto-repair(s)" % fixed)
+
+    numbered = _numbered_items()
+    if numbered:
+        print("\nManual items (fix, or suppress an advisory with --ack <n>):")
+        for i, (sev, name, detail) in enumerate(numbered, 1):
+            print("  %d. [%s] %s%s  (ack id: %s)"
+                  % (i, sev, name, ("  - " + detail) if detail else "", _aid(name, detail)))
+    else:
+        print("\nNo manual-intervention items.")
+
+    if args.ack is not None:
+        key = args.ack.strip()
+        sel = None
+        if key.isdigit():
+            idx = int(key) - 1
+            if 0 <= idx < len(numbered):
+                sel = numbered[idx]
+        else:
+            sel = next((r for r in numbered if _aid(r[1], r[2]) == key), None)
+        if sel is None:
+            print("error: --ack %s matches no numbered item (run without --ack to list them)" % args.ack)
+            return 1
+        sev, name, detail = sel
+        if sev == "FAIL":
+            print("error: item %s is a FAIL (real breakage) - fix it; acks are for advisories only" % args.ack)
+            return 1
+        p = _acks_path()
+        if not p:
+            print("error: no active engagement dir to persist the ack into")
+            return 1
+        acks = _load_acks()
+        acks[_aid(name, detail)] = {"acked_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        with open(p, "w", encoding="utf-8") as fh:
+            json.dump(acks, fh, indent=1)
+        print("acked: [%s] %s -> %s" % (sev, name, p))
+        return 0
+
+    if issues:
         print("FAIL -> the /offensive driver will not run correctly here. Fix the above.")
-    elif warns:
+    elif manual:
+        print("ADVISORIES open -> fix them or suppress with --ack <n>.")
+    elif counts["WARN"]:
         print("OK with warnings (see the WARN lines).")
     else:
         print("ALL GREEN - the /offensive subsystem is consistent and wired on this machine.")
-    return 1 if fails else 0
+    return int(bool(issues or manual))
 
 
 if __name__ == "__main__":

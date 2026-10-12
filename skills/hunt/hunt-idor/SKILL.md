@@ -2,6 +2,9 @@
 name: hunt-idor
 description: IDOR / BOLA hunting - two-account methodology, UUID leak chaining, GraphQL and cross-tenant escalation. Use when an object id, `/users/{id}`, or two-account cross-access appears.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-06
 
 # Hunt: IDOR / Broken Object Level Authorization
 

@@ -7,6 +7,9 @@ description: >
   trees (raw/git clones, scripts/) in structural code-only mode. Which page
   mentions a term is qmd's job. Never run over targets/.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Graphify: relation queries (wiki wikilinks + code trees)
 
