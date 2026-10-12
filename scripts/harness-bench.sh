@@ -72,8 +72,9 @@ PY
     echo "bench window CLOSED (full row in $CSV)"
     ;;
   report)
-    [ -f "$CSV" ] || { echo "no results yet"; exit 0; }
-    column -t -s, "$CSV" 2>/dev/null || cat "$CSV"
+    if [ -f "$BENCH/auto.csv" ]; then echo "== per-session auto log =="; column -t -s, "$BENCH/auto.csv" 2>/dev/null || cat "$BENCH/auto.csv"; fi
+    echo; [ -f "$CSV" ] || { echo "no A/B results yet"; exit 0; }
+    echo "== A/B runs =="; column -t -s, "$CSV" 2>/dev/null || cat "$CSV"
     ;;
   install)
     mkdir -p ~/.ztorch-bench

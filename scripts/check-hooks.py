@@ -56,7 +56,8 @@ EXPECTED_HOOKS = [
     ("PreToolUse", "burp-nudge.py"),
     ("PreToolUse", "big-read.py"),
     ("PreCompact", "pre-compact.sh"),
-    ("Stop", "close-out.py"),
+    ("Stop", "close-out.py")
+    ("Stop", "cost-snap.py"),,
 ]
 
 

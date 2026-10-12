@@ -194,6 +194,10 @@ if not has("Stop", "close-out.py"):
     add("Stop", {"hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/close-out.py", "timeout": 10}]})
     print("added Stop close-out")
+if not has("Stop", "cost-snap.py"):
+    add("Stop", {"hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/cost-snap.py", "timeout": 15}]})
+    print("added Stop cost-snap")
 
 json.dump(d, open(p, "w"), indent=1)
 json.load(open(p))  # validate
