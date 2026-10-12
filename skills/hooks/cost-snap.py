@@ -4,7 +4,7 @@
 Zero token cost (a local script; no model calls) and near-zero CPU: it keeps
 per-file byte offsets in session/bench/.offsets.json and only reads NEW
 transcript lines each fire, so each session-end costs one small incremental
-pass. Row appended to session/bench/auto.csv (gitignored):
+pass. One JSON line appended to session/bench/auto.jsonl (gitignored):
 
   ts, tokens_total, input, output, cache_read, cache_write, subagent_tokens,
   turns, tool_calls, agent_launches, bash_commands, skills, eng
@@ -110,16 +110,9 @@ def main():
     if row["turns"] == 0 and row["tool_calls"] == 0:
         return 0  # nothing new (hook fired twice, or a zero-activity session)
     import time
-    row["ts"] = time.strftime("%Y-%m-%d %H:%M")
-    cols = ["ts", "tokens_total", "input", "output", "cache_read", "cache_write",
-            "subagent_tokens", "turns", "tool_calls", "agent_launches",
-            "bash_commands", "skills", "eng"]
-    auto = os.path.join(BENCH, "auto.csv")
-    new = not os.path.exists(auto)
-    with open(auto, "a", encoding="utf-8") as f:
-        if new:
-            f.write(",".join(cols) + "\n")
-        f.write(",".join(str(row[c]) for c in cols) + "\n")
+    row["ts"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    with open(os.path.join(BENCH, "auto.jsonl"), "a", encoding="utf-8") as f:
+        f.write(json.dumps(row) + "\n")
     return 0
 
 

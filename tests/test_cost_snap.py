@@ -43,15 +43,16 @@ def test_rows_and_incremental_no_double_count():
     with tempfile.TemporaryDirectory() as tmp:
         proj = fixture(tmp)
         run_once(tmp, proj)
-        auto = os.path.join(tmp, "session", "bench", "auto.csv")
-        rows = [l.split(",") for l in open(auto).read().strip().splitlines()[1:]]
+        auto = os.path.join(tmp, "session", "bench", "auto.jsonl")
+        import json as _j
+        rows = [_j.loads(l) for l in open(auto).read().strip().splitlines()]
         assert len(rows) == 1
-        r = dict(zip(open(auto).readline().strip().split(","), rows[0]))
-        assert r["turns"] == "3" and r["input"] == "30" and r["tokens_total"] == "54"
-        assert r["tool_calls"] == "2" and r["agent_launches"] == "1" and r["eng"] == "demo"
+        r = rows[0]
+        assert r["turns"] == 3 and r["input"] == 30 and r["tokens_total"] == 54
+        assert r["tool_calls"] == 2 and r["agent_launches"] == 1 and r["eng"] == "demo"
         # second run with NO new data: no new row, offsets held
         run_once(tmp, proj)
-        assert len(open(auto).read().strip().splitlines()) == 2
+        assert len(open(auto).read().strip().splitlines()) == 1
         # third run with ONE new turn: a new row counting only the new turn
         with open(os.path.join(proj, "t.jsonl"), "a") as f:
             f.write(json.dumps({"type": "assistant", "timestamp": "x",
@@ -59,16 +60,15 @@ def test_rows_and_incremental_no_double_count():
                                                       "cache_read_input_tokens": 0,
                                                       "cache_creation_input_tokens": 0}}}) + "\n")
         run_once(tmp, proj)
-        rows = [l.split(",") for l in open(auto).read().strip().splitlines()[1:]]
-        r2 = dict(zip(open(auto).readline().strip().split(","), rows[-1]))
-        assert r2["turns"] == "1" and r2["input"] == "7", r2
+        r2 = _j.loads(open(auto).read().strip().splitlines()[-1])
+        assert r2["turns"] == 1 and r2["input"] == 7, r2
 
 
 def test_silent_on_empty_vault():
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(os.path.join(tmp, "proj"))
         run_once(tmp, os.path.join(tmp, "proj"))
-        assert not os.path.exists(os.path.join(tmp, "session", "bench", "auto.csv"))
+        assert not os.path.exists(os.path.join(tmp, "session", "bench", "auto.jsonl"))
 
 
 if __name__ == "__main__":
