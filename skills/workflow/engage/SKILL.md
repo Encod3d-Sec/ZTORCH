@@ -35,7 +35,6 @@ is absent, this map IS the router.
 | msfconsole work (recon DB, exploits, handler, pivots, post-ex) | `Skill(metasploit)` |
 | Windows standard-user foothold on a CTF/lab box needs a kernel/LPE shortcut | `Skill(nightmare)` (recompiled Windows LPE arsenal with recorded Defender verdicts; authorized CTF/lab only; hub [[privesc-exploit-arsenal]]) |
 | Fully-specified exploit compile / escalation run to hand off | `Skill(delegate)` (mechanical, cheap tier; false-root guardrail mandatory) |
-| Mechanical/research/wiki/code-read lane on the external hermes engine (cost + context economy; NEVER live-target packets) | `Skill(hermes)` (seat: `setup/hermes-seat-init.sh`, wrapper `bash scripts/hermes.sh`) |
 | Stalled, wrong-vector tell fired, "should I keep hammering?" | `Skill(redteamlead)` - NEVER grind; ranked directions + explicit STOP |
 | A vuln class never tested on this asset (4a coverage gap) | `Skill(offensive)` - `offensive.py coverage` ranks the gaps |
 | Vuln/CVE research on a binary/repo/app/firmware | `Skill(research)`; ingest a CVE writeup: `Skill(nday)` / `Skill(research-ingest)` |
