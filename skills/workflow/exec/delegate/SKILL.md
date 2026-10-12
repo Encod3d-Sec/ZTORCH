@@ -2,6 +2,9 @@
 name: delegate
 description: Sub-agent hand-off for a fully-specified exploit/escalation run, behind a false-root guardrail, main agent stays on strategy. Use for "delegate", "hand this to a sub-agent", "spin a flash", or foothold + working vector found.
 ---
+state: active
+created: 2026-10-12
+last_used: 2026-10-12
 
 # Delegate: sub-agent exploit-run
 

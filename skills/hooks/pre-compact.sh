@@ -80,5 +80,32 @@ PY
   echo "- DROP: raw tool output, scan dumps, file listings, narrated prose (one line each at most)."
   echo "- Do NOT inline full state files: the SessionStart(compact) hook re-injects engagement state after compaction."
   echo "- Framework/generic work: one-line pointers to session/hot.md only; no client specifics ever."
+  # MUST-SURVIVE data block (hermes compression port): the live open-lane lines
+  # and open-row count ride IN the instruction stream, not just as a directive
+  # to preserve them. Deliberately non-prose markers so they cannot be imitated.
+  python3 - "$HOOKDIR" <<'PYMUST' 2>/dev/null
+import os, re, sys
+sys.path.insert(0, sys.argv[1])
+try:
+    import _engagement
+    d = _engagement.active_dir()
+except Exception:
+    d = None
+print("[[ZT-MUSTSURVIVE-BEGIN]]")
+if d:
+    try:
+        log = open(os.path.join(d, "log.md"), encoding="utf-8", errors="ignore").read()
+        lanes = [l for l in log.splitlines() if "in flight" in l and l.startswith("- lane ")]
+        for l in lanes[-5:]:
+            print("LANE|" + l[:400])
+    except OSError:
+        pass
+    try:
+        ap = open(os.path.join(d, "Approach.md"), encoding="utf-8", errors="ignore").read()
+        print(f"BOARD|open_rows~{len([l for l in ap.splitlines() if '[ ]' in l])}")
+    except OSError:
+        pass
+print("[[ZT-MUSTSURVIVE-END]] copy these verbatim into the summary; they key the post-compact lane-registry.")
+PYMUST
 } 2>/dev/null
 exit 0
