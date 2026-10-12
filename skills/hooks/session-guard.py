@@ -24,8 +24,6 @@ TRACKED_TREES = ("/wiki/", "/scripts/", "/skills/", "/docs/", "/tests/", "/setup
 
 
 
-PROTECTED_CONFIG = ("/AGENTS.md", "/.zcode/config.json", "scripts/triggers.json",
-                    "scripts/routing.json", "setup/install-hooks.sh", "scripts/check-hooks.py")
 CFG_MARKER_AGE_S = 30 * 60
 
 
@@ -85,6 +83,7 @@ def main():
     fp = ((data.get("tool_input") or {}).get("file_path") or "").replace("\\", "/")
     norm = "/" + fp.lstrip("/") if fp else ""
     if "/targets/" not in norm:
+        from _protected import PROTECTED_CONFIG
         if any(norm == t.lstrip("/") or norm.endswith(t) for t in PROTECTED_CONFIG) \
                 and not _cfg_edit_ok(os.path.abspath(os.path.join(HERE, "..", ".."))):
             print(json.dumps({"hookSpecificOutput": {

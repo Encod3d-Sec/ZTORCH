@@ -260,13 +260,15 @@ def _dir_size(path):
 
 
 def cmd_prune(a):
+    # Snapshots form ONE parent chain, so dropping old refs frees nothing while
+    # a newer snapshot keeps their objects reachable -- a size cap cannot be
+    # met by deleting more refs. Prune by count, gc, then if the cap is still
+    # exceeded STOP and say so; never delete the remaining refs pointlessly.
     store = _ensure_store()
     ids = _snap_ids(store, a.eng)
+    before = _dir_size(store)
     drop = set(ids) if a.keep <= 0 else set(ids[:max(0, len(ids) - a.keep)])
     keep = [i for i in ids if i not in drop]
-    cap = a.max_mb * 1024 * 1024
-    while keep and _dir_size(store) > cap:
-        drop.add(keep.pop(0))            # oldest first until under the cap
     for sid in sorted(drop):
         _git(store, None, None, "update-ref", "-d", _ref(a.eng, sid))
         try:
@@ -275,8 +277,13 @@ def cmd_prune(a):
             pass
     if drop:
         _git(store, None, None, "gc", "--prune=now", "--quiet")
-    print("pruned %d, kept %d, store %.1fMB" % (
-        len(drop), len(keep), _dir_size(store) / 1e6))
+    after = _dir_size(store)
+    if after > a.max_mb * 1024 * 1024:
+        print("cap unreachable while the engagement chain keeps objects "
+              "reachable%s; export/re-clone the store to shrink"
+              % (("; oldest kept snapshot " + keep[0]) if keep else ""))
+    print("pruned %d, kept %d, store %.1fMB -> %.1fMB" % (
+        len(drop), len(keep), before / 1e6, after / 1e6))
     return 0
 
 

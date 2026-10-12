@@ -98,7 +98,10 @@ def test_network_extra_args_fail_closed():
 def test_blocklisted_env_refused():
     for name in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN", "GH_TOKEN",
                  "SLACK_BOT_TOKEN", "VERCEL_TOKEN", "MODAL_TOKEN",
-                 "AUXILIARY_FOO_API_KEY", "openai_api_key"):
+                 "AUXILIARY_FOO_API_KEY", "openai_api_key",
+                 # case bypass (code review): the shape regex used to match the
+                 # ORIGINAL name, so lowercase auxiliary_*_api_key slipped through
+                 "auxiliary_openai_api_key", "Auxiliary_Foo_Api_Key"):
         _raises('{"env": ["%s"]}' % name, "blocklisted")
 
 
@@ -127,13 +130,24 @@ def test_unknown_keys_warn_not_fail():
 
 def test_mounts_parsed_and_unsafe_refused():
     with tempfile.TemporaryDirectory() as tmp:
-        _, argv = _plan(tmp, '{"mounts": ["raw:/raw:ro", "/abs:/out"]}')
+        # allowed: vault-relative src (resolved under eng cwd) + absolute src under
+        # the vault root (this repo checkout IS the vault for lane_manifest)
+        _, argv = _plan(tmp, '{"mounts": ["raw:/raw:ro", "%s:/out"]}' % (ROOT / "wiki"))
         _pair(argv, "-v", "%s/raw:/raw:ro" % (Path(tmp) / "eng"))  # rel src resolved
-        _pair(argv, "-v", "/abs:/out")
+        _pair(argv, "-v", "%s:/out" % (ROOT / "wiki"))
         _raises('{"mounts": ["/onlysrc"]}', "bad mount")
         _raises('{"mounts": ["a:relative"]}', "absolute")
+        # host-side src refusals (code review): a manifest must never lend the lane
+        # the host FS - only dst was gated before, so /:/host:rw passed
+        _raises('{"mounts": ["/:/host:rw"]}', "refusing unsafe mount src")
+        _raises('{"mounts": ["/etc/passwd:/x"]}', "refusing unsafe mount src")
+        _raises('{"mounts": ["/boot/grub:/x"]}', "refusing unsafe mount src")
+        _raises('{"mounts": ["/var/run/docker.sock:/d"]}', "docker.sock")
+        _raises('{"mounts": ["run/docker.sock:/d"]}', "docker.sock")  # src side too
         _raises('{"mounts": ["/h:/etc"]}', "refusing unsafe mount")
+        _raises('{"mounts": ["/h:/var/run"]}', "refusing unsafe mount")
         _raises('{"mounts": ["/h:/var/run/docker.sock"]}', "refusing unsafe mount")
+        _raises('{"mounts": ["/h:/"]}', "refusing unsafe mount")
         _raises('{"mounts": ["/h:/d:rw2"]}', "bad mount mode")
 
 

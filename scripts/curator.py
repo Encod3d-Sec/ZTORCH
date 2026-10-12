@@ -29,6 +29,7 @@ from datetime import date, datetime
 
 VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = os.path.join(VAULT, "skills")
+sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
 STATE = os.path.join(SKILLS, ".curator-state.json")
 LEDGER = os.path.join(SKILLS, ".skill-ledger.jsonl")
 INTERVAL_DAYS, STALE_DAYS, ARCHIVE_DAYS = 7, 14, 30
@@ -103,12 +104,10 @@ def usage_index():
 
 
 def referenced_names():
+    import _protected
     names = set()
-    for f in ("scripts/triggers.json", "scripts/routing.json", "skills/workflow/engage/SKILL.md"):
-        p = os.path.join(VAULT, f)
-        if os.path.exists(p):
-            names.update(re.findall(r"\b([a-z][a-z0-9-]{2,30})\b",
-                         open(p, encoding="utf-8", errors="ignore").read().lower()))
+    for txt in _protected.referenced(VAULT).values():
+        names.update(re.findall(r"\b([a-z][a-z0-9-]{2,30})\b", txt.lower()))
     return names
 
 

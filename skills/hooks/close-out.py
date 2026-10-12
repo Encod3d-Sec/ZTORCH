@@ -47,8 +47,10 @@ def inflight_signals(d):
                         errors="ignore").read()
             _bad = []
             for _n, _obs, _cap in lane_validate.lanes_from_text(_log):
-                _cd = _cap if os.path.isabs(_cap) else os.path.normpath(
-                    os.path.join(d, _cap))
+                # shared resolution (comms review defect 1): cells are often
+                # vault-spelled (`capture targets/<eng>/poc/x`) - only _cap_dir
+                # strips that prefix; a local join flagged every honest lane.
+                _cd = lane_validate._cap_dir(d, _cap)
                 if not lane_validate.criterion_met(_cd, _obs):
                     _bad.append(_n)
             if _bad:

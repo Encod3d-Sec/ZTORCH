@@ -142,8 +142,9 @@ def _spend_update(transcript, d):
         m["spend_usd"] = round(float(m.get("spend_usd", 0) or 0) + delta, 4)
         state[tp] = size
         m["spend_state"] = state
-        with open(mp, "w", encoding="utf-8") as fh:
-            json.dump(m, fh, indent=1)
+        import _telemetry
+        _telemetry._save(d, m)   # atomic (tmp + os.replace): a bare open(w) here lost
+        #                       # spend/transcripts to concurrent hook processes (D1)
         cap = 0.0
         try:
             cap = float(os.environ.get("ZT_MAX_ENG_USD", "") or 0)
@@ -213,14 +214,39 @@ def _context_low(transcript, d):
 
 
 _MENTOR_SAME_TOOL = 5   # pentagi helpers.go:164-197 threshold; reset-on-fire
+_MENTOR_STALE_S = 900   # one advisory per 15 min (~4/hour ceiling), like every other stamp
+# Grind-shaped probe/enum bins ONLY (docs/reviews/2026-10-12-tokens.md issue 1): five
+# sequential Reads/greps/python3 runs ARE the analysis workflow, not a loop - counting
+# them fired 9 noise advisories per ~40 clean calls. Only repeated PROBE/ENUM work
+# (the pentagi grind shape) steers. Bins follow recon-capture's RECON/PROBE set.
+_MENTOR_BINS = frozenset((
+    "nmap", "masscan", "rustscan", "naabu", "nuclei", "gobuster", "feroxbuster",
+    "ffuf", "dirb", "dirsearch", "wfuzz", "httpx", "httprobe", "subfinder",
+    "dnsx", "amass", "assetfinder", "katana", "gau", "gowitness", "arjun",
+    "curl", "wget", "whatweb", "wpscan", "nikto", "whatwaf", "nslookup", "dig",
+    "sqlmap", "dalfox", "swaks", "hydra", "medusa", "nxc", "netexec",
+    "crackmapexec", "cme", "nc", "ncat"))
 
 
 def _mentor_check(d, tool, bins):
-    """PentAGI Mentor pattern: one tool/binary accumulating _MENTOR_SAME_TOOL calls inside
-    one bucket (the freshest OPEN lane line, else the brain) gets one additionalContext
-    steer - answer from the output you already have or switch approach - and its counter
-    resets. Advisory only, fail-open by construction (PostToolUse cannot block)."""
+    """PentAGI Mentor pattern, scoped to GRIND work: one PROBE/ENUM binary
+    accumulating _MENTOR_SAME_TOOL calls inside one bucket (the freshest OPEN lane
+    line, else the brain) gets one additionalContext steer - answer from the output
+    you already have or switch approach - and its counter resets. Read-tier names
+    (Read/Grep/head/cat/python3/...) never count. Deduped to one advisory per
+    _MENTOR_STALE_S (.mentor-stamp holds the epoch of the last fire). Advisory only,
+    fail-open by construction (PostToolUse cannot block)."""
     try:
+        keys = [b for b in (bins or []) if b in _MENTOR_BINS]
+        if not keys:
+            return None                     # read-tier / non-probe call: not mentor business
+        import time as _t
+        st = os.path.join(d, ".mentor-stamp")
+        try:
+            if _t.time() - float(open(st).read().strip() or 0) < _MENTOR_STALE_S:
+                return None
+        except (OSError, ValueError):
+            pass
         bucket = "brain"
         try:
             sys.path.insert(0, os.path.join(
@@ -230,7 +256,6 @@ def _mentor_check(d, tool, bins):
                 bucket = "lane"
         except Exception:
             pass
-        keys = [b for b in (bins or []) if b] or [tool]
         mp = os.path.join(d, ".metrics.json")
         try:
             m = json.load(open(mp, encoding="utf-8"))
@@ -246,11 +271,11 @@ def _mentor_check(d, tool, bins):
         while len(mc) > 16:
             mc.pop(next(iter(mc)))
         m.setdefault("mentor", {})[bucket] = mc
-        with open(mp, "w", encoding="utf-8") as fh:
-            json.dump(m, fh, indent=1)
+        import _telemetry
+        _telemetry._save(d, m)              # atomic: never a half-written metrics file
         if fired:
             try:
-                import _telemetry
+                open(st, "w").write(str(_t.time()))
                 _telemetry.drift("mentor", "same-tool threshold: %s" % ",".join(fired), d=d)
             except Exception:
                 pass
@@ -306,8 +331,8 @@ def _turn_bytes(d, nbytes):
                 _telemetry.log_event("budget", d=d, detail=msg)
             except Exception:
                 pass
-        with open(mp, "w", encoding="utf-8") as fh:
-            json.dump(m, fh, indent=1)
+        import _telemetry
+        _telemetry._save(d, m)              # atomic: concurrent hook processes race here
         return msg
     except Exception:
         return None

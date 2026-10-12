@@ -31,6 +31,7 @@ import time
 
 VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = os.path.join(VAULT, "skills")
+sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
 ARCHIVE = os.path.join(SKILLS, ".archive")
 LEDGER = os.path.join(SKILLS, ".skill-ledger.jsonl")
 ALLOWED_SUBDIRS = {"references", "templates", "scripts", "assets"}
@@ -57,13 +58,8 @@ def sha(path):
 
 def referenced(name):
     """Names the harness routes to are protected from delete/archive."""
-    refs = []
-    for f, pat in [("scripts/triggers.json", None), ("scripts/routing.json", None),
-                   ("skills/workflow/engage/SKILL.md", None)]:
-        p = os.path.join(VAULT, f)
-        if os.path.exists(p) and name in open(p, encoding="utf-8", errors="ignore").read():
-            refs.append(f)
-    return refs
+    import _protected
+    return [f for f, txt in _protected.referenced(VAULT).items() if name in txt]
 
 
 def ledger(op, name, extra=None):

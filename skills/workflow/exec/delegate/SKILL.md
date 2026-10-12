@@ -51,7 +51,7 @@ DISCOVERY (route/endpoint/token enumeration) delegates at sonnet/opus ONLY, neve
 and a discovery lane's negative is re-verified on the main model before it becomes a Deadend.
 Vector selection and "is this
 surface empty or am I querying it wrong" stay on the main model. A cheap model hardens a wrong negative
-into a fact -- it reports "empty/dead" from a query mistake and you inherit it as a hard exclusion (a
+into a fact; it reports "empty/dead" from a query mistake and you inherit it as a hard exclusion (a
 real miss: a delegated agent called a UCP voicemail "empty" because it hit the AJAX endpoint, not the
 dashboard widget that rendered the secret; that fossilized into a wrong "rabbit hole" and cost an
 hour+). If the run is not fully specified, it is not a delegation, it is a guess wearing a checklist,

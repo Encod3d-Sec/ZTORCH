@@ -118,8 +118,8 @@ python3 scripts/wiki-promote.py --promote <slug>   # or: --promote all
 marker is present it refuses and writes nothing; if clean it merges into
 `wiki/<target_page>` (dedup by slug), sets `status: promoted`, archives the file to
 `wiki-candidates/_promoted/`, and re-indexes (`gen_index.py` + `qmd update && qmd embed`). Stage a
-new candidate with `scripts/wiki-stage.py --kind <default-cred|api-pattern|technique>
---slug <slug>`. This is the only path that writes engagement-derived knowledge into
+new candidate with `scripts/wiki-stage.py --kind <default-cred|api-pattern|technique>`
+`--slug <slug>`. This is the only path that writes engagement-derived knowledge into
 `wiki/`, so the client-data boundary is enforced by code, not prose.
 
 ---

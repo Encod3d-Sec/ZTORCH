@@ -138,6 +138,35 @@ def test_failed_restore_appends_fingerprint(tmp_path, monkeypatch):
 
 
 @requires_git
+def test_prune_cap_unreachable_keeps_refs_and_tells_truth(
+        tmp_path, monkeypatch, capsys):
+    """Code-review fix: snapshots form ONE parent chain, so a --max-mb cap can
+    never be met by deleting more refs (the newest snapshot keeps every older
+    object reachable). prune --keep 2 must leave EXACTLY the 2 newest refs --
+    the old loop chased the cap until it had destroyed ALL of them -- and an
+    unreachable cap must say the truth instead of dropping more."""
+    v, eng = _mk_vault(tmp_path, monkeypatch)
+    for i in range(3):
+        (eng / ("f%d.md" % i)).write_text("x\n", encoding="utf-8")
+        assert cp.main(["snapshot", "test-eng", "s%d" % i]) == 0
+    other = v / "targets" / "other-eng"          # a sibling engagement must not be touched
+    other.mkdir()
+    (other / "x.md").write_text("x\n", encoding="utf-8")
+    assert cp.main(["snapshot", "other-eng", "keepme"]) == 0
+    capsys.readouterr()
+    assert cp.main(["prune", "test-eng", "--keep", "2", "--max-mb", "0"]) == 0
+    ids = _ids(v)
+    assert len(ids) == 2                          # exactly the 2 newest, nothing else dropped
+    assert ids[0].endswith("-s1") and ids[-1].endswith("-s2")
+    store = os.path.join(str(v), cp.STORE_NAME)
+    assert len(cp._snap_ids(store, "other-eng")) == 1   # sibling refs intact
+    out = capsys.readouterr().out
+    assert "cap unreachable" in out and "export/re-clone the store to shrink" in out
+    assert "oldest kept snapshot" in out and ids[0] in out
+    assert re.search(r"store [\d.]+MB -> [\d.]+MB", out)   # before -> after measured
+
+
+@requires_git
 def test_vault_git_status_stays_clean(tmp_path, monkeypatch):
     v, eng = _mk_vault(tmp_path, monkeypatch)
     assert cp.main(["snapshot", "test-eng", "pre"]) == 0

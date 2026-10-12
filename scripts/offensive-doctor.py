@@ -139,17 +139,14 @@ def _load_acks():
 # ------------------------------------------------------------- engagement
 
 def _resolve_eng(name=None):
-    """Active engagement dir: --eng <name|path>, else the targets/active.md pointer."""
+    """Active engagement dir: --eng <name|path>, else skills/hooks/_engagement.active_dir()."""
     if not name:
-        p = os.path.join(VAULT, "targets", "active.md")
-        if not os.path.isfile(p):
+        m = _engagement_mod()
+        if m is None:
             return None
-        for line in open(p, encoding="utf-8", errors="ignore"):
-            s = line.strip()
-            if s and not s.startswith(("#", "<!--", "-", "*")):
-                name = s
-                break
-        if not name:
+        try:
+            return m.active_dir()
+        except Exception:
             return None
     cand = name if os.path.isdir(name) else os.path.join(VAULT, "targets", name)
     return cand if os.path.isdir(cand) else None

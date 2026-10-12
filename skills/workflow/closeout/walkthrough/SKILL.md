@@ -25,7 +25,7 @@ AGENTS.md execution loop runs `Skill(walkthrough)` (then `Skill(learn)`).
 
 ### (a) Confirm the evidence is on disk (capture any missing key state now)
 Evidence is captured LIVE during the engagement, straight into `poc/` (via `capture.sh` /
-`Skill(screenshot)`) -- there is no staging/drain step anymore. Confirm the PNGs are on disk,
+`Skill(screenshot)`); there is no staging/drain step anymore. Confirm the PNGs are on disk,
 and if a key state (foothold shell, the flag, an exploited render) was never captured, capture
 it now before assembling:
 ```bash
@@ -33,7 +33,7 @@ ls targets/<eng>/poc/*.png targets/<eng>/poc/**/*.png 2>/dev/null
 # missing a key state? capture it live, e.g.:
 #   bash scripts/capture.sh ev <eng> <slug> <url> "<cmd-label>"
 ```
-A walkthrough with an empty gallery means evidence was not captured as steps landed -- fix that
+A walkthrough with an empty gallery means evidence was not captured as steps landed; fix that
 by capturing the reproducible states now, not by fabricating.
 
 ### (b) Scaffold + gallery
@@ -42,9 +42,9 @@ python3 scripts/build-walkthrough.py <eng>
 ```
 Idempotent: scaffolds the walkthrough structure from the framework template if missing, and
 populates the `## Evidence` gallery from every rendered card on disk. Never clobbers existing
-narrative -- safe to re-run after step (a).
+narrative; safe to re-run after step (a).
 
-### (c) Draft the narrative -- never fabricate
+### (c) Draft the narrative, never fabricate
 Read `state.md` (for ctf, also its `## Chain`/`## Status` sections, the live working copy of
 the attack path and the SOLVED/flags marker) and `loot.md` for the active engagement; for
 pentest/bugbounty also read `Killchain.md` and `log.md` (a ctf engagement has neither; its live
@@ -81,7 +81,7 @@ itself stays the human action.
 
 ### (d) Preserve exploit scripts
 Copy any exploit script (payload, escape/forge script, webshell) into
-`targets/<eng>/poc/scripts/`, the same exploit-script-preservation discipline `ctf-box` and `screenshot` use --
+`targets/<eng>/poc/scripts/`, the same exploit-script-preservation discipline `ctf-box` and `screenshot` use;
 the reviewer needs the code and the state together, not just a screenshot. **Save it as `<name>.md`
 with the code in a ```` ```py ````/```` ```sh ````/```` ```js ```` fence, NOT a bare `.py`/`.sh`/`.js`** -
 Obsidian only previews `.md`/images in the GUI, so a raw-extension script is invisible to the operator
@@ -123,11 +123,11 @@ The walkthrough is read in Obsidian's preview, not a terminal. Hard rules:
   Never a bare ``` fence: untagged blocks lose highlighting and read as broken output.
 
 ## Scope and safety
-All output stays under `targets/<eng>/` (gitignored) -- never write client data into `session/*`
+All output stays under `targets/<eng>/` (gitignored); never write client data into `session/*`
 or `wiki/`. Every step here is best-effort: `build-walkthrough.py` is idempotent and no-clobber.
 Real client engagements still go through `Skill(evidence)` for redaction before the walkthrough
 ships in a report; CTF/lab work can skip that.
 
 ## On demand
 Invoke this skill directly whenever you are ready to write the walkthrough, assemble the
-walkthrough, or close out the box/engagement -- the same steps apply.
+walkthrough, or close out the box/engagement; the same steps apply.

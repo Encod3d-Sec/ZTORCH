@@ -475,3 +475,67 @@ def test_next_json_corrupt_state_keeps_stdout_clean(tmp_path, capsys):
     assert rc == 2
     assert "corrupt" in captured.err and "checkpoint" in captured.err
     assert ".offensive.json corrupt" not in captured.out   # path chars aside, no diagnostic
+
+
+# ---- static-guidance dedup (docs/reviews/2026-10-12-tokens.md issue 2) ----
+
+def test_static_guidance_shown_once_per_skill(tmp_path, capsys):
+    """The static DEEP/APPROACH/AVOID/REFS block (~1KB) prints in full once per
+    engagement per skill-key; the next serve of the SAME skill prints a one-line
+    pointer instead, and --full-guidance restores the block."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli",
+                                     tool="sqlmap")])
+    method = offensive.load_index(eng)["methods"]["hunt-sqli"]
+    _, out1 = _next_out(capsys, vault, eng)
+    assert "DEEP:" in out1 and "APPROACH" in out1 and method["approach"] in out1
+    assert "REFS" in out1
+    _, out2 = _next_out(capsys, vault, eng)
+    assert "DEEP:" not in out2 and "APPROACH" not in out2
+    assert method["approach"] not in out2 and "REFS" not in out2
+    assert "already shown once" in out2 and "--full-guidance" in out2
+    rc = offensive.main(["--vault", str(vault), "--eng", str(eng),
+                         "next", "--full-guidance"])
+    out3 = capsys.readouterr().out
+    assert rc == 0 and "APPROACH" in out3 and method["approach"] in out3
+    # a fresh .offensive.json (no `shown` map) prints the full block again
+    st = json.loads((eng / offensive.STATE_NAME).read_text())
+    st.pop("shown", None)
+    (eng / offensive.STATE_NAME).write_text(json.dumps(st))
+    _, out4 = _next_out(capsys, vault, eng)
+    assert "APPROACH" in out4 and method["approach"] in out4
+    assert "already shown once" not in out4
+
+
+def test_static_guidance_new_skill_prints_full_block(tmp_path, capsys):
+    """Once per SKILL-key: a second open row mapped to a different hunt skill
+    gets its own full block on first serve."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [
+        _row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+             arsenal="payloads/sqli", skill="hunt-sqli", tool="sqlmap"),
+        _row(id="4a:2", asset="db1", **{"vuln class": "ssrf"},
+             arsenal="x", skill="hunt-ssrf", tool="nuclei")])
+    _, _ = _next_out(capsys, vault, eng)          # serve 1: hunt-sqli full block
+    offensive.write_board(eng, [_row(id="4a:2", asset="db1",
+                                     **{"vuln class": "ssrf"},
+                                     arsenal="x", skill="hunt-ssrf", tool="nuclei")])
+    _, out = _next_out(capsys, vault, eng)        # serve 2: NEW key -> full again
+    assert "APPROACH" in out and "already shown once" not in out
+
+
+def test_static_guidance_failopens_when_state_not_persistable(
+        tmp_path, capsys, monkeypatch):
+    """Fail-open gate: when .offensive.json cannot be written the shown flag
+    never persists, so every serve reads as first-time and the block always
+    prints in full (behavior identical to the pre-dedup driver)."""
+    vault, eng = _setup(tmp_path)
+    offensive.write_board(eng, [_row(id="4a:1", asset="web1", **{"vuln class": "sqli"},
+                                     arsenal="payloads/sqli", skill="hunt-sqli",
+                                     tool="sqlmap")])
+    monkeypatch.setattr(offensive, "_save_state", lambda eng, state: None)
+    _, out1 = _next_out(capsys, vault, eng)
+    _, out2 = _next_out(capsys, vault, eng)
+    assert "APPROACH" in out1 and "APPROACH" in out2
+    assert "already shown once" not in out2

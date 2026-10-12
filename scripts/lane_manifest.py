@@ -3,7 +3,8 @@
 Spec: docs/port-specs/sandbox-tooling.md (native ZTORCH port). Hard refusals
 (ManifestError, rc 2): missing/unreadable/non-JSON manifest, non-bool network,
 blocklisted or malformed env names, malformed or sandbox-breaking mounts (host
-/etc, /boot, docker.sock), non-positive timeout_s, and unknown keys that look
+src outside the vault root/$HOME, /, /etc, /boot, /var/run, docker.sock on
+either side), non-positive timeout_s, and unknown keys that look
 like docker-arg injection (network config fails closed). Unknown benign keys
 (tools/writes are dispatch-side) warn to stderr only; window_m/budget (P4
 advisory cells) validate warn-not-fail and print as plan lines the runner
@@ -63,9 +64,28 @@ def load(path):
 
 
 def env_blocked(name):
-    n = name.upper()
+    n = name.upper()   # fold case everywhere: lowercase auxiliary_*_api_key bypassed
     return (n in _ENV_EXACT or n.startswith(_ENV_PREFIXES)
-            or _ENV_SHAPE.match(name) is not None)
+            or _ENV_SHAPE.match(n) is not None)
+
+
+_MOUNT_DENY = ("/etc", "/boot", "/var/run")   # never mountable, src or dst
+
+
+def _mount_src_ok(src):
+    """Absolute host-side src must sit under the vault root or $HOME: a manifest is
+    lane-authored input and must never lend the container the host FS (/, /etc/passwd,
+    /root/.ssh, docker.sock all refuse). Relative srcs resolve under the eng cwd at
+    build time and stay allowed (vault-relative is the normal spelling)."""
+    s = os.path.normpath(src)
+    if s == os.sep or s.startswith(_MOUNT_DENY):
+        return False
+    vault = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for base in (vault, os.path.expanduser("~")):
+        b = os.path.normpath(base)
+        if b and os.sep != b and (s == b or s.startswith(b + os.sep)):
+            return True
+    return False
 
 
 def validate(m):
@@ -96,10 +116,16 @@ def validate(m):
             raise ManifestError("bad mount '%s' (want src:dst[:ro])" % spec)
         if not parts[1].startswith("/"):
             raise ManifestError("mount dst must be absolute in '%s'" % spec)
-        if parts[1] == "/var/run/docker.sock" or parts[1].startswith(("/etc", "/boot")):
-            raise ManifestError("refusing unsafe mount dst '%s'" % parts[1])
         if len(parts) == 3 and parts[2] not in ("ro", "rw"):
             raise ManifestError("bad mount mode in '%s' (ro|rw)" % spec)
+        if "docker.sock" in spec:
+            raise ManifestError("refusing unsafe mount '%s' (docker.sock never "
+                                "mountable)" % spec)
+        if parts[1] == "/" or parts[1].startswith(_MOUNT_DENY):
+            raise ManifestError("refusing unsafe mount dst '%s'" % parts[1])
+        if os.path.isabs(parts[0]) and not _mount_src_ok(parts[0]):
+            raise ManifestError("refusing unsafe mount src '%s' (host path must "
+                                "sit under the vault root or $HOME)" % parts[0])
 
     names = m.get("env", [])
     if not isinstance(names, list):

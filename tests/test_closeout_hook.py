@@ -73,3 +73,28 @@ def test_closeout_lane_overclaim_sweep(tmp_path):
     (eng / "poc" / "z" / "out.txt").write_text("nope\n", encoding="utf-8")
     out3 = run()
     assert "lane NOT VERIFIED" in out3 and "b" in out3.split("over-claim")[1][:60]
+
+
+def test_closeout_vault_spelled_capture_not_flagged(tmp_path):
+    """comms review defect 1 (the 27/27 false-flag): close-out joined the capture
+    cell its own way, without lane_validate._cap_dir's vault-prefix strip, so an
+    honest lane whose capture dir is vault-spelled (`capture targets/<eng>/poc/x`,
+    criterion verifiably on disk) was flagged NOT VERIFIED. Resolution must be the
+    shared _cap_dir."""
+    import json, os, subprocess, sys
+    vault = tmp_path / "vault"
+    eng = vault / "targets" / "eng1"
+    (eng / "poc" / "x").mkdir(parents=True)
+    (eng / "poc" / "x" / "out.txt").write_text("flag THM{zzz} captured\n", encoding="utf-8")
+    (eng / "log.md").write_text(
+        "- lane x (10.0.0.9) in flight: SUCCESS = THM{zzz} | tmux win w1 | "
+        "capture targets/eng1/poc/x -> claim: rooted\n", encoding="utf-8")
+    (vault / "targets" / "active.md").write_text("eng1\n", encoding="utf-8")
+    env = dict(os.environ, ZTORCH_VAULT=str(vault),
+               ENFORCE_OFF_MARKER=str(vault / ".no-enforce-off"))
+    r = subprocess.run(
+        [sys.executable, str(HOOK)], input=json.dumps(
+            {"session_id": "t", "transcript_path": "/nonexistent.jsonl"}),
+        capture_output=True, text=True, timeout=60, env=env)
+    assert "NOT VERIFIED" not in r.stdout      # honest lane, criterion on disk
+    assert not (eng / ".lane-verify-nudged").exists()   # and no poisoned dedup counter

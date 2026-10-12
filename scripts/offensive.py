@@ -1188,12 +1188,21 @@ def cmd_next(args):
         "asset": asset, "row": rid, "class": cls, "skill": skill,
         "tool": (row.get("tool") or "").strip(),
     }
+    # Token posture (docs/reviews/2026-10-12-tokens.md issue 2): the static
+    # DEEP/APPROACH/AVOID/REFS block (~1KB) was re-served every move. Show it
+    # in full once per engagement per skill-key, then a one-line pointer;
+    # --full-guidance restores it. Fail-open: if .offensive.json cannot be
+    # written the flag never persists, every serve reads first-time -> always-print.
+    shown = state.setdefault("shown", {})
+    gkey = skill or "-"
+    full = bool(getattr(args, "full_guidance", False)) or not shown.get(gkey)
+    shown[gkey] = True
     _save_state(eng, state)
     lvl, _lvl_note = autonomy_of(eng)
     mode, _mode_note = mode_of(eng)
     print("PASS %s | ASSET %s | ROW %s %s | AUTONOMY %s | MODE %s"
           % (state.get("pass", 0), asset, rid, cls, lvl, mode))
-    if mode == "deep":
+    if mode == "deep" and full:
         print("DEEP: %s. Long autonomous phases are the posture - stop on a documented "
               "stop condition or an operator decision, not minutes in." % MODE_DESC["deep"])
     tsc = ts.get(rid, 0)
@@ -1244,14 +1253,19 @@ def cmd_next(args):
             print("  (mechanical/wait-heavy? consider Skill(delegate) to run this on the cheap tier)")
 
     # method block for the row's class (parse_hunt_method result, keyed by skill).
-    # Fields may be empty on real skills; print what's present.
+    # Fields may be empty on real skills; print what's present. Part of the
+    # once-per-skill static block above (same `full` gate).
     method = (index.get("methods") or {}).get(skill, {})
-    if method.get("approach"):
-        print("APPROACH  %s" % method["approach"])
-    if method.get("avoid"):
-        print("AVOID     %s" % method["avoid"])
-    if method.get("refs"):
-        print("REFS      %s" % method["refs"])
+    if full:
+        if method.get("approach"):
+            print("APPROACH  %s" % method["approach"])
+        if method.get("avoid"):
+            print("AVOID     %s" % method["avoid"])
+        if method.get("refs"):
+            print("REFS      %s" % method["refs"])
+    elif mode == "deep" or any(method.get(k) for k in ("approach", "avoid", "refs")):
+        print("... (deep guidance already shown once; rerun with --full-guidance "
+              "to see it again)")
     print("")
     print("REQUIRED, in order:")
 
@@ -1885,6 +1899,9 @@ def main(argv=None):
 
     sub.add_parser("board", help="write the Approach.md 4a coverage matrix from the index").set_defaults(fn=cmd_board)
     p_next = sub.add_parser("next", help="print the next action (cursor + gate walk)")
+    p_next.add_argument("--full-guidance", action="store_true",
+                        help="print the static DEEP/method block even if already "
+                             "shown once for this skill (default: one-line pointer)")
     p_next.add_argument("--json", action="store_true",
                         help="machine-readable cursor+gate payload (brain lanes / steering)")
     p_next.set_defaults(fn=cmd_next)
