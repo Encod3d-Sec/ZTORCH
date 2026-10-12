@@ -8,6 +8,8 @@ what status.py already reads; this page is the vocabulary.
 - `tool <name> ok|fail|blocked|cancelled|background` - one tool call's outcome
 - `iter main <n>` / `iter sub <n>` - loop iteration markers (main agent / subagent)
 - `retry <a>/<max> <kind>` - retry a of max, kind of failure (technical/environmental/conceptual/external)
+- `exit <completed|max_iterations|interrupted|error>` - lane close-out reason (mirrors
+  hermes `exit_reason`); lanes carry it on the envelope Issues line
 - `hitl ask <id>` / `hitl decided <approve|reject|edit>` - operator decision points
 - `[<lane>]` prefix at line start scopes a line to one lane
 - `Ruling: <decision> - <why> - <cost if wrong>` - a mid-run judgment call the operator

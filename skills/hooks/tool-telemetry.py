@@ -263,6 +263,56 @@ def _mentor_check(d, tool, bins):
     return None
 
 
+_TURN_GAP = 120        # s of tool-call silence separating session turns (deterministic
+                      # proxy: hooks get no turn id, so a time gap delimits the burst)
+_TURN_CAP = 150_000    # bytes of tool output one turn may pull in before the advisory
+
+
+def _turn_bytes(d, nbytes):
+    """Per-turn output budget (hermes port P1). Appends {"ts": epoch, "b": bytes} per
+    call to .metrics.json["turn_bytes"] (capped at the last 200); a turn is the run of
+    calls with < _TURN_GAP silence between them; when the run's total crosses
+    _TURN_CAP, ONE kind="budget" event lands in .events.jsonl (the existing telemetry
+    shape) pointing at scripts/spill-run.sh. Fail-open, advisory only (PostToolUse
+    cannot block). Returns the advisory text or None."""
+    try:
+        if not nbytes:
+            return None
+        import time as _t
+        mp = os.path.join(d, ".metrics.json")
+        try:
+            m = json.load(open(mp, encoding="utf-8"))
+        except Exception:
+            m = {}
+        rows = m.get("turn_bytes") or []
+        now = _t.time()
+        if not rows or now - float(rows[-1].get("ts", 0)) > _TURN_GAP:
+            m["turn_fired"] = False                # a new turn re-arms the advisory
+        rows.append({"ts": round(now, 3), "b": int(nbytes)})
+        m["turn_bytes"] = rows[-200:]
+        i = len(rows) - 1                           # sum only the CURRENT turn's rows
+        while i > 0 and rows[i]["ts"] - rows[i - 1]["ts"] <= _TURN_GAP:
+            i -= 1
+        # ponytail: turn total over the 200-cap window; >200 calls inside one turn
+        # undercount, but the advisory fires long before that (150k = a few big reads)
+        tot = sum(r["b"] for r in rows[i:])
+        msg = None
+        if tot > _TURN_CAP and not m.get("turn_fired"):
+            m["turn_fired"] = True
+            msg = ("turn output budget %dk crossed - consider scripts/spill-run.sh "
+                   "(head/tail inline, full output to ingest/)" % (_TURN_CAP // 1000))
+            try:
+                import _telemetry
+                _telemetry.log_event("budget", d=d, detail=msg)
+            except Exception:
+                pass
+        with open(mp, "w", encoding="utf-8") as fh:
+            json.dump(m, fh, indent=1)
+        return msg
+    except Exception:
+        return None
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read())
@@ -295,8 +345,10 @@ def main():
         except Exception:
             wiki = None
     bins = _binaries(ti.get("command")) if tool == "Bash" else None
+    ob = _out_bytes(data)
     _telemetry.log_event("tool", d=d, tool=tool, skill=skill, wiki=wiki, bins=bins or None,
-                         out_bytes=_out_bytes(data))
+                         out_bytes=ob)
+    _turn_bytes(d, ob)          # per-turn output budget (P1): .metrics.json + budget event
     _telemetry.stamp_once("started_at", _telemetry.now_iso(), d=d)
     _telemetry.add_transcript(data.get("transcript_path"), d=d)
     mentor = _mentor_check(d, tool, bins)
