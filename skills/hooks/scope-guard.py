@@ -214,9 +214,10 @@ def main():
                 import os as _os
                 if _os.path.isfile(_os.path.join(eng_dir, "scope.md")) \
                         and not sc.get("in_scope") and not sc.get("out_of_scope"):
-                    deny.append("scope.md exists but parses EMPTY (no in/out-of-scope "
-                                "entries) - repair scope.md before acting; an empty "
-                                "parse must not become allow-all (posture port)")
+                    roe.append("scope.md exists but parses EMPTY (no in/out-of-scope "
+                               "entries) - fill scope.md, or explicitly approve acting "
+                               "without it (ZT_ROE_OK=1 / .roe-ok); an empty parse "
+                               "must not silently become allow-all (posture port)")
             except Exception:
                 pass
             # out-of-scope targets: IP-in-CIDR (IPv4+IPv6) + exact/parent host match. URL

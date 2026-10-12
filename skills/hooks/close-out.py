@@ -219,6 +219,9 @@ def _memory_nudge(vault):
     mem = os.path.join(vault, "session", "memory.md")
     try:
         n = int(open(counter).read().strip() or 0) + 1
+    except OSError:
+        n = 1  # first sighting: create the counter, never return
+    try:
         open(counter, "w").write(str(n))
     except OSError:
         return

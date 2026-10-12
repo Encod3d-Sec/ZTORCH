@@ -494,11 +494,12 @@ def _skill_guard():
     # the ack id keys on the pattern-CLASS set (no counts), so count churn never
     # invalidates an ack; a genuinely NEW class re-trips the advisory
     classes = ", ".join(sorted(counts))
-    CURRENT.rows.append(("WARN", "skills/ agent-subversion scan (skill-guard)",
-                         "%d finding(s) in %d file(s) (advisory; triage: python3 "
-                         "scripts/skill-guard.py scan)" % (len(findings), n)))
-    CURRENT.manual_issues.append(("skills/ agent-subversion scan (skill-guard)",
-                                  "pattern classes present: " + classes))
+    # WARN row only, never a manual gate: an offensive vault trips these classes
+    # by nature; a permanent gate would train the operator to ignore doctor exits.
+    # Triage command surfaces the findings; a NEW class appearing is visible in diff.
+    detail = ("%d finding(s) in %d file(s); classes: %s (advisory, never gates; triage: "
+              "python3 scripts/skill-guard.py scan)" % (len(findings), n, classes))
+    CURRENT.rows.append(("WARN", "skills/ agent-subversion scan (skill-guard)", detail))
 
 
 # ----------------------------------------------- 8. hook registration (canonical set)

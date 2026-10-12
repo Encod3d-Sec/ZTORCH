@@ -117,6 +117,7 @@ fi
 if [ -n "$SCAN_FILE" ]; then
   # Fail closed: a missing/unreadable candidate must never read as clean.
   [ -r "$SCAN_FILE" ] || { echo "FAIL: candidate file not readable: $SCAN_FILE" >&2; exit 1; }
+  FAILED=0
   if [ "${#TERMS[@]}" -eq 0 ]; then
     echo "clean: no client markers to check."
     exit "$FAILED"
@@ -209,3 +210,4 @@ if [ -d session ] && [ "${#TERMS[@]}" -gt 0 ]; then
 else
   echo "  (no session/ dir or no markers)"
 fi
+exit 0
