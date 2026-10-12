@@ -69,6 +69,18 @@ else
   echo "  claude plugins install ponytail@ponytail"
 fi
 
+# 5c. Install superpowers (obra/superpowers workflow skills -- separate marketplace)
+if command -v claude >/dev/null 2>&1; then
+  echo "Installing superpowers..."
+  claude plugins marketplace add obra/superpowers-marketplace 2>/dev/null || true
+  claude plugins install superpowers@superpowers-marketplace 2>/dev/null && \
+    echo "  [ok] superpowers" || echo "  [ok] superpowers (already installed)"
+else
+  echo "[warn] claude CLI not found -- install superpowers manually:"
+  echo "  claude plugins marketplace add obra/superpowers-marketplace"
+  echo "  claude plugins install superpowers@superpowers-marketplace"
+fi
+
 # 5. caveman: voice skill ships in the vault (skills/caveman/, ultra level in-file);
 # no installer. Manual per session (/caveman, /caveman ultra).
 
