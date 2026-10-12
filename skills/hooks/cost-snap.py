@@ -9,8 +9,10 @@ pass. One JSON line appended to session/bench/auto.jsonl (gitignored):
   ts, tokens_total, input, output, cache_read, cache_write, subagent_tokens,
   turns, tool_calls, agent_launches, bash_commands, skills, eng
 
-Fails open and silent: any error -> exit 0 with no output (never pollutes the
-session end). Sources: Claude Code transcripts (usage rows) + the active
+One LIVE row per session (keyed by session_id from the hook payload): each
+Stop fire adds that turn's delta into the session's single row, so mid-session
+the row already shows running totals. Fails open and silent: any error ->
+exit 0 with no output. Sources: Claude Code transcripts (usage rows) + the active
 engagement's .events.jsonl delta (same offset trick).
 """
 import glob
@@ -32,7 +34,16 @@ def _load_json(path, default):
         return default
 
 
+def _session_id():
+    try:
+        d = json.loads(sys.stdin.read() or "{}")
+        return d.get("session_id") or "manual"
+    except Exception:
+        return "manual"
+
+
 def main():
+    sid = _session_id()
     offs = _load_json(os.path.join(BENCH, ".offsets.json"), {})
     row = {"tokens_total": 0, "input": 0, "output": 0, "cache_read": 0,
            "cache_write": 0, "subagent_tokens": 0, "turns": 0,
@@ -108,11 +119,37 @@ def main():
     os.makedirs(BENCH, exist_ok=True)
     json.dump(offs, open(os.path.join(BENCH, ".offsets.json"), "w"))
     if row["turns"] == 0 and row["tool_calls"] == 0:
-        return 0  # nothing new (hook fired twice, or a zero-activity session)
+        return 0  # nothing new since the last fire
     import time
-    row["ts"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    with open(os.path.join(BENCH, "auto.jsonl"), "a", encoding="utf-8") as f:
-        f.write(json.dumps(row) + "\n")
+    now = time.strftime("%Y-%m-%dT%H:%M:%S")
+    row["ts"] = now
+    row["session_id"] = sid
+    row["first_seen"] = now
+    auto = os.path.join(BENCH, "auto.jsonl")
+    # one LIVE row per session: same session_id updates its row in place
+    lines = []
+    if os.path.exists(auto):
+        lines = [l for l in open(auto, encoding="utf-8").read().splitlines() if l.strip()]
+        if lines:
+            try:
+                last = json.loads(lines[-1])
+                if last.get("session_id") == sid:
+                    row["first_seen"] = last.get("first_seen", now)
+                    for k in ("tokens_total", "input", "output", "cache_read",
+                              "cache_write", "subagent_tokens", "turns",
+                              "tool_calls", "agent_launches", "bash_commands",
+                              "skills"):
+                        row[k] += last.get(k, 0)
+                    lines[-1] = json.dumps(row)
+            except json.JSONDecodeError:
+                lines.append(json.dumps(row))
+        else:
+            lines.append(json.dumps(row))
+    else:
+        lines.append(json.dumps(row))
+    tmp = auto + ".tmp"
+    open(tmp, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    os.replace(tmp, auto)
     return 0
 
 
