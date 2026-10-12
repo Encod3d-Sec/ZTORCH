@@ -171,7 +171,9 @@ def main():
             actions.append(f"{name}: {state} -> {new_state} (age {age}d, used {u['count']}x)"
                            + (" [protected]" if protected else ""))
     if not args.dry_run:
-        json.dump({"last_run": time.strftime("%Y-%m-%dT%H:%M:%S")}, open(STATE, "w"))
+        _tmp = STATE + ".tmp"
+        json.dump({"last_run": time.strftime("%Y-%m-%dT%H:%M:%S")}, open(_tmp, "w"))
+        os.replace(_tmp, STATE)
     if actions:
         print("curator run " + time.strftime("%Y-%m-%d %H:%M"))
         for a in actions:

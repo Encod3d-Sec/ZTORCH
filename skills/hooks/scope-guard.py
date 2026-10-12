@@ -208,6 +208,17 @@ def main():
         eng_dir = _engagement.active_dir()
         if eng_dir:
             sc = _engagement.scope(eng_dir)
+            # corrupt-scope stop (hermes posture port): a scope.md that EXISTS but
+            # parses to no in/out-of-scope entries must not degrade to allow-all.
+            try:
+                import os as _os
+                if _os.path.isfile(_os.path.join(eng_dir, "scope.md")) \
+                        and not sc.get("in_scope") and not sc.get("out_of_scope"):
+                    deny.append("scope.md exists but parses EMPTY (no in/out-of-scope "
+                                "entries) - repair scope.md before acting; an empty "
+                                "parse must not become allow-all (posture port)")
+            except Exception:
+                pass
             # out-of-scope targets: IP-in-CIDR (IPv4+IPv6) + exact/parent host match. URL
             # query/fragment values and data/header-flag payloads are exempt (see _strip_noise):
             # the target is the host, not an SSRF/redirect param value; `--url=<host>` is kept.

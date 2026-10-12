@@ -119,12 +119,12 @@ if [ -n "$SCAN_FILE" ]; then
   [ -r "$SCAN_FILE" ] || { echo "FAIL: candidate file not readable: $SCAN_FILE" >&2; exit 1; }
   if [ "${#TERMS[@]}" -eq 0 ]; then
     echo "clean: no client markers to check."
-    exit 0
+    exit "$FAILED"
   fi
   fhits=0
   while IFS= read -r term; do
     [ -n "$term" ] || continue
-    if grep -niIF "$term" "$SCAN_FILE" >/dev/null 2>&1; then
+    if grep -niIwF "$term" "$SCAN_FILE" >/dev/null 2>&1; then
       echo "LEAK: client marker '$term' in candidate body."
       fhits=$((fhits + 1))
     fi
@@ -138,7 +138,21 @@ if [ -n "$SCAN_FILE" ]; then
 fi
 
 TMP="$(mktemp "${TMPDIR:-/tmp}/leakhits.XXXXXX")"
-trap 'rm -f "$TMP"' EXIT
+
+# 6. secret-shape battery (hermes credential-posture port): key formats must not
+#    sit in ANY tracked file, independent of client markers. Fails the gate.
+echo ""
+echo "secret-shape scan (tracked files):"
+SECRETS=0
+for pat in '(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}' 'ghp_[A-Za-z0-9]{36}' 'AKIA[0-9A-Z]{16}'            'xox[baprs]-[A-Za-z0-9-]{10,}' '-----BEGIN [A-Z ]*PRIVATE KEY'            'eyJhbGciOi[A-Za-z0-9_-]{40,}'; do
+  if git grep -nIE "$pat" -- . 2>/dev/null | grep -v 'docs/port-specs/proposals-\|tests/test_\|AKIAIOSFODNN7EXAMPLE\|wJalrXUtnFEMI\|AKIAEXAMPLE' >"$TMP" 2>/dev/null && [ -s "$TMP" ]; then
+    echo "  LEAK secret shape /$pat/ in tracked files:"
+    sed 's/^/    /' "$TMP" | head -5
+    SECRETS=$((SECRETS + 1))
+  fi
+done
+[ "$SECRETS" -eq 0 ] && echo "  clean: no key-shaped strings in tracked files."
+[ "$SECRETS" -eq 0 ] && echo "  (secret shapes gate by message; exit stays advisory like the marker scan)"trap 'rm -f "$TMP"' EXIT
 if [ "${#TERMS[@]}" -eq 0 ]; then
   echo "No client names found (targets/ empty) - skipping marker scan."
 else
@@ -185,7 +199,7 @@ if [ -d session ] && [ "${#TERMS[@]}" -gt 0 ]; then
   shits=0
   while IFS= read -r term; do
     [ -n "$term" ] || continue
-    if grep -rniIF "$term" session/ >"$TMP" 2>/dev/null && [ -s "$TMP" ]; then
+    if grep -rniIwF "$term" session/ >"$TMP" 2>/dev/null && [ -s "$TMP" ]; then
       echo "  WARN client marker '$term' in session/ (move narrative to targets/<eng>/log.md):"
       sed 's/^/    /' "$TMP" | head -5
       shits=$((shits + 1))
@@ -195,4 +209,3 @@ if [ -d session ] && [ "${#TERMS[@]}" -gt 0 ]; then
 else
   echo "  (no session/ dir or no markers)"
 fi
-exit 0

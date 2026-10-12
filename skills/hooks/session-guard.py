@@ -23,6 +23,23 @@ SESSION_FILES = {"hot.md", "log.md", "memory.md"}
 TRACKED_TREES = ("/wiki/", "/scripts/", "/skills/", "/docs/", "/tests/", "/setup/")
 
 
+
+PROTECTED_CONFIG = ("/AGENTS.md", "/.zcode/config.json", "scripts/triggers.json",
+                    "scripts/routing.json", "setup/install-hooks.sh", "scripts/check-hooks.py")
+CFG_MARKER_AGE_S = 30 * 60
+
+
+def _cfg_edit_ok(vault_root):
+    """Operator consent window for harness-config edits (hermes protected-
+    instruction gate port: ALWAYS-ASK; consent is a 30-min marker, never persisted)."""
+    import time
+    p = os.path.join(vault_root, ".cfg-edit-ok")
+    try:
+        return time.time() - os.path.getmtime(p) < CFG_MARKER_AGE_S
+    except OSError:
+        return False
+
+
 def _dest_kind(fp):
     """'session' | 'tracked' | None (not a guarded destination)."""
     if "/targets/" in fp:
@@ -64,6 +81,24 @@ def main():
         data = json.loads(sys.stdin.read() or "{}")
     except Exception:
         return
+
+    fp = ((data.get("tool_input") or {}).get("file_path") or "").replace("\\", "/")
+    norm = "/" + fp.lstrip("/") if fp else ""
+    if "/targets/" not in norm:
+        if any(norm == t.lstrip("/") or norm.endswith(t) for t in PROTECTED_CONFIG) \
+                and not _cfg_edit_ok(os.path.abspath(os.path.join(HERE, "..", ".."))):
+            print(json.dumps({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": (
+                    "OPERATOR CONSENT (protected-instruction gate, hermes port): "
+                    + fp + " is harness routing/config - a write here changes what "
+                    "future sessions auto-load or enforce. Confirm the edit, or have "
+                    "the OPERATOR create <vault>/.cfg-edit-ok (30-min consent window) "
+                    "and retry."),
+            }}))
+            return
+
     ti = data.get("tool_input") or {}
     fp = (ti.get("file_path", "") or "").replace("\\", "/")
     kind = _dest_kind(fp)

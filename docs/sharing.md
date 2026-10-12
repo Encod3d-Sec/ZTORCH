@@ -40,3 +40,17 @@ Copying the vault directory (zip, cloud folder, Obsidian Sync to a shared vault)
 - **Docs/specs use placeholders** (`acme-internal`, `10.0.0.0/24`, `host1`), never real client data.
 - **Commit messages** describe mechanism, not client specifics. Git history is hard to scrub; keep it clean from the start.
 - **All client engagement data lives only under `targets/<engagement>/`** (state, loot, Killchain, ingest, findings, scope, poc).
+
+## Trust model (what actually contains what)
+
+Adopted from the hermes posture audit (docs/port-specs/proposals-posture.md): the ONLY hard
+trust boundary in this harness is the Kali VM seat - lanes, hooks, and this session all run
+on the operator's own box with the operator's own credentials. Everything else is convention
+enforced by advisory machinery: scope-guard (out-of-scope deny), lane-guard (host-destructive
+deny), session-guard (protected-config ask + client-marker warn), check-leaks (marker +
+secret-shape scans at commit/share time). `targets/` is git-ignored and the client-data
+boundary lives there; `.enforce-off` downgrades every deny, `.roe-ok`/`.cfg-edit-ok` are
+short-lived operator consent markers (RoE tooling, harness-config edits). Never treat an
+advisory as a boundary, and never assume a lane sees less than the operator's full environment:
+credential-bearing env vars reach lanes only through explicit lane-manifest env names
+(lane_manifest.py blocklist refuses provider keys outright).
