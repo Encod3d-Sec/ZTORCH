@@ -141,6 +141,8 @@ def main():
                               "skills"):
                         row[k] += last.get(k, 0)
                     lines[-1] = json.dumps(row)
+                else:
+                    lines.append(json.dumps(row))
             except json.JSONDecodeError:
                 lines.append(json.dumps(row))
         else:
