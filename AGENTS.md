@@ -11,6 +11,7 @@
 | Re-index / wiki status | `wiki` skill |
 | Session memory / search history | `python3 scripts/memory.py view` (two stores, budgets); `python3 scripts/session_search.py query '<text>'` over engagement+session logs |
 | Sandbox a lane locally (docker) | `bash scripts/lane-run.sh targets/<eng>/lanes/<lane>.json '<cmd>'` (hermes baseline flags, network default off; docs/port-specs/sandbox-tooling.md) |
+| Async engagement digests (default OFF) | `python3 scripts/watcher.py --eng <eng> --once` (lane VERIFIED / OOB HIT / FIND digests; Telegram via `ZT_WATCH_TELEGRAM_TOKEN`+`ZT_WATCH_CHAT_ID`, else dry); `scripts/pmonitor.py add/tick` watches background-run output for regex hits |
 | Snapshot / restore engagement state | `python3 scripts/checkpoint.py snapshot|list|restore <eng> ...` (shadow-git store, 3-fail repair ledger) |
 | Record a reusable procedure mid-engagement | `python3 scripts/skill_manage.py create/patch` (guarded; umbrella-first); lifecycle via `scripts/curator.py` |
 | Git clone | Windows seat: clone normally; into WSL: `wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>` (MSYS: prefix MSYS_NO_PATHCONV=1) |

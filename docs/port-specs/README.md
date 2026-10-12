@@ -44,7 +44,7 @@ Each wave: implement, assert-based tests (tests/test_*.py), wiring (AGENTS.md/en
 | delegate steer/missed-steer + usage telemetry | DONE (wave 3a, doctrine) | - |
 | PreCompact must-survive data block | DONE (wave 3a) | - |
 | checkpoint.py shadow-git manager | DONE (wave 3b) | 7 (+9 eng-ckpt coexist) |
-| offensive-doctor Finding rework | in flight (agent) | - |
-| watcher.py + pmonitor.py | in flight (agent) | - |
+| offensive-doctor Finding rework | DONE (wave 3c; live 37 checks green) | suite |
+| watcher.py + pmonitor.py | DONE (wave 3d; default-off, env-gated Telegram, dry-mode safe) | 7 |
 
-Full-suite sweep after waves 1-2: 90 test files, 0 failures.
+Final full-suite sweep: 89 test files, 0 failures. All ported capabilities are DONE; skipped-with-rationale list lives in subsystems-triage.md.
