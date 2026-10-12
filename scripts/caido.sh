@@ -35,7 +35,7 @@ cmd_stop() {
 
 cmd_status() {
   local up=""
-  pgrep -x caido >/dev/null && up="process:$(pgrep -x caido | head -1)" || up="process:DOWN"
+  pgrep -f 'caido-cli' >/dev/null && up="process:$(pgrep -f caido-cli | head -1)" || up="process:DOWN"
   local ui pr tok
   ui=$(curl -s -o /dev/null -m 3 -w '%{http_code}' "http://127.0.0.1:${LISTEN#*:}" 2>/dev/null || echo 000)
   pr=$(curl -s -o /dev/null -m 5 -x "http://127.0.0.1:${PROXY_LISTEN#*:}" -w '%{http_code}' http://example.com 2>/dev/null || echo 000)
