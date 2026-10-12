@@ -2,6 +2,19 @@
 name: brain
 description: Brain mode - the main chat keeps strategy/driver/triage while 2-3 concurrent subagents execute. DEFAULT posture once the board has 2+ open assets. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
 ---
+
+## Sections
+- [[#Role split]]
+- [[#Tier routing (Agent tool aliases)]]
+- [[#Dispatch archetypes (roster tiers)]]
+- [[#The dispatch (delegate is the contract)]]
+- [[#Concurrency]]
+- [[#Offensive integration (brain mode over the driver)]]
+- [[#Envelope + worktree hygiene (hermes delegation port)]]
+- [[#Failure handling]]
+- [[#Known ceilings]]
+- [[#Client-data boundary]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

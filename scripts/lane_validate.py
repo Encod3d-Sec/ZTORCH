@@ -247,6 +247,21 @@ def envelope_report(base, text):
     return 0
 
 
+_USAGE_RE = re.compile(r"\| usage (\d+)t/(\d+)s")
+
+
+def usages_from_text(text):
+    """Token/duration cells the brain appends on lane close (delegate contract):
+    `| usage 5432t/91s`. -> [(lane, tokens, seconds)] for spend accounting."""
+    out = []
+    for m in _LANE_RE.finditer(text):
+        tail = m.group(0)
+        u = _USAGE_RE.search(tail)
+        if u:
+            out.append((m.group(1), int(u.group(1)), int(u.group(2))))
+    return out
+
+
 def _stats(dirpath):
     n = b = 0
     for root, _dirs, files in os.walk(dirpath):

@@ -2,6 +2,20 @@
 name: hunt-burp
 description: Drive Burp Suite over its MCP server (proxy-history triage, Repeater replay, Collaborator OOB gates, Intruder fuzzing) with hand-off to the matching hunt. Use when Burp runs with the MCP Server BApp.
 ---
+
+## Sections
+- [[#Pre-Attack: Wiki Query (MANDATORY)]]
+- [[#On the box (prereqs)]]
+- [[#Anti-drift: DRIVE Burp, don't just proxy through it (and don't stop at foothold)]]
+- [[#Drive each Burp tool (native name -> what it is for)]]
+- [[#Passive-first candidate sweep (do this BEFORE active testing)]]
+- [[#MCP toolset (what to reach for)]]
+- [[#Methodology (best practice)]]
+- [[#Prompt-injection defense (MCP hygiene)]]
+- [[#Client-data boundary]]
+- [[#Hand-off]]
+- [[#FIND Output]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

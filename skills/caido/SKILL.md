@@ -2,6 +2,22 @@
 name: caido
 description: Caido stands in for Burp on the Kali VM: a headless proxy driven over the caido-mode CLI and `~/caido.sh` (HTTPQL history triage, proxied curl probes, Replay handoff, Match & Replace, Automate, fuzz). Use when Burp/MCP is down or for isolated per-engagement projects.
 ---
+
+## Sections
+- [[#The box (already set up)]]
+- [[#caido-mode CLI: install + auth (one-time per seat)]]
+- [[#Operating doctrine (two modes, kept strictly separate)]]
+- [[#Primary workflow (do this by default)]]
+- [[#History + Replay commands]]
+- [[#Match & Replace (tamper rules)]]
+- [[#HTTPQL reference]]
+- [[#`~/caido.sh` (VM-local helper, over vm.sh)]]
+- [[#Fuzz batteries (request-variation through Replay)]]
+- [[#Caido-native workflow (GUI concepts)]]
+- [[#Output control + gotchas]]
+- [[#Error handling]]
+- [[#Relation to Burp]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-06

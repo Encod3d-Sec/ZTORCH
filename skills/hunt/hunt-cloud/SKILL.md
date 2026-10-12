@@ -2,6 +2,21 @@
 name: hunt-cloud
 description: Cloud attack hunting for AWS / Azure / GCP - credential discovery, metadata SSRF, IAM privesc, service enumeration, persistence. Scope + billing aware. Wiki-first, FIND schema output. Use when cloud credentials, metadata endpoints, or IAM surfaces appear.
 ---
+
+## Sections
+- [[#Wiki]]
+- [[#Cloud CLI quick reference (use this, don't hand-roll)]]
+- [[#Billing and safety (cloud-specific)]]
+- [[#Attack surface (ranked)]]
+- [[#Tooling-first: install the CLI, do NOT hand-roll REST (Azure especially)]]
+- [[#Methodology]]
+- [[#Confirmation gate]]
+- [[#Validation]]
+- [[#False Positives]]
+- [[#Cross-routing]]
+- [[#Severity]]
+- [[#Context tools]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

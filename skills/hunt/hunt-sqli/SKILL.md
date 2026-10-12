@@ -2,6 +2,23 @@
 name: hunt-sqli
 description: SQLi and NoSQLi hunting - error-based, boolean-blind, time-based, UNION, NoSQL operator injection. sqlmap automation after manual confirmation. Wiki-first, FIND schema output. Use when a param reaches a DB and an error/boolean/time oracle appears.
 ---
+
+## Sections
+- [[#Wiki]]
+- [[#Confirmation gate]]
+- [[#Attack surface]]
+- [[#Methodology]]
+- [[#Chaining]]
+- [[#Evasion]]
+- [[#Second-order + PROCESSLIST credential capture]]
+- [[#Cracking recovered hashes (try easy first)]]
+- [[#App keyword-filter + login redirect oracle (sqlmap blind-spot)]]
+- [[#Validation]]
+- [[#False Positives]]
+- [[#Cross-routing]]
+- [[#Severity]]
+- [[#Deadends]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

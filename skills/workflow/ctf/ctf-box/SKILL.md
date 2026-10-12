@@ -2,6 +2,16 @@
 name: ctf-box
 description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF), basic-tool recon first, wiki-first, pspy + linpeas/winpeas always. Use when handed a box/IP to own end-to-end ("root the box", "get user.txt+root.txt").
 ---
+
+## Sections
+- [[#Standing mandate: Wiki-first, tools-before-scripts (GATE 1, all phases)]]
+- [[#Phase 1 Recon: basic tools only (in this order)]]
+- [[#Phase 2 Weaponize: pick the exploit]]
+- [[#Phase 3 Deliver: land a shell]]
+- [[#Phase 4 Exploit: finish the foothold, then privesc]]
+- [[#Capture (engagement discipline)]]
+- [[#Context tools]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

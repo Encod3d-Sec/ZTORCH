@@ -2,6 +2,23 @@
 name: hunt-auth
 description: Auth bypass and ATO hunting - legacy protocol matrix (XMLRPC, SharePoint /_vti_bin/, EWS, Citrix, etc.), JWT manipulation, password reset poisoning, SAML auth bypass, session fixation. Wiki-first, FIND schema output. Use when a login, reset, session, JWT, or legacy-protocol endpoint is the surface.
 ---
+
+## Sections
+- [[#Wiki]]
+- [[#Attack surface (ranked)]]
+- [[#Legacy Protocol Matrix (Probe First on Any Custom-Branded Login)]]
+- [[#JWT Attacks]]
+- [[#ATO Attack Paths (Priority Order)]]
+- [[#Methodology]]
+- [[#Drive it through Burp]]
+- [[#Confirmation gate]]
+- [[#Chaining]]
+- [[#Evasion]]
+- [[#Validation]]
+- [[#False Positives]]
+- [[#Cross-routing]]
+- [[#Severity]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

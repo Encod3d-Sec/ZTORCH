@@ -2,6 +2,21 @@
 name: hunt-ad
 description: Active Directory attack hunting - enumeration to domain dominance. Spray-safe (lockout gate), AS-REP/Kerberoast, ACL + ADCS (ESC1-16), delegation, DCSync, lateral movement. Wiki-first, FIND schema output. Use when a dotted-FQDN domain, a DC, or AD signals (kerberoast/AS-REP/ADCS/delegation/DCSync) appear.
 ---
+
+## Sections
+- [[#Wiki]]
+- [[#Impacket quick reference (use this, don't hand-roll)]]
+- [[#Attack surface signals]]
+- [[#Spray-safe + AD safety gate (READ FIRST)]]
+- [[#Ranked path + highest-value edges]]
+- [[#Methodology]]
+- [[#Confirmation gate]]
+- [[#Validation]]
+- [[#False Positives]]
+- [[#Cross-routing]]
+- [[#Severity]]
+- [[#Deadends]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

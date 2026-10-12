@@ -2,6 +2,20 @@
 name: delegate
 description: Sub-agent hand-off for a fully-specified exploit/escalation run, behind a false-root guardrail, main agent stays on strategy. Use for "delegate", "hand this to a sub-agent", "spin a flash", or foothold + working vector found.
 ---
+
+## Sections
+- [[#When to delegate / when NOT]]
+- [[#Model choice]]
+- [[#The checklist (a delegation is only as good as its checklist)]]
+- [[#Lane mandate battery (verbatim)]]
+- [[#Brief template (skeleton)]]
+- [[#False-root/hostname guardrail (MANDATORY every delegation)]]
+- [[#Write-back and interrupts]]
+- [[#Main-agent discipline]]
+- [[#Mechanism]]
+- [[#Worked examples]]
+- [[#Client-data boundary]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

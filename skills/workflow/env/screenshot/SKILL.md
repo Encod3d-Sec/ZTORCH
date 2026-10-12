@@ -2,6 +2,25 @@
 name: screenshot
 description: Web/PoC screenshots captured live (authed/exploited states, rendered cards) into the engagement poc/ folder and embedded in walkthrough.md. Use when building PoC evidence or asked to "take a screenshot" / "capture the PoC".
 ---
+
+## Sections
+- [[#Scope check]]
+- [[#What to capture: EVERY breakthrough, as it happens (with retries)]]
+- [[#Fastest path: `capture.sh ev` (one call, live - USE THIS by default)]]
+- [[#Rendered web page: `capture.sh web`]]
+- [[#Request/response leads: `capture.sh req`]]
+- [[#Real tmux-session cards: `capture.sh tmux`]]
+- [[#Capture (run on Kali via vm.sh)]]
+- [[#Terminal-tool + source/log capture (--term)]]
+- [[#Run scans in tmux + capture them (nmap/ffuf/nuclei live)]]
+- [[#GUI / desktop capture (scrot)]]
+- [[#Pull into the vault (Kali -> WSL, base64 over the channel)]]
+- [[#Embed in the walkthrough]]
+- [[#Evidence]]
+- [[#Lesson: capture live, not at the end]]
+- [[#Redaction (real engagements only)]]
+- [[#Output]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

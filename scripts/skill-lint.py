@@ -61,6 +61,15 @@ def lint_skill(path):
     for m in SCRIPT_CALL_RE.finditer(body):
         issues.append("%s: invoke as `bash %s` (exec bits unreliable on NTFS)"
                       % (path, m.group(0)))
+    # token posture (hermes port): the whole file loads on every fire
+    n = len(text)
+    if n > 24000:
+        issues.append("%s: oversized body (%d chars ~%d tokens on every fire); split "
+                      "into `## Sections` + references/, load slices via wiki-section.sh"
+                      % (path, n, n // 4))
+    elif n > 10000 and "## Sections" not in text:
+        issues.append("%s: %d chars with no `## Sections` index (callers cannot "
+                      "section-load; add the index)" % (path, n))
     return issues
 
 

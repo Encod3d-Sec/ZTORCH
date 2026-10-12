@@ -75,10 +75,13 @@ def parse(text):
         if closed and open_min is not None and close_min is not None:
             dur = (close_min - open_min) % 1440          # same-day wrap heuristic
         reason = (v.group(2) or "").strip(" -") if v and v.group(1) == "NOT VERIFIED" else ""
+        um = re.search(r"\| usage (\d+)t/(\d+)s", tail + " " + (rest or ""))
         lanes.append({"name": name, "closed": closed, "dur": dur,
                       "verified": bool(v and v.group(1) == "VERIFIED"),
                       "not_verified": bool(v and v.group(1) == "NOT VERIFIED"),
-                      "reason": reason, "has_open_time": open_min is not None})
+                      "reason": reason, "has_open_time": open_min is not None,
+                      "tokens": int(um.group(1)) if um else 0,
+                      "wall_s": int(um.group(2)) if um else 0})
         if closed and not v:
             missing.append("lane %s closed with no verdict cell" % name)
 
@@ -147,6 +150,10 @@ def render(st):
     if st["audit_cats"]:
         out.append("audit categories: " + ", ".join(
             "%s=%d" % kv for kv in sorted(st["audit_cats"].items())))
+    toks = sum(l["tokens"] for l in lanes if l.get("tokens"))
+    if toks:
+        out.append("lane tokens: %d recorded on usage cells (avg %d/lane)"
+                   % (toks, toks // max(1, sum(1 for l in lanes if l.get("tokens")))))
     if st["envelope_missing"]:
         out.append("lane envelope problems: %d (%s)"
                    % (len(st["envelope_missing"]), st["envelope_missing"][0]))

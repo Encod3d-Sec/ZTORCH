@@ -198,3 +198,15 @@ def test_brief_warnings_flags_captureless_success():
 def test_brief_warnings_clean():
     text = "SUCCESS = dump lands in poc/01-dump.txt\n"
     assert lv.brief_warnings(text) == []
+
+
+def test_usage_cell_parsed():
+    line = (LINE % ("laneU", "flag THM{x} present", "laneU", "")).rstrip("\n") \
+        + " | handle h1 -> VERIFIED: ok | usage 5432t/91s\n"
+    usages = lv.usages_from_text(line)
+    assert usages == [("laneU", 5432, 91)], usages
+
+
+def test_usage_cell_absent_ok():
+    line = LINE % ("laneV", "flag THM{y} present", "laneV", "") + " | handle h2 -> VERIFIED: ok"
+    assert lv.usages_from_text(line) == []

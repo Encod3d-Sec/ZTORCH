@@ -2,6 +2,25 @@
 name: hunt-core
 description: Shared discipline always loaded alongside any hunt-* skill - scope gate, confirmation gate, enum limits, stop conditions, FIND output. Trigger on "is this in scope", "is this a real bug", "how do I confirm this", "what severity". Use when any hunt-* skill fires or a scope/confirmation/severity question appears.
 ---
+
+## Sections
+- [[#Scope gate]]
+- [[#Two-account rule]]
+- [[#Confirmation gate]]
+- [[#Enumeration limits]]
+- [[#Stop conditions]]
+- [[#Published chains: exact-first]]
+- [[#Marker discipline]]
+- [[#Small tells (battery before the big read)]]
+- [[#Wiki lookup (reference-map first, qmd on a hint)]]
+- [[#Hunt approaches (which skill for the signal)]]
+- [[#Routing table (machine-readable)]]
+- [[#FIND output]]
+- [[#Distillation]]
+- [[#Validation]]
+- [[#False Positives]]
+- [[#Cross-routing]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

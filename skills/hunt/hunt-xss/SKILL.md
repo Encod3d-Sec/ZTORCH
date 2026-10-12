@@ -2,6 +2,18 @@
 name: hunt-xss
 description: XSS hunting - reflected, stored, DOM-based. Marker discipline to avoid false positives. Blind-XSS beacons for stored contexts. SVG/markdown/redirect vectors. Wiki-first, FIND schema output. Use when reflected/stored input or a DOM sink appears.
 ---
+
+## Sections
+- [[#Wiki]]
+- [[#Confirmation gate]]
+- [[#Attack Surface Signals]]
+- [[#Methodology]]
+- [[#Key Payloads]]
+- [[#Validation]]
+- [[#False Positives]]
+- [[#Cross-routing]]
+- [[#Severity]]
+
 state: active
 created: 2026-10-12
 last_used: 2026-10-12

@@ -82,3 +82,13 @@ def test_main_missing_log_fails_soft(capsys):
     with tempfile.TemporaryDirectory() as d:
         assert em.main(["--eng", d]) == 0
     assert "no log" in capsys.readouterr().out
+
+
+def test_usage_cells_total_tokens():
+    log = LOG.replace(
+        "-> VERIFIED: poc/web/nmap.txt",
+        "-> VERIFIED: poc/web/nmap.txt | usage 5000t/60s").replace(
+        "-> NOT VERIFIED: uid=33 absent from capture poc/sqli",
+        "-> NOT VERIFIED: uid=33 absent from capture poc/sqli | usage 2000t/30s")
+    out = em.render(em.parse(log))
+    assert "tokens" in out and "7000" in out, out[:400]

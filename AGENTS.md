@@ -13,6 +13,7 @@
 | Sandbox a lane locally (docker) | `bash scripts/lane-run.sh targets/<eng>/lanes/<lane>.json '<cmd>'` (hermes baseline flags, network default off; docs/port-specs/sandbox-tooling.md) |
 | Async engagement digests (default OFF) | `python3 scripts/watcher.py --eng <eng> --once` (lane VERIFIED / OOB HIT / FIND digests; Telegram via `ZT_WATCH_TELEGRAM_TOKEN`+`ZT_WATCH_CHAT_ID`, else dry); `scripts/pmonitor.py add/tick` watches background-run output for regex hits |
 | Snapshot / restore engagement state | `python3 scripts/checkpoint.py snapshot|list|restore <eng> ...` (shadow-git store, 3-fail repair ledger) |
+| Where do context tokens go? | `python3 scripts/token-audit.py` (session load, per-skill fire cost, memory budgets, turn bytes) |
 | Wrap a huge-output command (spill) | `bash scripts/spill-run.sh '<cmd>'` (over `ZT_SPILL_BYTES` inline becomes 30/30 + marker, full output lands in ingest/) |
 | Engagement retro (offline, no LLM) | `python3 scripts/eng-postmortem.py --eng <eng>` |
 | Record a reusable procedure mid-engagement | `python3 scripts/skill_manage.py create/patch` (guarded; umbrella-first); lifecycle via `scripts/curator.py` |
