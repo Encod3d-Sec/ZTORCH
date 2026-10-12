@@ -134,6 +134,10 @@ if not has("PreToolUse", "sleep-guard.py"):
     add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/sleep-guard.py", "timeout": 10}]})
     print("added PreToolUse sleep-guard")
+if not has("PreToolUse", "lane-guard.py"):
+    add("PreToolUse", {"matcher": "Bash", "hooks": [{"type": "command",
+        "command": "python3 ~/.claude/vault-hooks/lane-guard.py", "timeout": 10}]})
+    print("added PreToolUse lane-guard")
 if not has("PreToolUse", "session-guard.py"):
     add("PreToolUse", {"matcher": "Write|Edit", "hooks": [{"type": "command",
         "command": "python3 ~/.claude/vault-hooks/session-guard.py", "timeout": 10}]})

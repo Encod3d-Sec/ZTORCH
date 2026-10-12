@@ -66,6 +66,11 @@
               "type": "command",
               "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/burp-nudge.py\"",
               "timeout": 10
+            },
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/lane-guard.py\"",
+              "timeout": 10
             }
           ]
         },
