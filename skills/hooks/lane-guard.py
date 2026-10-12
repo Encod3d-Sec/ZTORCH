@@ -48,7 +48,14 @@ def normalize(cmd):
     s = _ANSI.sub(" ", cmd)
     s = unicodedata.normalize("NFKC", s)
     s = s.replace("\\\r\n", "").replace("\\\n", "")
-    return _IFS.sub(" ", s)
+    s = _IFS.sub(" ", s)
+    # quoted message spans are PROSE, not commands: git commit -m "...",
+    # echo/printf strings. None of the guarded shapes execute from inside a
+    # quoted message argument, but their names DO appear there (this hook's own
+    # commit message tripped itself). Strip both quote flavors.
+    s = re.sub(r"(-m|-mmsg|--message)\s+(\"[^\"]*\"|'[^']*')", r"\1 <msg>", s)
+    s = re.sub(r"\b(echo|printf)\s+(\"[^\"]*\"|'[^']*')", r"\1 <msg>", s)
+    return s
 
 
 def _invisible(cmd):
@@ -66,14 +73,15 @@ HARDLINE = [
     ("rm -rf on / or a system dir", re.compile(
         r"\brm\s+(?=[^|;&]*-[a-zA-Z]*[rR])(?=[^|;&]*-[a-zA-Z]*[fF])"
         r"[^|;&]*\s" + _DIR + r"/?\s*(?:[;|&]|$)", re.I)),
-    ("mkfs (filesystem format)", re.compile(r"\bmkfs(?:\.[a-z0-9]+)?\b|\bmke2fs\b", re.I)),
+    ("mkfs (filesystem format)", re.compile(
+        r"(?:sudo\s+|doas\s+)?(?:mkfs(?:\.[a-z0-9]+)?|mke2fs)\b", re.I), True),
     ("raw write to a block device (dd/redirect)", re.compile(
         r"\bdd\b[^|;&]*\bof=" + _BLK + r"|>{1,2}\s*" + _BLK, re.I)),
     ("fork bomb", re.compile(r"\(\s*\)\s*\{[^}]*\|[^}]*&[^}]*\}")),
     ("kill -1 / broad killall (all processes)", re.compile(
-        r"\bkill\b(?:\s+-\w+)*\s+-1\b|\bkillall5\b|\bkillall\b[^|;&]*\s-(?:9|kill|1)\b", re.I)),
+        r"(?:sudo\s+|doas\s+)?(?:kill(?:\s+-\w+)*\s+-1\b|killall5\b|killall\b[^|;&]*\s-(?:9|kill|1)\b)", re.I), True),
     ("shutdown/reboot/init level change", re.compile(
-        r"(?<!@)\b(?:shutdown|poweroff|halt|reboot|telinit)\b|\binit\s+[0-6]\b", re.I)),
+        r"(?:sudo\s+|doas\s+)?(?:shutdown|poweroff|halt|reboot|telinit)\b|init\s+[0-6]\b", re.I), True),
     ("chmod -R 777 on /", re.compile(
         r"\bchmod\b(?=[^|;&]*\s-[a-zA-Z-]*[rR])(?=[^|;&]*\s777\b)[^|;&]*\s/\s*(?:[;|&]|$)", re.I)),
     ("cloud metadata endpoint fetch (curl/wget)", re.compile(
@@ -137,7 +145,16 @@ def _roe_approved(cmd, d=None):
 def classify(cmd):
     """(hardline names, dangerous names) the command matches, post-normalize."""
     n = normalize(cmd)
-    hard = [name for name, rx in HARDLINE if rx.search(n)]
+    # command segments: split on separators; head-only patterns must match at a
+    # segment START (execution position) so prose mentions in quoted message
+    # spans and heredoc text do not false-deny (this hook's own commit tripped).
+    segs = [t.strip() for t in re.split(r"\|\||&&|[;|\n]", n) if t.strip()]
+    hard = []
+    for entry in HARDLINE:
+        name, rx = entry[0], entry[1]
+        head_only = entry[2] if len(entry) > 2 else False
+        if (head_only and any(rx.match(t) for t in segs)) or (not head_only and rx.search(n)):
+            hard.append(name)
     danger = [name for name, rx in DANGEROUS if rx.search(n)]
     if _invisible(cmd):
         danger.append("invisible/bidi unicode in command")

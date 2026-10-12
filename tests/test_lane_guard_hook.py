@@ -173,6 +173,32 @@ def test_non_bash_tool_ignored():
     assert rc == 0 and out == {}
 
 
+def test_quoted_message_spans_are_prose():
+    import json
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {
+        "command": 'git commit -qm "hardline denies: mkfs, kill -1, shutdown, '
+                   'fork bombs; curl|sh advises" && git push'}})
+    import subprocess, sys, os
+    r = subprocess.run([sys.executable, os.path.join(HERE, "..", "skills", "hooks", "lane-guard.py")],
+                       input=payload, capture_output=True, text=True)
+    assert r.returncode == 0
+    out = json.loads(r.stdout) if r.stdout.strip() else {}
+    assert out.get("hookSpecificOutput", {}).get("permissionDecision") != "deny", out
+
+
+def test_head_position_execution_still_denies():
+    import json
+    for cmd in ("echo hi && mkfs.ext4 /dev/sda1", "sudo kill -1", "shutdown now"):
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
+        import subprocess, sys, os, tempfile
+        iso = tempfile.mkdtemp()
+        r = subprocess.run([sys.executable, os.path.join(HERE, "..", "skills", "hooks", "lane-guard.py")],
+                           input=payload, capture_output=True, text=True,
+                           env=dict(os.environ, ENFORCE_OFF_MARKER=os.path.join(iso, "absent")))
+        out = json.loads(r.stdout) if r.stdout.strip() else {}
+        assert out.get("hookSpecificOutput", {}).get("permissionDecision") == "deny", (cmd, out)
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(list(globals().items())):
@@ -189,3 +215,16 @@ if __name__ == "__main__":
         len([n for n, f in globals().items()
              if n.startswith("test_") and callable(f)])))
     sys.exit(1 if fails else 0)
+
+
+def test_quoted_message_spans_are_prose():
+    import json
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {
+        "command": 'git commit -qm "hardline denies: mkfs, kill -1, shutdown, '
+                   'fork bombs; curl|sh advises" && git push'}})
+    import subprocess, sys, os
+    r = subprocess.run([sys.executable, os.path.join(HERE, "..", "skills", "hooks", "lane-guard.py")],
+                       input=payload, capture_output=True, text=True)
+    assert r.returncode == 0
+    out = json.loads(r.stdout) if r.stdout.strip() else {}
+    assert out.get("hookSpecificOutput", {}).get("permissionDecision") != "deny", out
