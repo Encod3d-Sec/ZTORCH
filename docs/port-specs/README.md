@@ -27,7 +27,7 @@ Goal: incorporate every hermes capability that improves this harness, as NATIVE 
 | Context manifest + injection scan | partial (skill-lint) | context manifest report in doctor | 3 |
 | PreCompact must-survive block | pre-compact.sh exists | extend with board+lane marked block | 3 |
 
-Skipped with rationale: subsystems-triage.md. Specs: memory.md, self-improvement.md, sandbox-tooling.md.
+Skipped with rationale: subsystems-triage.md. Specs: memory.md, self-improvement.md, sandbox-tooling.md, proposals-prompt-layer.md (prompt/guidance layer; proposal-stage, not yet scheduled).
 
 Each wave: implement, assert-based tests (tests/test_*.py), wiring (AGENTS.md/engage/skill-map/layout as needed), commit. Iterate until test-green.
 
