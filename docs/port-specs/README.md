@@ -48,3 +48,17 @@ Each wave: implement, assert-based tests (tests/test_*.py), wiring (AGENTS.md/en
 | watcher.py + pmonitor.py | DONE (wave 3d; default-off, env-gated Telegram, dry-mode safe) | 7 |
 
 Final full-suite sweep: 89 test files, 0 failures. All ported capabilities are DONE; skipped-with-rationale list lives in subsystems-triage.md.
+
+
+## Wave 4-5 (second harvest, 2026-10-12)
+
+| Port | State | Wave |
+|---|---|---|
+| posture 1-6: scope corrupt-deny, protected-config ask gate, atomic state writes, secret battery, trust-model doc | DONE | 4a |
+| lane mandate battery + brief template + elision marker + steer nonce | DONE | 5a |
+| spill-run + turn byte budget + STALE-EVIDENCE over-claim guard + exit vocabulary | DONE | 5b |
+| envelope.json schema + lane_validate --envelope + window_m/budget cells + lane_worktree | DONE | 5c |
+| skill-guard advisory battery + write-guard binary gate + eng-postmortem | DONE | 5d |
+
+Deferred (documented, not dropped): posture 7-8 (self-repo git-mutation guard M, harness-edit snapshot receipts M), prompt-layer P4 injection-scan hook (M), P6 pre-compact anchor index (M), delegation P2 brief quality gate (S, folds into dispatch hygiene), stale-overwrite write guard (needs Read-baseline recorder).
+Proposal docs: proposals-agent-loop.md, proposals-prompt-layer.md, proposals-delegation.md, proposals-aux-eval-guards.md, proposals-posture.md.

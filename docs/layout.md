@@ -52,7 +52,11 @@ ZTORCH/
 │                                   memory.py (two-store session memory: operator/environment, budgets, hermes store semantics),
 │                                   skill_manage.py (guarded skill authoring: 60-char desc rule, read-before-write sha, archive-only delete),
 │                                   curator.py (skill lifecycle: seed/stale 14d/archive 30d, telemetry-fed, no daemon),
-│                                   session_search.py (query/scroll/read/browse over engagement+session history, automation demoted, lineage dedup)
+│                                   session_search.py (query/scroll/read/browse over engagement+session history, automation demoted, lineage dedup),
+│                                   spill-run.sh (tool-result spill: >cap keeps 30/30 with [ZT-ELIDE] marker, full output to ingest/),
+│                                   lane_envelope.py + lane_worktree.py (envelope.json schema/validate; opt-in per-lane git worktree, proof-only prune),
+│                                   skill-guard.py (advisory agent-subversion battery over skills/, doctor check),
+│                                   eng-postmortem.py (offline engagement replay: durations, failure classes, tool tallies)
 │                                   watcher.py + pmonitor.py (engagement observability, both default-inert: digest watcher over log.md/oob.md grammar events, flock single-ticker, claim-once Telegram delivery, dry w/o env vars; watch-pattern process monitor over rolling 64KB run tails -> `watch-hit` log lines, dead-pid pruning),
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
 ├── tests/                       <- pytest suite for engagement + wiki automation
