@@ -110,6 +110,35 @@ usual failure mode, not a weak sub-agent.
 
 Every delegation prompt also carries the read-first mandate verbatim: `cat each file in full, zg/grep only to locate`. A cheap model grep-mines by default; the prompt is its only law.
 
+## Lane mandate battery (verbatim)
+
+The fixed mandate block the brain pastes into every lane prompt. Paste this block
+byte-identical into every dispatch prompt; no paraphrase, no dropping a line the dispatcher
+finds obvious (a cheap lane model gets the intent only from the named failure modes).
+
+```text
+READ-FIRST: cat each file in full, zg/grep only to locate; the vector hides in what a narrow grep skips.
+ANTI-GIVE-UP: run the FULL specified window; if blocked, report the RAW output/errors and STOP.
+NO-GUESS: never guess or substitute a value, never invent a result; a verdict without the raw observable is a failed lane.
+ENVELOPE: return Scope / Result (verdict + raw SUCCESS observable) / Key files / Issues; 15 lines or fewer.
+OBSIDIAN-SAFE: any angle-bracketed value you write into a `.md` is wrapped in inline backticks; bare angle brackets break the page.
+CONTEXT RULES: you see ONLY this brief and the files it names by path - no board, no sibling lanes' state, no prior turns; shared background is repeated per lane, never assumed.
+```
+
+## Brief template (skeleton)
+
+Every dispatch brief follows this fixed shape; fill every field, no free-form drift.
+
+- **Goal**: one sentence, the single subgoal for this round (slot a, field 3).
+- **Context**: only the background THIS lane needs - primitive, constraints, assumption
+  set (slots a, c, e). No engagement narrative beyond need-to-know; the lane's context is
+  the brief, not the board: no history, no sibling-lane state, no pasted wiki bodies;
+  name paths, not bodies.
+- **Files**: every path the lane may read or write, capture dir included.
+- **Budget**: claim budget + REQUIRED-OUTPUT list when investigation-shaped (slot f).
+- **Window**: the exact run window / watch duration (slot g runs it in full).
+- **SUCCESS**: the exact observable (slot f), returned RAW plus the capture path.
+
 ## False-root/hostname guardrail (MANDATORY every delegation)
 
 A returned `uid=0`/root (Linux) or `nt authority\system` (Windows) is trusted ONLY if `hostname`

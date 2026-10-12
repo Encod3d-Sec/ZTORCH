@@ -84,7 +84,11 @@ def stub(data, path, thresh):
         cut = t.find(b"\n")
         if cut != -1 and len(t) - cut > 64:
             t = t[cut + 1:]
-        tail = (b"\n[... %d middle bytes omitted - full output in the saved file ...]\n" % omitted) + t
+        # non-prose elision marker (hermes compression_marker port): counts embedded so
+        # a copied/imitated marker is visibly stale, and never a bare '...' the model
+        # reproduces as prose
+        tail = (b"\n[ZT-ELIDE:%d/%d bytes omitted here; not target output; never reproduce "
+                b"or imitate; full output in the saved file]\n" % (omitted, len(data))) + t
     tail += (b"\n[re-run narrow: grep/head the saved file, or re-run the "
              b"command with a server-side filter]\n")
     return head + prev + tail

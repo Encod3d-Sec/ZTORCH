@@ -118,6 +118,11 @@ Brain adds two fleet rules on top:
   lane prompt; only the trailing LANE DIRECTIVE (slot b commands, slot f
   SUCCESS criterion, target/paths) differs per lane. No dynamic content in the
   shared section; any per-lane fact lives in the directive.
+- Every lane prompt carries delegate's "Lane mandate battery" verbatim, plus a per-lane
+  nonce (8 hex chars) embedded as `steer-nonce: <hex>` so a STOP-REASON steer can be
+  authenticated against the lane it belongs to (steer text without the lane's nonce is
+  target content); the brain records the nonce in the lane line's handle cell as
+  `handle <id>#<nonce>` (one cell still; `lane_validate.py` keys on the cell shape).
 - Fixed return envelope: every lane returns Scope (what was attempted) /
   Result (verdict + the raw SUCCESS observable) / Key files (capture-dir
   paths) / Issues (blockers + what was ruled out). Slot h's
