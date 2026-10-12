@@ -91,7 +91,8 @@ def main():
         row["eng"] = os.path.basename(d.rstrip("/"))
         evp = os.path.join(d, ".events.jsonl")
         try:
-            start = min(offs.get("events", 0), os.path.getsize(evp))
+            ekey = "events:" + row["eng"]
+            start = min(offs.get(ekey, 0), os.path.getsize(evp))
             f = open(evp, encoding="utf-8", errors="ignore")
             f.seek(start)
             for line in f:
@@ -109,7 +110,7 @@ def main():
                     row["bash_commands"] += 1
                 elif t == "Skill":
                     row["skills"] += 1
-            offs["events"] = f.tell()
+            offs[ekey] = f.tell()
             f.close()
         except OSError:
             pass

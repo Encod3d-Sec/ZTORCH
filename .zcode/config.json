@@ -20,6 +20,15 @@
               "timeout": 30
             }
           ]
+        },
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/skills/hooks/cost-snap.py\"",
+              "timeout": 15
+            }
+          ]
         }
       ],
       "UserPromptSubmit": [

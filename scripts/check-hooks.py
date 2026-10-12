@@ -58,6 +58,7 @@ EXPECTED_HOOKS = [
     ("PreCompact", "pre-compact.sh"),
     ("Stop", "close-out.py"),
     ("Stop", "cost-snap.py"),
+    ("SessionStart", "cost-snap.py"),
 ]
 
 
