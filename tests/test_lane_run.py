@@ -116,10 +116,13 @@ def test_unknown_keys_warn_not_fail():
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             cfg, argv = _plan(tmp, '{"tools": ["nmap"], "writes": ["/eng/**"],'
-                                   ' "budget": {"max_iters": 250}, "banana": 1}')
+                                   ' "banana": 1}')
         assert cfg["timeout_s"] == 600 and argv[-1] == "kalilinux/kali-rolling"
-        for key in ("tools", "writes", "budget", "banana"):
+        for key in ("tools", "writes", "banana"):
             assert "warning: unknown manifest key '%s'" % key in err.getvalue()
+        # window_m/budget are KNOWN advisory cells (P4): parsed, never warned
+        assert "unknown manifest key 'window_m'" not in err.getvalue()
+        assert "unknown manifest key 'budget'" not in err.getvalue()
 
 
 def test_mounts_parsed_and_unsafe_refused():
@@ -161,7 +164,33 @@ def test_cli_plan_format():
         assert r.returncode == 0
         lines = r.stdout.splitlines()
         assert lines[0] == "timeout=45" and lines[1] == "envs=FOO"
-        assert lines[2] == "--cap-drop" and lines[-1] == "img:1"
+        assert lines[2] == "window_m=45" and lines[3] == "budget=250,2"
+        assert lines[4] == "--cap-drop" and lines[-1] == "img:1"
+
+
+def test_plan_advisory_cells_never_reach_docker_argv():
+    """P4: window_m/budget plan lines are brain-side advice; the runner parser
+    must swallow them (a stray line landing in ARGS would reach `docker run`)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        eng = Path(tmp)
+        stub = eng / "docker-stub.sh"
+        argsfile = eng / "stub-args.txt"
+        stub.write_text("#!/usr/bin/env bash\n"
+                        '[ "$1" = "info" ] && exit 0\n'
+                        'printf "%%s\\n" "$@" > "%s"\n'
+                        "exit 0\n" % argsfile)
+        stub.chmod(0o755)
+        m = eng / "lane.json"
+        m.write_text('{"timeout_s": 60, "window_m": 9, '
+                     '"budget": {"max_iters": 7, "child_max": 1}}\n')
+        r = subprocess.run(["bash", str(LANE_RUN), str(m), "id"], cwd=eng,
+                           capture_output=True, text=True,
+                           env=dict(os.environ, DOCKER_BIN=str(stub)))
+        assert r.returncode == 0, r.stderr
+        got = argsfile.read_text().splitlines()
+        assert got[0] == "run"
+        assert "window_m=9" not in got and "budget=7,1" not in got
+        assert got[-1] == "id" and "kalilinux/kali-rolling" in got
 
 
 def test_usage_no_args():

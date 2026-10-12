@@ -42,6 +42,10 @@ while IFS= read -r line; do
   case "$line" in
     timeout=*) TIMEOUT_S="${line#timeout=}" ;;
     envs=*) IFS=',' read -r -a ENVS <<<"${line#envs=}" ;;
+    # advisory P4 cells (per-lane window + budget): consumed by the brain, never
+    # docker argv - swallowed here so they cannot reach `docker run`
+    window_m=*) ;;
+    budget=*) ;;
     *) ARGS+=("$line") ;;
   esac
 done <"$PLAN"

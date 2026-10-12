@@ -136,12 +136,16 @@ def fresh_lane_open(d, max_min=45):
     return False
 
 
-def _search(dirpath, needle):
-    """True when needle appears in any file under dirpath (recursive, fail-open False)."""
+def _search(dirpath, needle, skip=None):
+    """True when needle appears in any file under dirpath (recursive, fail-open
+    False). skip: a filename to ignore (the envelope cross-check must not be
+    satisfied by envelope.json itself)."""
     if not os.path.isdir(dirpath):
         return False
     for root, _dirs, files in os.walk(dirpath):
         for f in files:
+            if skip and f == skip:
+                continue
             p = os.path.join(root, f)
             try:
                 if os.path.getsize(p) > _MAX_FILE:
@@ -230,7 +234,10 @@ def envelope_report(base, text):
                   % (name, path, "; ".join(errs)))
             continue
         obs_raw = data.get("result", {}).get("success_observable_raw", "")
-        if has_checkable(obs_raw) and not criterion_met(capdir, obs_raw):
+        # cross-check the RAW observable against the capture, ignoring
+        # envelope.json itself (it always contains its own observable)
+        if has_checkable(obs_raw) and not criterion_met(capdir, obs_raw,
+                                                        skip="envelope.json"):
             print("lane %s: ENVELOPE VALID (%s) - advisory: success_observable_raw "
                   "tokens not found in the capture, verify by eye" % (name, path))
         else:
@@ -304,18 +311,19 @@ def stale_evidence(capdir, obs, tail, now=None):
         return []
 
 
-def criterion_met(cap, obs):
+def criterion_met(cap, obs, skip=None):
     """True when every CHECKABLE token of the criterion verifies in the capture:
     backtick literals and structural tokens as substrings, named files as existing
     non-empty captures. The delegate skill teaches compound criteria (`hostname` = x
     AND `id` = y); those split on AND, and each fragment's checkable tokens must all
-    be present."""
+    be present. skip: filename ignored by the substring search (envelope mode
+    passes envelope.json so the observable must appear in the RAW captures)."""
     for frag in obs.split(" AND "):
         for kind, tok in _checkable_lits(frag):
             if kind == "file":
                 if not _file_present(cap, tok):
                     return False
-            elif not _search(cap, tok):
+            elif not _search(cap, tok, skip):
                 return False
     return True
 

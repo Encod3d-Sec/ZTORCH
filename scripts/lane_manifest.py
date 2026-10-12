@@ -5,9 +5,11 @@ Spec: docs/port-specs/sandbox-tooling.md (native ZTORCH port). Hard refusals
 blocklisted or malformed env names, malformed or sandbox-breaking mounts (host
 /etc, /boot, docker.sock), non-positive timeout_s, and unknown keys that look
 like docker-arg injection (network config fails closed). Unknown benign keys
-(tools/writes/budget are dispatch-side) warn to stderr only. stdout: a
-line-delimited execution plan ("timeout=N", "envs=A,B", then the `docker run`
-argv elements, image last); stderr: warnings and errors.
+(tools/writes are dispatch-side) warn to stderr only; window_m/budget (P4
+advisory cells) validate warn-not-fail and print as plan lines the runner
+skips. stdout: a line-delimited execution plan ("timeout=N", "envs=A,B",
+"window_m=M", "budget=max_iters,child_max", then the `docker run` argv
+elements, image last); stderr: warnings and errors.
 """
 import json
 import os
@@ -17,6 +19,9 @@ from pathlib import Path
 
 DEFAULT_IMAGE = "kalilinux/kali-rolling"  # tool-heavy lanes build/pull their own
 DEFAULT_TIMEOUT_S = 600
+DEFAULT_WINDOW_M = 45                     # P4 per-lane expected window (minutes)
+DEFAULT_MAX_ITERS = 250                   # P4 budget cells (advisory, brain-side)
+DEFAULT_CHILD_MAX = 2
 
 # hermes local_env_policy blocklist (static tier): inference keys, messaging
 # tokens, CI/cloud tokens, dashboard secrets; AUXILIARY_*_API_KEY dynamic shape.
@@ -29,7 +34,7 @@ _ENV_PREFIXES = ("OPENAI_", "ANTHROPIC_", "GOOGLE_", "GEMINI_", "XAI_", "GROQ_",
 _ENV_EXACT = {"GH_TOKEN", "DASHBOARD_SECRET", "HERMES_DASHBOARD_SECRET"}
 _ENV_SHAPE = re.compile(r"AUXILIARY_.*_API_KEY\Z")
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
-_KNOWN = ("image", "network", "mounts", "env", "timeout_s")
+_KNOWN = ("image", "network", "mounts", "env", "timeout_s", "window_m", "budget")
 _UNSAFE_KEY = re.compile(r"docker|network|args", re.I)
 
 
@@ -110,8 +115,35 @@ def validate(m):
     if isinstance(timeout_s, bool) or not isinstance(timeout_s, int) or timeout_s <= 0:
         raise ManifestError("timeout_s must be a positive integer")
 
+    # P4 advisory cells (docs/port-specs/proposals-delegation.md): the lane's
+    # expected window (minutes; brain ages + 80% wrap-up nudge off it) and its
+    # iteration budget. The runner ignores both; they are plan lines for the
+    # brain. Bad types WARN and fall back to the default - never fail a lane
+    # over an advisory cell.
+    window_m = m.get("window_m", DEFAULT_WINDOW_M)
+    if isinstance(window_m, bool) or not isinstance(window_m, int):
+        print("lane_manifest: warning: window_m must be an int (minutes); "
+              "using default %d" % DEFAULT_WINDOW_M, file=sys.stderr)
+        window_m = DEFAULT_WINDOW_M
+    budget = m.get("budget", {})
+    if not isinstance(budget, dict):
+        print("lane_manifest: warning: budget must be an object "
+              "{max_iters, child_max}; using defaults", file=sys.stderr)
+        budget = {}
+    max_iters = budget.get("max_iters", DEFAULT_MAX_ITERS)
+    child_max = budget.get("child_max", DEFAULT_CHILD_MAX)
+    for k, v in (("max_iters", max_iters), ("child_max", child_max)):
+        if isinstance(v, bool) or not isinstance(v, int):
+            print("lane_manifest: warning: budget.%s must be an int; "
+                  "using default" % k, file=sys.stderr)
+            if k == "max_iters":
+                max_iters = DEFAULT_MAX_ITERS
+            else:
+                child_max = DEFAULT_CHILD_MAX
+
     return {"image": image, "network": network, "mounts": [str(x) for x in mounts],
-            "env": names, "timeout_s": timeout_s}
+            "env": names, "timeout_s": timeout_s, "window_m": window_m,
+            "budget": {"max_iters": max_iters, "child_max": child_max}}
 
 
 def build_argv(cfg, cwd, wiki):
@@ -157,6 +189,10 @@ def main(argv):
     # ponytail: line-delimited plan; manifest paths containing newlines unsupported
     print("timeout=%d" % cfg["timeout_s"])
     print("envs=%s" % ",".join(cfg["env"]))
+    # advisory plan cells (P4): lane-run.sh's parser skips them; the brain reads
+    # them for window aging, the 80% wrap-up nudge, and iteration budgeting
+    print("window_m=%d" % cfg["window_m"])
+    print("budget=%d,%d" % (cfg["budget"]["max_iters"], cfg["budget"]["child_max"]))
     for a in plan:
         print(a)
     return 0

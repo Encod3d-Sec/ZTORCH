@@ -193,6 +193,16 @@ New engagements OPEN in brain posture from move 0 (operator directive 2026-10-06
 single-agent `Skill(offensive)` execution is the fallback when the board holds
 fewer than 2 genuinely disjoint rows (one asset, one vector), not the default.
 
+## Envelope + worktree hygiene (hermes delegation port)
+
+ENVELOPE-MISSING/INVALID never discards the run and never flips the log verdict:
+re-prompt the SAME handle once with the validator reasons verbatim; a second miss
+files the lane NOT VERIFIED with the raw capture kept. Code-editing lanes get
+opt-in isolation via `scripts/lane_worktree.py create <lane> --src <repo>` (run
+from the engagement dir); the brain reviews and merges, then prunes. Manifest
+advisory cells `window_m` (minutes) and `budget {max_iters, child_max}` print as
+plan lines: age the lane against `window_m` and send one wrap-up steer at ~80%.
+
 ## Failure handling
 
 - Subagent stalls or dies: stop it, ONE re-dispatch with a tightened checklist,
