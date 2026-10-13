@@ -112,3 +112,24 @@ if __name__ == "__main__":
         fn()
         print(f"ok {fn.__name__}")
     print(f"{len(fns)} passed")
+
+
+def test_bogus_path_facts_dropped_real_ones_kept():
+    with tempfile.TemporaryDirectory() as tmp:
+        real = os.path.join(tmp, "go", "bin")
+        os.makedirs(real)
+        mr = load(tmp)
+        t = fixture(tmp)
+        canned = os.path.join(tmp, "resp.json")
+        open(canned, "w").write(json.dumps({
+            "ops": [
+                {"store": "environment", "new": "httpx lives at %s/httpx" % real},
+                {"store": "environment", "new": "nmap lives at /definitely/not/here/nmap"},
+                {"store": "operator", "new": "no paths in this fact at all"}],
+            "skills": [], "note": ""}))
+        out = mr.review(t, response_file=canned, write=True)
+        mem = open(os.path.join(tmp, "session", "memory.md")).read()
+        assert "go/bin/httpx" in mem
+        assert "/definitely/not/here" not in mem
+        assert "no paths in this fact" in mem
+        assert out["written"] == 2 and out["dropped_unverified"] == 1

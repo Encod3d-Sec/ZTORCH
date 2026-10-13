@@ -33,6 +33,7 @@ MAX_MSGS = 30            # verbatim tail turns (hermes routed-path keeps 24)
 MAX_CHARS = 24000        # hard input cap for the flash call
 MAX_OPS = 5
 FACT_MAX = 400           # chars per fact
+_PATH_RE = re.compile(r"(?<![\w.-])/(?:[A-Za-z0-9._@+-]+/)*[A-Za-z0-9._@+-]+")
 
 ROUTING_BLOCK = """TWO distinct stores - pick the right one for each fact:
   - Operator (who the user is): persona, preferences, communication and work style, personal details they revealed, and expectations about how you should behave.
@@ -179,6 +180,18 @@ def review(transcript, response_file=None, write=True, dry_run=False):
     spec.loader.exec_module(mem)
     mem.VAULT = VAULT
     mem.MEMFILE = os.path.join(VAULT, "session", "memory.md")  # module binds it at import
+    def _verified(o):
+        """Path-like facts must reference at least one path that exists on disk."""
+        paths = [p for p in _PATH_RE.findall(o["new"]) if not p.startswith(("/proc", "/dev", "/sys"))]
+        if not paths:
+            return True
+        # the exact file may be named from memory; its parent dir existing is
+        # strong enough proof the location is real
+        return any(os.path.exists(p) or os.path.isdir(os.path.dirname(p)) for p in paths)
+
+    kept = [o for o in ops if _verified(o)]
+    out["dropped_unverified"] = len(ops) - len(kept)
+    ops = kept
     stores, _ = mem.parse()
     msgs = []
     for o in ops:
