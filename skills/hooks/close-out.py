@@ -213,6 +213,9 @@ def _ponytail_debt_nudge(vault):
 
 
 
+_PAYLOAD = {}
+
+
 def _memory_nudge(vault):
     """Every 10 user turns without a memory write, nudge the two-store routing
     (hermes memory port; see scripts/memory.py). Advisory, fail-open."""
@@ -236,6 +239,20 @@ def _memory_nudge(vault):
     open(counter, "w").write("0")
     if fresh:
         return
+    # hermes rule: the review is a separate process with its own LLM pass -
+    # the model cannot ignore it (v1's printed nudge was ignorable and failed)
+    import subprocess, shutil as _sh
+    d = _PAYLOAD
+    tp = d.get("transcript_path") or ""
+    sid = d.get("session_id") or ""
+    mr = os.path.join(vault, "scripts", "memory-review.py")
+    if tp and os.path.isfile(mr):
+        r = subprocess.run([sys.executable, mr, "--transcript", tp, "--session", sid],
+                           capture_output=True, text=True, timeout=120)
+        line = (r.stdout or r.stderr or "").strip().splitlines()
+        if line:
+            print(line[-1][:200])
+        return
     print("Memory nudge (10 turns, UNANSWERED): the saving discipline failed this "
           "window - do it NOW, do not defer: re-scan the last 10 turns for durable facts "
           "(user corrections/preferences -> operator; tool quirks/env gotchas -> "
@@ -249,6 +266,11 @@ def _memory_nudge(vault):
 
 
 def main():
+    global _PAYLOAD
+    try:
+        _PAYLOAD = json.loads(sys.stdin.read() or "{}") or {}
+    except Exception:
+        _PAYLOAD = {}
     try:
         _v = os.path.abspath(os.path.join(HERE, "..", ".."))
         _memory_nudge(_v)

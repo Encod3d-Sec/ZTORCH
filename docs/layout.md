@@ -50,6 +50,7 @@ ZTORCH/
 │                                   lane-run.sh + lane_manifest.py (docker-wrapped lane execution: hermes-baseline container flags, manifest validation, network fail-closed, tee to `ingest/lane-<ts>.out`),
 │                                   playbook.json
 │                                   memory.py (two-store session memory: operator/environment, budgets, hermes store semantics),
+│                                   memory-review.py (hermes background reviewer: transcript tail -> flash-model two-store extraction -> memory.py writes; Stop-hook fired),
 │                                   skill_manage.py (guarded skill authoring: 60-char desc rule, read-before-write sha, archive-only delete),
 │                                   curator.py (skill lifecycle: seed/stale 14d/archive 30d, telemetry-fed, no daemon),
 │                                   session_search.py (query/scroll/read/browse over engagement+session history, automation demoted, lineage dedup),

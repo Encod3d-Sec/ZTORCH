@@ -9,7 +9,7 @@
 | Query | `qmd_query "..."` via `wiki-search` MCP -> read results -> synthesise |
 | Ingest skip check | Read frontmatter only; skip page if ingest slug already in `sources:` |
 | Re-index / wiki status | `wiki` skill |
-| Session memory / search history | `python3 scripts/memory.py view` (two stores, budgets); `python3 scripts/session_search.py query '<text>'` over engagement+session logs |
+| Session memory / search history | `python3 scripts/memory.py view` (two stores, budgets); `python3 scripts/session_search.py query '<text>'` over engagement+session logs. AUTO-review: the Stop hook fires `scripts/memory-review.py` every 10 turns (separate flash-model pass reads the transcript tail and writes facts itself; skill ideas queued to `session/skill-ideas.md`) |
 | Sandbox a lane locally (docker) | `bash scripts/lane-run.sh targets/<eng>/lanes/<lane>.json '<cmd>'` (hermes baseline flags, network default off; docs/port-specs/sandbox-tooling.md) |
 | Async engagement digests (default OFF) | `python3 scripts/watcher.py --eng <eng> --once` (lane VERIFIED / OOB HIT / FIND digests; Telegram via `ZT_WATCH_TELEGRAM_TOKEN`+`ZT_WATCH_CHAT_ID`, else dry); `scripts/pmonitor.py add/tick` watches background-run output for regex hits |
 | Snapshot / restore engagement state | `python3 scripts/checkpoint.py snapshot|list|restore <eng> ...` (shadow-git store, 3-fail repair ledger) |
