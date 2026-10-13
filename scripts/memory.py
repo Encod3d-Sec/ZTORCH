@@ -76,7 +76,10 @@ def parse(path=None):
             continue
         if cur is None:
             pre.append(ln)
-        elif ln.startswith("- ") and ln[2:].strip():
+        elif ln.startswith("- ") and ln[2:].strip() and ln[2:].strip() != "(empty)":
+            # "(empty)" is a render placeholder from the old seeding, never a fact:
+            # adopted as an entry it counted toward budget and defeated the
+            # batch-may-not-empty guard
             stores[cur].append(ln[2:].strip())
     return {k: v for k, v in stores.items() if k in SECTIONS}, pre
 
@@ -88,7 +91,9 @@ def render(stores):
         used = sum(len(e) + 1 for e in stores.get(key, []))
         pct = 100 * used // LIMITS[key] if LIMITS[key] else 0
         out.append(f"<!-- [{pct}% - {used}/{LIMITS[key]} chars] -->")
-        out += [f"- {e}" for e in stores.get(key, [])] or ["- (empty)"]
+        out += [f"- {e}" for e in stores.get(key, [])]
+        if not stores.get(key):
+            out.append("<!-- (empty) -->")  # HTML comment: parse must not adopt it
         out.append("")
     return "\n".join(out) + "\n"
 
@@ -145,7 +150,10 @@ def op_remove(stores, op):
     key, old = op["store"], op["old"]
     matches, closest = find(stores, key, old)
     if not matches:
-        raise ValueError("no match; closest entries: " + "; ".join(closest) if closest else "no match (store empty)")
+        if not stores[key]:
+            raise ValueError("no match (store is empty)")
+        raise ValueError("no match; closest entries: " + "; ".join(closest)
+                         if closest else "no match (nothing similar)")
     if len(matches) > 1:
         raise ValueError("ambiguous, matches:\n  " + "\n  ".join(matches))
     stores[key].remove(matches[0])
@@ -167,7 +175,8 @@ def apply_ops(stores, ops, batch=False):
         if u > LIMITS[key]:
             raise ValueError(
                 f"{key} over budget ({u}/{LIMITS[key]}): retry as ONE batch that "
-                "removes or shortens stale entries AND adds the new one")
+                "removes or shortens stale entries AND adds the new one; "
+                "current entries:\n  " + "\n  ".join(f"- {e}" for e in stores[key]))
         if batch and not stores[key]:
             raise ValueError(f"batch may not empty the {key} store")
     return msgs
@@ -178,7 +187,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("view"); v.add_argument("--store", choices=SECTIONS)
     sub.add_parser("check")
-    a = sub.add_parser("add"); a.add_argument("--store", required=True, choices=SECTIONS); a.add_argument("new")
+    a = sub.add_parser("add"); a.add_argument("--store", required=True, choices=SECTIONS)
+    a.add_argument("new", nargs="?"); a.add_argument("--text")  # callers guess --text; accept both
     r = sub.add_parser("replace"); r.add_argument("--store", required=True, choices=SECTIONS)
     r.add_argument("--old", required=True); r.add_argument("--new", required=True)
     rm = sub.add_parser("remove"); rm.add_argument("--store", required=True, choices=SECTIONS); rm.add_argument("--old", required=True)
@@ -215,6 +225,9 @@ def main():
                 return 2
 
     if args.cmd == "add":
+        args.new = args.new or args.text
+        if not args.new:
+            ap.error('add needs the fact: add --store S "fact" (or --text "fact")')
         ops = [{"op": "add", "store": args.store, "new": args.new}]
     elif args.cmd == "replace":
         ops = [{"op": "replace", "store": args.store, "old": args.old, "new": args.new}]
@@ -230,6 +243,10 @@ def main():
         return 1
     hits = threat_scan(json.dumps(ops))
     atomic_write(render(stores))
+    try:  # P1: explicit save resets the 10-turn reviewer cadence (hermes tool_executor rule)
+        open(os.path.join(VAULT, "session", ".memory-turns"), "w").write("0")
+    except OSError:
+        pass
     for m in msgs:
         print(m)
     for h in hits:

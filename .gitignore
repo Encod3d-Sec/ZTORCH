@@ -68,3 +68,7 @@ Thumbs.db
 .worktrees/
 .zcode/skills/
 .zcode/win-seat
+
+# runtime skill-tool state (locks, append-only probe/audit ledger)
+skills/.locks/
+skills/.skill-ledger.jsonl

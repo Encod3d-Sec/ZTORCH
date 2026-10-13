@@ -21,11 +21,13 @@ Usage (normally fired by the close-out Stop hook every 10 turns):
                     [--response-file <canned.json>]   # test mode, no gateway
 """
 import argparse
+import fcntl
 import importlib.util
 import json
 import os
 import re
 import sys
+import time
 import urllib.request
 
 VAULT = os.environ.get("ZT_COST_VAULT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -205,13 +207,30 @@ def review(transcript, response_file=None, write=True, dry_run=False):
             return {"written": 0, "error": "over budget after ops; needs consolidation (brain-side)"}
     if write and not dry_run and out["written"]:
         mem.atomic_write(mem.render(stores))
-    if out["skills"]:
+    if out["skills"] and write and not dry_run:  # dry-run writes NOTHING, ideas included
         ideas = os.path.join(VAULT, "session", "skill-ideas.md")
         with open(ideas, "a", encoding="utf-8") as f:
             for s in out["skills"]:
                 f.write("- %s (queued by memory-review %s)\n"
                         % (s, __import__("time").strftime("%Y-%m-%d")))
     return out
+
+
+def _fails(delta=None):
+    """P4: consecutive-failure streak; 3 stands the reviewer down for this cycle."""
+    p = os.path.join(VAULT, "session", ".memory-review-fails")
+    try:
+        n = int(open(p).read().strip() or 0)
+    except OSError:
+        n = 0
+    if delta is None:
+        return n
+    n = max(0, n + delta)
+    try:
+        open(p, "w").write(str(n))
+    except OSError:
+        pass
+    return n
 
 
 def main():
@@ -221,6 +240,17 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--response-file")
     args = ap.parse_args()
+    # P3: single-flight - one review per session, a concurrent spawn coalesces away
+    lock = open(os.path.join(VAULT, "session", ".memory-review.lock"), "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("memory-review: skipped (another review is already running)")
+        return 0
+    if _fails() >= 3:
+        print("memory-review: stood down after 3 consecutive failures; "
+              "re-arms on the next 10-turn cycle", file=sys.stderr)
+        return 0
     t = args.transcript
     if not t and args.session:
         p = os.path.expanduser("~/.claude/projects/-home-zerodaygym-tools-ZTORCH")
@@ -231,10 +261,21 @@ def main():
         return 0
     out = review(t, response_file=args.response_file, dry_run=args.dry_run)
     if out.get("error"):
+        if _fails(1) >= 3:
+            print("memory-review: skipped (%s); STOOD DOWN after 3 consecutive "
+                  "failures - re-arms next cycle" % out["error"], file=sys.stderr)
+            return 0
+    elif out.get("written") or out.get("nothing_to_save") or out.get("duplicates"):
+        _fails(-99)  # any healthy outcome resets the streak
+    if out.get("error"):
         print("memory-review: skipped (%s)" % out["error"], file=sys.stderr)
     elif out.get("written"):
-        print("memory-review: wrote %d fact(s) to memory%s"
-              % (out["written"], "; skill ideas queued" if out.get("skills") else ""))
+        if args.dry_run:
+            print("memory-review (dry-run): would write %d fact(s)%s"
+                  % (out["written"], "; would queue skill ideas" if out.get("skills") else ""))
+        else:
+            print("memory-review: wrote %d fact(s) to memory%s"
+                  % (out["written"], "; skill ideas queued" if out.get("skills") else ""))
     elif out.get("duplicates"):
         print("memory-review: %d fact(s) already known, nothing new" % out["duplicates"])
     else:

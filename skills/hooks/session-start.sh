@@ -68,7 +68,7 @@ fi
 # Both fail open - a missing memory file is seeded once, never fatal.
 MEM="$VAULT/session/memory.md"
 if [ ! -f "$MEM" ]; then
-  printf '# Session memory (two stores; see scripts/memory.py)\n\n## Operator\n- (empty)\n\n## Environment\n- (empty)\n' > "$MEM" 2>/dev/null || true
+  printf '# Session memory (two stores; see scripts/memory.py)\n\n## Operator\n<!-- 0%% - 0/1375 chars -->\n<!-- (empty) -->\n\n## Environment\n<!-- 0%% - 0/2200 chars -->\n<!-- (empty) -->\n' > "$MEM" 2>/dev/null || true
 fi
 if [ -f "$MEM" ]; then
   sed -n '/^## Operator$/,$p' "$MEM" 2>/dev/null | head -40 || true

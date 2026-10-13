@@ -139,6 +139,9 @@ def main():
         if len(body) > MAX_BODY:
             print(f"REFUSED: body > {MAX_BODY} chars", file=sys.stderr)
             return 1
+        if len(body) > 24000:
+            print(f"ADVISORY: body {len(body)} chars is OVERSIZED (>24000; whole file loads on "
+                  "every fire - distill, move detail to references/)", file=sys.stderr)
         parent = os.path.join(SKILLS, args.category) if args.category else SKILLS
         if not os.path.isdir(parent) or os.path.commonpath([parent, SKILLS]) != SKILLS:
             print("REFUSED: --category must be an existing dir under skills/", file=sys.stderr)
@@ -177,6 +180,18 @@ def main():
             if len(new_txt) > MAX_BODY:
                 print("REFUSED: patched body exceeds size cap", file=sys.stderr)
                 return 1
+            m2 = re.match(r"^---\n(.*?)\n---\n", new_txt, re.S)  # P5: re-validate the routing signal
+            if m2:
+                for ln in m2.group(1).splitlines():
+                    if ln.startswith("description:"):
+                        d = ln.split(":", 1)[1].strip()
+                        if len(d) > DESC_LIMIT:
+                            print(f"REFUSED: patch grows description past {DESC_LIMIT} chars "
+                                  f"({len(d)}); the routing signal truncates", file=sys.stderr)
+                            return 1
+            if len(new_txt) > 24000:
+                print(f"ADVISORY: patched body {len(new_txt)} chars is OVERSIZED (>24000; "
+                      "distill, move detail to references/)", file=sys.stderr)
             before = actual
             write_atomic(path, new_txt)
             ledger("patch", args.name, {"sha_before": before, "sha_after": sha(path)})

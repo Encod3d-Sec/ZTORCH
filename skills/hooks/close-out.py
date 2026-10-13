@@ -13,6 +13,7 @@ invoked). Advisory + fail-open: never blocks the Stop, prints nothing on any
 error, and self-clears the moment the walkthrough is assembled and Skill(learn) writes
 .learn-done.
 """
+import json
 import os
 import sys
 
@@ -70,7 +71,6 @@ def inflight_signals(d):
     except Exception:
         pass
     try:                                       # served move with no disposition
-        import json
         lm = (json.loads(open(os.path.join(d, ".offensive.json"),
                               encoding="utf-8", errors="ignore").read())
               .get("last_move") or {})
@@ -247,11 +247,19 @@ def _memory_nudge(vault):
     sid = d.get("session_id") or ""
     mr = os.path.join(vault, "scripts", "memory-review.py")
     if tp and os.path.isfile(mr):
-        r = subprocess.run([sys.executable, mr, "--transcript", tp, "--session", sid],
-                           capture_output=True, text=True, timeout=120)
-        line = (r.stdout or r.stderr or "").strip().splitlines()
-        if line:
-            print(line[-1][:200])
+        # Detached: the flash-model review runs 30-90s, far past the Stop hook's
+        # 10s budget - the synchronous timeout=120 run here was always killed
+        # mid-review. The reviewer is a local process (no SSH bridge), so
+        # start_new_session survives the hook; its one-line verdict lands in
+        # session/.memory-review.log.
+        log = open(os.path.join(vault, "session", ".memory-review.log"), "a")
+        try:
+            subprocess.Popen([sys.executable, mr, "--transcript", tp, "--session", sid],
+                             stdout=log, stderr=log, stdin=subprocess.DEVNULL,
+                             start_new_session=True)
+        finally:
+            log.close()
+        print("memory-review: spawned (detached; verdict in session/.memory-review.log)")
         return
     print("Memory nudge (10 turns, UNANSWERED): the saving discipline failed this "
           "window - do it NOW, do not defer: re-scan the last 10 turns for durable facts "
@@ -564,7 +572,6 @@ def main():
     # with zero signal. Cheap existence-grade gates only (find-lint/redaction stay in the
     # skills): triage = a FIND in Vulns/Completed/; evidence = poc/ non-empty.
     try:
-        import json
         _et = (json.load(open(os.path.join(d, ".offensive.json"),
                               encoding="utf-8")).get("type") or "")
         if _et in ("pentest", "bugbounty"):

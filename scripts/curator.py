@@ -33,6 +33,28 @@ sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
 STATE = os.path.join(SKILLS, ".curator-state.json")
 LEDGER = os.path.join(SKILLS, ".skill-ledger.jsonl")
 INTERVAL_DAYS, STALE_DAYS, ARCHIVE_DAYS = 7, 14, 30
+BACKUP_DIR = os.path.join(SKILLS, ".curator-backups")
+
+
+def backup_skills():
+    """P7: tar.gz snapshot before any mutating pass (hermes curator_backup port);
+    keep 2, exclude .git/.archive/.locks/backups so the tar stays small."""
+    import tarfile
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    out = os.path.join(BACKUP_DIR, time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + ".tar.gz")
+    with tarfile.open(out, "w:gz") as t:
+        for root, dirs, files in os.walk(SKILLS):
+            dirs[:] = [d for d in dirs if d not in
+                       (".git", ".archive", ".locks", "__pycache__", ".curator-backups")]
+            for f in files:
+                if f.endswith(".lock"):
+                    continue
+                p = os.path.join(root, f)
+                t.add(p, arcname=os.path.relpath(p, SKILLS))
+    olds = sorted(x for x in os.listdir(BACKUP_DIR) if x.endswith(".tar.gz"))
+    for o in olds[:-2]:
+        os.unlink(os.path.join(BACKUP_DIR, o))
+    return out
 
 
 def days_since(iso):
@@ -123,6 +145,8 @@ def main():
         return 0  # silent: not due (SessionStart path stays quiet)
     if args.dry_run:
         print("curator DRY-RUN: no mutations")
+    else:
+        backup_skills()
     usage = usage_index()
     refs = referenced_names()
     actions = []
@@ -137,9 +161,11 @@ def main():
         created = fm.get("created") or ""
         state = fm.get("state", "")
         if not state or not created:  # first sight: seed, reanchor clock to NOW
-            set_fm_fields(path, txt, end, {"state": "active", "created": time.strftime("%Y-%m-%d"),
-                                           "last_used": u["last"][:10] or time.strftime("%Y-%m-%d")})
-            actions.append(f"seeded {name} (state active, clock starts today)")
+            if not args.dry_run:
+                set_fm_fields(path, txt, end, {"state": "active", "created": time.strftime("%Y-%m-%d"),
+                                               "last_used": u["last"][:10] or time.strftime("%Y-%m-%d")})
+            actions.append(("would seed " if args.dry_run else "seeded ")
+                           + f"{name} (state active, clock starts today)")
             continue
         anchors = [days_since(x) for x in (u["last"][:10], fm.get("last_used", "")[:10], created) if days_since(x) is not None]
         age = min(anchors) if anchors else 0  # youngest anchor = days since last activity

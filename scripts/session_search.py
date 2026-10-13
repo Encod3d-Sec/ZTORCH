@@ -73,6 +73,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     q = sub.add_parser("query"); q.add_argument("text")
     q.add_argument("--eng"); q.add_argument("--all", action="store_true"); q.add_argument("--n", type=int, default=10)
+    q.add_argument("--exclude", action="append", default=[],
+                   help="vault-relative file to omit (repeatable, cap 20): follow-up queries explore")
     sc = sub.add_parser("scroll"); sc.add_argument("file"); sc.add_argument("line", type=int)
     sc.add_argument("--window", type=int, default=5)
     r = sub.add_parser("read"); r.add_argument("file")
@@ -107,7 +109,10 @@ def main():
 
     # query
     terms = [t for t in re.split(r"\s+", args.text.lower()) if t]
-    files = history_files(eng=args.eng, search_all=args.all)
+    args.n = min(args.n, 10)  # P9: hermes result limit cap
+    excl = set(e.rstrip("/") for e in args.exclude[:20])  # P8: explore steering, cap 20
+    files = [p for p in history_files(eng=args.eng, search_all=args.all)
+             if os.path.relpath(p, VAULT) not in excl]
     hits = []
     for p in files:
         try:
