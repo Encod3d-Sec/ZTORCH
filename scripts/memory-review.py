@@ -100,7 +100,9 @@ def build_prompt(conv_lines):
 
 Save ONLY facts that apply to EVERY future session regardless of task. SKIP: trivial or
 easily re-discovered facts, raw data dumps, task progress, completed-work logs, temporary
-state. Reusable procedures belong in skills, not memory - if you see one, put its name in
+state, and anything that was merely an INSTRUCTION given to the agent in its task (rules,
+prefixes, constraints from a brief) - record only facts you observed about the machine,
+tools, or environment itself, not rules the agent was told to follow. Reusable procedures belong in skills, not memory - if you see one, put its name in
 the skills list instead of memory. Facts are declarative ("User prefers X"), never
 instructions to yourself.
 
