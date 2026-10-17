@@ -24,7 +24,7 @@ tick, never restart Stage 0.
 - [ ] Stage 5 - Confirm/exploit run only for lanes that marked a LEAD (never speculative); bb-run.md updated with confirmed FINDs
 - [ ] Stage 6 - Triage run, ranked finding set written; bb-run.md updated
 - [ ] Stage 7 - Report drafted for confirmed FINDs only (N/A if none); bb-run.md updated
-- [ ] Stage 8 - Closeout (engagement-retro + evidence) run; bb-run.md final row stamped for this host
+- [ ] Stage 8 - Closeout (learn + evidence) run; bb-run.md final row stamped for this host
 
 ## Budget discipline
 
