@@ -17,8 +17,8 @@ Anchors: [[recon]]
 
 ## Phase 0: Wiki Query (MANDATORY)
 ```
-qmd_query "recon subdomain enumeration" via wiki-search MCP -> read matching pages.
-qmd_query "OSINT external attack surface" -> apply known techniques.
+mcp__wiki-search__query (lex) "recon subdomain enumeration" via wiki-search MCP -> read matching pages.
+mcp__wiki-search__query (lex) "OSINT external attack surface" -> apply known techniques.
 ```
 If no matching page: proceed. Do not block on missing wiki coverage. Dorks to find exposed/vulnerable assets: `wiki/cheatsheets/recon-dorks.md`; attack paths once in: `wiki/cheatsheets/attack-chains.md`.
 

@@ -18,9 +18,8 @@ targets/<eng>/                  # created by new-engagement.sh, self-healed by e
 ├── walkthrough.md      -- full copy-pasteable boot-to-root reproduction (FINAL attack chain) [all types, self-created at close-out if missing; scaffolded upfront for pentest/bugbounty]
 ├── Deadends.md         -- false positives + exhausted/blocked vectors (anti-loop)             [all types]
 ├── ingest/             -- raw tool output, consumed by the ingest skill                       [all types]
-├── recon/              -- auto-captured scan-tool screenshot cards (nmap/ffuf/nuclei/...)     [all types]
+├── recon/              -- auto-captured scan-tool screenshot cards (nmap/ffuf/nuclei/...)     [all types, auto-created on first capture]
 ├── poc/                -- curated exploit/PoC/flag screenshots + PoC scripts                  [all types]
-├── coverage.md         -- per-asset vuln classes tested       [pentest/bugbounty; ctf: --with-coverage]
 ├── oob.md              -- out-of-band callback tracking        [pentest/bugbounty; ctf: --with-oob]
 ├── Vuln-index.md       -- finding index by severity + chains   [pentest/bugbounty; ctf: slim list, on demand]
 └── Vulns/              -- FIND-NNN-SEVERITY-slug.md, created on the first FIND (pentest/bugbounty)
@@ -32,9 +31,9 @@ targets/<eng>/                  # created by new-engagement.sh, self-healed by e
 
 Not auto-created: `Vulns/` is made on the first FIND (pentest/bugbounty); make a
 `reports/` dir or a `scope/` IP/domain sub-list by hand only if an engagement needs
-them. A ctf engagement omits `coverage.md`, `oob.md`, and the severity `Vuln-index.md`
-at init (all dead across THM rooms); create them on demand with `--with-coverage` /
-`--with-oob`, or `ensure_optional_file()` when a coverage check or a blind bug runs. A
+them. A ctf engagement omits `oob.md` and the severity `Vuln-index.md`
+at init (dead across THM rooms); create them on demand with `--with-oob`,
+or `ensure_optional_file()` when a blind bug runs. A
 ctf engagement ALSO omits `Killchain.md` and `log.md` entirely (its live attack chain
 lives in `state.md`'s own `## Chain`/`## Status` sections instead), and `walkthrough.md`
 / `eval.md` / `decisions.md` self-create on demand at their own trigger rather than
@@ -78,12 +77,13 @@ FIND-015-MEDIUM-s3-buckets-publicly-listable.md
 ## Vuln-index.md Format
 
 This severity index is a pentest/bugbounty artifact. A ctf room does not init it:
-its attack chain has one live home (`Killchain.md`, read by next_move) and one final
+its attack chain has one live home (`state.md`'s `## Chain` section, read by
+next_move) and one final
 home (`walkthrough.md`, the TL;DR chain line and the boot-to-root recipe). If a ctf
 writeup wants a flat findings roll-up, `ensure_optional_file("vuln-index")` creates
 the slim `setup/templates/ctf/vuln-index.md` (a plain list, no severity/CVSS, no Key
-Attack Chains). Keep chain narrative out of a ctf Vuln-index; it belongs in Killchain.md /
-walkthrough.
+Attack Chains). Keep chain narrative out of a ctf Vuln-index; it belongs in
+state.md's Chain / walkthrough.
 
 ```markdown
 ---

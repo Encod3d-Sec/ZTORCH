@@ -79,7 +79,7 @@ framework internals, not ported by design); citation dropped from interceptor SK
 
 | id | scope | action | status |
 |---|---|---|---|
-| F5-1 | darboviete, eneba, fjordbank, kovas, vilnius | `offensive.py --eng <eng> index` (mtime bump staled all `.offensive-index.json` vs G9) | OPEN |
+| F5-1 | the 5 live client engagements | `offensive.py --eng <eng> index` (mtime bump staled all `.offensive-index.json` vs G9) | OPEN |
 | F5-2 | engagement named in targets/active.md | locate driver state (no dir at targets/ root despite live board); re-index if stateful, else record operator-deferred | OPEN |
 
 ## Execution order
@@ -105,7 +105,7 @@ Final battery: pytest **548 passed** (547 baseline + round-trip test), offensive
 lint-wiki **0 hard / 0 dead script refs**, wiki-gaps **17 unchanged** (pre-existing archived
 FIND targets), check-leaks clean (pre-existing WARNs only).
 
-F5 driver state: `.offensive.json` exists for darboviete/eneba/fjordbank/kovas/vilnius -
+F5 driver state: `.offensive.json` exists for all 5 live client engagements -
 all five re-indexed against the ported tree (`116 fingerprints | 99 tools | 26 skills`
 each). The engagement named in `targets/active.md` has NO driver state file; its SessionStart board
 comes from the .md set + hooks, nothing to re-index - operator call whether to initialize.

@@ -32,11 +32,12 @@ outcome with `note` (arsenal card consulted) and `done` (closed with evidence, d
 Re-run `next`. That is the whole cycle.
 
 Auxiliary subcommands, when you need them: `plan` (dry-run top-N of `next`; writes nothing),
-`ingest-recon` (parse ingest/*.txt into state.md asset rows; follow with `board`),
 `autonomy` (set the advisory L0-L3 autonomy envelope in scope.md), `rebase` (re-point a rotated
-asset value across the engagement), `status` (read-only board/cursor/spend banner - `next`
-burns a serve even to look), `doctor` (one-shot seat health: state/index/telemetry/RoE/board;
-exit 0 healthy / 1 sick).
+asset value across the engagement). Two standalone CLIs, NOT subcommands:
+`python3 scripts/status.py` (read-only board/cursor/spend banner - `next` burns a serve even
+to look) and `python3 scripts/offensive-doctor.py` (one-shot seat health:
+state/index/telemetry/RoE/board; exit 0 healthy / 1 sick). Raw ingest parsing is the
+`ingest` skill's job, not a driver subcommand.
 
 Precedence rule: when `plan`/next_move.py rankings and the driver's `next` cursor disagree,
 the CURSOR governs - rankings are suggestions to feed into `note`/`done` reasoning, never an

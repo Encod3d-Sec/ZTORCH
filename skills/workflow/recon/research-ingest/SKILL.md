@@ -22,7 +22,7 @@ Hub: [[methodology-moc]] - Primary page: [[bug-hunting-methodology]]
    - URL: `defuddle parse <url> --md` for clean markdown (install: `npm i -g defuddle`); fall back to the `WebFetch` tool.
    - Local: read the file under `raw/research/`. GitHub repo: clone via WSL only (`wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>`), then read source/README.
 
-2. **Find the home page.** `qmd_query "<technique/CVE class>"` via wiki-search MCP -> identify the technique/tool page that should hold this. One class = one page.
+2. **Find the home page.** `mcp__wiki-search__query (lex) "<technique/CVE class>"` via wiki-search MCP -> identify the technique/tool page that should hold this. One class = one page.
 
 3. **Dedup (skip rule).** Read only the target page's frontmatter. If the ingest slug is already in `sources:`, STOP - already ingested. Otherwise continue.
 

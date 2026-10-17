@@ -11,7 +11,7 @@ metadata:
 
 The fast, wiki-first lookup engine for "what do I use against this surface". Runs the four
 knowledge areas in parallel so a deep lookup is one wall-clock, not four serial reads. The
-`hunt-*` skills each carry their own wiki-first `qmd_query` (MCP-independent) and
+`hunt-*` skills each carry their own wiki-first `mcp__wiki-search__query` (MCP-independent) and
 can hand off here for a fast parallel lookup. Never hand-roll from memory when the wiki has the answer.
 
 Input: a surface, service, or vuln-class (e.g. `Jenkins on 8080`, `SSRF`, `Kerberoasting`).
@@ -29,7 +29,7 @@ exists, read and return it. Do not re-spend. (`<active-eng>` = the dir named in 
 
 ## Mode: quick (DEFAULT - fire it constantly)
 
-One `mcp__wiki-search__qmd_query` over the whole index (add a `qmd_search` keyword pass when the
+One `mcp__wiki-search__query` over the whole index (add a `mcp__wiki-search__query (lex)` keyword pass when the
 surface is an exact product/CVE string). Group the hits under the four areas and return each as
 `path -> one-line snippet`:
 
@@ -105,7 +105,7 @@ Fingerprint the surface -> reach for the tool we already document. `ls wiki/tool
 | Binary / RE / pwn | ghidra, radare2, gdb-gef, pwntools, angr, binwalk, jadx, apktool, frida |
 | Secrets / SAST / forensics | trufflehog, trivy, semgrep, codeql, volatility, tshark |
 
-Read the tool page for exact flags before running; no page -> `qmd_query`/`Skill(wiki)`.
+Read the tool page for exact flags before running; no page -> `mcp__wiki-search__query`/`Skill(wiki)`.
 
 ### Then technique / payload (`wiki/payloads/` + `wiki/cheatsheets/`)
 

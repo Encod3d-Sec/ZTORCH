@@ -6,7 +6,7 @@
 
 | Operation | Action |
 |---|---|
-| Query | `qmd_query "..."` via `wiki-search` MCP -> read results -> synthesise |
+| Query | `mcp__wiki-search__query` (lex/vec/hyde) via the `wiki-search` MCP -> read results -> synthesise |
 | Ingest skip check | Read frontmatter only; skip page if ingest slug already in `sources:` |
 | Re-index / wiki status | `wiki` skill |
 | Git clone | Windows seat: clone normally; into WSL: `wsl -d kali-linux -u kali -- git clone <url> /home/kali/<name>` (MSYS: prefix MSYS_NO_PATHCONV=1) |
@@ -18,7 +18,7 @@
 
 Task -> skill/tool dispatch map: `docs/skill-map.md`; the `/` skill picker lists every skill with its description and stays the discovery mechanism. Every engagement starts with `Skill(engage)`, the orchestrator that routes situation -> Skill across the whole library; consult it whenever between phases. Vault-local skills live under `skills/` (layout: `docs/layout.md`), load on demand via the Skill tool, discovered by basename. MCP/hook/plugin troubleshooting: `skills/skills-setup.md`.
 
-Search rule: never read `wiki/index.md` to find pages - always search first. Wiki MCP tools: `mcp__wiki-search__qmd_query` (semantic), `mcp__wiki-search__qmd_search` (keyword). Workspace/text search over the vault, `targets/`, and `raw/git` clones: `zg` (zvec-grep) first - MCP tool `zvec_grep_search` on the `zvec-grep` server, or CLI `zg query --human "<q>" --limit N` (run `zg server on` if the MCP tool errors; deterministic fallback `bash scripts/wiki-query.sh`). Locate ACROSS files with zg; grep is fine inside a single file. qmd/wiki queries stay English even when the target's content is not (the wiki is indexed in English; a non-English query retrieves nothing). Translate entities into English search terms and keep original-language values in the finding, not the query. Wiki question routing by shape (measured): content ("which page is about X") -> qmd (BM25 ~0.5s, semantic via MCP); relations ("how do X and Y connect", hub or orphan detection) -> the `graphify` skill (`scripts/wiki-graph.py`, structural wikilink graph, ~1.5s, no LLM); multi-hop exploration -> graphify first for the chain, then qmd to read the pages it names.
+Search rule: never read `wiki/index.md` to find pages - always search first. Wiki MCP tools: `mcp__wiki-search__query` (lex = keyword, vec = semantic, hyde = hypothetical), `get`/`multi_get` (fetch a known page by path). Workspace/text search over the vault, `targets/`, and `raw/git` clones: `zg` (zvec-grep) first - MCP tool `zvec_grep_search` on the `zvec-grep` server, or CLI `zg query --human "<q>" --limit N` (run `zg server on` if the MCP tool errors; deterministic fallback `bash scripts/wiki-query.sh`). Locate ACROSS files with zg; grep is fine inside a single file. qmd/wiki queries stay English even when the target's content is not (the wiki is indexed in English; a non-English query retrieves nothing). Translate entities into English search terms and keep original-language values in the finding, not the query. Wiki question routing by shape (measured): content ("which page is about X") -> qmd (BM25 ~0.5s, semantic via MCP); relations ("how do X and Y connect", hub or orphan detection) -> the `graphify` skill (`scripts/wiki-graph.py`, structural wikilink graph, ~1.5s, no LLM); multi-hop exploration -> graphify first for the chain, then qmd to read the pages it names.
 
 `session/memory.md` holds long-term editorial patterns. Load it when making editorial or tagging decisions.
 

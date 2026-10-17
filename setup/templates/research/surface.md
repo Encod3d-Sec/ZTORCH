@@ -8,7 +8,7 @@ sources: []
 
 # Attack Surface: {{PROJECT}}
 
-Where bugs live. Map this before hypothesizing. `qmd_query` the tech/language/framework first to pull the matching methodology.
+Where bugs live. Map this before hypothesizing. `mcp__wiki-search__query` the tech/language/framework first to pull the matching methodology.
 
 ## Entry points (attacker-controlled input)
 | Entry | Input type | Reaches (sink/component) | Notes |

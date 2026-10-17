@@ -35,7 +35,7 @@ Hub: [[methodology-moc]] - Primary page: [[writeup-reproduction]]
 ## Procedure
 1. `file challenge.*`; read the prompt; note the remote (`nc host port`) if any.
 2. Match the strongest signal above (multiple may apply -> start with the most specific).
-3. `qmd_query "<category> <specific tech>"` -> read the wiki page; apply its methodology + payloads.
+3. `mcp__wiki-search__query (lex) "<category> <specific tech>"` -> read the wiki page; apply its methodology + payloads.
 4. Re-fingerprint every extracted artifact (stego/forensics nest: image -> zip -> binary).
 5. Flag found -> note the technique. Novel trick -> **Wiki Feedback**: update the category page so it is captured.
 

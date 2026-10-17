@@ -1,10 +1,10 @@
 ---
 name: bb-workflow
-description: "Use when the operator wants the full pipeline run hands-off on a host: surface mapping -> JS corpus -> signal-based hunt-* class selection -> confirm -> triage -> report, with a hard per-stage budget so the agent never blind-runs every hunt-* skill against every host. This skill owns the concrete stage sequence INSIDE one host's run, including the selector that turns recon signals into a short, ranked dispatch list instead of running all ~30 hunt-* skills. offensive.py owns the board and the across-host queue; this skill writes only a per-host lane log (bb-run.md). Assumes hunt-core lane discipline."
+description: "Use when the operator wants the full pipeline run hands-off on a host: surface mapping -> JS corpus -> signal-based hunt-* class selection -> confirm -> triage -> report, with a hard per-stage budget so the agent never blind-runs every hunt-* skill against every host. This skill owns the concrete stage sequence INSIDE one host's run, including the selector that turns recon signals into a short, ranked dispatch list instead of running all 39 hunt-* skills. offensive.py owns the board and the across-host queue; this skill writes only a per-host lane log (bb-run.md). Assumes hunt-core lane discipline."
 metadata:
   hermes:
     tags: [orchestration, pipeline, budget, selector]
-    related_skills: [offensive, brain, delegate, hunt-core, js-discover, js-parser, triage, engagement-retro]
+    related_skills: [offensive, brain, delegate, hunt-core, js-discover, js-parser, triage, learn]
 ---
 
 # BB Workflow - the per-host pipeline offensive.py dispatches into
@@ -15,7 +15,7 @@ drives `next`. When its lanes call for js-discover / js-parser / a test
 lane on a host, this skill IS that sequence, made concrete - the stage
 order, the budget caps, and most importantly the SELECTOR that decides
 which hunt-* classes are even worth running, so a host doesn't eat a
-full pass of all ~30 hunt-* skills when the recon only supports three
+full pass of all 39 hunt-* skills when the recon only supports three
 of them.
 
 This skill writes zero new exploitation logic. Every hunt-*, surface/*,
@@ -125,7 +125,7 @@ into "run what the recon actually supports."
    set (existing `triage` skill, unchanged).
 7. **Report** - `report/disclosure` or `report/walkthrough` for confirmed
    FINDs only; nothing in Stage 3-6 writes a report-ready claim on its own.
-8. **Closeout** - `engagement-retro` + `evidence`, final bb-run.md stamp
+8. **Closeout** - `learn` + `evidence`, final bb-run.md stamp
    for this host, hands control back to offensive.py `next` for the next
    host (or ends, if run standalone).
 
@@ -215,7 +215,7 @@ attempts, not an open-ended loop.
   Stage 0-8 once for that host and stops. Both entry paths are valid.
 - Nothing here pauses for operator confirmation beyond what each
   individual lane already requires (false-root guard in `delegate`, the
-  destructive-write caution in `hunt-ics`, a module's own confirmation
+  SAFETY hard-stop in `hunt-ics`, a module's own confirmation
   gate). This skill doesn't lower any existing bar for speed -
   "hands-off" means the operator isn't needed to SEQUENCE the work, not
   that any safety gate gets skipped.
@@ -247,7 +247,7 @@ discipline every dispatched class still follows.
 ## Handoff
 
 Confirmed FINDs -> `report/disclosure` / `report/walkthrough`.
-Closeout -> `engagement-retro` + `evidence`.
+Closeout -> `learn` + `evidence`.
 Next host -> back to offensive.py `next` (when running under the driver).
 
 ## Validation

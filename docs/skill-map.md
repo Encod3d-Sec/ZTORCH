@@ -17,7 +17,7 @@ organizational only.
 | Fetch URL for ingest                          | `WebFetch` tool                                                                        |
 | Web search / OSINT / vuln research (keyless, cached) | `wigolo` MCP (`search`/`fetch`/`crawl`/`research`); see `wiki/tools/wigolo.md`  |
 | Read vault file                               | `Read` tool with machine path (see AGENTS.md / `AGENTS.local.md`)                      |
-| Search vault (wiki semantic/keyword)          | `qmd_query` (semantic) or `qmd_search` (keyword) via `wiki-search` MCP                 |
+| Search vault (wiki semantic/keyword)          | `mcp__wiki-search__query` (semantic) or `mcp__wiki-search__query (lex)` (keyword) via `wiki-search` MCP                 |
 | Search workspace files (vault, targets/, raw/git) | `zg` first: `zvec_grep_search` MCP or `zg query --human "..."`; grep only inside one file |
 | Maintain wiki index (re-index, status)        | `wiki` skill                                                                           |
 | Over-engineering review of a framework diff | `ponytail-review` plugin skill (diff-scoped, one-line findings, applies nothing) |

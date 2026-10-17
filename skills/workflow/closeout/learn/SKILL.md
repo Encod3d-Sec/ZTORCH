@@ -192,8 +192,10 @@ Anonymization protocol (verbatim token set; the promote gate enforces the IP hal
 ### 4. Dedup against the wiki (the skip rule)
 For each generic candidate, search the wiki first:
 ```
-mcp__wiki-search__qmd_query   # semantic: concept / technique / intent
-mcp__wiki-search__qmd_search  # keyword: exact tool name, CVE id, payload string
+mcp__wiki-search__query       # sub-queries: lex = keyword (tool name, CVE id,
+                              # payload string), vec = semantic (concept /
+                              # technique / intent), hyde = hypothetical answer
+mcp__wiki-search__get / multi_get   # fetch a known page by path
 ```
 Find the home page (one class = one page). Read only its frontmatter and the relevant
 section. If the technique/payload/cred is ALREADY covered there, SKIP it - wiki has it.

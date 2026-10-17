@@ -208,9 +208,12 @@ def _ranked(limit=5):
     # union the chain-edge destination classes into the normalization vocab: a
     # to_class outside CLASSES would never match a tested/dead set, so its edge
     # re-surfaced forever after the destination was already worked.
-    base = sorted(set(CLASSES.get(etype, []))
-                  | {str(c.get("to_class") or "").lower()
-                     for e in CHAINS.values() for c in (e.get("then") or [])})
+    base_classes = list(CLASSES.get(etype, []))
+    chain_dests = {str(c.get("to_class") or "").lower()
+                   for e in CHAINS.values() for c in (e.get("then") or [])}
+    # normalization vocab: file order preserved (coverage-classes.json is ordered
+    # high-to-low impact), unseen chain destinations appended
+    base = base_classes + [c for c in sorted(chain_dests - set(base_classes))]
     glob_tested_l, per_asset_norm = tested_lookup(d, etype, base)
 
     def tested_for(ent):
@@ -363,7 +366,7 @@ def _ranked(limit=5):
     if not passive and base:
         for ent in in_scope_assets(state, etype, sc):
             tested = tested_for(ent)
-            untested = [c for c in base if c.lower() not in tested]
+            untested = [c for c in base_classes if c.lower() not in tested]
             for i, cls in enumerate(untested[:5]):    # per-asset shortlist cap; matrix is uncapped
                 sugg.append((28 - i, "gap",
                              f"{ent}: {cls} untested (offensive.py coverage for per-asset gaps)"))

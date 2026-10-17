@@ -40,11 +40,11 @@ Use `Skill(learn)` at close-out, once the engagement is `SOLVED` and its walkthr
 assembled.
 
 1. **Inventory** what the engagement taught from `state/loot/Approach/Deadends/
-   Vuln-index/walkthrough/hot`; pentest/bugbounty add `Killchain/log`, while ctf keeps its
+   Vuln-index/walkthrough`; pentest/bugbounty add `Killchain/log`, while ctf keeps its
    chain in `state.md`'s `## Chain` section instead.
 2. **Generalize** each lesson (product + technique/cred/endpoint + impact); strip every
    client host/IP/domain/cred value.
-3. **Dedup vs wiki** with `qmd_query`/`qmd_search` -- keep only what the home page does
+3. **Dedup vs wiki** with `mcp__wiki-search__query`/`mcp__wiki-search__query (lex)` -- keep only what the home page does
    not already cover.
 4. **Stage** each survivor (`scripts/wiki-stage.py --kind default-cred|api-pattern|
    technique`); a genuinely new class gets a content-free scaffold page first so its
@@ -90,8 +90,8 @@ conventions below (full schema in `targets/TARGETS.md`; the file set is self-hea
 - `Killchain.md` -- the evolving attack chain: open/blocked attack-path rows + the Confirmed-chain header
 - `Deadends.md` -- exhausted vectors (do not re-test without new input); a `done --dead` writes this
   automatically and suppresses that (asset, class) pair from ever being re-served
-- `Approach.md` -- the plan board: the `### 4a`/`4b` coverage matrix the driver reads and writes
-- `Vuln-index.md` -- confirmed findings and chains; `hot.md` -- rolling session cache
+- `Approach.md` -- the plan board: the `### 4a` tested-class table (plus phase checklists) the driver reads and writes
+- `Vuln-index.md` -- confirmed findings and chains
 
 Search-wiki-before-attacking and capture-as-you-go still apply -- `Skill(offensive)`'s G1 gate
 enforces the wiki-arsenal lookup before any exploit action, and `note`/`done` are how you record it,
@@ -118,7 +118,7 @@ engagement for anything still missing from the wiki.
 
 When the user asks a question:
 
-1. **Search first** using the `wiki-search` MCP tool (`qmd_query` for semantic search, `qmd_search` for keyword). This replaces reading `wiki/index.md` manually.
+1. **Search first** using the `wiki-search` MCP tool (`mcp__wiki-search__query` for semantic search, `mcp__wiki-search__query (lex)` for keyword). This replaces reading `wiki/index.md` manually.
 2. Read the pages returned by the search in full.
 3. Synthesise an answer with inline `[[wiki links]]` as citations.
 4. **Offer to file the answer** as a wiki page if it's a non-trivial synthesis -- e.g. a comparison of techniques, a methodology walkthrough, or a cheatsheet.
