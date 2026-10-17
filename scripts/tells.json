@@ -464,7 +464,7 @@
       "note": "MCP client config on disk; read every server entry, then mcp-scan/agent-scan it"
     },
     {
-      "fname": "(^|/)skills/[^/]+/SKILL\\.md$",
+      "fname": "(^|/)skills/(?:[^/]+/)+SKILL\\.md$",
       "class": "mcp",
       "skill": "hunt-mcp",
       "note": "agent skill file; snyk-agent-scan the skill dir (prompt injection / malware / credential risks)"

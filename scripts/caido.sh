@@ -2,7 +2,7 @@
 # caido.sh - drive the headless Caido instance on the Kali VM. Vault copy is source of
 # truth; push to the VM once:  bash scripts/vm-ssh.sh 'cat > ~/caido.sh && chmod +x ~/caido.sh' < scripts/caido.sh
 # (or:  bash /root/vm.sh 'tee ~/caido.sh >/dev/null; chmod +x ~/caido.sh' < scripts/caido.sh)
-# Run ON the VM (via vm.sh). Companion skill: skills/caido. Token: ~/.caido-token (7-day expiry, see skill).
+# Run ON the VM (via vm.sh). Companion skill: skills/surface/caido. Token: ~/.caido-token (7-day expiry, see skill).
 set -euo pipefail
 
 TOK="${CAIDO_TOKEN:-$(cat ~/.caido/token 2>/dev/null || cat ~/.caido-token 2>/dev/null || true)}"
@@ -11,7 +11,7 @@ LISTEN="${CAIDO_LISTEN:-0.0.0.0:8082}"
 PROXY_LISTEN="${CAIDO_PROXY_LISTEN:-0.0.0.0:8080}"
 
 die() { echo "caido.sh: $*" >&2; exit 1; }
-need_tok() { [ -n "$TOK" ] || die "no token (~/.caido-token empty/missing; re-extract per skills/caido)"; }
+need_tok() { [ -n "$TOK" ] || die "no token (~/.caido-token empty/missing; re-extract per skills/surface/caido)"; }
 
 # gql <query-string> [variables-json] -> raw JSON response
 gql() {

@@ -206,7 +206,7 @@ def violations(repo=VAULT):
     try:
         trig = json.load(open(os.path.join(repo, "skills", "exploit", "hunt", "triggers.json"),
                               encoding="utf-8"))
-        for section in ("triggers", "surface_triggers"):
+        for section in ("triggers", "surface_triggers", "relational_triggers"):
             for key in trig.get(section, {}):
                 try:
                     re.compile(key, re.I)

@@ -61,7 +61,13 @@ def write_triggers(d):
     lines = ["{", '  "_comment": ' + json.dumps(d.get("_comment", ""), ensure_ascii=False) + ","]
     lines += block("triggers", ",")
     lines.append('  "_surface_comment": ' + json.dumps(d.get("_surface_comment", ""), ensure_ascii=False) + ",")
-    lines += block("surface_triggers", "")
+    if "relational_triggers" in d:
+        lines += block("surface_triggers", ",")
+        if "_relational_comment" in d:
+            lines.append('  "_relational_comment": ' + json.dumps(d["_relational_comment"], ensure_ascii=False) + ",")
+        lines += block("relational_triggers", "")
+    else:
+        lines += block("surface_triggers", "")
     lines += ["}", ""]
     open(TRIGGERS, "w", encoding="utf-8").write("\n".join(lines))
 
