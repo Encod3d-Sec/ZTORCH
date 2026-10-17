@@ -23,9 +23,9 @@ the GUI at http://192.168.23.128:8082. Wiki: [[wiki/tools/caido]].
 
 ## Wiki
 
-Hub: [[moc]] - Primary page: [[caido]]
+Hub: [[moc]] - Primary page: [[wiki/tools/caido]]
 Anchors: [[burp-mcp]], [[api-testing]]
-**REFS:** [[caido]]
+**REFS:** [[wiki/tools/caido]]
 
 ## The box (already set up)
 

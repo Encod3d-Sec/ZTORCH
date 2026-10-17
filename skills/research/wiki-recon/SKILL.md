@@ -119,4 +119,4 @@ If nuclei finds CRITICAL or HIGH severity issues: create a FIND-XXX entry immedi
 - [[gau]]
 - [[gowitness]]
 - [[wiki/tools/httpx]]
-- [[katana]]
+- [[wiki/tools/katana]]

@@ -47,7 +47,7 @@ Top-level hub. Each domain has its own MOC linking every page.
 - [[csrf]]
 - [[deserialization]]
 - [[file-upload]]
-- [[graphql]]
+- [[wiki/payloads/graphql]]
 - [[host-header]]
 - [[idor]]
 - [[imds-cloud-metadata]]

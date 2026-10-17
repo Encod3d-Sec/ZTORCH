@@ -105,4 +105,4 @@ ZTORCH is a *harness* -- the intelligence it orchestrates is GLM, trained by Z.A
 
 ## License
 
-MIT, see [LICENSE](targets/2.%20Working/betgames/q3-vulnscan/ingest/poc/l83/x42916/EasyAdminBundle-4.29.16/LICENSE.md).
+MIT, see [LICENSE](targets/1.%20Archive/betgames/q3-vulnscan/ingest/poc/l83/x42916/EasyAdminBundle-4.29.16/LICENSE.md).

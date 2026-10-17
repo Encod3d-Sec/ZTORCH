@@ -383,7 +383,7 @@ For ticket-level detail after BH flags **delegation** or **DCSync**, use [[kerbe
 - [[active-directory-linux]]
 - [[active-directory-recycle-bin]]
 - [[password-ad-user-comment]]
-- [[powershell]]
+- [[wiki/techniques/active-directory/powershell]]
 - [[trust-relationship]]
 
 ## Username enumeration via an exposed backup/legacy web directory

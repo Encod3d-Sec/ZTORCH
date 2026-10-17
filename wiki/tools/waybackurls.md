@@ -44,7 +44,7 @@ waybackurls target.com | httpx -silent -mc 200             # which old URLs stil
 
 ## Related techniques
 
-[[gau]], [[katana]], [[wiki/tools/httpx]], [[web-attack-surface]]
+[[gau]], [[wiki/tools/katana]], [[wiki/tools/httpx]], [[web-attack-surface]]
 
 ## Sources
 

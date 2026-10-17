@@ -23,7 +23,7 @@ live only under `targets/<eng>/poc/`.
 ## Wiki
 
 Hub: [[moc]] - Primary page: [[burp-mcp]]
-Anchors: [[caido]]
+Anchors: [[wiki/tools/caido]]
 **REFS:** [[burp-mcp]]
 
 ## 1. Bring it up (one command)

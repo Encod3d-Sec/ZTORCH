@@ -20,7 +20,7 @@ into `poc/` the moment a step lands - there is no auto-capture net.
 ## Wiki
 
 Hub: [[moc]] - Primary page: [[evidence-capture]]
-Anchors: [[caido]]
+Anchors: [[wiki/tools/caido]]
 **REFS:** [[evidence-capture]]
 
 ## Scope check

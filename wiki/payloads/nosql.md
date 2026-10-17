@@ -54,4 +54,4 @@ When a GraphQL or JSON API backs MongoDB, inject operators inside variables:
 ```json
 { "filter": { "role": { "$ne": "user" } } }
 ```
-Pairs with [[graphql]] payloads when the resolver passes the object straight to the query.
+Pairs with [[wiki/payloads/graphql]] payloads when the resolver passes the object straight to the query.

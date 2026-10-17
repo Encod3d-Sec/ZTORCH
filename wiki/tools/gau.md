@@ -44,7 +44,7 @@ gau target.com | katana -silent                         # seed the crawler, see 
 
 ## Related techniques
 
-[[katana]], [[wiki/tools/httpx]], [[web-attack-surface]]
+[[wiki/tools/katana]], [[wiki/tools/httpx]], [[web-attack-surface]]
 
 ## Sources
 

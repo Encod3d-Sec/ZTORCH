@@ -9,7 +9,7 @@ date_updated: 2026-06-16
 
 # Payloads: API
 
-BOLA/BFLA, mass assignment, and protocol-specific probes. Routed via the `hunt-api` skill. See [[api-security]], [[api-testing]]; GraphQL detail -> [[graphql]].
+BOLA/BFLA, mass assignment, and protocol-specific probes. Routed via the `hunt-api` skill. See [[api-security]], [[api-testing]]; GraphQL detail -> [[wiki/payloads/graphql]].
 
 ## Enumerate
 ```bash
@@ -47,7 +47,7 @@ inspect RAW responses (not the UI) for extra fields / other users' data
 filter/sort/fields params that return more: ?fields=*  ?include=all
 ```
 
-## GraphQL specifics (see [[graphql]])
+## GraphQL specifics (see [[wiki/payloads/graphql]])
 ```
 introspection ; batching/aliases (rate-limit/brute bypass) ; nested-query DoS ; field suggestion
 ```

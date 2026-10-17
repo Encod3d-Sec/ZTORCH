@@ -24,7 +24,7 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 - [ ] subfinder + amass + dnsx (subdomains) -> [[subfinder]] [[amass]] [[dnsx]]
 - [ ] httpx probe + gowitness               -> [[wiki/tools/httpx]] [[gowitness]]
 - [ ] dump TLS cert SANs for hidden vhosts: `echo | openssl s_client -connect <ip>:443 -servername <host> 2>/dev/null | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"`  -> [[cdn-waf-bypass]]
-- [ ] gau + katana crawl (urls, .js)        -> [[gau]] [[katana]] [[javascript-source-map-exploitation]]
+- [ ] gau + katana crawl (urls, .js)        -> [[gau]] [[wiki/tools/katana]] [[javascript-source-map-exploitation]]
 - [ ] arjun param mining                     -> [[wiki/tools/arjun]]
 - [ ] nuclei                                 -> [[wiki/tools/nuclei]] [[nuclei-arsenal]]
 - [ ] trufflehog / .git / secrets            -> [[wiki/tools/trufflehog]] [[git-exposure]] [[secret-hunting]]
