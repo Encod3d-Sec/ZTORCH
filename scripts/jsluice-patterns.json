@@ -1,0 +1,67 @@
+[
+  {
+    "name": "house-bearer",
+    "regex": "(?i)bearer[\"'\\s]+[A-Za-z0-9_\\-.]{20,}",
+    "value": "(?i)bearer[\"'\\s]+[A-Za-z0-9_\\-.]{20,}"
+  },
+  {
+    "name": "house-jwt",
+    "regex": "eyJ[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}",
+    "value": "eyJ[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}"
+  },
+  {
+    "name": "house-aws-key",
+    "regex": "(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}",
+    "value": "(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}"
+  },
+  {
+    "name": "house-private-key",
+    "regex": "-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----",
+    "value": "-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----"
+  },
+  {
+    "name": "house-sentry-dsn",
+    "regex": "https?://[a-f0-9]{32}@[a-z0-9.\\-]+\\.[a-z]{2,}/[0-9]+",
+    "value": "https?://[a-f0-9]{32}@[a-z0-9.\\-]+\\.[a-z]{2,}/[0-9]+"
+  },
+  {
+    "name": "house-s3-url",
+    "regex": "https?://[a-z0-9.\\-]*s3[.-](?:amazonaws|dualstack)\\.[a-z0-9.\\-]+/[a-zA-Z0-9_\\-./]{3,}",
+    "value": "https?://[a-z0-9.\\-]*s3[.-](?:amazonaws|dualstack)\\.[a-z0-9.\\-]+/[a-zA-Z0-9_\\-./]{3,}"
+  },
+  {
+    "name": "house-firebase-ref",
+    "regex": "[a-z0-9\\-]+\\.firebaseio\\.com",
+    "value": "[a-z0-9\\-]+\\.firebaseio\\.com"
+  },
+  {
+    "name": "house-obj-internal-url",
+    "regex": "https?://[^\"'\\s]{8,}",
+    "key": "(?i)(internal|admin|staging|preprod|backoffice)"
+  },
+  {
+    "name": "house-obj-graphql-url",
+    "regex": "https?://[^\"'\\s]{8,}",
+    "key": "(?i)(graphql|gql)"
+  },
+  {
+    "name": "house-obj-webhook-url",
+    "regex": "https?://[^\"'\\s]{8,}",
+    "key": "(?i)(webhook|callback|postback)"
+  },
+  {
+    "name": "house-obj-apikey-val",
+    "regex": "[A-Za-z0-9_\\-]{16,}",
+    "key": "(?i)(api[-_]?key|apikey|access[-_]?token|auth[-_]?token|client[-_]?secret)"
+  },
+  {
+    "name": "house-obj-password-val",
+    "regex": "[A-Za-z0-9_\\-]{12,}",
+    "key": "(?i)(password|passwd|secret)"
+  },
+  {
+    "name": "house-obj-postmessage-origin",
+    "regex": "\\*|[^\"'\\s]{4,}",
+    "key": "(?i)(targetOrigin|allowedOrigins?)"
+  }
+]

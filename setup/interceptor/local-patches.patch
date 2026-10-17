@@ -1,0 +1,669 @@
+diff --git a/cli/parse.ts b/cli/parse.ts
+index a034846..a056b1f 100644
+--- a/cli/parse.ts
++++ b/cli/parse.ts
+@@ -60,7 +60,16 @@ export function parseContextFlag(args: string[]): string | undefined {
+  *   1. --context <id>          explicit per-call choice
+  *   2. $INTERCEPTOR_CONTEXT    per-lane default, set once (parallel to
+  *                              $INTERCEPTOR_GROUP); empty means unset
+- *   3. undefined               the daemon auto-routes when exactly one browser
++ *   3. context-config.json     {defaultContext, allowedContexts} — the seat
++ *                              automation hardening: when allowedContexts is
++ *                              non-empty it doubles as an ALLOWLIST (any
++ *                              resolved id, including an explicit --context,
++ *                              must be in it or the call aborts), and
++ *                              defaultContext is used when nothing else
++ *                              resolved, so the daemon never auto-routes to a
++ *                              stray extension (e.g. the operator's personal
++ *                              browser) while the config exists.
++ *   4. undefined               the daemon auto-routes when exactly one browser
+  *                              context is connected and refuses otherwise
+  *
+  * "multiple extensions connected, use --context <id>" was the most frequent
+@@ -68,11 +77,49 @@ export function parseContextFlag(args: string[]): string | undefined {
+  * because every command had to repeat the flag; agents dropped it on the
+  * cleanup and status calls.
+  */
++interface ContextConfig {
++  defaultContext?: string
++  allowedContexts?: string[]
++}
++
++const CONTEXT_CONFIG_HINT = "context-config.json (defaultContext/allowedContexts, next to the daemon or $INTERCEPTOR_CONTEXT_CONFIG)"
++
++function readContextConfig(env: Record<string, string | undefined>): ContextConfig {
++  try {
++    // $INTERCEPTOR_CONTEXT_CONFIG wins. Implicit candidates, first readable wins:
++    //  - compiled exe: process.execPath = <root>/dist/interceptor.exe -> <root>/context-config.json
++    //  - dev/source run: process.argv[1] = <root>/cli/index.ts          -> <root>/context-config.json
++    const pathMod = require("node:path")
++    const fs = require("node:fs")
++    const pinned = env.INTERCEPTOR_CONTEXT_CONFIG?.trim()
++    const candidates = pinned
++      ? [pinned]
++      : [
++          pathMod.resolve(pathMod.dirname(process.execPath || ""), "../context-config.json"),
++          pathMod.resolve(pathMod.dirname(process.argv[1] || ""), "../context-config.json"),
++        ]
++    const path = candidates.find((c) => c && fs.existsSync(c))
++    if (!path) return {}
++    const raw = fs.readFileSync(path, "utf8")
++    const parsed = JSON.parse(raw)
++    if (parsed && typeof parsed === "object") return parsed as ContextConfig
++  } catch {
++    // absent/unreadable config = feature off; fall through
++  }
++  return {}
++}
++
+ export function resolveContextId(args: string[], env: Record<string, string | undefined> = process.env): string | undefined {
++  const config = readContextConfig(env)
++  const allow = (config.allowedContexts ?? []).filter((x) => typeof x === "string" && x.length > 0)
+   const explicit = parseContextFlag(args)
+-  if (explicit !== undefined) return explicit
+   const fromEnv = env.INTERCEPTOR_CONTEXT?.trim()
+-  return fromEnv ? fromEnv : undefined
++  const resolved = explicit ?? (fromEnv && fromEnv.length > 0 ? fromEnv : undefined) ?? config.defaultContext
++  if (allow.length > 0 && resolved !== undefined && !allow.includes(resolved)) {
++    console.error(`error: context '${resolved}' is not in the allowlist (${allow.join(", ")}) - refusing to route to an unknown browser. Fix ${CONTEXT_CONFIG_HINT}.`)
++    process.exit(1)
++  }
++  return resolved
+ }
+ 
+ // per-agent named tab groups. Labels become part of a tab-strip title.
+diff --git a/extension/dist-mv2/background-electron.js b/extension/dist-mv2/background-electron.js
+index 5eaf8e4..2a620c9 100644
+--- a/extension/dist-mv2/background-electron.js
++++ b/extension/dist-mv2/background-electron.js
+@@ -105,10 +105,10 @@ function installElectronCompat(c) {
+         const { target } = opts;
+         const what = opts.files?.length ? opts.files.map((file) => ({ file })) : opts.func ? [{ code: `(${opts.func.toString()})(...${JSON.stringify(opts.args ?? [])})` }] : [];
+         const run = async (where) => {
+-          let results2 = [];
++          let results = [];
+           for (const script of what)
+-            results2 = await call(nativeExecute, tabs, [target.tabId, { ...where, ...script }]) ?? [];
+-          return results2;
++            results = await call(nativeExecute, tabs, [target.tabId, { ...where, ...script }]) ?? [];
++          return results;
+         };
+         if (target.frameIds?.length) {
+           const out = [];
+@@ -1713,12 +1713,12 @@ async function executeInMainWorld(tabId, func, args = []) {
+     try {
+       const argsLiteral = "[" + args.map((a) => a === undefined ? "undefined" : JSON.stringify(a)).join(",") + "]";
+       const code = `(${func.toString()}).apply(null, ${argsLiteral})`;
+-      const results2 = await chrome.userScripts.execute({
++      const results = await chrome.userScripts.execute({
+         target: { tabId },
+         world: "MAIN",
+         js: [{ code }]
+       });
+-      const first = results2?.[0];
++      const first = results?.[0];
+       if (first && !first.error)
+         return first.result;
+     } catch {}
+@@ -1884,9 +1884,9 @@ function canvasObserverSummary(limit = 100, kinds, canvasIndex, obsKey) {
+   function normalize(kind) {
+     return String(kind || "").trim();
+   }
+-  function summarize(entries2) {
++  function summarize(entries) {
+     const out = {};
+-    for (const entry of entries2) {
++    for (const entry of entries) {
+       const kind = normalize(entry.kind);
+       if (!kind)
+         continue;
+@@ -1894,10 +1894,10 @@ function canvasObserverSummary(limit = 100, kinds, canvasIndex, obsKey) {
+     }
+     return out;
+   }
+-  function resolveCanvasId(observer2, canvasIndex2) {
+-    if (canvasIndex2 === undefined || canvasIndex2 === null)
++  function resolveCanvasId(observer, canvasIndex) {
++    if (canvasIndex === undefined || canvasIndex === null)
+       return;
+-    const canvases = Array.isArray(observer2?.canvases) ? observer2.canvases.slice() : [];
++    const canvases = Array.isArray(observer?.canvases) ? observer.canvases.slice() : [];
+     const ordered = canvases.sort((a, b) => {
+       const left = typeof a.domIndex === "number" ? a.domIndex : Number.MAX_SAFE_INTEGER;
+       const right = typeof b.domIndex === "number" ? b.domIndex : Number.MAX_SAFE_INTEGER;
+@@ -1905,8 +1905,8 @@ function canvasObserverSummary(limit = 100, kinds, canvasIndex, obsKey) {
+         return left - right;
+       return String(a.canvasId || "").localeCompare(String(b.canvasId || ""));
+     });
+-    const canvasId2 = ordered[canvasIndex2]?.canvasId;
+-    return typeof canvasId2 === "string" && canvasId2 ? canvasId2 : null;
++    const canvasId = ordered[canvasIndex]?.canvasId;
++    return typeof canvasId === "string" && canvasId ? canvasId : null;
+   }
+   const observer = (obsKey ? window[Symbol.for(obsKey)] : null) || null;
+   if (!observer || !Array.isArray(observer.log)) {
+@@ -1940,10 +1940,10 @@ function canvasObserverObjectsSummary(limit = 100, kind, canvasIndex, obsKey) {
+   function normalize(value) {
+     return String(value || "").trim();
+   }
+-  function resolveCanvasId(observer2, canvasIndex2) {
+-    if (canvasIndex2 === undefined || canvasIndex2 === null)
++  function resolveCanvasId(observer, canvasIndex) {
++    if (canvasIndex === undefined || canvasIndex === null)
+       return;
+-    const canvases = Array.isArray(observer2?.canvases) ? observer2.canvases.slice() : [];
++    const canvases = Array.isArray(observer?.canvases) ? observer.canvases.slice() : [];
+     const ordered = canvases.sort((a, b) => {
+       const left = typeof a.domIndex === "number" ? a.domIndex : Number.MAX_SAFE_INTEGER;
+       const right = typeof b.domIndex === "number" ? b.domIndex : Number.MAX_SAFE_INTEGER;
+@@ -1951,8 +1951,8 @@ function canvasObserverObjectsSummary(limit = 100, kind, canvasIndex, obsKey) {
+         return left - right;
+       return String(a.canvasId || "").localeCompare(String(b.canvasId || ""));
+     });
+-    const canvasId2 = ordered[canvasIndex2]?.canvasId;
+-    return typeof canvasId2 === "string" && canvasId2 ? canvasId2 : null;
++    const canvasId = ordered[canvasIndex]?.canvasId;
++    return typeof canvasId === "string" && canvasId ? canvasId : null;
+   }
+   const observer = (obsKey ? window[Symbol.for(obsKey)] : null) || null;
+   if (!observer || !Array.isArray(observer.objects)) {
+@@ -3241,11 +3241,11 @@ async function executeWithUserScripts(tabId, world, code, frameId) {
+       });
+       return frameId === undefined ? results[0] : results.find((r) => r.frameId === frameId) ?? (results.length === 1 && results[0]?.frameId === undefined ? results[0] : undefined);
+     };
+-    const settled = (first2) => {
+-      if (!first2)
++    const settled = (first) => {
++      if (!first)
+         return { available: true, result: { success: false, error: `no result for frame ${frameId ?? 0}` } };
+-      if (first2.error)
+-        return { available: true, result: { success: false, error: first2.error } };
++      if (first.error)
++        return { available: true, result: { success: false, error: first.error } };
+       return;
+     };
+     let first = await run(forms.expression);
+@@ -3624,17 +3624,17 @@ async function readStagedChunk(tabId, key, offset, length) {
+     world: "ISOLATED",
+     args: [key, offset, length],
+     func: (sourceKey, start, count) => {
+-      const bytes2 = globalThis[sourceKey];
+-      if (!bytes2)
++      const bytes = globalThis[sourceKey];
++      if (!bytes)
+         throw new Error("staged bytes not found");
+-      const end = Math.min(start + count, bytes2.byteLength);
+-      const slice = bytes2.subarray(start, end);
+-      let binary2 = "";
++      const end = Math.min(start + count, bytes.byteLength);
++      const slice = bytes.subarray(start, end);
++      let binary = "";
+       const block = 32768;
+       for (let i = 0;i < slice.byteLength; i += block) {
+-        binary2 += String.fromCharCode(...slice.subarray(i, Math.min(i + block, slice.byteLength)));
++        binary += String.fromCharCode(...slice.subarray(i, Math.min(i + block, slice.byteLength)));
+       }
+-      return btoa(binary2);
++      return btoa(binary);
+     }
+   });
+   const b64 = results[0]?.result;
+@@ -3991,9 +3991,9 @@ async function handleFrameActions(action, tabId, sendFrame = sendToContentScript
+       return { success: false, error: `getAllFrames failed: ${err.message}` };
+     }
+     if (!frames?.length) {
+-      const data2 = { query, mode, frames: [] };
++      const data = { query, mode, frames: [] };
+       if (mode !== "elements") {
+-        data2.text = {
++        data.text = {
+           total: 0,
+           returned: 0,
+           truncated: false,
+@@ -4003,9 +4003,9 @@ async function handleFrameActions(action, tabId, sendFrame = sendToContentScript
+         };
+       }
+       if (mode !== "text") {
+-        data2.elements = { total: 0, returned: 0, truncated: false, matches: [] };
++        data.elements = { total: 0, returned: 0, truncated: false, matches: [] };
+       }
+-      return { success: true, data: data2, tabId };
++      return { success: true, data, tabId };
+     }
+     const perFrameResults = await Promise.all(frames.map(async (frame) => {
+       const frameMeta = {
+@@ -4036,16 +4036,16 @@ async function handleFrameActions(action, tabId, sendFrame = sendToContentScript
+           frameMeta.error = response.error || "unreachable frame";
+           return result;
+         }
+-        const data2 = response.data;
+-        if (data2.text) {
+-          result.textTotal = data2.text.total;
+-          result.scannedCharacters = data2.text.scannedCharacters || 0;
+-          result.scanTruncated = data2.text.scanTruncated === true;
+-          result.textMatches = data2.text.matches.map((match) => ({ ...match, frameId: frame.frameId }));
++        const data = response.data;
++        if (data.text) {
++          result.textTotal = data.text.total;
++          result.scannedCharacters = data.text.scannedCharacters || 0;
++          result.scanTruncated = data.text.scanTruncated === true;
++          result.textMatches = data.text.matches.map((match) => ({ ...match, frameId: frame.frameId }));
+         }
+-        if (data2.elements) {
+-          result.elementTotal = data2.elements.total;
+-          for (const match of data2.elements.matches) {
++        if (data.elements) {
++          result.elementTotal = data.elements.total;
++          for (const match of data.elements.matches) {
+             const refId = frame.frameId === 0 ? match.refId : match.refId.replace(/^e(\d+)$/, `e${frame.frameId}_$1`);
+             result.elementMatches.push({ ...match, refId, frameId: frame.frameId });
+           }
+@@ -4682,11 +4682,11 @@ function registerWebNavListenersOnce() {
+       return;
+     const pendingChild = pendingChildTabs.get(details.tabId);
+     if (pendingChild) {
+-      const session2 = sessions.get(pendingChild.sessionId);
+-      if (session2 && !session2.paused) {
++      const session = sessions.get(pendingChild.sessionId);
++      if (session && !session.paused) {
+         adoptChildTab(details.tabId, pendingChild.openerTabId).catch(() => {});
+-        switchToAttachment(session2, createAttachment(details.tabId, details.documentId, details.frameId, details.url, details.documentLifecycle, "child_tab", pendingChild.openerTabId), "child_tab");
+-        emitMonEvent(session2, "nav", {
++        switchToAttachment(session, createAttachment(details.tabId, details.documentId, details.frameId, details.url, details.documentLifecycle, "child_tab", pendingChild.openerTabId), "child_tab");
++        emitMonEvent(session, "nav", {
+           u: details.url,
+           typ: details.transitionType === "reload" ? "reload" : "hard",
+           tt: details.transitionType,
+diff --git a/extension/dist-mv2/content.js b/extension/dist-mv2/content.js
+index 3039227..4094542 100644
+--- a/extension/dist-mv2/content.js
++++ b/extension/dist-mv2/content.js
+@@ -12,7 +12,17 @@ var __export = (target, all) => {
+       set: __exportSetter.bind(all, name)
+     });
+ };
+-var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
++var __esm = (fn, res, err) => () => {
++  if (fn)
++    try {
++      res = fn(fn = 0);
++    } catch (e) {
++      err = [e];
++    }
++  if (err)
++    throw err[0];
++  return res;
++};
+ 
+ // extension/src/content/sensitive.ts
+ function markSensitive(el) {
+@@ -1010,22 +1020,6 @@ var init_input_simulation = __esm(() => {
+ });
+ 
+ // extension/src/content/scene/ops.ts
+-var exports_ops = {};
+-__export(exports_ops, {
+-  boundingBox: () => boundingBox,
+-  clickAtViewport: () => clickAtViewport,
+-  clickElementCenter: () => clickElementCenter,
+-  dblclickElementCenter: () => dblclickElementCenter,
+-  dispatchKeysIn: () => dispatchKeysIn,
+-  findAncestorScale: () => findAncestorScale,
+-  findElementById: () => findElementById,
+-  focusIframeTextbox: () => focusIframeTextbox,
+-  isVisibleRect: () => isVisibleRect,
+-  parseDocCoord: () => parseDocCoord,
+-  parseScale: () => parseScale,
+-  parseTranslate: () => parseTranslate,
+-  scrollElementIntoView: () => scrollElementIntoView
+-});
+ function boundingBox(el) {
+   const r = el.getBoundingClientRect();
+   return {
+@@ -1037,44 +1031,6 @@ function boundingBox(el) {
+     cy: Math.round(r.top + r.height / 2)
+   };
+ }
+-function isVisibleRect(r) {
+-  return r.w > 0 && r.h > 0;
+-}
+-function parseTranslate(transform) {
+-  if (!transform)
+-    return null;
+-  const m = transform.match(TRANSLATE_RE);
+-  if (!m)
+-    return null;
+-  return { x: parseFloat(m[1]), y: parseFloat(m[2]) };
+-}
+-function parseScale(transform) {
+-  if (!transform)
+-    return null;
+-  const m = transform.match(SCALE_RE);
+-  if (!m)
+-    return null;
+-  return parseFloat(m[1]);
+-}
+-function findAncestorScale(el) {
+-  let cur = el;
+-  for (let i = 0;i < 20 && cur; i++) {
+-    const s = parseScale(cur.style?.transform);
+-    if (s !== null)
+-      return s;
+-    cur = cur.parentElement;
+-  }
+-  return null;
+-}
+-function parseDocCoord(el) {
+-  const he = el;
+-  const t = parseTranslate(he.style?.transform);
+-  const w = parseFloat(he.style?.width || "");
+-  const h = parseFloat(he.style?.height || "");
+-  if (!t || isNaN(w) || isNaN(h))
+-    return null;
+-  return { x: t.x, y: t.y, w, h };
+-}
+ function scrollElementIntoView(el) {
+   const r = el.getBoundingClientRect();
+   if (r.top < 0 || r.bottom > window.innerHeight || r.left < 0 || r.right > window.innerWidth) {
+@@ -1116,45 +1072,8 @@ function clickAtViewport(x, y) {
+   } catch {}
+   return el;
+ }
+-function focusIframeTextbox(iframe) {
+-  try {
+-    const doc = iframe.contentDocument;
+-    if (!doc)
+-      return null;
+-    const textbox = doc.querySelector("[role=textbox]") || doc.querySelector("[contenteditable]");
+-    if (!textbox)
+-      return null;
+-    try {
+-      iframe.focus();
+-    } catch {}
+-    try {
+-      textbox.focus();
+-    } catch {}
+-    return { doc, textbox };
+-  } catch {
+-    return null;
+-  }
+-}
+-function dispatchKeysIn(target, keys) {
+-  dispatchKeySequence(target, keys);
+-}
+-function findElementById(id) {
+-  try {
+-    const direct = document.getElementById(id);
+-    if (direct)
+-      return direct;
+-  } catch {}
+-  try {
+-    return document.querySelector(`#${CSS.escape(id)}`);
+-  } catch {
+-    return null;
+-  }
+-}
+-var TRANSLATE_RE, SCALE_RE;
+ var init_ops = __esm(() => {
+   init_input_simulation();
+-  TRANSLATE_RE = /translate\(\s*(-?[\d.]+)(?:px)?\s*,\s*(-?[\d.]+)(?:px)?\s*\)/;
+-  SCALE_RE = /scale\(\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/;
+ });
+ 
+ // extension/src/content/canvas-bridge.ts
+@@ -2151,8 +2070,8 @@ async function handleSelectOption(action) {
+   if (el.matches(":disabled") || el.getAttribute("aria-disabled") === "true")
+     return { success: false, error: "select is disabled" };
+   const options = Array.from(el.options);
+-  const exact = options.find((option2) => option2.value === action.value);
+-  const labels = exact ? [] : options.filter((option2) => option2.label === action.value);
++  const exact = options.find((option) => option.value === action.value);
++  const labels = exact ? [] : options.filter((option) => option.label === action.value);
+   const option = exact || (labels.length === 1 ? labels[0] : undefined);
+   if (!option)
+     return {
+@@ -2424,10 +2343,10 @@ function stageForPicker(bytes, name, type) {
+ var chunkBuffers = new Map;
+ function handleFileUploadChunk(action) {
+   const uploadId = String(action.uploadId || "");
+-  const seq2 = Number(action.seq);
++  const seq = Number(action.seq);
+   const total = Number(action.total);
+   const chunk = typeof action.chunk === "string" ? action.chunk : "";
+-  if (!uploadId || !Number.isInteger(seq2) || !Number.isInteger(total) || total <= 0) {
++  if (!uploadId || !Number.isInteger(seq) || !Number.isInteger(total) || total <= 0) {
+     return { success: false, error: "file_upload_chunk: malformed chunk header" };
+   }
+   let buf = chunkBuffers.get(uploadId);
+@@ -2435,10 +2354,10 @@ function handleFileUploadChunk(action) {
+     buf = { parts: new Array(total).fill(null), total };
+     chunkBuffers.set(uploadId, buf);
+   }
+-  if (seq2 < 0 || seq2 >= buf.total) {
+-    return { success: false, error: `file_upload_chunk: seq ${seq2} out of range 0..${buf.total - 1}` };
++  if (seq < 0 || seq >= buf.total) {
++    return { success: false, error: `file_upload_chunk: seq ${seq} out of range 0..${buf.total - 1}` };
+   }
+-  buf.parts[seq2] = chunk;
++  buf.parts[seq] = chunk;
+   const received = buf.parts.reduce((n, p) => n + (p !== null ? 1 : 0), 0);
+   return { success: true, data: { buffered: received, of: buf.total } };
+ }
+@@ -2493,10 +2412,10 @@ async function handleFileUpload(action) {
+     fileInput.files = dt.files;
+     fileInput.dispatchEvent(new Event("input", { bubbles: true }));
+     fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+-    const verified2 = fileInput.files.length > 0;
++    const verified = fileInput.files.length > 0;
+     return {
+       success: true,
+-      data: { method: "input", fileName, size: bytes.byteLength, verified: verified2, multiple: fileInput.multiple, accept: fileInput.accept || null }
++      data: { method: "input", fileName, size: bytes.byteLength, verified, multiple: fileInput.multiple, accept: fileInput.accept || null }
+     };
+   }
+   const target = el;
+@@ -3333,13 +3252,13 @@ init_element_discovery();
+ init_a11y_tree();
+ init_input_simulation();
+ init_sensitive();
+-function findRenderedText(renderedText2, rawQuery, limit = 10, contextChars = 80) {
++function findRenderedText(renderedText, rawQuery, limit = 10, contextChars = 80) {
+   const query = rawQuery.trim();
+   const boundedLimit = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 10;
+   const matches = [];
+   let total = 0;
+   if (query.length > 0) {
+-    const haystack = renderedText2.toLowerCase();
++    const haystack = renderedText.toLowerCase();
+     const needle = query.toLowerCase();
+     let from = 0;
+     while (from <= haystack.length - needle.length) {
+@@ -3350,14 +3269,14 @@ function findRenderedText(renderedText2, rawQuery, limit = 10, contextChars = 80
+       total++;
+       if (matches.length < boundedLimit) {
+         const snippetStart = Math.max(0, start - contextChars);
+-        const snippetEnd = Math.min(renderedText2.length, end + contextChars);
++        const snippetEnd = Math.min(renderedText.length, end + contextChars);
+         const prefix = snippetStart > 0 ? "…" : "";
+-        const suffix = snippetEnd < renderedText2.length ? "…" : "";
++        const suffix = snippetEnd < renderedText.length ? "…" : "";
+         matches.push({
+           start,
+           end,
+-          matchedText: renderedText2.slice(start, end),
+-          snippet: `${prefix}${renderedText2.slice(snippetStart, snippetEnd).replace(/\s+/g, " ").trim()}${suffix}`
++          matchedText: renderedText.slice(start, end),
++          snippet: `${prefix}${renderedText.slice(snippetStart, snippetEnd).replace(/\s+/g, " ").trim()}${suffix}`
+         });
+       }
+       from = end;
+@@ -3367,7 +3286,7 @@ function findRenderedText(renderedText2, rawQuery, limit = 10, contextChars = 80
+     total,
+     returned: matches.length,
+     truncated: total > matches.length,
+-    scannedCharacters: renderedText2.length,
++    scannedCharacters: renderedText.length,
+     scanTruncated: false,
+     matches
+   };
+@@ -3859,11 +3778,11 @@ function selectedAdaptiveScene() {
+   const writable = findFocusedWritableSurface();
+   if (writable) {
+     const id = getOrAssignSceneId(writable.element, "text", "focused-writable");
+-    const label2 = getAccessibleName(writable.element) || writable.element.getAttribute("aria-label") || writable.kind;
++    const label = getAccessibleName(writable.element) || writable.element.getAttribute("aria-label") || writable.kind;
+     return {
+       has: true,
+       id,
+-      label: label2,
++      label,
+       text: maskSensitiveText(writable.element, writable.text).slice(0, 200),
+       extras: {
+         kind: writable.kind,
+@@ -4280,21 +4199,21 @@ var FILMSTRIP_ID = /^filmstrip-slide-(\d+)-(gd[a-z0-9_-]+)$/i;
+ function gatherSlides() {
+   const all = Array.from(document.querySelectorAll('g[id^="filmstrip-slide-"]'));
+   const byIndex = new Map;
+-  for (const g2 of all) {
+-    if (g2.id.endsWith("-bg"))
++  for (const g of all) {
++    if (g.id.endsWith("-bg"))
+       continue;
+-    const m = g2.id.match(FILMSTRIP_ID);
++    const m = g.id.match(FILMSTRIP_ID);
+     if (!m)
+       continue;
+     const index = parseInt(m[1], 10);
+     if (byIndex.has(index))
+       continue;
+-    const rect = boundingBox(g2);
+-    const img = g2.querySelector("image");
++    const rect = boundingBox(g);
++    const img = g.querySelector("image");
+     const blob = img ? img.getAttribute("xlink:href") || img.getAttribute("href") || undefined : undefined;
+-    const wrapper = g2.closest("g.punch-filmstrip-thumbnail");
++    const wrapper = g.closest("g.punch-filmstrip-thumbnail");
+     const pageId = wrapper?.getAttribute("data-slide-page-id") || undefined;
+-    byIndex.set(index, { index, id: g2.id, rect, blobUrl: blob, pageId });
++    byIndex.set(index, { index, id: g.id, rect, blobUrl: blob, pageId });
+   }
+   const out = Array.from(byIndex.values()).sort((a, b) => a.index - b.index);
+   const current = currentSlideId();
+@@ -4704,7 +4623,7 @@ async function handleCanvasAction(action) {
+         const resolved = canvasResolve(id, profileOverride);
+         if (!resolved.success)
+           return resolved;
+-        const { clickElementCenter: clickElementCenter2, dblclickElementCenter: dblclickElementCenter2 } = await Promise.resolve().then(() => (init_ops(), exports_ops));
++        await Promise.resolve().then(() => init_ops());
+         const target = resolved.data;
+         const beforeSelection = canvasSelected(profileOverride);
+         const cx = Math.round(target.rect.cx);
+@@ -4722,18 +4641,18 @@ async function handleCanvasAction(action) {
+         }
+         if (action.type === "scene_dblclick") {
+           if (target.element)
+-            dblclickElementCenter2(target.element);
++            dblclickElementCenter(target.element);
+           else {
+             const clicked = document.elementFromPoint(cx, cy);
+             if (clicked)
+-              dblclickElementCenter2(clicked);
++              dblclickElementCenter(clicked);
+           }
+           return {
+             success: true,
+             data: { id, clicked: true, at: { x: cx, y: cy }, method: "synthetic" }
+           };
+         }
+-        const click = target.element ? () => clickElementCenter2(target.element) : await Promise.resolve().then(() => (init_ops(), exports_ops)).then(({ clickAtViewport: clickAtViewport3 }) => () => clickAtViewport3(cx, cy));
++        const click = target.element ? () => clickElementCenter(target.element) : await Promise.resolve().then(() => (init_ops(), {})).then(({}) => () => clickAtViewport(cx, cy));
+         const mutation = waitForMutation(200);
+         click();
+         const mutated = await mutation;
+@@ -4863,11 +4782,11 @@ function buildStyledClone(src, collect) {
+     } catch {}
+   }
+   if (tag === "svg") {
+-    const c2 = el.cloneNode(true);
++    const c = el.cloneNode(true);
+     try {
+-      inlineComputedStyle(el, c2, collect);
++      inlineComputedStyle(el, c, collect);
+     } catch {}
+-    return c2;
++    return c;
+   }
+   const c = el.cloneNode(false);
+   if (c.style)
+diff --git a/extension/dist-mv2/popup.js b/extension/dist-mv2/popup.js
+index a3b2466..fa03f39 100644
+--- a/extension/dist-mv2/popup.js
++++ b/extension/dist-mv2/popup.js
+@@ -63,10 +63,10 @@
+     }
+     if (snapshot.state === "connected") {
+       title.textContent = "Interceptor daemon is healthy";
+-      const detail2 = document.createElement("div");
+-      detail2.className = "connection-detail";
+-      detail2.textContent = transportName(snapshot.transport);
+-      health.append(title, detail2);
++      const detail = document.createElement("div");
++      detail.className = "connection-detail";
++      detail.textContent = transportName(snapshot.transport);
++      health.append(title, detail);
+       return;
+     }
+     const hostMissing = snapshot.nativeError?.toLowerCase().includes("specified native messaging host not found");
+diff --git a/test/context-resolution.test.ts b/test/context-resolution.test.ts
+index dda6901..de273fc 100644
+--- a/test/context-resolution.test.ts
++++ b/test/context-resolution.test.ts
+@@ -4,13 +4,44 @@ import { resolveContextId } from "../cli/parse"
+ 
+ describe("resolveContextId", () => {
+   test("explicit flag beats the env", () => {
+-    expect(resolveContextId(["--context", "brave-work", "open", "x"], { INTERCEPTOR_CONTEXT: "main" })).toBe("brave-work")
++    expect(resolveContextId(["--context", "brave-work", "open", "x"], { INTERCEPTOR_CONTEXT: "main", INTERCEPTOR_CONTEXT_CONFIG: "Z:/nonexistent/ctx-isolated.json" })).toBe("brave-work")
+   })
+   test("env supplies the lane default", () => {
+-    expect(resolveContextId(["open", "x"], { INTERCEPTOR_CONTEXT: "main" })).toBe("main")
++    expect(resolveContextId(["open", "x"], { INTERCEPTOR_CONTEXT: "main", INTERCEPTOR_CONTEXT_CONFIG: "Z:/nonexistent/ctx-isolated.json" })).toBe("main")
+   })
+   test("empty or whitespace env means unset", () => {
+-    expect(resolveContextId(["open", "x"], { INTERCEPTOR_CONTEXT: "  " })).toBeUndefined()
+-    expect(resolveContextId(["open", "x"], {})).toBeUndefined()
++    expect(resolveContextId(["open", "x"], { INTERCEPTOR_CONTEXT: "  ", INTERCEPTOR_CONTEXT_CONFIG: "Z:/nonexistent/ctx-isolated.json" })).toBeUndefined()
++    expect(resolveContextId(["open", "x"], { INTERCEPTOR_CONTEXT_CONFIG: "Z:/nonexistent/ctx-isolated.json" })).toBeUndefined()
++  })
++  test("config defaultContext supplies the fallback", () => {
++    const dir = require("node:os").tmpdir() + "/ictx-" + process.pid
++    require("node:fs").mkdirSync(dir, { recursive: true })
++    require("node:fs").writeFileSync(dir + "/context-config.json", JSON.stringify({ defaultContext: "edge-auto", allowedContexts: ["edge-auto"] }))
++    expect(resolveContextId(["open", "x"], { INTERCEPTOR_CONTEXT_CONFIG: dir + "/context-config.json" })).toBe("edge-auto")
++  })
++  test("allowlist refuses an unknown explicit context", () => {
++    const dir = require("node:os").tmpdir() + "/ictx-deny-" + process.pid
++    require("node:fs").mkdirSync(dir, { recursive: true })
++    require("node:fs").writeFileSync(dir + "/context-config.json", JSON.stringify({ defaultContext: "edge-auto", allowedContexts: ["edge-auto"] }))
++    const spy = jest_like_expect_exit(resolveContextId, ["--context", "operator-chrome", "status"], { INTERCEPTOR_CONTEXT_CONFIG: dir + "/context-config.json" })
++    expect(spy).toBe("refused")
+   })
+ })
++
++// minimal process.exit capture for the allowlist refusal path
++function jest_like_expect_exit(fn: Function, args: string[], env: Record<string, string | undefined>): string {
++  const origExit = process.exit
++  const origErr = console.error
++  let exited = false
++  ;(process as any).exit = ((code: number) => { exited = true; throw new Error("__exit__" + code) }) as any
++  console.error = () => {}
++  try {
++    fn(args, env)
++    return exited ? "refused" : "no-refusal"
++  } catch (e: any) {
++    return String(e.message).startsWith("__exit__") ? "refused" : "error:" + e.message
++  } finally {
++    process.exit = origExit
++    console.error = origErr
++  }
++}
