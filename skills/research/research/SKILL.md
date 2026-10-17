@@ -32,7 +32,7 @@ This skill is the research analog of the engagement framework: `raw/research/<pr
 Read `raw/research/<project>/{loop.md, deadends.md, findings.md}` before acting. Never re-run a logged dead-end without new input. Resume from the last iteration. This is the anti-loop rule - the same discipline engagements use. Run `python3 scripts/research_status.py` for the current phase + ranked next move (also auto-surfaced at SessionStart from `raw/research/active.md`).
 
 ## 2. Attack-surface map (`surface.md`)
-`qmd_query` the target's tech/language/framework first, then map by type:
+`mcp__wiki-search__query` the target's tech/language/framework first, then map by type:
 
 | Target type | First moves | Knowledge base |
 |---|---|---|
@@ -70,7 +70,7 @@ A finding spawns its own mini-loop - each question is an iteration, and a dead-e
 ## 7. Prove + novelty-check
 - Minimal reproducible **PoC / trigger** in `poc/`.
 - **Severity + CVSS**; **affected versions** (`git blame` / changelog for when introduced).
-- **Novelty (decides CVE vs known):** search NVD, GitHub Security Advisories, the project changelog/issues, and `qmd_query` the wiki. Already fixed/reported -> mark `known` in `findings.md` and pivot. Genuinely new + reachable -> **candidate CVE.**
+- **Novelty (decides CVE vs known):** search NVD, GitHub Security Advisories, the project changelog/issues, and `mcp__wiki-search__query` the wiki. Already fixed/reported -> mark `known` in `findings.md` and pivot. Genuinely new + reachable -> **candidate CVE.**
 
 ## 8. Write up (CVE-grade)
 Promote the proven finding in `findings.md` (or a dedicated FIND file): title, affected versions, root cause, PoC, primitive/impact, CVSS, remediation, disclosure note. Then **feed the reusable technique/pattern back to the wiki** (`wiki/techniques/` or `wiki/payloads/`) via the `research-ingest` skill - so the next project starts ahead.

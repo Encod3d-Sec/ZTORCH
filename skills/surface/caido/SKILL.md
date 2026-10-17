@@ -289,8 +289,9 @@ bash /root/vm.sh '~/caido.sh project'    # list + selected; 'project <n>' create
 bash /root/vm.sh '~/caido.sh gql "<query>" "<vars-json>"'
 ```
 
-Source of truth `scripts/caido.sh`; re-push with
-`bash /root/vm.sh 'tee ~/caido.sh >/dev/null; chmod +x ~/caido.sh' < scripts/caido.sh`.
+Source of truth `scripts/caido.sh`; re-push with (vm.sh does not forward
+stdin, so ship the bytes inside the command):
+`B64=$(base64 -w0 scripts/caido.sh); bash /root/vm.sh "echo $B64 | base64 -d > ~/caido.sh && chmod +x ~/caido.sh"`.
 Schema drifts between releases (0.58.3: `startReplayTask(sessionId)` takes NO input;
 `replayEntry` needs the `ReplayEntryHttp` fragment). On a field error, introspect
 first (`__type(name:"...")`), or check github.com/caido/schemas; do not trust older

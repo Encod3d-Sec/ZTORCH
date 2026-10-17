@@ -44,7 +44,7 @@ assembled.
    chain in `state.md`'s `## Chain` section instead.
 2. **Generalize** each lesson (product + technique/cred/endpoint + impact); strip every
    client host/IP/domain/cred value.
-3. **Dedup vs wiki** with `qmd_query`/`qmd_search` -- keep only what the home page does
+3. **Dedup vs wiki** with `mcp__wiki-search__query`/`mcp__wiki-search__query (lex)` -- keep only what the home page does
    not already cover.
 4. **Stage** each survivor (`scripts/wiki-stage.py --kind default-cred|api-pattern|
    technique`); a genuinely new class gets a content-free scaffold page first so its
@@ -118,7 +118,7 @@ engagement for anything still missing from the wiki.
 
 When the user asks a question:
 
-1. **Search first** using the `wiki-search` MCP tool (`qmd_query` for semantic search, `qmd_search` for keyword). This replaces reading `wiki/index.md` manually.
+1. **Search first** using the `wiki-search` MCP tool (`mcp__wiki-search__query` for semantic search, `mcp__wiki-search__query (lex)` for keyword). This replaces reading `wiki/index.md` manually.
 2. Read the pages returned by the search in full.
 3. Synthesise an answer with inline `[[wiki links]]` as citations.
 4. **Offer to file the answer** as a wiki page if it's a non-trivial synthesis -- e.g. a comparison of techniques, a methodology walkthrough, or a cheatsheet.

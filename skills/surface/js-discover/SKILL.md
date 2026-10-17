@@ -34,10 +34,10 @@ corpus or gate artifacts there.
 Transport (unchanged): command blocks below are VM-native; ship each as one
 vm-ssh.sh argument:
 
-    wsl.exe -d kali-linux -u root bash -c "cd /mnt/c/Users/Lenovo/Documents/ObisidianVaults/ZTorch/ZTorch && bash scripts/vm-ssh.sh '<command>'"
+    bash scripts/vm-ssh.sh '<command>'
 
-vm-ssh lands on the VM as user tz (NOT root): no root-only paths, no sudo
-assumptions; tools live under /home/tz. Quoting: vm-ssh.sh takes the command
+vm-ssh lands on the VM as root (key-based; the tz password fallback lives
+in /root/vm.sh only). Quoting: vm-ssh.sh takes the command
 as ONE argument; commands containing single quotes must ship as a base64
 payload (base64-encode the script, then run `echo <b64> | base64 -d | bash`
 inside the vm-ssh argument). Blocks below avoid inline single quotes where
@@ -163,11 +163,11 @@ the dest column.
 ## Step 1 - Inline JS
 
 For each page you touch, get RENDERED html (inline scripts differ from raw).
-Pre-verify the URL against scope.md by hand (wigolo runs in the WSL
-kali-linux distro at /opt/wigolo - NOT the VMware VM, NOT behind the
+Pre-verify the URL against scope.md by hand (wigolo runs on the WSL seat
+at /opt/wigolo - NOT the VMware VM, NOT behind the
 scope-shim; its advisories print on stderr - keep stderr visible):
 
-    wsl.exe -d kali-linux -u root bash -c "cd /opt/wigolo && ./node_modules/.bin/wigolo fetch '<url>'"
+    cd /opt/wigolo && ./node_modules/.bin/wigolo fetch '<url>'
 
 If the WSL distro is down, fall back to the shim binary:
 /opt/scope-shim/bin/curl.
@@ -207,9 +207,8 @@ no_dos RoE. Fetch every js-urls.txt entry to a terminal state per URL:
         404) rm -f "$RUN/raw/external/$b"; echo "404-archived $u" >> "$RUN/raw/fetch-log.txt" ;;
         *)
           rm -f "$RUN/raw/external/$b"
-          # retry once via wigolo fetch (WSL side - pre-verify URL against
-          # scope.md; run the wsl.exe wrapper from the seat, this loop pauses
-          # for it); on repeated failure record the terminal state:
+          # retry once via wigolo fetch (seat side - pre-verify URL against
+          # scope.md first); on repeated failure record the terminal state:
           echo "BLOCKED/$code $u" >> "$RUN/raw/fetch-log.txt"
           # never silently dropped
           ;;
@@ -221,10 +220,10 @@ no_dos RoE. Fetch every js-urls.txt entry to a terminal state per URL:
 CHOOSE INTERCEPTOR when ANY of:
 - katana returned < 5 same-host .js URLs, or a bot wall / JS challenge /
   403-429 wall appeared in Step 2 or in wigolo fetches
-- the surface is auth-gated and the operator's real Chrome session already
-  holds the login
+- the surface is auth-gated (sessions get minted INSIDE the automation
+  instance with the engagement's own accounts, per identities.md)
 - chunks load from domains other than the main host (cross-domain chunked
-  JS; -Spider follows them, katana -fs rdn does not)
+  JS; the composed spider follows them, katana -fs rdn does not)
 - scripts only appear in the rendered DOM after hydration
 
 Otherwise katana (cheap, shim-visible) stays the default; wigolo remains
@@ -232,25 +231,22 @@ the single-page rendered-DOM fallback. katana first, escalate to
 Interceptor on any trigger, merge URL lists (dedupe by URL) before the
 Step 2 fetch pipeline. Record the branch decision in the manifest.
 
-Interceptor drives the operator's REAL Chrome (no CDP, no separate
-automation browser) and runs SEAT-SIDE on Windows - never inside the VM.
-In -Spider mode it executes every button click, visits every link, parses
-and downloads all code, and finds chunked JavaScript including chunks
+Interceptor runs SEAT-SIDE driving a DEDICATED Edge automation instance -
+its own --user-data-dir, CDP on 9334, NEVER the operator's personal
+browser profiles (BROWSER LAW, hook-enforced). The composed spider loop
+(open -> links -> act click -> net capture) executes every control,
+visits every link, and captures chunked JavaScript including chunks
 loaded from other domains.
 
-TODO-OPERATOR (one-time, operator-gated - needs the real Chrome profile;
-do NOT auto-install mid-run). Build is DONE (repo cloned + bun build at
-C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor - dist/interceptor
-CLI + extension/dist verified):
-1. Branded Chrome ignores --load-extension: enable Developer mode at
-   chrome://extensions, "Load unpacked", select
-   C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor/extension/dist
-2. Verify from seat-side bash (bun runtime - there is no standalone .exe;
-   Windows-hosted exe: call via /mnt/c spelling from the WSL seat):
-   /mnt/c/Users/Lenovo/.bun/bin/bun.exe /mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/dist/interceptor status
-3. Until the extension is loaded + daemon answers status, this branch is
-   unavailable: run katana+wigolo and note INTERCEPTOR-UNAVAILABLE in the
-   manifest; tick the checklist Interceptor boxes with "N/A: not fired".
+STACK (DONE - no operator step left). Bring the automation instance up
+with `bash scripts/interceptor-automation.sh up`, and export
+INTERCEPTOR_CONTEXT from its `context` output before every CLI call.
+Invoke the compiled CLI directly:
+/mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/dist/interceptor
+(no bun prefix for the built exe). If the stack fails to come up, this
+branch is unavailable: run katana+wigolo and note
+INTERCEPTOR-UNAVAILABLE in the manifest; tick the checklist Interceptor
+boxes with "N/A: not fired".
 
 Invocation (seat-side, full paths; there is NO -spider/-out surface on
 this build - verify with `interceptor manifest` before relying on any
@@ -271,11 +267,12 @@ provenance). Non-JS captures stay under raw/interceptor/ as evidence.
 Write raw/interceptor/hosts-seen.txt (one host per line) and diff it
 against the in-scope list in REVIEW.
 
-Auth model (feature, not gap): the browser is already logged in, so the
-real session REPLACES the identities.md profile flow for this branch.
-Record which operator session produced the capture in the manifest.
-js-parser replays interceptor-sourced endpoints GET-only, with captured
-session headers, inside the logged-in session.
+Auth model: sessions are minted INSIDE the automation instance with the
+engagement's own accounts (identities.md owns the credentials; the
+instance only holds the resulting cookies). Record which account produced
+the capture in the manifest. js-parser replays interceptor-sourced
+endpoints GET-only, with captured session headers, inside that session.
+Teardown = UI logout-all + verify.
 
 SCOPE COMPENSATING CONTROL (binding): the scope-shim cannot see
 real-browser traffic. Spider targets come from the engagement in-scope

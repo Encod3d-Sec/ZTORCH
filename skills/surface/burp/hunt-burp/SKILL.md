@@ -21,7 +21,7 @@ Anchors: [[api-testing]]
 
 ## Pre-Attack: Wiki Query (MANDATORY)
 ```
-qmd_query "burp mcp proxy history repeater collaborator" via wiki-search MCP -> read matches.
+mcp__wiki-search__query (lex) "burp mcp proxy history repeater collaborator" -> read matches.
 ```
 Core pages: [[burp-mcp]] (setup + tool inventory + workflow), [[burp-suite]] (GUI + BApps).
 **Self-heal:** query empty -> read `wiki/tools/burp-mcp.md` directly.
@@ -105,8 +105,8 @@ SQLi -> `hunt-sqli`, IDOR/BOLA -> `hunt-idor`, XSS -> `hunt-xss`, SSRF/open-redi
 ## FIND Output
 Confirmed:
 ```
-Create Vulns/Research/FIND-XXX-SEVERITY-<class>-<host>.md   (capture the raw request/response as evidence: Skill(screenshot-burp) -> a Burp Repeater PoC image)
-Add row to Vuln-index.md: | FIND-XXX | <issue> via Burp | host | CONFIRMED |
+Create Vulns/Research/FIND-NNN-SEVERITY-title.md   (capture the raw request/response as evidence: Skill(screenshot-burp) -> a Burp Repeater PoC image)
+Add row to Vuln-index.md: | FIND-NNN | <issue> via Burp | host | CONFIRMED |
 ```
 Capture signals into `state.md`/`loot.md`/`Killchain.md` as you go. Exhausted a vector -> one line in `Deadends.md`.
 

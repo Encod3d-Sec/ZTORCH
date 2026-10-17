@@ -27,7 +27,7 @@ Anchors: [[windows-privesc]], [[binary-exploitation]]
 ## Standing mandate: Wiki-first, tools-before-scripts (GATE 1, all phases)
 
 This mandate stands over every phase below. Before writing ANY custom script or recalling an exploit from memory:
-1. `qmd_query "<tech/version> exploit"` and `qmd_query "<service> privilege escalation"` via wiki-search MCP. Read matches. If the MCP is down (it drops mid-session), run `bash scripts/wiki-query.sh "<tech> exploit"` (same qmd index; `-k` for an exact CVE) - do NOT skip wiki-first or fall back to grep.
+1. `mcp__wiki-search__query (lex) "<tech/version> exploit"` and `mcp__wiki-search__query (lex) "<service> privilege escalation"` via wiki-search MCP. Read matches. If the MCP is down (it drops mid-session), run `bash scripts/wiki-query.sh "<tech> exploit"` (same qmd index; `-k` for an exact CVE) - do NOT skip wiki-first or fall back to grep.
 2. Pull payloads from `wiki/payloads/` and chains from `wiki/cheatsheets/attack-chains.md` + `wiki/cheatsheets/cve-arsenal.md`, or `Skill(wiki-arsenal)` to resolve the exact file.
 3. Privesc reference: `wiki/techniques/linux/linux-privesc.md` (or windows-privesc).
 Only after the wiki has nothing do you write a custom PoC. Do not reinvent what the wiki already documents.
@@ -121,7 +121,7 @@ fine; the requests you'd screenshot are not throwaway. See AGENTS.md "Burp-first
 **STOP-and-think the moment ANY shell lands (before reaching for a shortcut).** The recurring
 failure is following the FASTEST path instead of the INTENDED one, then going off the rails. Pause and:
 1. Read the box's THEME/name + any notes/creds/files you already have - CTF boxes telegraph the
-   intended vector (a module lesson, a service left on, a labelled secret). `qmd_query` the wiki for
+   intended vector (a module lesson, a service left on, a labelled secret). `mcp__wiki-search__query` the wiki for
    that theme + the exact fingerprinted tech before acting.
 2. Enumerate the INTENDED escalation surface FIRST: `sudo -l`, writable configs/cron/timers/scripts
    you own, group memberships, service creds - the deliberate path is almost always one of these and

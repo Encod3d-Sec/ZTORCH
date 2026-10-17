@@ -38,8 +38,8 @@ When the `wiki-search` MCP is active, prefer these tools over the CLI - they avo
 
 | Tool | Purpose |
 |---|---|
-| `mcp__wiki-search__qmd_query` | Semantic (vector) search - use for concepts, techniques, intent |
-| `mcp__wiki-search__qmd_search` | Keyword (substring) search - use for exact strings, tool names, CVE IDs |
+| `mcp__wiki-search__query` | Typed sub-queries: `lex` = keyword (exact strings, tool names, CVE IDs), `vec` = semantic (concepts, techniques, intent), `hyde` = hypothetical answer passage |
+| `mcp__wiki-search__get` / `multi_get` | Fetch page(s) by path or docid (`file.md`, `file.md:100`, `#abc123`, glob) |
 
 AGENTS.md rule: **never read `wiki/index.md` to find pages - always search first.**
 
