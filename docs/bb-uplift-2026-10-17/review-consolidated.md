@@ -135,4 +135,43 @@ scripts/ file exist; 24 bb Approach wiki links resolve; zero donor tokens.
 
 ## Close-out
 
-(batch SHAs + final battery filled in at close)
+Commits (branch bb-uplift, in order):
+
+| batch | SHA | contents |
+|---|---|---|
+| F1 + ledger | `e022465` | bb-workflow ref fixes, this ledger |
+| F2 | `b0a3876` | offensive SKILL aux paragraph, next_move order + gap floor, playbook bb tags, coverage-classes bb list |
+| F3 | `c67dc88` | 55 files: qmd tool names repo-wide, description tails (see S3-2 amendment), xss links, seat labels, hunt-ad subnet, FIND naming, caido stdin, js-discover Step 2b + transport |
+| F4 | `f56c3a1` | TARGETS.md / page-types.md / workflows.md / new-engagement.sh header |
+| battery fixes | `58632ac` | S3-2 tail restore, port-ledger client-name scrub |
+
+Final battery (bb-uplift @ `58632ac`): pytest 548 passed / 0 failed
+(128.10s), offensive-doctor 29 checks / 26 PASS / 3 WARN / 0 FAIL (WARNs
+are the known daemon-state trio, non-regression), check-routing 0,
+lint-wiki 0 hard, check-leaks hard gate clean (advisory WARNs pre-existing).
+
+Amendments recorded at close-out:
+
+- **S3-2 REVERSED.** The description tails stripped per this table broke
+  `tests/test_hunt_use_when.py` (the line must end unquoted `.` with the
+  use-when clause in its back half; the tails are also picker text). The
+  post-quote tail is the repo's intentional description format - the
+  loader tolerates it. All 39 description lines restored verbatim from
+  `b0a3876` in `58632ac`; every other F3 change kept. Lesson: a
+  description-line edit is a contract edit, run the hunt tests before
+  committing it.
+- **S4-6 widened by recheck.** The dead `qmd_query`/`qmd_search` names
+  were repo-wide (~45 more sites beyond the slice's 3 files: hunt
+  wiki-first blocks, research/workflow/platform skills, skill-map,
+  workflows, surface template). Fixed in F3 for all tracked `.md`
+  instruction sites. Deferred (follow-on pass): the same names inside
+  `scripts/recon-capture.py` + `scripts/research_status.py` nudge strings,
+  `scripts/wiki-promote.py` docstring, and two `scripts/playbook.json`
+  test strings - runtime strings, possibly test-referenced, zero agent
+  routing impact.
+- **Baseline correction: check-leaks.** The baseline line above said
+  "check-leaks clean"; at battery time the hard gate FAILED on 5 client
+  engagement names inside `docs/port-2026-10-17/` ledgers - byte-identical
+  on main @ `fec7ef9`, i.e. pre-existing and missed at baseline. Scrubbed
+  in `58632ac` (names live in `targets/` only). Branch is clean relative
+  to a corrected baseline: nothing that was green turned red.
