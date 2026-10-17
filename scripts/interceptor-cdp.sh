@@ -15,15 +15,47 @@
 #                                                       it back in-scope)
 # NOTE: netwatch outfile MUST be a full Windows path (C:/...) - bun.exe is
 # native and drops POSIX-style paths at C:\ root.
+#
+# SEAT TRANSPORT (operator 2026-10-17): all Windows-side I/O (CDP HTTP, bun
+# WS runs) goes THROUGH powershell.exe - the WSL seat is NAT-mode, Linux
+# curl/netstat cannot see Windows loopback, and direct /mnt/c exe execs are
+# the broken pattern. JS snippets ride temp files (bash+PS+bun -e quoting is
+# the known failure vector); env vars reach bun via interop inheritance.
 set -euo pipefail
 
 CDP="${INTERCEPTOR_CDP:-9334}"
-BUN="C:/Users/Lenovo/.bun/bin/bun.exe"
-export CDP
+TOOLS_WIN="C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor"
+BUN_WIN="C:/Users/Lenovo/.bun/bin/bun.exe"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    PS_BIN="powershell.exe"
+    TOOLS_LOCAL="$TOOLS_WIN"
+    ;;
+  *)
+    PS_BIN="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+    TOOLS_LOCAL="/mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor"
+    ;;
+esac
+export CDP PS_BIN TOOLS_WIN TOOLS_LOCAL BUN_WIN
+
+ps() { "$PS_BIN" -NoProfile -Command "$@"; }
+# CDP HTTP through PS (Windows loopback)
+cdp_http() { # cdp_http <METHOD> <path> -> body on stdout
+  ps "(Invoke-WebRequest -UseBasicParsing -Method $1 -Uri 'http://127.0.0.1:$CDP$2').Content"
+}
+# bun via PS. WSL->Windows env does NOT cross interop (WSLENV gate), so worker
+# JS reads process.argv, and args ride the command line PS-single-quoted.
+ps_q() { local s=${1//\'/\'\'}; printf "'%s'" "$s"; }
+bun_js() { # bun_js <windows-form .js path> [args...]
+  local js=$1; shift
+  local a=(); local x
+  for x in "$@"; do a+=("$(ps_q "$x")"); done
+  ps "& '$BUN_WIN' '$js'${a[*]+ ${a[*]}}"
+}
 
 # first real page target in the automation instance (skips devtools/edge:// internal)
 page_id() {
-  curl -s "http://127.0.0.1:$CDP/json" | python3 -c "
+  cdp_http GET /json | python3 -c "
 import json,sys
 for t in json.load(sys.stdin):
     if t.get('type')=='page' and not t.get('url','').startswith(('devtools:','edge://','chrome://')):
@@ -33,7 +65,7 @@ for t in json.load(sys.stdin):
 
 case "${1:-targets}" in
   targets)
-    curl -s "http://127.0.0.1:$CDP/json" | python3 -c "
+    cdp_http GET /json | python3 -c "
 import json,sys
 for t in json.load(sys.stdin):
     print(t.get('type'), t.get('id'), t.get('url','')[:100])
@@ -47,7 +79,7 @@ for t in json.load(sys.stdin):
     # visible. Blank parked tabs lead nowhere; the working tab must be the shown tab.
     # Two layers: CDP tab activation + window restore (a minimized/multi-window Edge
     # keeps every tab "hidden" no matter what bringToFront alone says).
-    C:/Users/Lenovo/.bun/bin/bun.exe -e "
+    cat > "$TOOLS_LOCAL/.cdp-front.js" <<EOF
 const ws = new WebSocket('ws://127.0.0.1:$CDP/devtools/page/$PAGE');
 let id = 0; const send = (m,p={}) => ws.send(JSON.stringify({id:++id,method:m,params:p}));
 let wid = null;
@@ -61,12 +93,14 @@ ws.onmessage = (m) => {
   }
   setTimeout(()=>process.exit(0), 400);
 };
-setTimeout(()=>process.exit(0), 3000);" >/dev/null 2>&1 || true
+setTimeout(()=>process.exit(0), 3000);
+EOF
+    bun_js "$TOOLS_WIN/.cdp-front.js" >/dev/null 2>&1 || true
 # NOTE: under multi-lane contention a parallel driver can flip the foreground right
 # back - each lane pins ITS tab (PARALLEL-LANE TAB PINNING law in the skill).
     export PAGE MODE="$1" EXPR="${2:-}" OUT="${2:-cdp.jsonl}" SECS="${3:-60}"
-    exec "$BUN" -e '
-const {CDP, PAGE, MODE, EXPR, OUT, SECS} = process.env;
+    cat > "$TOOLS_LOCAL/.cdp-worker.js" <<'EOF'
+const [CDP, PAGE, MODE, EXPR, OUT, SECS] = process.argv.slice(2);
 const ws = new WebSocket(`ws://127.0.0.1:${CDP}/devtools/page/${PAGE}`);
 const fs = require("fs");
 let id = 0;
@@ -123,20 +157,25 @@ ws.onmessage = (m) => {
   }
 };
 ws.onerror = () => { console.error("CDP ws error - stack up? (interceptor-automation.sh up)"); process.exit(1); };
-'
+EOF
+    bun_js "$TOOLS_WIN/.cdp-worker.js" "$CDP" "$PAGE" "$MODE" "$EXPR" "$OUT" "$SECS"
     ;;
   clean)
     # ACTIVE-TAB LAW sweeper: close parked blank/internal tabs so the tab bar (and the
     # operator's eye) holds only live working tabs.
     python3 - "$CDP" <<'PYEOF'
-import json, sys, urllib.request
+import json, os, subprocess, sys
 cdp = sys.argv[1]
+ps = os.environ.get("PS_BIN", "powershell.exe")
+def wreq(method, url):
+    return subprocess.run([ps, "-NoProfile", "-Command",
+        f"(Invoke-WebRequest -UseBasicParsing -Method {method} -Uri '{url}').Content"],
+        capture_output=True, text=True).stdout
 n = 0
-for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{cdp}/json")):
+for t in json.loads(wreq("GET", f"http://127.0.0.1:{cdp}/json")):
     u = t.get("url", "")
     if t.get("type") == "page" and (u in ("about:blank", "") or u.startswith(("edge://", "chrome://"))):
-        urllib.request.urlopen(urllib.request.Request(
-            f"http://127.0.0.1:{cdp}/json/close/{t['id']}", method="DELETE"))
+        wreq("DELETE", f"http://127.0.0.1:{cdp}/json/close/{t['id']}")
         print(f"[clean] closed {u[:50]}")
         n += 1
 print(f"[clean] {n} blank/internal tab(s) closed")
@@ -149,8 +188,18 @@ PYEOF
     # Other tabs (test-opened redirects etc.) are NOT touched.
     SCOPE_="${2:?usage: oos <scope.md>}"
     python3 - "$CDP" "$SCOPE_" <<'PYEOF'
-import json, sys, urllib.parse, urllib.request
+import json, os, subprocess, sys, time, urllib.parse
 cdp, scope = sys.argv[1], sys.argv[2]
+ps = os.environ.get("PS_BIN", "powershell.exe")
+tools_local = os.environ.get("TOOLS_LOCAL", ".")
+tools_win = os.environ.get("TOOLS_WIN", ".")
+bun = os.environ.get("BUN_WIN", "C:/Users/Lenovo/.bun/bin/bun.exe")
+def wreq(method, url):
+    return subprocess.run([ps, "-NoProfile", "-Command",
+        f"(Invoke-WebRequest -UseBasicParsing -Method {method} -Uri '{url}').Content"],
+        capture_output=True, text=True).stdout
+def targets():
+    return json.loads(wreq("GET", f"http://127.0.0.1:{cdp}/json"))
 ins = []
 grab = False
 for ln in open(scope, encoding="utf-8"):
@@ -160,14 +209,14 @@ for ln in open(scope, encoding="utf-8"):
         if host and not host.startswith("#"): ins.append(host)
 def in_scope(h): return any(h == s or h.endswith("." + s) for s in ins)
 main = None
-for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{cdp}/json")):
+for t in targets():
     if t.get("type") == "page" and t.get("url", "").startswith(("http://", "https://")):
         main = t; break
 if not main:
     print("[oos] no main page tab found - nothing open?"); sys.exit(0)
 def host_of(u): return urllib.parse.urlparse(u).hostname or ""
 def url_of(tid):
-    for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{cdp}/json")):
+    for t in targets():
         if t.get("id") == tid: return t.get("url", "")
     return ""
 if in_scope(host_of(main["url"])):
@@ -175,7 +224,6 @@ if in_scope(host_of(main["url"])):
 print(f"[oos] MAIN PAGE DRIFTED OOS: {host_of(main['url'])} <- {main['url'][:90]}")
 print("[oos] observing where the path leads for 10s (requests land in netwatch)...")
 seen = main["url"]
-import time
 for _ in range(5):  # 5 x 2s = 10s observation window, log the redirect chain
     time.sleep(2)
     u = url_of(main["id"])
@@ -187,14 +235,16 @@ if in_scope(host_of(seen)):
     sys.exit(0)
 back = f"https://{ins[0]}/"
 print(f"[oos] still OOS ({host_of(seen)}) after 10s - closing the path, back to {back}")
-# Page.navigate via WS (curl cannot); minimal bun one-liner, same pattern as eval
-import subprocess
-subprocess.run(["C:/Users/Lenovo/.bun/bin/bun.exe", "-e", f"""
-const ws = new WebSocket('ws://127.0.0.1:{cdp}/devtools/page/{main['id']}');
+# Page.navigate via WS; JS written to a temp file, run through PS (seat law)
+jspath = os.path.join(tools_local, ".cdp-oos.js")
+with open(jspath, "w", encoding="utf-8") as f:
+    f.write(f"""const ws = new WebSocket('ws://127.0.0.1:{cdp}/devtools/page/{main['id']}');
 ws.onopen = () => ws.send(JSON.stringify({{id:1, method:'Page.navigate', params:{{url:'{back}'}}}}));
 ws.onmessage = () => process.exit(0);
 setTimeout(() => process.exit(0), 5000);
-"""], capture_output=True)
+""")
+subprocess.run([ps, "-NoProfile", "-Command", f"& '{bun}' '{tools_win}/.cdp-oos.js'"],
+               capture_output=True)
 print("[oos] back on in-scope ground")
 PYEOF
     ;;

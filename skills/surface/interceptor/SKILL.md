@@ -33,20 +33,23 @@ foreign context as a violation to report, never a target to drive.
 KILL-VERIFY-LISTENER: killing a browser's main pid does NOT close its debug
 port - the process tree promotes/respawns a child that keeps the listener.
 After killing any browser that held a CDP port, verify the LISTENER died
-(netstat -ano | grep :<port>) and repeat the kill on the new owner pid until
-the port is free; a dead pid with a live listener is an open CDP hole.
+(PS: `netstat -ano | Select-String :<port>`) and repeat the kill on the new
+owner pid until the port is free; a dead pid with a live listener is an open
+CDP hole. WSL seat: run these checks through powershell.exe - Linux netstat
+cannot see Windows loopback.
 
 WAKE LAW (the operational gotcha): CLI-spawned daemons die before the
 extension service worker's WS retry, so `interceptor open` fails with
 "no extensions connected" forever. The fix: hold a PERSISTENT standalone
-daemon first -
-INTERCEPTOR_SPIN_WATCHDOG=off /mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/daemon/interceptor-daemon.exe --standalone
-(run as a background process that stays alive) - the sleeping worker
-auto-reconnects to ws://127.0.0.1:19222. LIFECYCLE: the worker falls back
+daemon first (WSL seat, PS 5.1-safe env inheritance; Start-Process detaches
+so it survives the shell):
+powershell.exe -NoProfile -Command "$env:INTERCEPTOR_SPIN_WATCHDOG='off'; Start-Process -FilePath 'C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor/daemon/interceptor-daemon.exe' -ArgumentList '--standalone' -WindowStyle Hidden"
+(the sleeping worker auto-reconnects to ws://127.0.0.1:19222; WSL->Windows
+env does NOT cross interop, so the env var must be set INSIDE the PS command).
+LIFECYCLE: the worker falls back
 asleep after ~30s idle and drops the socket - before any CLI command, check
-`netstat -an | grep 19222` for ESTABLISHED; if down, trigger ANY navigation
-in the automation instance (powershell.exe Start-Process '<url>') and poll until
-ESTABLISHED returns.
+for ESTABLISHED via PS `netstat -an | Select-String 19222`; if down, trigger
+ANY navigation in the automation instance and poll until ESTABLISHED returns.
 
 CDP PITFALL: --remote-debugging-port is IGNORED by Chrome 136+ on the default
 user-data-dir, and /json/new no longer navigates - do not burn time on CDP
@@ -180,19 +183,23 @@ click execution` is hard. The real fix is the nftables egress allowlist
   Persists in that user-data-dir; without it, window_create --incognito
   returns "no window".
 
-## CLI pattern (seat-side, full paths; prefer the compiled exe - bun prefix
-## only when running the unbuilt script form)
+## CLI pattern (WSL seat, 2026-10-17: ALL Windows-side runs go THROUGH
+## powershell.exe - NAT-mode hides Windows loopback from Linux, PATH has no
+## Windows dirs, and WSL->Windows env does NOT cross interop, so the context
+## pin rides `$env:` inside the PS command)
 
-    CLI=/mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/dist/interceptor
-    export INTERCEPTOR_CONTEXT=$(cat /mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/edge-context.txt)
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" status
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" window new "https://<in-scope-host>" --incognito
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" open "https://<in-scope-host>"
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" net log             (drain captured HAR; NO `net start` - subcommands are log|clear|headers)
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" links              (all links on page)
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" act <ref>          (per control, tree refs)
-    /mnt/c/Users/Lenovo/.bun/bin/bun.exe "$CLI" eval --main <js>   (in-page JS; fetch-patch)
-    INTERCEPTOR_PAGE=<id> bash scripts/interceptor-cdp.sh eval '<js>'   (CDP on a CHOSEN tab)
+    PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+    CTX=$(cat /mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/edge-context.txt)
+    BUN=C:/Users/Lenovo/.bun/bin/bun.exe
+    CLI=C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor/dist/interceptor
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' status"
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' window new 'https://<in-scope-host>' --incognito"
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' open 'https://<in-scope-host>'"
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' net log"      (drain captured HAR; NO `net start` - subcommands are log|clear|headers)
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' links"        (all links on page)
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' act <ref>"    (per control, tree refs)
+    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' eval --main <js>"  (in-page JS; fetch-patch)
+    INTERCEPTOR_PAGE=<id> bash scripts/interceptor-cdp.sh eval '<js>'   (CDP on a CHOSEN tab; script handles the PS routing)
 
 CAPTURE CAVEAT: passive `net log` misses APQ POST bodies (beacons only);
 recover bodies via eval --main fetch-patch - override window.fetch to record

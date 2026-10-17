@@ -121,3 +121,17 @@ Operator follow-ups (out of session scope):
 - zg daemon down (`zg server on`) - flips two doctor WARNs.
 - Donor junction-sweep.ps1 carries a literal TAB inside `'hermes<TAB>orch-skills'`
   upstream (frozen donor bytes); left verbatim, only `$repo` repointed.
+
+Post-close-out addendum (2026-10-17, seat bring-up): the ported
+`interceptor-automation.sh` / `interceptor-cdp.sh` were authored for
+git-bash-on-Windows and silently died on the WSL seat (no powershell.exe on
+PATH, direct-C:/ execs, Linux netstat/curl blind to NAT-mode Windows
+loopback, and WSL->Windows env vars do not cross interop). Both scripts now
+route every Windows-side action through powershell.exe (absolute interop
+path; context pin and worker params ride `$env:`/argv, not environment), and
+the interceptor SKILL.md CLI pattern + WAKE/KILL laws were updated to match.
+Live-verified end to end on the seat: `up` -> context
+`gomcpnagjjlhehnkoobkjgnkbleiooed` CONNECTED, CLI `open --reuse --group` drove
+the instance, CDP targets/eval/netwatch all returned (netwatch JSONL captured
+on a mid-window navigation). Daemon held by a pre-existing standalone
+listener (pid 39356).
