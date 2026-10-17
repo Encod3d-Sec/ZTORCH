@@ -51,8 +51,8 @@ organizational only.
 
 ## Vault-local skill layout
 
-`skills/hunt/` holds the `hunt-*` vuln-class skills plus the shared `hunt-core` spine
-every hunt assumes. `skills/vector-workflow/` is the board-seeding pipeline reference
+`skills/exploit/hunt/` holds the `hunt-*` vuln-class skills plus the shared `hunt-core` spine
+every hunt assumes. `skills/surface/vector-workflow/` is the board-seeding pipeline reference
 (not a loop step), promoted to its own top-level directory. `skills/workflow/` holds
 the two engagement entry points at its root, `offensive` (the driver) and `engage`
 (the router), plus `brain` (subagent dispatch mode over the driver), plus the process/utility skills grouped into subfolders (nesting is
@@ -64,7 +64,7 @@ depth):
 - `ctf/` -- `ctf-box`, `ctf-category`
 - `env/` -- `kali-seat`, `chrome-devtools-browser`, `screenshot`
 
-`skills/burp/` holds
+`skills/surface/burp/` holds
 `hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
 scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,
 `research/`, `disclosure/`, `caido/` (headless Caido driver; caido-mode SDK CLI vendored + helper `scripts/caido.sh`). `agents-md-improver/` is the offline

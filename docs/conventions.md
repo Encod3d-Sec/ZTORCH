@@ -26,7 +26,7 @@ Followed by 2-4 bullet points summarising what changed.
 
 ## Hunt skill skeleton
 
-Canonical section set for every `skills/hunt/hunt-*/SKILL.md` (13 slots; order as
+Canonical section set for every `skills/exploit/hunt/hunt-*/SKILL.md` (13 slots; order as
 listed, class-specific reference sections slot in where marked). Enforced in part by
 `tests/test_hunt_use_when.py`.
 

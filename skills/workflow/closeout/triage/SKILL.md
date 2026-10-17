@@ -1,6 +1,10 @@
 ---
 name: triage
 description: Finding validation gate - 7-Question triage adapted for the FIND schema. Use before any FIND moves from Research to Completed; one NO keeps it in Research.
+metadata:
+  hermes:
+    tags: [triage, gate, g1, severity]
+    related_skills: [evidence, hunt-core]
 ---
 
 # Triage: Finding Validation Gate
@@ -10,6 +14,12 @@ Use BEFORE moving any FIND from `Vulns/Research/` to `Vulns/Completed/`.
 One wrong answer = keep the finding in Research. Move on to next test class.
 
 ---
+
+## Wiki
+
+Hub: [[methodology-moc]] - Primary page: [[vuln-assessment]]
+Anchors: [[vulnerability-reports]], [[safe-probing-and-controls]]
+**REFS:** [[vuln-assessment]]
 
 ## THE 7-QUESTION GATE
 
@@ -72,6 +82,75 @@ Missing headers alone (no impact PoC)
 
 ---
 
+## Proof gate (G1 per-finding validators)
+
+Independent of the 7 questions: a finding moves to Completed ONLY when it
+carries one of these three proof primitives, named in the FIND with a concrete
+artifact reference. Artifact existence without a primitive (a screenshot of a
+200, a saved response, a tool banner) is not proof; "I have a PoC" is not a
+primitive. Cited practice: XBOW validators prove execution (S1); precision over
+recall - the gate may hold findings back, never wave them through.
+
+1. **execution-observed** - the payload's effect is seen in fetched or rendered
+   output produced BY the payload: headless-browser render where the script
+   runs, command output in the response, a template expression evaluating.
+2. **diff-observed** - a controlled before/after: attack vs benign control
+   request diverging on the injected branch only, or account B's response
+   containing account A's canary. No negative control = no diff.
+3. **sentinel-returned** - a sentinel you planted comes back on a channel you
+   own: an OOB callback hitting your listener (`oob.md` row flipped to HIT), or
+   an injected unique canary returning in content you later fetch.
+
+Claiming a primitive without its artifact is `hallucination` in the drift
+taxonomy. A finding that cannot carry any primitive stays in Research.
+
+Minimum primitive per class (a stronger primitive on the row also satisfies):
+
+| Class | Primitive | Proof artifact |
+|---|---|---|
+| XSS (reflected / stored / DOM) | execution-observed | headless render of the page: payload executes (dialog, sink side effect, DOM change) under the unique canary; screenshot + console trace |
+| SQLi (error / boolean) | diff-observed | attack vs control request diverges on the injected branch only; re-run both to confirm stable |
+| SQLi (blind / time) | sentinel-returned | OOB callback hit; time-based inference alone does NOT pass (hunt-core rule 4: no inference-only findings) |
+| SSRF | sentinel-returned | OOB callback from the target's egress, `oob.md` row HIT; internal reach shows in the callback path |
+| IDOR / access control | diff-observed | account B's response contains account A's canary data (two-account rule); an empty 200 is not a diff |
+| Command injection / RCE | sentinel-returned | OOB callback fired by an executed command, or the command's own output in the response |
+| SSTI | execution-observed | injected expression evaluates (arithmetic payload returns computed value) or triggers an OOB fetch |
+| XXE | sentinel-returned | OOB fetch of an attacker-controlled DTD, or target content arriving in the callback |
+| Deserialization (blind) | sentinel-returned | OOB callback from the first-stage gadget |
+| File upload to execution | execution-observed | uploaded file fetched back and executed/rendered (webshell output, SVG XSS firing in a browser) |
+| Open redirect | execution-observed | redirect followed end-to-end; canary lands on an attacker-controlled host in your own access log |
+| Cache poisoning | diff-observed | a second clean unauthenticated session receives the content the attacker planted |
+| Request smuggling | diff-observed | a second request through the desynced connection returns the smuggled prefix's effect |
+| LFI / path traversal | diff-observed | traversal response returns known file bytes absent from the benign request |
+| Auth bypass / logic | diff-observed | protected action succeeds from an unauthenticated or low-priv session while the control request is denied |
+| Secrets / config exposure | diff-observed | secret validated by USE (auth succeeds, resource fetches); the leak alone is a lead, not the primitive |
+
+Blind classes are pinned to sentinel-returned: the hunt-core OOB gate already
+forbids inference-only findings and this table must not undercut it. This gate
+EXTENDS Q6 and the verifier lane; it does not replace them - Q6 asks "did you
+prove impact", this gate fixes the closed vocabulary of what counts as proof.
+
+## Cross-tool correlation pass (G9)
+
+Run ONE explicit pass before lane close whenever the run recorded 2+ findings,
+ANY severity, across tools (nuclei + burp/caido + manual). Widen the chaining
+pass below from lows-only to this trigger; the model does not correlate
+unprompted - the pass IS the prompt.
+
+1. Collect the run's finding records across tools: nuclei output, proxy
+   history (`requests.md` rows + captures), manual FINDs in `Vulns/Research/`.
+2. Pair or chain records sharing a host + parameter + data-flow link (one
+   finding's output feeds another's input). Each link yields a compound
+   candidate: `FIND-A + FIND-B -> chained impact`.
+3. For each candidate propose a validation path: the proof primitive from the
+   table above plus the concrete request sequence demonstrating the chain.
+4. Append candidates to the Research queue. Correlation NEVER promotes: each
+   candidate still passes its own validation path and the 7-question gate.
+5. A candidate with no data-flow link or no validation path is discarded in one
+   written line. Bad compound candidates cost human attention at the gate.
+
+---
+
 ## Pre-Severity Gate (run before labelling CRITICAL or HIGH)
 
 1. Have you validated the FULL chain to attacker-attainable impact, or only one primitive?
@@ -92,7 +171,7 @@ from the demonstrated template in Q6, not the lane's adjective.
 
 | Result | Action |
 |--------|--------|
-| All 7 YES + Pre-Severity Gate clean | Move FIND to Vulns/Completed/ with frontmatter status CONFIRMED or EXPLOITED (DETECTED alone stays in Research). Update status in Vuln-index.md. Run `python3 scripts/find-lint.py` and fix any gaps (Description/PoC/Impact/Remediation + CVSS for HIGH/CRITICAL) so it is report-ready. Then run /evidence. |
+| All 7 YES + Pre-Severity Gate clean + a proof primitive named (see Proof gate) | Move FIND to Vulns/Completed/ with frontmatter status CONFIRMED or EXPLOITED (DETECTED alone stays in Research). Update status in Vuln-index.md. Run `python3 scripts/find-lint.py` and fix any gaps (Description/PoC/Impact/Remediation + CVSS for HIGH/CRITICAL) so it is report-ready. Then run /evidence. |
 | Any NO | Keep in Vulns/Research/. Update status to PARTIAL (reason) in Vuln-index.md. Document what is missing. |
 | Q7 chain required | Move to Vulns/Research/ with note "chain required: [what is needed]". |
 

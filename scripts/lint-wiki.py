@@ -112,8 +112,8 @@ def check_dead_scriptrefs():
 
 def _skill_exists(repo, name):
     """True if a skill dir <name> exists at ANY depth under skills/ (nesting is
-    organizational only per docs/skill-map.md: skills/<name>, skills/hunt/<name>,
-    skills/workflow/exec/<name>, ...)."""
+    organizational only per docs/skill-map.md: skills/<name>, skills/exploit/hunt/<name>,
+    skills/exploit/exec/<name>, ...)."""
     sk = os.path.join(repo, "skills")
     return os.path.isdir(sk) and any(
         os.path.isdir(os.path.join(root, name))
@@ -158,11 +158,11 @@ def check_triggers(repo):
     Fail-open: a missing/garbled triggers.json is reported once, never raised.
     """
     bad = []
-    path = os.path.join(repo, "skills", "hunt", "triggers.json")
+    path = os.path.join(repo, "skills", "exploit", "hunt", "triggers.json")
     try:
         data = json.load(open(path, encoding="utf-8", errors="ignore"))
     except Exception as e:
-        return [("skills/hunt/triggers.json", f"unreadable: {e}")]
+        return [("skills/exploit/hunt/triggers.json", f"unreadable: {e}")]
     for section in ("triggers", "surface_triggers", "relational_triggers"):
         for key, val in data.get(section, {}).items():
             targets = val if isinstance(val, list) else [val]

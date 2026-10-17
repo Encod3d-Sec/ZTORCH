@@ -3,7 +3,7 @@ title: "Void LKM injector"
 type: tool
 tags: [lkm, rootkit, icmp, c2, privesc, exercise]
 date_created: 2026-09-14
-date_updated: 2026-09-15
+date_updated: 2026-10-14
 sources: []
 phase: postex
 ---
@@ -174,5 +174,48 @@ Raw captures: Kali `/tmp/void-poc2/` (r-*.txt, e-eject-rot.txt, r-tdp203.txt tcp
 - On-box tcpdump cannot see inbound command pings while a session is live, but the outbound reply bursts are ordinary-looking ICMP; wire-shape stealth is the only network lever.
 - `hide`/`unhide` is the lsmod visibility of the module itself (hidden at load by default); unrelated to pid hiding.
 - The module is invisible to `lsmod`; only the truth window and a reboot clear everything.
+
+## Four-distro battery 2026-10-14 (build `1f27320f`, after the autoload/eject fixes)
+
+Three fixes landed and were verified on all 4 lab distros (.131 Ubuntu 24.04 kr 7.0.0-34, .133 Ubuntu 22.04 kr 5.15.0-198, .130 Debian 13 kr 6.12.111, .132 Ubuntu 26.04 kr 7.0.0-38):
+
+| Test | .131 (24.04/7.0) | .133 (22.04/5.15) | .130 (deb13/6.12) | .132 (26.04/7.0) |
+|---|---|---|---|---|
+| install + `--resp 'id -u'` ACK | exit 0 | exit 0 | exit 0 | exit 0 |
+| boot autoload via systemd-modules-load | Inserted [383] + ACK | Inserted [540] + ACK | Inserted [427] + ACK | Inserted [494] + ACK |
+| eject sweep deletes conf+ko while hidden | gone | gone | gone | gone |
+| unload verdict | RESIDUE inflight=15 | RESIDUE inflight=2, then 1 disconnected | RESIDUE inflight=10 | RESIDUE inflight=14 |
+| post-reboot resurrection after eject | none (journal 0 hits) | none | none | none |
+
+### Fix 1: autoload was dead since the fix10 getdents filter
+
+The own-artifact getdents clause hid `<stamp>.conf` from EVERY comm except `depmod`, including `systemd-modules-load` (boot enumeration of `/etc/modules-load.d`) and `modprobe` (options enumeration of `/etc/modprobe.d`, needed for `ack_mode=1`). Result: from the fix10 build, every post-reboot box had NO module, and every "eject refusal" on those boots was a false ENOENT on an absent module. Fix: comm exemptions for `systemd-modules` (15-char comm truncation) and `modprobe` alongside `depmod` (hide_files.c). Verified: journal `Inserted module 'snd_hda_<stamp>'` on all 4 distros plus post-boot ACK.
+
+Residual: a process renamed to one of the three exempt comms gains getdents visibility of the two stamp names it could already read by direct path; same class as the tailscaled exemption.
+
+### Fix 2: clean-eject sweep was guarded by the module's own unlink guard
+
+`snd_hda_sweep_persistence` (the UMH `rm` of conf/ko) runs BEFORE `snd_hda_scrub_all`, i.e. while the module is still hidden, so the S1 unlink guard ENOENT-lied to the module's own sweep: boot artifacts SURVIVED every eject and the module resurrected on next reboot. Fix: `!void_umh_active()` exemption in both unlink hooks (hide_files.c) with a new `void_umh_active()` accessor (defense.c). Verified: conf+ko actually gone after eject on all 4 distros; post-reboot journal has zero stamp hits.
+
+Residual: a foreign `rm` of the stamp names inside the ~100 ms UMH window slips through; exercise networks are keyed-operator-only, acceptable.
+
+### Fix 3: the false refusal message
+
+The rc=2 arm of `setup.sh unload` claimed a parked-reader survivor with certainty. Reworded to name both causes (real refusal+re-hid, or module never loaded) and to point at the `--resp` oracle (ACK = resident, silence = absent). Verified live on all 4.
+
+### Eject residue is the COMMON case on a live system, by design
+
+The inflight gate refuses teardown whenever any task sits inside a hooked syscall at drain time. On a booted box that is near-always true: journald + daemons parked in `__x64_sys_read`/`vfs_read` (blocking pipe/kmsg reads) and `__x64_sys_recvfrom` (socket daemons). Measured inflight at unload: 15/2/10/14 across the four distros; inflight=0 was observed exactly once (idle box, no ssh session mid-command). Practical doctrine:
+
+- Expect `EJECT:RESIDENT` on live boxes; the module stays resident-until-reboot, scrubbed and re-hidden, and (since fix 2) the persistence artifacts are ALREADY swept, so a reboot fully clears the box. No resurrection.
+- `EJECTF:go` (force) retires despite in-flight contexts; treat it as the emergency lever only, it can retire a trampoline under a parked task.
+- Disconnected unloads (nohup over ssh, session exits) do NOT help: the parked readers are system daemons, not the operator session.
+
+### Oracle corrections (recorded after a wrong "module unloaded" conclusion)
+
+- `--resp` ACK is a LIVENESS oracle only. After an eject the channel is scrubbed, so ZERO ACKs equally fits "resident but scrubbed" and "unloaded". Post-eject silence proves nothing.
+- The eject verb NEVER unloads by itself: it sweeps, scrubs, retires ftrace, and grants a one-shot `delete_module` permit; the userspace `rmmod` in `oneshot.sh unload` completes the act. A test that sends only `eject-loud` leaves the module resident.
+- A later bare `rmmod <stamp>` returns "Module unloading is not supported" (kmod's rendering of ENOSYS): that is the module's own S1 guard refusing an unpermitted delete_module, NOT a kernel config issue (`CONFIG_MODULE_UNLOAD=y` on these boxes).
+- Ubuntu/Debian `/tmp` is tmpfs: restage `oneshot.sh` after every reboot or the install silently no-ops through a redirect (bit three times).
 
 <!-- promoted-slug: void-lkm-injector -->

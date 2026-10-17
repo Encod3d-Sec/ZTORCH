@@ -1,6 +1,6 @@
 """Relational-question nudge: hunt-trigger.py advisory tier for Skill(graphify).
 
-The relational_triggers tier in skills/hunt/triggers.json is page-noun-gated:
+The relational_triggers tier in skills/exploit/hunt/triggers.json is page-noun-gated:
 engagement prose ("path between the two hosts") must NOT fire it, only
 wiki-page relational phrasing may.
 """

@@ -3,7 +3,7 @@
 
 Reads <vault>/.trigger-fire.jsonl (written by skills/hooks/hunt-trigger.py on
 every UserPromptSubmit) and prints the match rate plus per-skill fire counts.
-Use it to tune skills/hunt/triggers.json: raise the hit rate, spot over-firing.
+Use it to tune skills/exploit/hunt/triggers.json: raise the hit rate, spot over-firing.
 
 Leak-safe: the log holds NO prompt text -- only timestamps, fired skill lists,
 and prompt length -- so it is safe to read and share. The file is gitignored.
@@ -81,7 +81,7 @@ def main():
         for sk, c in skills.most_common(15):
             print("  %4d  %s" % (c, sk))
     print("\nHigh miss rate during hunting -> add the missed surface terms to")
-    print("skills/hunt/triggers.json (surface_triggers). Over-firing -> tighten a pattern.")
+    print("skills/exploit/hunt/triggers.json (surface_triggers). Over-firing -> tighten a pattern.")
 
 
 if __name__ == "__main__":

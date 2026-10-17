@@ -12,7 +12,7 @@ sources:
 Rust web-security proxy (Burp-class alternative, MITM core). One `caido` binary
 runs the instance headless: web GUI + GraphQL API on `:8082`, MITM proxy on
 `:8080`. Desktop app exists but is not needed for the headless instance.
-Companion skill: `caido` (skills/caido/SKILL.md: lifecycle, token refresh, agent surface, caido-mode CLI doctrine).
+Companion skill: `caido` (skills/surface/caido/SKILL.md: lifecycle, token refresh, agent surface, caido-mode CLI doctrine).
 
 ## Core usage
 
@@ -25,7 +25,7 @@ bash /root/vm.sh '~/caido.sh fuzz /tmp/tpl.txt /tmp/pays.txt example.com 443 1' 
 bash scripts/caido-battery.sh example.com pays.txt   # one-command battery (ships template+payloads)
 bash /root/vm.sh '~/caido.sh findings 20'             # in-project findings (Scanner passive etc.)
 bash /root/vm.sh '~/caido.sh cookies example.com'      # Cookie hdr of latest captured req to host
-cd skills/caido/caido-mode && npx tsx caido-client.ts search 'req.host.cont:"example.com"' --compact   # SDK CLI, seat-side
+cd skills/surface/caido/caido-mode && npx tsx caido-client.ts search 'req.host.cont:"example.com"' --compact   # SDK CLI, seat-side
 ```
 
 ## Setup facts (Kali VM)
@@ -44,14 +44,14 @@ cd skills/caido/caido-mode && npx tsx caido-client.ts search 'req.host.cont:"exa
 
 ## Driving it
 
-- caido-mode CLI (seat-side, `npx tsx caido-client.ts` from `skills/caido/caido-mode/`;
+- caido-mode CLI (seat-side, `npx tsx caido-client.ts` from `skills/surface/caido/caido-mode/`;
   vendored from github.com/caido/skills, built on `@caido/sdk-client`): HTTPQL
   `search`/`recent`, `export-curl <id> --config` auth snapshots for
   curl-through-proxy probing, named Replay sessions/collections handoff,
   Match & Replace rule CRUD, findings/scopes/filters/envs. Auth: PAT
   (`setup <pat> http://192.168.23.128:8082 --proxy http://192.168.23.128:8080`) or
   prime `~/.claude/config/secrets.json` `.caido.instances[<url>].cachedToken` from
-  the VM's `~/.caido-token` (~7d). Full doctrine + commands: skills/caido/SKILL.md.
+  the VM's `~/.caido-token` (~7d). Full doctrine + commands: skills/surface/caido/SKILL.md.
 - Helper `~/caido.sh` (source of truth `scripts/caido.sh`): `start|stop|status|gql|
   history|findings|cookies|project|raw|send|fuzz`. All calls go over vm.sh as one command each.
   `scripts/caido-battery.sh` (vault side) ships a whole battery in one vm.sh call.

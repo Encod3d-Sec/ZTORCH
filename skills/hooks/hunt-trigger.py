@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """UserPromptSubmit hook: auto-fire hunt skills + fire telemetry.
 
-Matches the user prompt against skills/hunt/triggers.json in two tiers and
+Matches the user prompt against skills/exploit/hunt/triggers.json in two tiers and
 ROUTES to the relevant skill (surfaces it as a suggestion); the skill itself
 carries the methodology mandate, not this hook. Stdout is added to the context.
 
@@ -170,7 +170,7 @@ def main():
     if _INJECTED.search(prompt):
         return
 
-    tfile = os.path.join(os.path.dirname(HERE), "hunt", "triggers.json")
+    tfile = os.path.join(os.path.dirname(HERE), "exploit", "hunt", "triggers.json")
     try:
         data = json.load(open(tfile, encoding="utf-8"))
     except Exception:

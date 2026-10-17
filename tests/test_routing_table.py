@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ROUTING_JSON = ROOT / "scripts" / "routing.json"
-HUNT_DIR = ROOT / "skills" / "hunt"
+HUNT_DIR = ROOT / "skills" / "exploit" / "hunt"
 
 REQUIRED_TOKENS = {
     "xss", "sqli", "ssrf", "idor", "rce", "jenkins", "wordpress", "tomcat",

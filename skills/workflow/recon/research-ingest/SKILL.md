@@ -1,11 +1,20 @@
 ---
 name: research-ingest
 description: External knowledge (CVE writeup, blog post, advisory, GitHub repo) entering the wiki, deduped via `sources:` and re-indexed. Use for "ingest this writeup", "add to the wiki", or after saving research material. Generic knowledge only; never client data.
+metadata:
+  hermes:
+    tags: [wiki-ingest, dedupe, promote]
+    related_skills: [ingest, wiki]
 ---
 
 # Research Ingest
 
 Turn an external source (URL or `raw/research/` file) into durable wiki knowledge. Synthesise into existing technique/tool pages; do NOT create one page per source. Full workflow: `docs/workflows.md` (Research ingest / Git repo ingest).
+
+## Wiki
+
+Hub: [[methodology-moc]] - Primary page: [[bug-hunting-methodology]]
+**REFS:** [[bug-hunting-methodology]]
 
 ## Procedure
 
@@ -30,3 +39,10 @@ Turn an external source (URL or `raw/research/` file) into durable wiki knowledg
 - Prefer enriching an existing page over creating a new one. New page only for a genuinely new technique/tool class.
 
 Report: page(s) updated + slug added + lint status.
+
+## Not to be confused with
+
+Skill(ingest) synthesizes target-derived tool output into engagement
+state (scope/leak rules); THIS skill promotes external knowledge into
+wiki/ (dedupe-skip by sources frontmatter). The shared name is
+cosmetic - never merge them.

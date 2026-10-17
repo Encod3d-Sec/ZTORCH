@@ -26,8 +26,7 @@ DOC_FILES = ["AGENTS.md", "README.md", "docs/auto-triggers.md", "docs/skill-map.
 FORBIDDEN = [
     r"Skill\(arsenal\)",
     r"Skill\(coverage\)",
-    r"Skill\((?:bb|ctf|pt)-workflow\)",
-    r"/(?:bb|ctf|pt)-workflow\b",    # the slash-command form (README's own Quickstart used this)
+    r"/(?:ctf|pt)-workflow\b",       # bb-workflow un-retired 2026-10-17 (ported version defers to offensive.py)
     r"\bcampaign-health\b",         # retired doctor skill, as a Skill/health-check ref
     r"campaign\.py",                # prose invocations of the retired driver
     r"campaign\s*\(autonomous workflow driver\)",   # the Layout-table phrasing, stale as of Wave 2

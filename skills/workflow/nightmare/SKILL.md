@@ -1,6 +1,10 @@
 ---
 name: nightmare
 description: Recompiled Windows LPE arsenal (Nightmare_Eclipse PoCs, Defender verdicts recorded) for CTF/lab privesc. Use when a standard-user Windows foothold needs a kernel/LPE shortcut on a CTF box.
+metadata:
+  hermes:
+    tags: [lpe, windows, poc-picker]
+    related_skills: [ctf-box, hunt-windows]
 ---
 
 # Nightmare Arsenal (Windows LPE, CTF)
@@ -10,7 +14,12 @@ Reworked (hash-changed, cross-compiled) Windows LPE PoCs from Nightmare_Eclipse
 verdicts live in the PRIVATE repo `github.com/Encod3d-Sec/Nightmare`; build
 recipes in its BUILD.md. Authorized CTF/lab targets ONLY.
 
-**Hub:** [[privesc-exploit-arsenal]] (Windows table, nightmare row) · routed from Skill(hunt-windows).
+**Hub:** [[privesc-exploit-arsenal]] (Windows table, nightmare row) ? routed from Skill(hunt-windows).
+
+## Wiki
+
+Hub: [[exploit-dev-moc]] - Primary page: [[windows-privesc]]
+**REFS:** [[windows-privesc]]
 
 ## Gate
 
@@ -63,3 +72,12 @@ Pick ONE, highest-fits-first: mini-plasma > red-sun > legacy-hive > green-plasma
 - NEVER run against out-of-scope or production hosts. PreToolUse scope guard applies.
 - Repo is PRIVATE by design; never push it public, never embed binaries in the wiki.
 - Wiki keeps technique notes only (no binaries); client specifics stay under targets/<eng>/.
+
+## False Positives
+
+- PoC runs clean but the box kernel is outside the PoC's tested range
+  (verdict PROBABLY-NOT, not a failed run - record the kernel delta).
+- PoC "succeeds" in a container sharing the host kernel (kernel patch
+  level is the HOST's - verify against the target's own uname).
+- Compile succeeds, exploit hangs on patchguard/EDR - that is a
+  BLOCKED verdict with the observed tell, never a silent drop.

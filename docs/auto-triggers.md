@@ -7,7 +7,7 @@ What the framework fires on its own, so you know what activates for a given task
 > **During an engagement, the driver supersedes these advisory triggers.** Running an engagement under `Skill(offensive)` (`scripts/offensive.py`) puts the driver in charge: it prints the next required action (wiki-first, tool-first, skill-first, typed evidence) as tool output every turn, which is *enforced* rather than suggested. The hooks below still fire and remain the routing layer for **ad-hoc, non-campaign** work; inside a campaign, follow the driver's `next` block over any hook nudge. Retiring the now-redundant hooks is deliberately deferred: they are harmless and still serve non-campaign work.
 
 **Source of truth** (edit these, not this doc, to change behaviour):
-- keyword -> skill: `skills/hunt/triggers.json`
+- keyword -> skill: `skills/exploit/hunt/triggers.json`
 - tech fingerprint -> tests: `scripts/playbook.json`
 - finding class -> pivot: `scripts/chains.json` (ingested by `next_move.py`, keyed by finding class; candidates never auto-fire, suggestions only)
 - hook logic: `skills/hooks/*.py`
@@ -86,7 +86,7 @@ Prompt contains the keyword (case-insensitive) -> that skill is suggested. Multi
 | ingest, synthesize findings/recon/output, process recon | ingest |
 | coverage, what haven't we tested, test gaps, are we thorough, untested | offensive.py coverage |
 
-51 triggers total (37 vuln-type + 14 attack-surface). xxe/ssti/graphql route to hunt-injection (no separate skills). azure ad -> hunt-m365 (not hunt-cloud) by design. (Counts drift as `triggers.json` grows; recount with `python3 -c "import json;d=json.load(open('skills/hunt/triggers.json'));print(len(d['triggers']),len(d['surface_triggers']))"`.)
+51 triggers total (37 vuln-type + 14 attack-surface). xxe/ssti/graphql route to hunt-injection (no separate skills). azure ad -> hunt-m365 (not hunt-cloud) by design. (Counts drift as `triggers.json` grows; recount with `python3 -c "import json;d=json.load(open('skills/exploit/hunt/triggers.json'));print(len(d['triggers']),len(d['surface_triggers']))"`.)
 
 A third advisory tier, `relational_triggers` (3 rows -> `graphify`), fires on wiki-relation phrasing (how pages connect, hub or orphan pages, the wikilink graph): page-noun-gated so engagement prose ("path between the two hosts") never fires it. It nudges `Skill(graphify)` with the lane rule baked in: qmd answers content, graphify answers relations.
 

@@ -1,6 +1,10 @@
 ---
 name: ctf-box
 description: Boot-to-root methodology for a full machine (THM/HTB/PG/CTF), basic-tool recon first, wiki-first, pspy + linpeas/winpeas always. Use when handed a box/IP to own end-to-end ("root the box", "get user.txt+root.txt").
+metadata:
+  hermes:
+    tags: [ctf, boot2root, board]
+    related_skills: [ctf-category, nightmare, hunt-core]
 ---
 
 # CTF / Boot-to-Root Box
@@ -13,6 +17,12 @@ lands; honor GATE 1 (no hand-rolled exploit before its wiki item is `[x]`), GATE
 without a `poc/` image), GATE 3 (exhausted vector -> `[!]` + one `Deadends.md` line, never re-run it).
 
 **Run `python3 scripts/offensive.py next` before every exploit step, and `done` after each lands.** The driver reprints the required posture (msf-shell rule, searchsploit+msf-first, the RTL stop-tells) and is the forcing function now that the drift-guard block is advisory-only - do not free-hand a box off the board.
+
+## Wiki
+
+Hub: [[methodology-moc]] - Primary page: [[pentest-methodology]]
+Anchors: [[windows-privesc]], [[binary-exploitation]]
+**REFS:** [[pentest-methodology]]
 
 ## Standing mandate: Wiki-first, tools-before-scripts (GATE 1, all phases)
 
@@ -134,7 +144,7 @@ failure is following the FASTEST path instead of the INTENDED one, then going of
 
 Finish the foothold first (leftover Rule 2 techniques, if the shell landed mid-app):
 - **Consistent escalation primitive:** if a box exposes the SAME pivot at each stage (a Docker socket/TLS pivot per level, an SSRF each hop), verify/exhaust that intended vector end-to-end BEFORE an opportunistic shortcut (raw device mount, a memory CVE). A shortcut that relies on `--privileged`/a loose cap can mask that a hardened config would block it, and it is less reproducible/auditable. Getting the flag via a shortcut is fine; SKIPPING the taught vector without testing it is the miss.
-- Web SQLi: in-band (UNION/error) before blind; test EVERY quote context (`'` `"` numeric) and second-order (a stored value used unsafely on another page). If the app hashes the password inside the query, read plaintext from `information_schema.PROCESSLIST`. Load `Skill(hunt-sqli)` / see [[sql-injection]].
+- Web SQLi: load `Skill(hunt-sqli)` - its core owns quote-context probes, second-order + PROCESSLIST capture, and the in-band-before-blind order; do not restate them here. See [[sql-injection]].
 - Recovered unsalted MD5/SHA1: **online lookup first** (CrackStation/hashes.com) before hashcat/john. A hash that resists everything on a hard box may be a deliberate decoy; pivot, don't grind.
 - **A custom binary that signs its own protocol (HMAC/token): decompile the KEY SCHEDULE before brute-guessing key/message combos.** When an implant/agent/updater HMACs its IPC/C2 and the key is derived from readable material (a `.rodata` blob, a PRNG pad with a hardcoded seed, `/etc/machine-id`), reproduce the derivation offline (the derivation functions are usually tiny) and VERIFY against one captured live signature, then forge - do not spend rounds guessing `blob`/`machine-id`/`HMAC(blob,mid)` permutations. Recognize the glibc `rand()` LCG (`*0x41c64e6d + 0x3039`, byte `(state>>16)&0xff`). See [[cryptography-attacks]] "binary signed-protocol forge".
 
@@ -219,3 +229,10 @@ After each phase, write to `targets/<eng>/`: hosts/access -> `state.md`, creds -
 - [[pivoting-tunneling]]
 - [[web-client-attacks]]
 - [[metasploit]]
+
+## Stop conditions
+
+Box terminal (all flags captured + walkthrough assembled) or GATE stop
+(budget band, operator stop, scope edge). A stuck phase does not stop
+the box - it rotates phases and records the stuck phase as a reopen-if
+row. Never abandon mid-phase without the row.

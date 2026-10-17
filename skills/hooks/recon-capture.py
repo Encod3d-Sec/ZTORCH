@@ -669,7 +669,7 @@ def _gate1_unmet(d):
             page = None
             try:
                 import _engagement
-                sk = os.path.join(_engagement.VAULT, "skills", "hunt", s, "SKILL.md")
+                sk = os.path.join(_engagement.VAULT, "skills", "exploit", "hunt", s, "SKILL.md")
                 m = re.search(r"Primary page:\s*\[\[([^\]]+)\]\]",
                               open(sk, encoding="utf-8", errors="ignore").read())
                 if m:

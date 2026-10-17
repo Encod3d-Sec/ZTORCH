@@ -6,8 +6,8 @@ VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def test_every_hunt_description_ends_with_use_when():
-    skills = sorted(glob.glob(os.path.join(VAULT, "skills", "hunt", "hunt-*", "SKILL.md")))
-    assert len(skills) == 27
+    skills = sorted(glob.glob(os.path.join(VAULT, "skills", "exploit", "hunt", "hunt-*", "SKILL.md")))
+    assert len(skills) == 39
     for p in skills:
         text = open(p, encoding="utf-8").read()
         m = re.search(r"^description:\s*(.+)$", text, re.M)
@@ -17,14 +17,14 @@ def test_every_hunt_description_ends_with_use_when():
         assert tail.rfind("use when") > len(tail) * 0.5, (p, m.group(1)[-80:])
 
 
-CORE = os.path.join(VAULT, "skills", "hunt", "hunt-core", "SKILL.md")
+CORE = os.path.join(VAULT, "skills", "exploit", "hunt", "hunt-core", "SKILL.md")
 
 
 def test_every_hunt_carries_validation_fp_crossrouting():
     """strix absorb: Validation + False Positives are MANDATORY per hunt skill, and each
     skill cross-routes (names at least one OTHER hunt skill it loads or defers to)."""
-    skills = sorted(glob.glob(os.path.join(VAULT, "skills", "hunt", "hunt-*", "SKILL.md")))
-    assert len(skills) == 27
+    skills = sorted(glob.glob(os.path.join(VAULT, "skills", "exploit", "hunt", "hunt-*", "SKILL.md")))
+    assert len(skills) == 39
     for p in skills:
         text = open(p, encoding="utf-8").read()
         own = os.path.basename(os.path.dirname(p))

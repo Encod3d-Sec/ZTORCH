@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import offensive  # noqa: E402
 
 WIKI = ROOT / "wiki"
-HUNT_DIRS = sorted(p for p in (ROOT / "skills" / "hunt").glob("hunt-*") if p.is_dir())
+HUNT_DIRS = sorted(p for p in (ROOT / "skills" / "exploit" / "hunt").glob("hunt-*") if p.is_dir())
 HUB = "hunt-core"
 
 

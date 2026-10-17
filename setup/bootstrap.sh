@@ -69,7 +69,7 @@ else
   echo "  claude plugins install ponytail@ponytail"
 fi
 
-# 5. caveman: voice skill ships in the vault (skills/caveman/, ultra level in-file);
+# 5. caveman: voice skill ships in the vault (skills/platform/caveman/, ultra level in-file);
 # no installer. Manual per session (/caveman, /caveman ultra).
 
 # 6. Register MCP server (wiki-search)

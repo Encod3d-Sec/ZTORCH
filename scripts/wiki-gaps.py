@@ -19,7 +19,7 @@ import sys
 # Self-locate so it works on any device (different user/path/spelling).
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 WIKI = os.path.join(VAULT, "wiki")
-HUNT = os.path.join(VAULT, "skills", "hunt")
+HUNT = os.path.join(VAULT, "skills", "exploit", "hunt")
 TARGETS = os.path.join(VAULT, "targets")
 
 PATH_RE = re.compile(r"wiki/techniques/[\w./-]+?/([\w.-]+?)\.md")

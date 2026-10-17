@@ -300,7 +300,7 @@ def wiki_fingerprint():
                             mx = m
         except OSError:
             pass
-    for f in ("skills/hunt/triggers.json", "scripts/playbook.json"):
+    for f in ("skills/exploit/hunt/triggers.json", "scripts/playbook.json"):
         try:
             m = os.stat(os.path.join(_engagement.VAULT, f)).st_mtime
             if m > mx:

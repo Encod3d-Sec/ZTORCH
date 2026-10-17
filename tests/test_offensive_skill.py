@@ -2,7 +2,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKILL = ROOT / "skills" / "workflow" / "offensive" / "SKILL.md"
+SKILL = ROOT / "skills" / "orchestrate" / "offensive" / "SKILL.md"
 
 
 def test_skill_shape():

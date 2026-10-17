@@ -3,8 +3,8 @@
 import pathlib
 
 VT = pathlib.Path(__file__).resolve().parents[1]
-BRAIN = VT / "skills" / "workflow" / "brain" / "SKILL.md"
-DELEGATE = VT / "skills" / "workflow" / "exec" / "delegate" / "SKILL.md"
+BRAIN = VT / "skills" / "orchestrate" / "brain" / "SKILL.md"
+DELEGATE = VT / "skills" / "exploit" / "exec" / "delegate" / "SKILL.md"
 
 
 def test_brain_fleet_rules():
@@ -64,8 +64,8 @@ def test_supervision_tokens():
 
 def test_browser_evidence_tokens():
     for path in (
-        VT / "skills" / "workflow" / "env" / "chrome-devtools-browser" / "SKILL.md",
-        VT / "skills" / "hunt" / "hunt-xss" / "SKILL.md",
+        VT / "skills" / "surface" / "browser" / "chrome-devtools-browser" / "SKILL.md",
+        VT / "skills" / "exploit" / "hunt" / "hunt-xss" / "SKILL.md",
     ):
         t = path.read_text(encoding="utf-8").lower()
         assert "console listener" in t or "console capture" in t, path
@@ -73,7 +73,7 @@ def test_browser_evidence_tokens():
 
 
 def test_review_focus_and_harness_stops():
-    hc = (VT / "skills" / "hunt" / "hunt-core" / "SKILL.md").read_text(encoding="utf-8")
+    hc = (VT / "skills" / "exploit" / "hunt" / "hunt-core" / "SKILL.md").read_text(encoding="utf-8")
     assert "no board row exercises" in hc
     ag = (VT / "AGENTS.md").read_text(encoding="utf-8")
     assert "architecture stop" in ag

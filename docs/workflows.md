@@ -52,7 +52,7 @@ assembled.
 5. **Promote** through the leak gate (`scripts/wiki-promote.py --promote all`, runs
    `check-leaks.sh`, fails closed, re-indexes), then `lint-wiki.py -q` and, for a new
    page, `gen_index.py` + `build_moc.py` + `qmd update && qmd embed`. If the harvest
-   touched routing data (`scripts/playbook.json`, `skills/hunt/triggers.json`), run
+   touched routing data (`scripts/playbook.json`, `skills/exploit/hunt/triggers.json`), run
    `python3 scripts/check-routing.py` too (bad regex/enums drop rows silently at load).
 6. **Self-clear + log**: `touch targets/<eng>/.learn-done`; one generic line to
    `session/log.md`. Never write client specifics into `session/*` or `wiki/`.

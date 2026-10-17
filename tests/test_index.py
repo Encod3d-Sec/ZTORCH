@@ -44,7 +44,7 @@ def test_parse_tool_index():
 
 
 def test_parse_hunt_method():
-    m = offensive.parse_hunt_method(VAULT / "skills" / "hunt" / "hunt-ssrf")
+    m = offensive.parse_hunt_method(VAULT / "skills" / "exploit" / "hunt" / "hunt-ssrf")
     assert "enumerate 127.0.0.1 ports" in m["approach"]
     assert "NOT confirmation" in m["avoid"]
     assert "wiki/payloads/ssrf" in m["refs"]
@@ -120,7 +120,7 @@ def test_malformed_routing_row_exits_nonzero(tmp_path, capsys):
 def test_hunt_dir_without_wiki_exits_nonzero(tmp_path, capsys):
     vault = tmp_path / "vault"
     _write_routing(vault, dict(_VALID_ROUTING))
-    ssrf_dir = vault / "skills" / "hunt" / "hunt-ssrf"
+    ssrf_dir = vault / "skills" / "exploit" / "hunt" / "hunt-ssrf"
     ssrf_dir.mkdir(parents=True)
     # no '## Wiki' section here
     (ssrf_dir / "SKILL.md").write_text("---\nname: hunt-ssrf\n---\n\n## Attack surface\n\nno wiki block.\n")
@@ -130,7 +130,7 @@ def test_hunt_dir_without_wiki_exits_nonzero(tmp_path, capsys):
     assert exc.value.code != 0
 
     err = capsys.readouterr().err
-    assert "skills/hunt/hunt-ssrf/SKILL.md" in err
+    assert "skills/exploit/hunt/hunt-ssrf/SKILL.md" in err
     assert "Wiki" in err
 
 
@@ -139,7 +139,7 @@ def test_tool_without_usage_exits_nonzero(tmp_path, capsys):
     _write_routing(vault, dict(_VALID_ROUTING))
     # the routing-referenced skill must be installed (the unknown-skill lint fires
     # before the tool-index lint, so a bare fixture never reaches the tool check)
-    ssrf_dir = vault / "skills" / "hunt" / "hunt-ssrf"
+    ssrf_dir = vault / "skills" / "exploit" / "hunt" / "hunt-ssrf"
     ssrf_dir.mkdir(parents=True)
     (ssrf_dir / "SKILL.md").write_text("---\nname: hunt-ssrf\n---\n\n## Wiki\n\n[[ssrf]]\n")
     tdir = vault / "wiki" / "tools"

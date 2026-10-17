@@ -4,9 +4,9 @@
 Consumes the proposals produced by the domain subagents (see
 docs/superpowers/specs/2026-07-08-wiki-context-wiring-design.md) and edits:
   - scripts/playbook.json       (add_ref, new_fingerprint, add_tools)  -- format preserved: one fingerprint/line
-  - skills/hunt/triggers.json   (trigger)                    -- consolidated new entries per (tier,skill)
+  - skills/exploit/hunt/triggers.json   (trigger)                    -- consolidated new entries per (tier,skill)
   - wiki/<hub>.md               (hub_link)                   -- adds [[child]] under a Wired section
-  - skills/hunt/<skill>/SKILL.md (skill_tools)                -- adds [[tool]] links under a Context tools section
+  - skills/exploit/hunt/<skill>/SKILL.md (skill_tools)                -- adds [[tool]] links under a Context tools section
   - scripts/wiring-exempt.txt     (exempt)
 
 Action schema (one of):
@@ -25,7 +25,7 @@ import json, os, sys, glob, re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLAYBOOK = os.path.join(ROOT, "scripts", "playbook.json")
-TRIGGERS = os.path.join(ROOT, "skills", "hunt", "triggers.json")
+TRIGGERS = os.path.join(ROOT, "skills", "exploit", "hunt", "triggers.json")
 EXEMPT = os.path.join(ROOT, "scripts", "wiring-exempt.txt")
 
 warn = []
@@ -146,9 +146,9 @@ def main():
 
     # skill_tools: link tool pages from a recon skill body (makes them anchors)
     for sk, tls in skill_tools.items():
-        cand = (glob.glob(os.path.join(ROOT, "skills", "hunt", sk, "SKILL.md"))
-                + glob.glob(os.path.join(ROOT, "skills", "hunt", sk, "*.md"))
-                + glob.glob(os.path.join(ROOT, "skills", "hunt", f"{sk}.md")))
+        cand = (glob.glob(os.path.join(ROOT, "skills", "exploit", "hunt", sk, "SKILL.md"))
+                + glob.glob(os.path.join(ROOT, "skills", "exploit", "hunt", sk, "*.md"))
+                + glob.glob(os.path.join(ROOT, "skills", "exploit", "hunt", f"{sk}.md")))
         if not cand:
             warn.append(f"skill_tools: skill file not found: {sk!r} ({len(tls)} tools skipped)"); continue
         sp = cand[0]

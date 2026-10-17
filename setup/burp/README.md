@@ -2,7 +2,7 @@
 
 Kali-box setup steps for the Burp integration. The Burp **driver** layer lives in
 `scripts/burp/` (`burp-mcp-cli.py` bridge, `burp-transport.sh` resolver,
-`burp-scope-sync.py`); the **skills** live in `skills/burp/` (`hunt-burp`,
+`burp-scope-sync.py`); the **skills** live in `skills/surface/burp/` (`hunt-burp`,
 `screenshot-burp`). This folder holds the one-time host setup that those depend on.
 
 | Step | What | When |
@@ -15,4 +15,4 @@ loadout) is documented in `wiki/tools/burp-mcp.md`. The seat-lock gotcha is in
 
 **Goal of this namespace:** grow the harness's Burp interactiveness here, custom
 driver features in `scripts/burp/`, their host prerequisites in `setup/burp/`, the
-methodology/skills in `skills/burp/`, so the Burp layer stays cleanly separable.
+methodology/skills in `skills/surface/burp/`, so the Burp layer stays cleanly separable.

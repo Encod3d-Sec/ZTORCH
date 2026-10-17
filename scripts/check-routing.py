@@ -204,7 +204,7 @@ def violations(repo=VAULT):
 
     # -- triggers: keys compile (hunt-trigger.py matches with re.I)
     try:
-        trig = json.load(open(os.path.join(repo, "skills", "hunt", "triggers.json"),
+        trig = json.load(open(os.path.join(repo, "skills", "exploit", "hunt", "triggers.json"),
                               encoding="utf-8"))
         for section in ("triggers", "surface_triggers"):
             for key in trig.get(section, {}):
@@ -213,7 +213,7 @@ def violations(repo=VAULT):
                 except re.error as e:
                     bad.append(("%s [%s]" % (section, key), "bad regex: %s" % e))
     except Exception as e:
-        bad.append(("skills/hunt/triggers.json", "unreadable: %s" % e))
+        bad.append(("skills/exploit/hunt/triggers.json", "unreadable: %s" % e))
 
     return bad
 

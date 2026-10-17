@@ -176,7 +176,7 @@ def _lint_hunt_methods(vault_root, routing):
     and carry a non-empty `## Wiki` section (the routing/method contract
     next/board rely on)."""
     import difflib
-    hdir = Path(vault_root) / "skills" / "hunt"
+    hdir = Path(vault_root) / "skills" / "exploit" / "hunt"
     installed = sorted(d.name for d in hdir.iterdir()
                        if d.is_dir() and (d / "SKILL.md").exists()) if hdir.is_dir() else []
     for row in routing.values():
@@ -186,7 +186,7 @@ def _lint_hunt_methods(vault_root, routing):
         skill_md = hdir / skill / "SKILL.md"
         if not skill_md.exists():
             near = difflib.get_close_matches(skill, installed, n=1)
-            _die("routing table: unknown skill '%s'%s (installed: skills/hunt/*/SKILL.md)"
+            _die("routing table: unknown skill '%s'%s (installed: skills/exploit/hunt/*/SKILL.md)"
                  % (skill, "; did you mean '%s'?" % near[0] if near else ""))
         if not _section(_read(skill_md), "wiki"):
             _die("%s: missing required '## Wiki' section" % _rel(skill_md, vault_root))
@@ -211,7 +211,7 @@ def _index_sources(vault_root):
     srcs = [vault_root / "scripts" / "routing.json"]
     tdir = vault_root / "wiki" / "tools"
     srcs += sorted(tdir.glob("*.md")) if tdir.is_dir() else []
-    hdir = vault_root / "skills" / "hunt"
+    hdir = vault_root / "skills" / "exploit" / "hunt"
     if hdir.is_dir():
         for d in sorted(hdir.iterdir()):
             if d.is_dir() and d.name.startswith("hunt-"):
@@ -233,7 +233,7 @@ def build_index(eng_dir, vault_root):
     for row in routing.values():
         skill = row["skill"]
         if skill and skill not in methods:
-            sdir = vault_root / "skills" / "hunt" / skill
+            sdir = vault_root / "skills" / "exploit" / "hunt" / skill
             if (sdir / "SKILL.md").exists():
                 methods[skill] = parse_hunt_method(sdir)
 

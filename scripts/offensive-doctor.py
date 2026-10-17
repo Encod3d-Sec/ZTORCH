@@ -8,9 +8,9 @@ engagement. Modelled on the retired campaign-doctor lineage.
 Checks (each a PASS/WARN/FAIL line; exit 1 if any FAIL):
   1. scripts/offensive.py present + importable.
   2. scripts/routing.json parses (non-empty) + every hunt-skill cell names a real
-     skills/hunt/hunt-* dir (dangling-skill-ref).
+     skills/exploit/hunt/hunt-* dir (dangling-skill-ref).
   3. every wiki/tools/*.md carries phase: + a runnable ## Core usage fence (tool index resolves).
-  4. skills/workflow/offensive/SKILL.md present with `name: offensive`.
+  4. skills/orchestrate/offensive/SKILL.md present with `name: offensive`.
   5. tool-telemetry.py hook present (G2 depends on it) - WARN if absent (G2 fails open).
   6. 4b privesc not hollow: each OS route (windows/macos/ad) has its class with a non-empty
      arsenal - WARN if missing.
@@ -72,11 +72,11 @@ def _routing(off):
                  "no rows in scripts/routing.json"):
         return
 
-    # dangling-skill-ref: every hunt-skill cell must name a real skills/hunt/hunt-* dir.
+    # dangling-skill-ref: every hunt-skill cell must name a real skills/exploit/hunt/hunt-* dir.
     dangling = sorted({row.get("skill") for row in routing.values()
                        if row.get("skill") and not (
                            row["skill"].startswith("hunt-")
-                           and os.path.isdir(os.path.join(VAULT, "skills", "hunt", row["skill"])))})
+                           and os.path.isdir(os.path.join(VAULT, "skills", "exploit", "hunt", row["skill"])))})
     check("every hunt-skill cell resolves to a real dir", not dangling,
           "dangling: " + ", ".join(dangling))
 
@@ -116,8 +116,8 @@ def _tools(off):
 # --------------------------------------------------------------------------- 4. skill + 5. hook
 
 def _skill_and_hook():
-    sk = os.path.join(VAULT, "skills", "workflow", "offensive", "SKILL.md")
-    if check("skills/workflow/offensive/SKILL.md present", os.path.isfile(sk)):
+    sk = os.path.join(VAULT, "skills", "orchestrate", "offensive", "SKILL.md")
+    if check("skills/orchestrate/offensive/SKILL.md present", os.path.isfile(sk)):
         head = open(sk, encoding="utf-8", errors="ignore").read()
         check("offensive SKILL.md declares name: offensive",
               bool(re.search(r"^name:\s*offensive\s*$", head, re.M)))

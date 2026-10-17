@@ -1,11 +1,20 @@
 ---
 name: ingest
 description: Raw recon/test output landed in the active engagement's ingest folder needs synthesizing into state, loot, and Killchain pages. Use for "ingest", "synthesize findings", "process recon", or after dropping tool output in the ingest folder.
+metadata:
+  hermes:
+    tags: [ingest, state-synthesis]
+    related_skills: [research-ingest, offensive]
 ---
 
 # Ingest
 
 Turns a pile of raw tool output into structured engagement state. Model-driven synthesis, so any tool/format works (nmap, nxc, httpx/nuclei JSON, Burp exports, gobuster, manual notes, pasted terminal).
+
+## Wiki
+
+Hub: [[methodology-moc]] - Primary page: [[network-discovery]]
+**REFS:** [[network-discovery]]
 
 ## Steps
 
@@ -40,3 +49,10 @@ Steps 2-3 (read every raw file, extract rows per schema) are a bounded, fully-sp
 - Credentials are `unconfirmed` until you authenticate with them; only then `active`.
 - If `ingest/` is empty, say so; do not invent rows.
 - Client data stays under `targets/` only. Never echo client specifics into `session/` or `wiki/`.
+
+## Not to be confused with
+
+Skill(research-ingest) ingests EXTERNAL knowledge into wiki/ (dedupe
+by sources frontmatter); THIS skill synthesizes TARGET-derived tool
+output into engagement state. Different input, different sink,
+different guardrails - the shared name is cosmetic.

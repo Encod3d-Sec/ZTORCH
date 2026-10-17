@@ -1,0 +1,95 @@
+---
+name: engage
+description: Orchestrator and skill router: the single situation-to-skill map across the whole library (driver, hunt-*, process skills). Use at session start, whenever between phases, or unsure which skill is next.
+metadata:
+  hermes:
+    tags: [router, orchestration, triage]
+    related_skills: [offensive, brain, hunt-core]
+---
+
+# engage
+
+Router, not method. The driver owns the loop (`Skill(offensive)`, `scripts/offensive.py`),
+the hunt skills own exploitation classes, `hunt-core` owns discipline. This file exists so no
+skill is ever forgotten: every situation below names the exact skill to load. When the
+deterministic driver (`scripts/offensive.py`) is present, its printed next-action wins; when it
+is absent, this map IS the router.
+
+## Wiki
+
+Hub: [[methodology-moc]] - Primary page: [[pentest-methodology]]
+**REFS:** [[pentest-methodology]]
+
+## 1. Pick the driver (it owns the loop)
+
+| Situation | Skill |
+|---|---|
+| Any offensive engagement (box/IP foothold->root, bug-bounty *.scope, or client SoW/CIDR/domain) | `Skill(offensive)` - `offensive.py --type ctf\|bb\|pentest` picks the flavor |
+| A standalone challenge (pwn/rev/crypto/forensics/stego/osint/hash/cloud) | `Skill(ctf-category)` |
+| Driver missing or behaving wrong on this machine | `Skill(offensive)`'s "If the driver is unavailable" section + `offensive-doctor` (`scripts/offensive-doctor.py`) to diagnose |
+| First session on a new machine / VM seat questions | `offensive-doctor` (`scripts/offensive-doctor.py`), then `Skill(kali-seat)` for the Windows -> WSL -> VM seat |
+
+## 2. Phase and situation routing (all engagement types)
+
+| Phase / situation | Skill |
+|---|---|
+| EVERY new engagement, from move 0 (operator directive 2026-10-06: instant deep-brain; the old 2+ open-rows gate is the floor, not the trigger) | `Skill(brain)` - driver/board/triage stay in the main session (glm-5.3 max effort), wave-1 archetype lanes (fuzz/research/graphify/wiki/redteamlead/hunt) dispatched at once |
+| Raw tool output landed (scans, crawls, recon dumps) -> state/loot/Killchain | `Skill(ingest)` (cheap-tier subagent; bounded job) |
+| "Which tool/payload for this surface" - wiki lookup (quick or deep) | `Skill(wiki-arsenal)` |
+| External recon / OSINT / attack-surface mapping | `Skill(wiki-recon)` |
+| Targeted web fuzzing needed (deterministic wordlist pick) | `Skill(fuzz)` |
+| Driving Burp (proxy triage, Repeater/Intruder/Collaborator) | `Skill(hunt-burp)`; PoC capture from Burp: `Skill(screenshot-burp)` |
+| Burp/MCP down, per-engagement isolated proxy project wanted, or Caido-native features (Automate, Replay fuzz batteries) | `Skill(caido)` (headless Caido on the VM; same load-bearing-visibility discipline, Replay entries instead of Repeater tabs) |
+| Manual login / MFA / CAPTCHA the agent cannot do headlessly | `Skill(chrome-devtools-browser)` |
+| msfconsole work (recon DB, exploits, handler, pivots, post-ex) | `Skill(metasploit)` |
+| Windows standard-user foothold on a CTF/lab box needs a kernel/LPE shortcut | `Skill(nightmare)` (recompiled Windows LPE arsenal with recorded Defender verdicts; authorized CTF/lab only; hub [[privesc-exploit-arsenal]]) |
+| Fully-specified exploit compile / escalation run to hand off | `Skill(delegate)` (mechanical, cheap tier; false-root guardrail mandatory) |
+| Stalled, wrong-vector tell fired, "should I keep hammering?" | `Skill(redteamlead)` - NEVER grind; ranked directions + explicit STOP |
+| A vuln class never tested on this asset (4a coverage gap) | `Skill(offensive)` - `offensive.py coverage` ranks the gaps |
+| Vuln/CVE research on a binary/repo/app/firmware | `Skill(research)`; ingest a CVE writeup: `Skill(nday)` / `Skill(research-ingest)` |
+| "Is this valid / should I report it" - validating a finding | `Skill(triage)` |
+| Evidence hygiene before a report or any share | `Skill(evidence)`; screenshots: `Skill(screenshot)` |
+| Confirmed/proven finding needs responsible disclosure | `Skill(disclosure)` |
+| "Why is this row on the board" / which vector baseline applies | `Skill(vector-workflow)` |
+| Dispatching a lane or verifying what a lane returned | completion gate (hunt-core "Run completion gate"): `python3 scripts/completion-gate.py init <lane-dir> --title "<run>"` at dispatch, `... check <lane-dir> --capture <dir>` on return; UNCHECKED/MISSING/EMPTY = not done, re-dispatch with the printed nudge |
+| Wiki maintenance (re-index, status, page types) | `Skill(wiki)` |
+
+Discipline spine for every hunt: `Skill(hunt-core)` loads alongside any hunt skill (scope gate,
+two-account rule, confirmation gate, enumeration limits, stop conditions, FIND output).
+
+## 3. Scan-mode overlay (quick / standard / deep)
+
+MODE RULES LIVE IN Skill(offensive) + scripts/offensive.py (the `mode:`
+banner) BY REFERENCE - engage routes, it does not restate policy. The
+one-line summary: deep is the DEFAULT (operator 2026-10-05), a mode
+changes SKIP LIST and PRIORITY ORDER only - never the evidence bar
+(a CONFIRMED needs the same working PoC at every mode); shift down
+only on operator ask or a status.py budget band; whatever quick skips
+is UNEXAMINED, not clean (reopen-if rows in Deadends.md).
+
+## 4. Fingerprint -> hunt skill
+
+`hunt-core`'s `## Hunt approaches` table is the authority - read it; this
+index is a memory hook only (class -> skill), never a second source of
+routing truth. Experts (xss-*, sqli-*, ad-*) route through their mappers;
+routing.json is the machine-readable copy.
+
+## 5. Close-out
+
+Run `python3 scripts/offensive.py --eng <name> closeout` and follow its printed order - the chain
+lives only in `CLOSEOUT_CHAINS` (`scripts/offensive.py`), not restated here to avoid drift.
+
+## Maintenance rule
+
+A skill added to `skills/` without a routing row in this file or in `scripts/routing.json` is an
+orphan by definition: nothing will ever name it mid-engagement. New skill -> add its row to the
+section above that fits.
+
+## Entry gate
+
+Router-scaled, falsifiable: (1) targets/active.md names an engagement
+(or route to scaffolding); (2) the routing table you rely on is FRESH -
+`python3 scripts/offensive.py --eng <eng> index` exits 0 and the
+.offensive-index.json mtime postdates the last routing.json edit (a
+stale index routes by dead rows); (3) scope.md parses (frontmatter +
+in-scope list). A failed check routes to the fix, not to a hunt lane.

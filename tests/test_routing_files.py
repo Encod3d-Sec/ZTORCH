@@ -19,13 +19,13 @@ def test_current_routing_files_clean():
 def test_catches_chain_drift(tmp_path):
     """A bad chains edge (unknown to_class, non-scalar skill) is reported."""
     (tmp_path / "scripts").mkdir()
-    (tmp_path / "skills" / "hunt").mkdir(parents=True)
+    (tmp_path / "skills" / "exploit" / "hunt").mkdir(parents=True)
     (tmp_path / "wiki").mkdir()
     (tmp_path / "scripts" / "playbook.json").write_text('{"fingerprints": {}}')
     (tmp_path / "scripts" / "coverage-classes.json").write_text(
         '{"_comment": "", "ctf": ["rce"]}')
     (tmp_path / "scripts" / "tells.json").write_text('{"_doc": "", "tells": []}')
-    (tmp_path / "skills" / "hunt" / "triggers.json").write_text(
+    (tmp_path / "skills" / "exploit" / "hunt" / "triggers.json").write_text(
         '{"triggers": {}, "surface_triggers": {}}')
     (tmp_path / "scripts" / "chains.json").write_text(json.dumps({"edges": {
         "ssrf": {"then": [{"move": "x", "to_class": "not-a-class",
