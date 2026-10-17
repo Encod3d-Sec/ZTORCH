@@ -49,18 +49,15 @@ ZTORCH/
 │                                   playbook.json
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
 ├── tests/                       <- pytest suite for engagement + wiki automation
-├── skills/                      <- wiki/ research/ disclosure/ agents-md-improver/ (offline instruction-file reviewer)
-│   │                               + hooks/ (hook scripts)
-│   ├── hunt/                    <- hunt-* vuln-class skills (27) + hunt-core (shared discipline) + triggers.json
-│   ├── vector-workflow/         <- board-seeding pipeline reference (promoted to top-level; not a loop step)
-│   ├── workflow/                <- offensive (driver) + engage (router) + brain (subagent dispatch) + nightmare (Windows LPE arsenal, CTF/lab) at root; the rest subfoldered by role
+├── skills/                      <- hooks/ (hook scripts) + skills-setup.md at root; the rest grouped by role
 │   │                               (nesting is organizational only, skills are discovered by basename):
-│   │                               closeout/ (triage, evidence, learn, walkthrough)
-│   │                               recon/ (wiki-recon, wiki-arsenal, nday, research-ingest, ingest)
-│   │                               exec/ (delegate, metasploit, redteamlead, fuzz)
-│   │                               ctf/ (ctf-box, ctf-category)
-│   │                               env/ (kali-seat, chrome-devtools-browser, screenshot)
-│   └── burp/                    <- hunt-burp (MCP driver) + screenshot-burp (Repeater PoC capture)
+│   ├── exploit/                 <- hunt/ (hunt-* vuln-class skills (38) + hunt-core spine + triggers.json), exec/ (delegate, metasploit, redteamlead)
+│   ├── orchestrate/             <- offensive (driver) + engage (router) + brain (subagent dispatch) + kali-seat
+│   ├── platform/                <- caveman, graphify, ponytail + ponytail-debt + ponytail-review, obsidian-lint, wiki, agents-md-improver (offline instruction-file reviewer)
+│   ├── research/                <- research, nday, searchsploit, wiki-arsenal, wiki-recon
+│   ├── surface/                 <- vector-workflow (board-seeding reference; not a loop step), browser/ (chrome-devtools-browser, screenshot), burp/ (hunt-burp MCP driver + screenshot-burp), caido (headless driver; caido-mode SDK vendored), fuzz, interceptor, js-discover, js-parser
+│   ├── report/                  <- disclosure, walkthrough
+│   └── workflow/                <- bb-workflow, nightmare (Windows LPE arsenal, CTF/lab), closeout/ (engagement-retro, evidence, learn, triage), ctf/ (ctf-box, ctf-category), recon/ (ingest, research-ingest)
 └── raw/
     ├── research/                <- CVE writeups/blogs/advisories + active research projects (<project>/ from new-research.sh; the research skill writes loop state here)
     ├── assets/                  <- screenshots and other non-text files (read-only)

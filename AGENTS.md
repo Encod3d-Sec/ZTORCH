@@ -97,7 +97,7 @@ Per-machine hostnames/paths live in the git-ignored `AGENTS.local.md` (copy `AGE
 
 ## Directory structure
 
-Full annotated tree + per-file notes: `docs/layout.md`. Top level: `AGENTS.md` (+ README, LICENSE), `.zcode/` (committed hook registration; per-machine skills links ignored), `targets/` (engagements, PRIVATE git-ignored), `wiki/` (knowledge base: techniques/ payloads/ tools/ cheatsheets/ + index/moc), `session/` (hot.md startup cache, log.md audit, memory.md editorial), `docs/`, `scripts/`, `setup/` (bootstrap, install-hooks/skills, new-engagement, templates), `skills/` (hunt/ workflow/ burp/ + standalone + hooks/), `raw/` (research/ · assets/ read-only · git/ clones).
+Full annotated tree + per-file notes: `docs/layout.md`. Top level: `AGENTS.md` (+ README, LICENSE), `.zcode/` (committed hook registration; per-machine skills links ignored), `targets/` (engagements, PRIVATE git-ignored), `wiki/` (knowledge base: techniques/ payloads/ tools/ cheatsheets/ + index/moc), `session/` (hot.md startup cache, log.md audit, memory.md editorial), `docs/`, `scripts/`, `setup/` (bootstrap, install-hooks/skills, new-engagement, templates), `skills/` (exploit/ orchestrate/ platform/ research/ surface/ workflow/ report/ + hooks/), `raw/` (research/ · assets/ read-only · git/ clones).
 
 **Rules:**
 - `raw/` is read-only. Exceptions: populate `raw/git/` via git clone (WSL only), and `raw/research/<project>/` research workspaces created by `setup/new-research.sh` (the `research` skill writes loop state there). Research on public targets is not client data; client/engagement work still lives only under `targets/`.

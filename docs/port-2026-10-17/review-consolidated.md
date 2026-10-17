@@ -91,4 +91,33 @@ these review files cite the missing scripts; resolves itself as F2 lands (refs b
 
 ## Close-out
 
-(filled at execution end)
+Executed 2026-10-17, all batches landed:
+
+| batch | commit | contents |
+|---|---|---|
+| F4 | `59b909c` | apply-wiring `write_triggers` relational-tier round-trip (guarded by seat-local `tests/test_apply_wiring_roundtrip.py`), check-routing tuple, tells.json fname regex, caido.sh + wiring-exempt + test-routing paths |
+| F2 | `627bc55` | caido-mode SDK restored from `b00dfff` (21 files) under `skills/surface/caido/`; donor helper scripts ported (vm-bridge, interceptor x2, scope-sync, obsidian-lint, ponytail-debt, jsluice-patterns, local-patches.patch); 2 generic wiki pages; index/MOC regen |
+| F1 | `ae861d8` | 20 donor transport anchors repointed (flash-agent batch, main-session grep-verified); 6 judgment edits (walkthrough, learn SEAT NOTE, offensive phase-line drop, interceptor, ponytail x2); sweep extras: junction-sweep.ps1 + kali-seat push path, port-added `skills/platform/skills-setup.md` duplicate removed, 17 port files CRLF->LF, skills-setup.md path spelling/nesting + dedupe (rode along: skills-tree hygiene); review a1-a5 + this ledger committed here |
+| F3 | (this commit) | docs stale-layout cluster: skill-map + layout tree rewrites, AGENTS.md:100, README:82, auto-triggers 56 (39+17, verified live), ledger close-out |
+
+Final battery: pytest **548 passed** (547 baseline + round-trip test), offensive-doctor
+**29 checks / 0 FAIL / 3 WARN** (zg daemon down x2, skill-scan advisory), check-routing **0**,
+lint-wiki **0 hard / 0 dead script refs**, wiki-gaps **17 unchanged** (pre-existing archived
+FIND targets), check-leaks clean (pre-existing WARNs only).
+
+F5 driver state: `.offensive.json` exists for darboviete/eneba/fjordbank/kovas/vilnius -
+all five re-indexed against the ported tree (`116 fingerprints | 99 tools | 26 skills`
+each). The engagement named in `targets/active.md` has NO driver state file; its SessionStart board
+comes from the .md set + hooks, nothing to re-index - operator call whether to initialize.
+
+Operator follow-ups (out of session scope):
+- skillspector uv-tool venv is broken on this seat (package dir missing; PyPI name does
+  not resolve; source is `git+https://github.com/NVIDIA/skillspector.git` per uv-receipt).
+  Reinstall was blocked by the session permission classifier. Manual fix:
+  `uv tool install --force git+https://github.com/NVIDIA/skillspector.git`, then
+  `bash scripts/skill-scan.sh --all` and regenerate `.skillspector-baseline.yaml` for the
+  post-port layout. The one CRITICAL in the current report was hand-reviewed: hunt-ics
+  SKILL.md:95 safety prose ("injure and kill people") - false positive, accept + baseline.
+- zg daemon down (`zg server on`) - flips two doctor WARNs.
+- Donor junction-sweep.ps1 carries a literal TAB inside `'hermes<TAB>orch-skills'`
+  upstream (frozen donor bytes); left verbatim, only `$repo` repointed.

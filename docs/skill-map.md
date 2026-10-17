@@ -51,24 +51,25 @@ organizational only.
 
 ## Vault-local skill layout
 
-`skills/exploit/hunt/` holds the `hunt-*` vuln-class skills plus the shared `hunt-core` spine
-every hunt assumes. `skills/surface/vector-workflow/` is the board-seeding pipeline reference
-(not a loop step), promoted to its own top-level directory. `skills/workflow/` holds
-the two engagement entry points at its root, `offensive` (the driver) and `engage`
-(the router), plus `brain` (subagent dispatch mode over the driver), plus the process/utility skills grouped into subfolders (nesting is
-organizational only -- the Skill tool discovers every skill by basename regardless of
-depth):
-- `closeout/` -- `triage`, `evidence`, `learn`, `walkthrough`
-- `recon/` -- `wiki-recon`, `nday`, `research-ingest`, `wiki-arsenal`, `ingest`
-- `exec/` -- `delegate`, `metasploit`, `redteamlead`, `fuzz`
-- `ctf/` -- `ctf-box`, `ctf-category`
-- `env/` -- `kali-seat`, `chrome-devtools-browser`, `screenshot`
-
-`skills/surface/burp/` holds
-`hunt-burp` + `screenshot-burp` (the Burp MCP driver + Repeater-PoC capture; driver
-scripts in `scripts/burp/`, host setup in `setup/burp/`). Standalone: `wiki/`,
-`research/`, `disclosure/`, `caido/` (headless Caido driver; caido-mode SDK CLI vendored + helper `scripts/caido.sh`). `agents-md-improver/` is the offline
-instruction-file reviewer (the ZCode counterpart of the old `claude-md-improver`).
+`skills/` groups the library by role (nesting is organizational only -- the Skill tool
+discovers every skill by basename regardless of depth): `exploit/` holds `hunt/` (the
+`hunt-*` vuln-class skills plus the shared `hunt-core` spine and `triggers.json`) and
+`exec/` (`delegate`, `metasploit`, `redteamlead`); `orchestrate/` holds the engagement
+entry points `offensive` (the driver) and `engage` (the router), plus `brain`
+(subagent dispatch mode over the driver) and `kali-seat`; `platform/` holds the
+process utilities (`caveman`, `graphify`, `ponytail` + `ponytail-debt`/`ponytail-review`,
+`obsidian-lint`, `wiki`, and `agents-md-improver`, the offline instruction-file
+reviewer); `research/` holds `research`, `nday`, `searchsploit`, `wiki-arsenal`,
+`wiki-recon`; `surface/` holds the by-surface tooling: `vector-workflow` (the
+board-seeding pipeline reference, not a loop step), `browser/`
+(`chrome-devtools-browser`, `screenshot`), `burp/` (`hunt-burp` the MCP driver +
+`screenshot-burp` Repeater-PoC capture; driver scripts in `scripts/burp/`, host setup
+in `setup/burp/`), `caido` (headless Caido driver; caido-mode SDK CLI vendored +
+helper `scripts/caido.sh`), `fuzz`, `interceptor`, `js-discover`, `js-parser`;
+`report/` holds `disclosure` and `walkthrough`; `workflow/` holds `bb-workflow`,
+`nightmare`, `closeout/` (`engagement-retro`, `evidence`, `learn`, `triage`),
+`ctf/` (`ctf-box`, `ctf-category`), and `recon/` (`ingest`, `research-ingest`).
+Plus `hooks/` (hook scripts) and `skills-setup.md` at the root.
 MCP/hook/plugin troubleshooting: `skills/skills-setup.md`.
 
 ## SKILL.md frontmatter (authoring reference)
