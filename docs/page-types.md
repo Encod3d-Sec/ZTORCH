@@ -94,7 +94,7 @@ Sections:
 
 ## target pages (`targets/`)
 
-One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engagement.sh <name> <pentest|bugbounty|ctf>` and self-healed by the `engagement-init` hook. The `engagement_type` in `state.md` frontmatter drives the analyzer and self-heal. A ctf engagement scaffolds a lean upfront set (`state`, `loot`, `Approach`, `vuln-index`, `scope`, `Deadends` + `ingest/`/`poc/`); pentest/bugbounty scaffold the full set below, including `Killchain.md` and `log.md`. Root files (all git-ignored; client/engagement data lives ONLY here):
+One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engagement.sh <name> <pentest|bugbounty|ctf>` and self-healed by the `engagement-init` hook. The `engagement_type` in `state.md` frontmatter drives the analyzer and self-heal. A ctf engagement scaffolds a lean upfront set (`state`, `loot`, `Approach`, `scope`, `Deadends` + `ingest/`/`poc/`); pentest/bugbounty scaffold the full set below, including `Killchain.md` and `log.md`. Root files (all git-ignored; client/engagement data lives ONLY here):
 
 | File | Purpose |
 |------|---------|
@@ -106,15 +106,14 @@ One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engag
 | `Deadends.md` | Exhausted vectors + false positives, with reason; never re-run without new input |
 | `Vuln-index.md` | Finding index by severity + attack chains + severity count table |
 | `oob.md` | Out-of-band callback tracking (the blind-bug gate) |
-| `decisions.md` | Parked judgment calls (G7); decisions.md is scaffolded by init and self-created on demand by Skill(redteamlead) and `done --park`; both are true (either path works when the file is absent) |
+| `decisions.md` | Parked judgment calls (G7); decisions.md is self-created on demand by Skill(redteamlead) and `done --park` (not scaffolded; if an init-created copy exists, it works too) |
 | `log.md` | Append-only audit trail (terse) (pentest/bugbounty; a ctf box has no separate audit log) |
 | `walkthrough.md` | Full copy-pasteable boot-to-root reproduction (scaffolded upfront for pentest/bugbounty; self-creates at close-out for every type if missing) |
 | `eval.md` | Per-engagement AGENT self-assessment (tokens/time/drift); `close-out.py` auto-writes its Metrics block at SOLVED, `Skill(learn)` fills the rest (scaffolded upfront for pentest/bugbounty; on-demand for ctf) |
-| `hot.md` | Rolling per-engagement session cache |
 
-**`Vulns/` subdirectory** (pentest): each finding is a `FIND-NNN-SEVERITY-title.md`. `find-lint` skips `Skipped*` / `False*` dirs, so group as: confirmed at the root or `Completed/`, `Research/` for in-progress, `False Positive/` for disproven, `Skipped-but-usefull/` for out-of-scope-but-noted.
+**`Vulns/` subdirectory** (pentest/bugbounty): each finding is a `FIND-NNN-SEVERITY-title.md`. `find-lint` skips `Skipped*` / `False*` dirs, so group as: confirmed at the root or `Completed/`, `Research/` for in-progress, `False Positive/` for disproven, `Skipped-but-usefull/` for out-of-scope-but-noted.
 
-**Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards), `scope/` (IP/domain/wordlists), `reports/` (report drafts).
+**Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards); `scope/` (IP/domain/wordlists) and `reports/` (report drafts) are made by hand when needed.
 
 See `targets/TARGETS.md` for the full engagement playbook: FIND naming, severity definitions, and the wiki integration rule.
 

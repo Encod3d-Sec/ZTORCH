@@ -21,7 +21,9 @@
 #     an invalid value is skipped (creation still succeeds), never written to disk.
 # Vulns/ is NOT created here; it is made lazily on the first FIND (pentest/bugbounty).
 # Keep the file set in sync with SHARED_CORE/SHARED_FULL/STATE_DIRS in
-# skills/hooks/_engagement.py, which self-heals the same set at SessionStart.
+# skills/hooks/_engagement.py, which self-heals the core set at SessionStart;
+# campaign ledgers (identities/source-ledger/write-ledger/changelog) are
+# scaffold-only: created here, never healed.
 set -euo pipefail
 
 VAULT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
