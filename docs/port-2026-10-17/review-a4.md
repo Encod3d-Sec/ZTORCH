@@ -54,7 +54,7 @@ source-code-analysis
 x
 ```
 
-Attribution (`-v` run): all 17 resolve to archived FIND/cmdlog files under `targets/` (thm_juicy, thm_moebius, thm_gla, thm_precision 1, THM_Exam, fjordbank). Zero are cited by any ported skill (grep over skills/ for each slug: no hits), so per the task rule none produce BROKEN rows; they are pre-existing stale wikilinks in git-ignored client dirs.
+Attribution (`-v` run): all 17 resolve to archived FIND/cmdlog files under `targets/` (thm_juicy, thm_moebius, thm_gla, thm_precision 1, THM_Exam, one client engagement). Zero are cited by any ported skill (grep over skills/ for each slug: no hits), so per the task rule none produce BROKEN rows; they are pre-existing stale wikilinks in git-ignored client dirs.
 
 ## Verification notes
 
