@@ -165,7 +165,8 @@ Amendments recorded at close-out:
   wiki-first blocks, research/workflow/platform skills, skill-map,
   workflows, surface template). Fixed in F3 for all tracked `.md`
   instruction sites. Deferred (follow-on pass): the same names inside
-  `scripts/recon-capture.py` + `scripts/research_status.py` nudge strings,
+  `skills/hooks/recon-capture.py` + `scripts/research_status.py` nudge
+  strings (path corrected: the capture hook lives under `skills/hooks/`),
   `scripts/wiki-promote.py` docstring, and two `scripts/playbook.json`
   test strings - runtime strings, possibly test-referenced, zero agent
   routing impact.
