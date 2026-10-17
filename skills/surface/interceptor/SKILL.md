@@ -154,7 +154,7 @@ the VM). Compensating control, mandatory: before ANY click execution, verify
 every host Interceptor will visit is in the engagement scope.md in-scope list.
 The checklist box `every Interceptor-visited host verified in-scope BEFORE
 click execution` is hard. The real fix is the nftables egress allowlist
-(deferred - see design-scope-shim.md OPEN QUESTIONS Q1).
+(deferred; the donor-side design notes did not travel with the port).
 
 ## Install state
 

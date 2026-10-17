@@ -2,7 +2,7 @@
 name: ponytail
 description: >
   Lazy senior dev discipline for ALL code written in this repo (scripts/,
-  skills/, hermes/, setup/): YAGNI ladder before every diff, ponytail: marker
+  skills/, setup/): YAGNI ladder before every diff, ponytail: marker
   for known ceilings, deletion over addition. Use when writing, reviewing, or
   editing any Torchv2 framework code, and when /ponytail-debt or
   /ponytail-review fire.

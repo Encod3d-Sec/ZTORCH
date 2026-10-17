@@ -53,7 +53,7 @@ The vault is ONE working copy seen under three paths:
   keys are not registered with GitHub, so a Windows `git push` dies with `Permission denied
   (publickey)` after you have already fixed host-key verification. Working form (commit on
   Windows, push over /mnt/c - same working copy, no re-clone):
-  `MSYS_NO_PATHCONV=1 wsl.exe -d kali-linux -u root -- bash -lc "git -C /mnt/c/Users/Lenovo/Documents/ObisidianVaults/HermesTORCH push origin main 2>&1"`
+  `MSYS_NO_PATHCONV=1 wsl.exe -d kali-linux -u root -- bash -lc "git -C /mnt/c/Users/Lenovo/Documents/ObisidianVaults/ZTorch/ZTorch push origin main 2>&1"`
   Before fighting SSH flags on any side, locate where auth actually lives: probe
   `ssh -o BatchMode=yes -T git@github.com` on Windows, WSL, and the VM in one batched pass and
   push from the layer that answers `successfully authenticated`. A first-time

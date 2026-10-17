@@ -12,12 +12,12 @@ metadata:
 
 # ponytail-review
 
-Review the uncommitted framework diff (scripts/, skills/, hermes/, setup/)
+Review the uncommitted framework diff (scripts/, skills/, setup/)
 against the ponytail ladder (Skill(ponytail)). From the Torchv2 root:
 
 ```
 git diff --stat
-git diff -- scripts/ skills/ hermes/ setup/
+git diff -- scripts/ skills/ setup/
 ```
 
 For every hunk, one-line findings only:

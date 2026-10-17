@@ -1,4 +1,4 @@
-# Port adaptation log — SA2 slice (exploit/hunt + exploit/exec)
+# Port adaptation log - SA2 slice (exploit/hunt + exploit/exec)
 
 Date: 2026-10-17. Source: HermesTORCH/skills -> Dest: ZTorch/ZTorch/skills (wsl claude cli target).
 Adaptation rule: seat-side `C:/Users/Lenovo/Desktop/VMshare` -> `/mnt/c/Users/Lenovo/Desktop/VMshare`. VM spelling `/mnt/VMshare` and kali-vm aliases kept as-is. Target-side `C:\` paths in hunt-windows (victim privesc cmds) untouched. LF endings preserved throughout (verified: 0 CRLF files).
@@ -16,7 +16,7 @@ Adaptation rule: seat-side `C:/Users/Lenovo/Desktop/VMshare` -> `/mnt/c/Users/Le
 | hunt/hunt-sqli-time | clean | SKILL.md | same (1 line) |
 | hunt/hunt-sqli-union | clean | SKILL.md | same (1 line) |
 | hunt/hunt-ssrf | clean | SKILL.md, checklist.md | same ENG_DIR conversion (3+1 lines) |
-| hunt/hunt-upload | STALE-RESYNCED | SKILL.md, checklist.md | ENG_DIR conversion (3+1 lines); PLUS dest SKILL.md was missing 22-line "Cloud/object-storage uploads (S3 presigned URLs)" section present in updated source — resynced from source (with path conversion applied), section verified present (X-Amz-Signature grep hit), only intended path diffs remain |
+| hunt/hunt-upload | STALE-RESYNCED | SKILL.md, checklist.md | ENG_DIR conversion (3+1 lines); PLUS dest SKILL.md was missing 22-line "Cloud/object-storage uploads (S3 presigned URLs)" section present in updated source - resynced from source (with path conversion applied), section verified present (X-Amz-Signature grep hit), only intended path diffs remain |
 | hunt/hunt-vpn | clean | SKILL.md, checklist.md | same ENG_DIR conversion (3+1 lines) |
 | hunt/hunt-windows | clean | SKILL.md, checklist.md | seat ENG_DIR conversion (2+1 lines); victim-side `C:\Windows\Tasks` / accesschk `C:\` commands intentionally NOT changed |
 | hunt/hunt-xss | clean | SKILL.md, checklist.md | same ENG_DIR conversion (3+1 lines) |

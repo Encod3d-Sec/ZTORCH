@@ -32,7 +32,6 @@ outcome with `note` (arsenal card consulted) and `done` (closed with evidence, d
 Re-run `next`. That is the whole cycle.
 
 Auxiliary subcommands, when you need them: `plan` (dry-run top-N of `next`; writes nothing),
-`phase` (predefined phase chain + current phase, from scripts/phases.json - advisory),
 `ingest-recon` (parse ingest/*.txt into state.md asset rows; follow with `board`),
 `autonomy` (set the advisory L0-L3 autonomy envelope in scope.md), `rebase` (re-point a rotated
 asset value across the engagement), `status` (read-only board/cursor/spend banner - `next`

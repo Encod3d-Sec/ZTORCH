@@ -16,12 +16,12 @@ Semantic and keyword search across `wiki/`. Required for all vault search operat
   "type": "stdio",
   "command": "qmd",
   "args": ["mcp"],
-  "env": { "QMD_VAULT": "/mnt/c/Users/{user}/Documents/ObsidianVaults/ZTorch" }
+  "env": { "QMD_VAULT": "/mnt/c/Users/{user}/Documents/ObisidianVaults/ZTorch/ZTorch" }
 }
 ```
 
 Replace `{user}` with your Windows username (the WSL path is
-`/mnt/c/Users/<you>/Documents/ObsidianVaults/ZTorch`). If you keep a
+`/mnt/c/Users/<you>/Documents/ObisidianVaults/ZTorch/ZTorch`). If you keep a
 per-machine table, it lives in the git-ignored `AGENTS.local.md`.
 
 Config location: `~/.zcode/cli/config.json` -> `mcp.servers` (user scope; `setup/bootstrap.sh`
@@ -49,7 +49,7 @@ Previously used `mcp-obsidian` (Obsidian Local REST API). Removed because:
 - Requires Obsidian app to be running on Windows - breaks if closed
 - Not needed: ZCode's `Read` tool accesses vault files directly via WSL path
 
-**Replacement:** `Read /mnt/c/Users/{user}/Documents/ObisidianVaults/ZTorch/<relative-path>` (see machine usernames above)
+**Replacement:** `Read /mnt/c/Users/{user}/Documents/ObisidianVaults/ZTorch/ZTorch/<relative-path>` (see machine usernames above)
 
 ### MCP protocol rules (distilled from host client internals, 2026-09-09)
 
@@ -106,23 +106,6 @@ Caller-side cooldown + quarantine (our discipline when a foreign MCP server misb
   lanes. Retrying burns the same failure.
 - Cap concurrent calls to any one MCP server at 4; queue the rest. A fan-out against a
   local bridge (zg/qmd) just multiplies the timeout.
-
----
-
-## Third-party skill intake (hard rule)
-
-Before registering ANY third-party skill (plugin cache, marketplace, git clone) into
-`skills/` or linking it from `~/.claude/skills`, scan it first:
-
-```bash
-skillspector scan <skill-dir> --no-llm        # vet before trusting
-bash scripts/skill-scan.sh --root <parent-dir>   # whole third-party tree at once
-```
-
-HIGH/CRITICAL (injection, exfil, unpinned fetch) = do not register; read the flagged
-lines yourself before overriding. First-party vault skills are swept against the
-baseline by `bash scripts/skill-scan.sh` (incremental; `offensive-doctor` runs it as an
-advisory check). Details: `wiki/tools/skillspector.md`.
 
 ---
 

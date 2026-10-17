@@ -9,7 +9,7 @@
 #   powershell.exe -NoProfile -Command "<paste the process block below>"
 
 $ErrorActionPreference = 'Stop'
-$repo = 'C:/Users/Lenovo/Documents/ObisidianVaults/HermesTORCH/skills'   # <-- adjust per seat
+$repo = 'C:/Users/Lenovo/Documents/ObisidianVaults/ZTorch/ZTorch/skills'   # <-- adjust per seat
 $ts = Join-Path $env:LOCALAPPDATA 'hermes	orch-skills'
 
 if (-not (Test-Path $ts)) { New-Item -ItemType Directory -Path $ts | Out-Null }

@@ -1,9 +1,16 @@
 ---
 name: learn
-description: "DEPRECATED on Hermes - use Skill(engagement-retro) plus Hermes-native memory instead. ZCode-era close-out harvest; kept only for the wiki stage/promote mechanics reference."
+description: "Close-out harness retro + wiki knowledge harvest. Deprecated on the Hermes donor seat only; on the wsl claude cli seat the close-out chain still mandates this skill (SEAT NOTE below)."
 ---
 
 # Learn: harness retrospective + wiki knowledge harvest
+
+> **SEAT NOTE (wsl claude cli seat, port 2026-10-17):** the Hermes deprecation below does
+> NOT apply on this seat - the Hermes `memory` / `session_search` tools it routes to do not
+> exist here, and the close-out chain (`offensive.py closeout`, the close-out Stop hook)
+> still names and mandates this skill. Run the full workflow below. Hermes-specific rows
+> translate as: cross-session facts -> project memory (`CLAUDE.md` / auto-memory);
+> "have we hit this before" -> transcript recall plus `wiki` skill queries.
 
 > **DEPRECATED (2026-10-11, operator directive):** Hermes covers this skill's job natively.
 > Route the work as follows and do NOT run this file's workflow wholesale:

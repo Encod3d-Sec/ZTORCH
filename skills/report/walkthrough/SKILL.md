@@ -25,7 +25,7 @@ At close-out, write a STATUS heading into `state.md`:
 ## STATUS: SOLVED
 ```
 (`OWNED` / `ROOTED` / `COMPLETE` also count.) This is the close-out signal: once present, the
-AGENTS.md execution loop runs `Skill(walkthrough)` (then `Skill(engagement-retro)`).
+AGENTS.md execution loop runs `Skill(walkthrough)` (then `Skill(learn)`).
 
 ## Steps
 
