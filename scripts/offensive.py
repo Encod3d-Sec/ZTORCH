@@ -33,6 +33,10 @@ TEMPLATE_DIR = SCRIPT_DIR.parent / "setup" / "templates" / "offensive"
 TEMPLATE_FILES = ("state.md", "scope.md", "Deadends.md", "loot.md",
                    "Killchain.md", "oob.md", "decisions.md", "Approach.md")
 
+# vault skills/ root (skills live in category subdirs: skills/workflow/<name>).
+# Module global so tests (and future seats) can monkeypatch the resolution.
+SKILLS_DIR = str(SCRIPT_DIR.parent / "skills")
+
 # 4a coverage-matrix columns (header spellings are load-bearing: cells resolve
 # by header name).
 BOARD_COLS = ["id", "asset", "vuln class", "arsenal", "skill", "tool",
@@ -383,6 +387,33 @@ def derive_rows(eng, index, etype):
     for cls in VECTOR_CLASSES["osint"]:
         _emit_row(out, seen, dead, info, osint_asset, cls)
 
+    # (1b) inscope seeding (workflow rework phase 1): every lists/inscope-hosts.md
+    # vhost is a board asset from the moment it is queued. tech_hint rides the same
+    # routing-fingerprint match the state.md loop uses; no match -> the etype
+    # baseline behind the CLASS_FINGERPRINT_HINT gate. `seen` dedupes the state.md
+    # loop below, so a vhost that is also a state.md asset never doubles up.
+    for r in _parse_table(Path(eng) / INSCOPE):
+        vh = (r.get("vhost") or "").strip()
+        if not vh or vh == "?":
+            continue
+        hay = (r.get("tech_hint") or "").strip().lower()
+        implied = []
+        for fp, frow in routing.items():
+            if fp and re.search(r"\b" + re.escape(fp.lower()) + r"\b", hay):
+                cls = (frow.get("class") or "").strip()
+                if cls and cls not in implied:
+                    implied.append(cls)
+        sup = set()
+        for c in implied:
+            sup.update(CLASS_SUPERSEDES.get(c, ()))
+        for cls in [c for c in implied if c not in sup]:
+            _emit_row(out, seen, dead, info, vh, cls)
+        for cls in [c for c in base if c not in implied and c not in sup]:
+            hints = CLASS_FINGERPRINT_HINT.get(cls)
+            if hints and not any(h in hay for h in hints):
+                continue
+            _emit_row(out, seen, dead, info, vh, cls)
+
     for r in _parse_table(Path(eng) / "state.md"):
         asset = (r.get("asset") or r.get("host") or r.get("target") or "").strip()
         if not asset or asset == "?":
@@ -438,6 +469,17 @@ def _next_board_id(rows, prefix="4a"):
     return mx
 
 
+def _vhost_rows(rows, vhost):
+    """Locked-vhost scope filter (workflow rework phase 1): rows whose asset cell
+    contains the vhost string (lowercased substring). Empty vhost -> unchanged.
+    Shared by cmd_board's write filter and cmd_next's candidate set, so the two
+    always agree on what is in scope."""
+    v = (vhost or "").strip().lower()
+    if not v:
+        return rows
+    return [r for r in rows if v in (r.get("asset") or "").strip().lower()]
+
+
 def cmd_board(args):
     eng = _resolve_eng(args.eng)
     if eng is None or not eng.is_dir():
@@ -478,6 +520,12 @@ def cmd_board(args):
         rows.append(dict(id="4a:%d" % nid, **row))
         _stamp_row_opened(state, row["asset"], row["vuln class"])
         added += 1
+    # locked-vhost scope (workflow rework phase 1): derive everything (the full
+    # matrix stays recoverable from state.md + inscope-hosts.md), but write only
+    # the locked vhost's rows. No lock -> exactly today's behavior.
+    lock = (state.get("locked_vhost") or "").strip()
+    if lock:
+        rows = _vhost_rows(rows, lock)
     write_board(eng, rows, merged=merged)
     if added:
         _save_state(eng, state)
@@ -486,6 +534,8 @@ def cmd_board(args):
     for w in _drain_board_warnings():
         print("BOARD (parsed best-effort): %s" % w)
     print("board: %d rows (%d new) -> %s" % (len(rows), added, eng / "Approach.md"))
+    if lock:
+        print("board scoped to %s (%d rows)" % (lock, len(rows)))
     return 0
 
 
@@ -1183,6 +1233,15 @@ def cmd_next(args):
              "run: offensive.py --eng %s index" % (args.eng or eng.name))
     index = load_index(eng)
 
+    # locked-vhost scope (workflow rework phase 1): the banner is this command's
+    # FIRST output line, and the candidate row set below filters to the vhost the
+    # same way `board` does (_vhost_rows), so next can never serve off-vhost rows.
+    lock = (state.get("locked_vhost") or "").strip()
+    if lock:
+        print("LOCKED: %s pass %d stage %s" % (
+            lock, (state.get("vhost_passes") or {}).get(lock, 0),
+            state.get("vhost_stage", 0)))
+
     # WALL-BREAK (self-correction): a dry streak at/over the type threshold means
     # the agent is grinding a wrong vector. Emit Skill(redteamlead) ONCE for
     # wiki-grounded redirection (reset the streak so the next turn resumes the
@@ -1204,6 +1263,8 @@ def cmd_next(args):
     rows = read_board(eng)
     if state.get("foothold"):
         rows = rows + read_board_4b(eng)
+    if lock:
+        rows = _vhost_rows(rows, lock)
     # G4 on the SERVE path too: a hand-edited status cell ([!] -> [ ]) resurrects a
     # dead (asset, class) pair the derivation path would suppress. Drop any open
     # row whose pair sits in Deadends.md, naming it, so the edit is visible instead
@@ -1997,6 +2058,110 @@ def cmd_vhost(args):
                   % (host, passes))
 
 
+# --------------------------------------------------------------------------- lane-init
+
+BRIEF_TEMPLATE = """# Lane brief: {skill} on {vhost} ({lane})
+
+Workflow: {workflow_abs}
+Checklist: {lane_dir}/checklist.md
+
+## Mandatory Execution Loop (Enforced by Gate G10)
+
+1. READ the workflow file above and `{lane_dir}/checklist.md`.
+2. EXECUTE one workflow step at a time.
+3. WRITE the step's output to the exact path after @ in the checklist, then
+   tick that single line.
+4. RUN `python3 scripts/completion-gate.py check {lane_dir}/checklist.md --strict`
+   BEFORE returning. VERDICT: INCOMPLETE means fix every listed item first;
+   only VERDICT: COMPLETE may return the 15-line envelope.
+
+## Rules carried verbatim
+
+- Full-read mandate: READ each JS/source file end to end; zg/grep only to
+  locate, never to summarize.
+- Obsidian-safe: any angle-bracketed token you write into a `.md` is wrapped
+  in inline backticks.
+- Never read `ledgers/cmdlog/` (stallcheck + human inspection only).
+- Subagents never edit `state.md`, `Approach.md`, `Deadends.md`, or
+  `lists/*.md`; return the 15-line envelope (Scope, Result, Key files, Issues,
+  Pending-Writes) and the brain merges.
+"""
+
+
+def _skill_dir(name):
+    """SKILLS_DIR/<name>, else SKILLS_DIR/<category>/<name> (vault skills live in
+    category subdirs: skills/workflow/<name>). First candidate holding a
+    checklist.md wins; None when the skill has no checklist anywhere."""
+    cands = [os.path.join(SKILLS_DIR, name)]
+    try:
+        subs = sorted(os.listdir(SKILLS_DIR))
+    except OSError:
+        subs = []
+    cands += [os.path.join(SKILLS_DIR, s, name) for s in subs
+              if os.path.isdir(os.path.join(SKILLS_DIR, s))]
+    for c in cands:
+        if os.path.isfile(os.path.join(c, "checklist.md")):
+            return c
+    return None
+
+
+def cmd_lane_init(args):
+    eng, state = _eng_state(args, "lane-init")
+    if eng is None:
+        return 2
+    host = args.vhost
+    if state.get("locked_vhost") and state["locked_vhost"] != host:
+        print("REFUSED: locked vhost is %s" % state["locked_vhost"]); sys.exit(1)
+    skdir = _skill_dir(args.skill)
+    if skdir is None:
+        print("REFUSED: %s has no checklist.md" % args.skill); sys.exit(1)
+    vroot = os.path.join(eng, "poc", host)
+    os.makedirs(vroot, exist_ok=True)
+    n = 1
+    while os.path.isdir(os.path.join(vroot, "lane-%d" % n)):
+        n += 1
+    lane = "lane-%d" % n
+    ld = os.path.join(vroot, lane)
+    os.makedirs(os.path.join(ld, "captures"))
+    paths = {}
+    pp = os.path.join(eng, ".paths.json")
+    if os.path.isfile(pp):
+        try:
+            with open(pp, encoding="utf-8") as fh:
+                paths = json.load(fh)
+        except (OSError, ValueError):
+            paths = {}
+    vault = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sub_map = {
+        "{{VHOST}}": host, "{{LANE_ID}}": lane, "{{ENG}}": os.path.basename(eng),
+        "{{VAULT}}": vault,
+        "{{WORKFLOW}}": os.path.join(skdir, "workflow.md"),
+        "{{lists_dir}}": str(paths.get("lists_dir", os.path.join(eng, "lists"))),
+        "{{ledgers_dir}}": str(paths.get("ledgers_dir", os.path.join(eng, "ledgers"))),
+        "{{vault_dir}}": str(paths.get("vault_dir", eng)),
+        "{{vmshare_seat}}": str(paths.get("vmshare_seat", "")),
+        "{{vmshare_vm}}": str(paths.get("vmshare_vm", "")),
+    }
+    with open(os.path.join(skdir, "checklist.md"), encoding="utf-8") as fh:
+        ctext = fh.read()
+    for k, v in sub_map.items():
+        ctext = ctext.replace(k, v)
+    with open(os.path.join(ld, "checklist.md"), "w", encoding="utf-8") as fh:
+        fh.write(ctext)
+    with open(os.path.join(ld, "run-ledger.md"), "w", encoding="utf-8") as fh:
+        fh.write("# Run ledger - %s %s %s\n\n- [ ] lane opened (baseline timestamp; artifacts must be newer)\n"
+                 % (os.path.basename(eng), host, lane))
+    with open(os.path.join(ld, "brief.md"), "w", encoding="utf-8") as fh:
+        fh.write(BRIEF_TEMPLATE.format(skill=args.skill, vhost=host, lane=lane,
+                                       workflow_abs=os.path.join(skdir, "workflow.md"),
+                                       lane_dir=ld))
+    title = (getattr(args, "title", "") or "").strip()
+    _append_line(os.path.join(eng, "log.md"),
+                 "[lane] %s %s opened (skill %s%s)" % (
+                     host, lane, args.skill, ": %s" % title if title else ""))
+    print("LANE %s on %s -> %s" % (lane, host, ld))
+
+
 # --------------------------------------------------------------------------- cli
 
 def _resolve_eng(eng):
@@ -2148,6 +2313,12 @@ def main(argv=None):
     p_vhost.add_argument("--force-reason", default=None,
                          help="force unlock, logged to decisions.md")
     p_vhost.set_defaults(fn=cmd_vhost)
+
+    p_li = sub.add_parser("lane-init", help="scaffold poc/<vhost>/lane-N/ from a skill checklist")
+    p_li.add_argument("--vhost", required=True)
+    p_li.add_argument("--skill", required=True)
+    p_li.add_argument("--title", default="", help="one-line lane label (log line)")
+    p_li.set_defaults(fn=cmd_lane_init)
 
     a = ap.parse_args(argv)
     return a.fn(a)
