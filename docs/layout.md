@@ -9,7 +9,7 @@ ZTORCH/
 ├── targets/                     <- engagements (PRIVATE; client data only here, git-ignored)
 │   ├── active.md                <- pointer: current engagement dir name
 │   ├── scrub-terms.txt          <- private leak-check extras (not shipped)
-│   └── <eng>/                   <- pentest/bugbounty self-healed set (state,loot,Killchain,Approach,log,scope,walkthrough,eval,oob,Vuln-index,Deadends) + ingest/ + poc/ (curated PoC shots) + Vulns/ (pentest); ctf: lean upfront set (state,loot,Approach,scope,Deadends); Killchain/log stay pentest/bugbounty-only, walkthrough/eval/decisions self-create on demand
+│   └── <eng>/                   <- pentest/bugbounty self-healed set (state,loot,Killchain,Approach,log,scope,walkthrough,eval,oob,Vuln-index,Deadends) + ingest/ + poc/ (curated PoC shots) + Vulns/ (pentest); ctf: lean upfront set (state,loot,Approach,scope,Deadends); Killchain/log stay pentest/bugbounty-only, walkthrough/eval/decisions self-create on demand; flow-scope scaffolding: lists/ + osint/ + ledgers/ + .paths.json (new engagements create them; lanes write run-state there)
 ├── wiki/
 │   ├── index.md                 <- catalog of all wiki pages
 │   ├── moc.md                   <- graph map-of-content (domain hubs; navigate here)
@@ -50,14 +50,16 @@ ZTORCH/
 ├── setup/                       <- bootstrap.sh, install-hooks.sh (per-device hook reg), install-skills.sh, new-engagement.sh, new-research.sh, templates/<type>/ + templates/research/, burp/ (disable-lock.sh)
 ├── tests/                       <- pytest suite for engagement + wiki automation
 ├── skills/                      <- hooks/ (hook scripts) + skills-setup.md at root; the rest grouped by role
-│   │                               (nesting is organizational only, skills are discovered by basename):
+│   │                               (nesting is organizational only, skills are discovered by basename;
+│   │                               flow-scope skills carry paired workflow.md + checklist.md per dir,
+│   │                               machine-gated by scripts/check-runbooks.py + scripts/completion-gate.py):
 │   ├── exploit/                 <- hunt/ (hunt-* vuln-class skills (38) + hunt-core spine + triggers.json), exec/ (delegate, metasploit, redteamlead)
 │   ├── orchestrate/             <- offensive (driver) + engage (router) + brain (subagent dispatch) + kali-seat
 │   ├── platform/                <- caveman, graphify, ponytail + ponytail-debt + ponytail-review, obsidian-lint, wiki, agents-md-improver (offline instruction-file reviewer)
 │   ├── research/                <- research, nday, searchsploit, wiki-arsenal, wiki-recon
 │   ├── surface/                 <- vector-workflow (board-seeding reference; not a loop step), browser/ (chrome-devtools-browser, screenshot), burp/ (hunt-burp MCP driver + screenshot-burp), caido (headless driver; caido-mode SDK vendored), fuzz, interceptor, js-discover, js-parser
 │   ├── report/                  <- disclosure, walkthrough
-│   └── workflow/                <- bb-workflow, nightmare (Windows LPE arsenal, CTF/lab), closeout/ (engagement-retro, evidence, learn, triage), ctf/ (ctf-box, ctf-category), recon/ (ingest, research-ingest)
+│   └── workflow/                <- bb-workflow, nightmare (Windows LPE arsenal, CTF/lab), closeout/ (engagement-retro, evidence, learn, triage), ctf/ (ctf-box, ctf-category), recon/ (ingest, research-ingest); workflow-brain + active-workflow + osint-workflow + js-extractor (flow-scope run skills, each a workflow.md + checklist.md pair)
 └── raw/
     ├── research/                <- CVE writeups/blogs/advisories + active research projects (<project>/ from new-research.sh; the research skill writes loop state here)
     ├── assets/                  <- screenshots and other non-text files (read-only)

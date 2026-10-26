@@ -48,6 +48,10 @@ organizational only.
 | Stuck / which vector / "should I keep hammering this" | `redteamlead` skill (fresh RTL subagent reads state+evidence+wiki, returns ranked directions + explicit STOP) |
 | Content discovery / directory brute / hidden params / which wordlist | `fuzz` skill (adaptive wordlist selection + WAF/throttle handling) |
 | `scripts/with_server.py` | Start N servers, poll ports until ready, run a command, guaranteed teardown (blind-sleep alternative) |
+| Run the engagement as the vhost-lane brain (loop, board, state, triage) | `workflow-brain` skill (main-session brain from move 0; dispatches osint + active lanes on the locked vhost, never executes lanes itself) |
+| Execute per-vhost deep-dive stages (lock+caido, context, JS read, list-fed fuzz, version research, hunts, RTL review) | `active-workflow` skill (stages 0-6 engine, 2-3 passes per vhost before unlock) |
+| Passive OSINT on the engagement (historical URLs, infra intel, 3rd-party classification) | `osint-workflow` skill (archive + infra flash-tier lanes parallel to active work; zero packets to in-scope targets) |
+| Full-read JS analysis of a harvested corpus | `js-extractor` skill (reads every first-party file end to end; emits the js-lists tables that fuel fuzz, version research, hunt selection) |
 
 ## Vault-local skill layout
 
