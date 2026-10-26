@@ -63,13 +63,19 @@ if [ "${1:-}" = "--rename" ]; then
   [ -d "$SRC" ] || { echo "no such engagement: $SRC"; exit 1; }
   [ -e "$DST" ] && { echo "already exists: $DST"; exit 1; }
   mv "$SRC" "$DST"
-  for f in "$DST"/*.md; do
+  for f in "$DST"/*.md "$DST"/ledgers/*.md "$DST"/lists/*.md "$DST"/osint/*.md; do
     [ -f "$f" ] || continue
     sed -i -E \
       -e "s/(^title:.*[[:space:]])${OLD}(\"?)[[:space:]]*\$/\1${NEW}\2/" \
-      -e "s/(^engagement:[[:space:]]*)${OLD}[[:space:]]*\$/\1${NEW}/" \
+      -e "s/(^engagement:[[:space:]]*\"?)${OLD}(\"?)[[:space:]]*\$/\1${NEW}\2/" \
       -e "s/(^#[[:space:]].*[[:space:]])${OLD}[[:space:]]*\$/\1${NEW}/" "$f"
   done
+  # .paths.json is a dotfile (no glob matches it) and carries the engagement name
+  # in eng/vault_dir/lists_dir/ledgers_dir + both vmshare paths; re-point it or the
+  # contractual paths file keeps serving the dead directory.
+  if [ -f "$DST/.paths.json" ]; then
+    sed -i "s/${OLD}/${NEW}/g" "$DST/.paths.json"
+  fi
   printf '%s\n' "$NEW" > "$VAULT/targets/active.md"
   echo "renamed engagement: $OLD -> $NEW (titles re-substituted, active set to $NEW)"
   exit 0
