@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """PostToolUse(Bash): append every meaningful command + its output to
-targets/<eng>/poc/cmdlog/<tool>.md, grouped by the primary binary, so the operator has a readable,
+targets/<eng>/ledgers/cmdlog/<tool>.md, grouped by the primary binary, so the operator has a readable,
 per-tool record of exactly what ran and what came back - without any manual capture step.
 
-Example: `bash /root/vm.sh 'nmap -sCV 10.1.1.5'` appends to poc/cmdlog/nmap.md:
+Example: `bash /root/vm.sh 'nmap -sCV 10.1.1.5'` appends to ledgers/cmdlog/nmap.md:
 
     ## 2026-08-10 09:06:12
 
@@ -19,7 +19,7 @@ Example: `bash /root/vm.sh 'nmap -sCV 10.1.1.5'` appends to poc/cmdlog/nmap.md:
 Grouped by the INNER binary (via tool-telemetry._binaries), so vm.sh-wrapped scans land under the
 real tool. Skips framework/dev commands (pytest, offensive.py, git, editing the vault) and empty
 output. Fail-open and silent; capped so one runaway scan can't bloat the file. Records into
-`cmdlog/` (not poc/ root) so it never mixes with curated PoC screenshots.
+`ledgers/cmdlog/` (not poc/ root) so it never mixes with curated PoC screenshots.
 """
 import base64
 import datetime
@@ -31,7 +31,19 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-MAX_OUT = 40000        # per-entry output cap (chars); a huge scan is truncated, not dropped
+MAX_OUT = 4000         # per-entry output cap (chars); a huge scan is truncated, not dropped
+
+
+def _cap_output(out):
+    """4000-char cap: head 2000 + pointer + tail 2000. Raw full output belongs
+    in the lane capture dir; cmdlog is for stallcheck + human skimming only."""
+    if len(out) <= MAX_OUT:
+        return out
+    cut = len(out) - MAX_OUT
+    return (out[:2000]
+            + "\n...[truncated %d chars; full output in the lane capture dir]\n"
+            % cut
+            + out[-2000:])
 
 
 def _emit(text):
@@ -292,11 +304,11 @@ def main():
     tool = next((b for b in bins if b not in ("bash", "sh", "sudo", "env", "time")), None) \
         or (bins[0] if bins else "misc")
 
-    pdir = os.path.join(d, "poc", "cmdlog")
+    pdir = os.path.join(d, "ledgers", "cmdlog")
     try:
         os.makedirs(pdir, exist_ok=True)
         ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        body = out if len(out) <= MAX_OUT else out[:MAX_OUT] + "\n...[truncated]"
+        body = _cap_output(out)
         entry = "\n## %s\n\n```\n%s\n```\n\n```\n%s\n```\n" % (ts, display, body.rstrip())
         with open(os.path.join(pdir, _slug(tool) + ".md"), "a", encoding="utf-8") as fh:
             fh.write(entry)

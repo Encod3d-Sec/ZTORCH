@@ -20,7 +20,7 @@ textbook stall triggers"). This script makes them fire from DATA:
 The capture-poc PostToolUse hook runs this automatically after scan/probe entries
 land (deduped); it can also be run by hand. Exit 0 always (a lens, not a gate).
 
-Usage: python3 scripts/stallcheck.py <eng-dir | poc/cmdlog path>
+Usage: python3 scripts/stallcheck.py <eng-dir | ledgers/cmdlog path>
 """
 import os
 import re
@@ -124,10 +124,18 @@ def bg_read_stalled(entries):
             and bool(reads[-1][1].strip()))
 
 
+def _cmdlog_dir(eng_dir):
+    for rel in ("ledgers/cmdlog", "poc/cmdlog"):
+        p = os.path.join(eng_dir, rel.replace("/", os.sep))
+        if os.path.isdir(p):
+            return p
+    return os.path.join(eng_dir, "ledgers", "cmdlog")
+
+
 def _collect(d):
     """engagement dir (or one cmdlog path) -> {tool: entries}."""
     if os.path.isdir(d):
-        cdir = os.path.join(d, "poc", "cmdlog")
+        cdir = _cmdlog_dir(d)
         out = {}
         if os.path.isdir(cdir):
             for f in sorted(os.listdir(cdir)):
