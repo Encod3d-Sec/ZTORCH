@@ -140,6 +140,55 @@ def _skill_and_hook():
               "keystrokes could re-enter a LIVE pane and clobber a running scan", warn=True)
 
 
+# ------------------------------------------------- 4b. index freshness (G9 support)
+
+def _index_freshness():
+    """The ACTIVE engagement's .offensive-index.json must not predate the framework
+    sources it was compiled from (skills/<cat>/<skill>/SKILL.md + scripts/
+    playbook.json, the cheap subset of offensive_index._index_sources). A stale
+    index is an error, not a warning: `next` (G9) already refuses to serve on it.
+    Silent skip when no active engagement or no index yet (nothing to compare)."""
+    try:
+        with open(os.path.join(VAULT, "targets", "active.md"),
+                  encoding="utf-8", errors="ignore") as fh:
+            eng = fh.read().strip()
+    except OSError:
+        return
+    if not eng:
+        return
+    idx = os.path.join(VAULT, "targets", eng, ".offensive-index.json")
+    if not os.path.isfile(idx):
+        return
+    try:
+        base = os.path.getmtime(idx)
+    except OSError:
+        return
+    newest = 0.0
+    pb = os.path.join(VAULT, "scripts", "playbook.json")
+    if os.path.isfile(pb):
+        try:
+            newest = os.path.getmtime(pb)
+        except OSError:
+            pass
+    sdir = os.path.join(VAULT, "skills")
+    try:
+        for cat in os.listdir(sdir):
+            cdir = os.path.join(sdir, cat)
+            if not os.path.isdir(cdir):
+                continue
+            for name in os.listdir(cdir):
+                sk = os.path.join(cdir, name, "SKILL.md")
+                try:
+                    if os.path.isfile(sk):
+                        newest = max(newest, os.path.getmtime(sk))
+                except OSError:
+                    continue
+    except OSError:
+        pass
+    check("active engagement index fresh (skills/playbook)", newest <= base,
+          "index stale: re-run python3 scripts/offensive.py index")
+
+
 # ------------------------------------------------- 5b. eval_metrics -> bench seam
 
 def _bench():
@@ -294,6 +343,7 @@ def main(argv):
         _routing(off)
         _tools(off)
     _skill_and_hook()
+    _index_freshness()
     _bench()
     _zg()
     _caido()
