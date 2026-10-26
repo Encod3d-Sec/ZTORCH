@@ -925,6 +925,68 @@ def _append_table_row(path, line):
     p.write_text("\n".join(lines), encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- vhost lock model
+
+INSCOPE = "lists/inscope-hosts.md"
+VHOST_STATUSES = ("QUEUED", "ACTIVE", "COMPLETE")
+
+
+def _inscope_path(eng):
+    return os.path.join(eng, INSCOPE)
+
+
+def _set_inscope_status(eng, host, status, passes):
+    """Rewrite the host's status/passes cells in lists/inscope-hosts.md. Only the
+    two cells change; every other byte of the row is preserved verbatim, so an
+    empty tech_hint cell stays `| |` (not re-padded `|  |`) - consumers and tests
+    match rows textually. False when the file or host row is absent."""
+    path = _inscope_path(eng)
+    if not os.path.isfile(path):
+        return False
+    out, hit = [], False
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for raw in fh:
+            line = raw.rstrip("\n")
+            s = line.strip()
+            if s.startswith("|") and len(s.split("|")) > 4 and s.split("|")[1].strip() == host:
+                cells = s.strip("|").split("|")
+                while len(cells) < 5:
+                    cells.append("")
+                cells[3] = " %s " % status
+                cells[4] = " %s " % passes
+                out.append("|" + "|".join(cells) + "|")
+                hit = True
+            else:
+                out.append(line)
+    if hit:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(out) + "\n")
+    return hit
+
+
+def _rtl_review_present(eng):
+    p = os.path.join(eng, "decisions.md")
+    if not os.path.isfile(p):
+        return False
+    with open(p, encoding="utf-8", errors="replace") as fh:
+        return "RTL" in fh.read()
+
+
+def _next_queued(eng):
+    """First row still QUEUED in lists/inscope-hosts.md (board order), else None."""
+    path = _inscope_path(eng)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for raw in fh:
+            s = raw.strip()
+            if s.startswith("|") and "QUEUED" in s:
+                cells = [c.strip() for c in s.strip("|").split("|")]
+                if cells:
+                    return cells[0]
+    return None
+
+
 def _open_assets(rows):
     """Assets (board order, deduped) that still have a [ ]/[~] row."""
     seen, out = set(), []
@@ -1813,6 +1875,128 @@ def cmd_rebase(args):
     return 0
 
 
+# --------------------------------------------------------------------------- vhost subcommands
+
+def _gate_lanes_strict(eng, host):
+    """G10 pre-pass-done lane gate. T8 replaces this body with completion-gate calls."""
+    return []
+
+
+def cmd_vhost(args):
+    """Per-vhost deep-dive lock model: one vhost ACTIVE at a time, passes 1-3
+    each closed by pass-done, unlock marks COMPLETE and auto-locks the next
+    QUEUED row. Old behavior is untouched when nothing is locked (state keys
+    stay absent; every other subcommand ignores them)."""
+    eng, state = _eng_state(args, "vhost")
+    if eng is None:
+        return 2
+    cmd = args.vcmd
+
+    if cmd == "lock":
+        host = args.host
+        if not host:
+            print("error: vhost lock requires a host argument")
+            return 2
+        if state.get("locked_vhost") and state["locked_vhost"] != host:
+            print("REFUSED: %s is locked; unlock it first (`vhost unlock`)"
+                  % state["locked_vhost"])
+            sys.exit(1)
+        state["locked_vhost"] = host
+        state.setdefault("vhost_passes", {})[host] = \
+            state.get("vhost_passes", {}).get(host, 0) + 1
+        state["vhost_stage"] = 0
+        _save_state(eng, state)
+        for sub in ("js-lists",):
+            os.makedirs(os.path.join(eng, "poc", host, sub), exist_ok=True)
+        _set_inscope_status(eng, host, "ACTIVE", state["vhost_passes"][host])
+        _append_line(os.path.join(eng, "log.md"), "%s | driver | vhost lock | %s | pass %d open" % (
+            datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            host, state["vhost_passes"][host]))
+        print("LOCKED %s (pass %d, stage 0). Lanes and board scope to this vhost."
+              % (host, state["vhost_passes"][host]))
+
+    elif cmd == "list":
+        path = _inscope_path(eng)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                sys.stdout.write(fh.read())
+        else:
+            print("no %s; run osint-workflow or add rows from scope.md" % INSCOPE)
+
+    elif cmd == "status":
+        host = state.get("locked_vhost")
+        if not host:
+            print("no locked vhost (global board behavior)")
+            return
+        print("locked: %s | pass %d | stage %s" % (
+            host, state.get("vhost_passes", {}).get(host, 0),
+            state.get("vhost_stage", 0)))
+
+    elif cmd == "pass-done":
+        host = state.get("locked_vhost")
+        if not host:
+            print("no locked vhost")
+            sys.exit(1)
+        failed = _gate_lanes_strict(eng, host)
+        if failed:
+            for f in failed:
+                print("G10 FAIL: %s" % f)
+            print("REFUSED: close the failing lane checklists first "
+                  "(`completion-gate.py check <lane>/checklist.md --strict`)")
+            sys.exit(1)
+        state["vhost_passes"][host] += 1
+        state["vhost_stage"] = 0
+        _save_state(eng, state)
+        _set_inscope_status(eng, host, "ACTIVE", state["vhost_passes"][host])
+        p = state["vhost_passes"][host]
+        if p < 3:
+            print("pass %d done. NEXT: Skill(redteamlead) consult over finds + "
+                  "deadends, then re-enter stages with pass-%d focus (authed-vs-"
+                  "unauthed, chaining, secondary sinks, post-login re-extract)."
+                  % (p, p + 1))
+        else:
+            print("pass %d done. 3 passes reached: `vhost unlock` is now available." % p)
+
+    elif cmd == "unlock":
+        host = state.get("locked_vhost")
+        if not host:
+            print("nothing locked")
+            sys.exit(1)
+        passes = state.get("vhost_passes", {}).get(host, 0)
+        if passes < 2 and not args.force_reason:
+            print("REFUSED: %s has %d pass(es); the bar is 2. Use "
+                  "`--force-reason \"...\"` to force (logged to decisions.md)."
+                  % (host, passes))
+            sys.exit(1)
+        if not _rtl_review_present(eng) and not args.force_reason:
+            print("REFUSED: no RTL review in decisions.md (stage 6 requirement).")
+            sys.exit(1)
+        if args.force_reason:
+            p = os.path.join(eng, "decisions.md")
+            with open(p, "a", encoding="utf-8") as fh:
+                fh.write("\n## %s vhost unlock forced\n\n- host: `%s`\n- passes: %d\n"
+                         "- reason: %s\n" % (_today(), host, passes, args.force_reason))
+        _set_inscope_status(eng, host, "COMPLETE", passes)
+        state["locked_vhost"] = ""
+        _save_state(eng, state)
+        nxt = _next_queued(eng)
+        if nxt:
+            args.host = nxt
+            state["locked_vhost"] = nxt
+            state.setdefault("vhost_passes", {})[nxt] = \
+                state["vhost_passes"].get(nxt, 0) + 1
+            state["vhost_stage"] = 0
+            _save_state(eng, state)
+            for sub in ("js-lists",):
+                os.makedirs(os.path.join(eng, "poc", nxt, sub), exist_ok=True)
+            _set_inscope_status(eng, nxt, "ACTIVE", state["vhost_passes"][nxt])
+            print("UNLOCKED %s (COMPLETE, %d passes). AUTO-LOCKED next: %s"
+                  % (host, passes, nxt))
+        else:
+            print("UNLOCKED %s (COMPLETE, %d passes). No QUEUED vhost remains."
+                  % (host, passes))
+
+
 # --------------------------------------------------------------------------- cli
 
 def _resolve_eng(eng):
@@ -1957,6 +2141,13 @@ def main(argv=None):
     p_rebase.add_argument("old", help="stale asset value (e.g. expired instance IP)")
     p_rebase.add_argument("new", help="current value")
     p_rebase.set_defaults(fn=cmd_rebase)
+
+    p_vhost = sub.add_parser("vhost", help="per-vhost deep-dive lock model")
+    p_vhost.add_argument("vcmd", choices=["lock", "list", "status", "pass-done", "unlock"])
+    p_vhost.add_argument("host", nargs="?", help="vhost (lock only)")
+    p_vhost.add_argument("--force-reason", default=None,
+                         help="force unlock, logged to decisions.md")
+    p_vhost.set_defaults(fn=cmd_vhost)
 
     a = ap.parse_args(argv)
     return a.fn(a)
