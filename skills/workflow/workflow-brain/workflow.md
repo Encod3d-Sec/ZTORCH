@@ -10,7 +10,7 @@
 
 ## Loop
 
-1. Preflight: `python3 scripts/offensive.py status` (or `vhost status`), read
+1. Preflight: `python3 scripts/offensive.py vhost status`, read
    `state.md`, `Approach.md`, `Deadends.md`, `targets/active.md`.
 2. No locked vhost? Pick the first QUEUED row of `lists/inscope-hosts.md` and
    `python3 scripts/offensive.py vhost lock <host>`.
