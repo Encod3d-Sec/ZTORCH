@@ -15,6 +15,24 @@ skill is ever forgotten: every situation below names the exact skill to load. Wh
 deterministic driver (`scripts/offensive.py`) is present, its printed next-action wins; when it
 is absent, this map IS the router.
 
+## Entry preflight (phase 1)
+
+1. `cat targets/active.md` names a live engagement (else `bash
+   setup/new-engagement.sh <name> <type>`).
+2. `scope.md` filled (in/out-of-scope + RoE) BEFORE any fetch.
+3. `python3 scripts/offensive.py index` then `python3 scripts/offensive-doctor.py`
+   (index-freshness check must pass).
+4. `lists/inscope-hosts.md` present with at least one row (else run
+   osint-workflow infra lane or seed from scope.md).
+
+## Routing
+
+- Entry: ALWAYS `Skill(workflow-brain)` from move 0 (no open-asset
+  precondition). It locks the first vhost and spawns osint lanes.
+- Mid-pass: caido -> js-discover -> js-extractor -> fuzz -> searchsploit/nday
+  -> hunt-* (signal-gated via dispatch-queue) -> redteamlead (wall or pass
+  close). The stage table lives in `Skill(active-workflow)`.
+
 ## Wiki
 
 Hub: [[methodology-moc]] - Primary page: [[pentest-methodology]]
@@ -33,7 +51,7 @@ Hub: [[methodology-moc]] - Primary page: [[pentest-methodology]]
 
 | Phase / situation | Skill |
 |---|---|
-| EVERY new engagement, from move 0 (operator directive 2026-10-06: instant deep-brain; the old 2+ open-rows gate is the floor, not the trigger) | `Skill(brain)` - driver/board/triage stay in the main session (glm-5.3 max effort), wave-1 archetype lanes (fuzz/research/graphify/wiki/redteamlead/hunt) dispatched at once |
+| EVERY new engagement, from move 0 (operator directive 2026-10-06: instant deep-brain; the old 2+ open-rows gate is the floor, not the trigger) | `Skill(workflow-brain)` - driver/board/triage stay in the main session (glm-5.3 max effort), wave-1 archetype lanes (fuzz/research/graphify/wiki/redteamlead/hunt) dispatched at once |
 | Raw tool output landed (scans, crawls, recon dumps) -> state/loot/Killchain | `Skill(ingest)` (cheap-tier subagent; bounded job) |
 | "Which tool/payload for this surface" - wiki lookup (quick or deep) | `Skill(wiki-arsenal)` |
 | External recon / OSINT / attack-surface mapping | `Skill(wiki-recon)` |
