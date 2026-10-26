@@ -55,8 +55,10 @@ PROCEEDS - an advisory is NOT approval: verify the host against scope.md
 yourself and self-deny anything not clearly in scope. Never work around
 an rc 126.
 
-Checklist copy target stays EXACTLY $ENG_DIR/js/discover-checklist.md
-(completion-gate contract).
+Run protocol: run-protocol.md (this skill's dir); copy target stays EXACTLY
+$ENG_DIR/js/discover-checklist.md (completion-gate contract). checklist.md is
+the machine-gate lane template `offensive.py lane-init` substitutes - never
+copied by hand.
 
 ## Entry gate
 
@@ -100,10 +102,12 @@ Checklist copy target stays EXACTLY $ENG_DIR/js/discover-checklist.md
 
 ## Checklist (mandatory)
 
-Copy checklist.md (this skill's dir) to $ENG_DIR/js/discover-checklist.md at
-run start. Tick boxes as steps finish; an unchecked box at stop means the run
-is not done - re-run from the first unchecked step. The completion-gate
-ledger mirrors this list.
+Copy run-protocol.md (this skill's dir) to $ENG_DIR/js/discover-checklist.md
+at run start. Tick boxes as steps finish; an unchecked box at stop means the
+run is not done - re-run from the first unchecked step. The completion-gate
+ledger mirrors this list. (checklist.md is NOT this list: it is the
+machine-gate lane template `offensive.py lane-init` materializes per lane -
+never copy it by hand.)
 
 ## Nudge
 

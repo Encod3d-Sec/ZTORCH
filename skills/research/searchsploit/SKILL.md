@@ -89,10 +89,11 @@ All four must pass; each is falsifiable:
 
 ## Checklist (mandatory)
 
-Copy checklist.md (this skill's dir) to `$RUN/searchsploit-checklist.md`
+Copy run-protocol.md (this skill's dir) to `$RUN/searchsploit-checklist.md`
 at run start. Unchecked at stop = UNCHECKED pass, re-run from the first
-unchecked step. SKILL.md and the checklist header agree byte-for-byte
-on that copy target.
+unchecked step. SKILL.md and the run-protocol header agree byte-for-byte
+on that copy target. (checklist.md is the machine-gate lane template
+`offensive.py lane-init` materializes per lane - never copy it by hand.)
 
 ## Nudge
 
