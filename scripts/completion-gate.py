@@ -8,8 +8,9 @@ non-zero bytes took collection accuracy from ~0.4% to near-full. The failure
 it fixes: a lane reports success, the run "completes", and 13 of 22 output
 dirs turn out empty. Self-reports are not completion; artifacts are.
 
-House style: a lens, not a gate. Exit 0 always; the verdict lines go into the
-engagement log and the brain decides.
+House style: a lens by default (exit 0; verdict lines go into the engagement
+log and the brain decides). `check --strict` turns it into a hard gate that
+exits 1 on any failure.
 
 Usage:
   python3 scripts/completion-gate.py init <dir> --title "<run name>" [--steps steps.txt]
@@ -17,13 +18,14 @@ Usage:
       6-step generic lane skeleton. A step line may declare its artifact
       inline: `- probe httpx sweep @ out/httpx.txt`.
 
-  python3 scripts/completion-gate.py check <dir-or-ledger.md> [--capture <dir>]
+  python3 scripts/completion-gate.py check <dir-or-ledger.md> [--capture <dir>] [--strict]
       Verdicts per checklist box: OK, UNCHECKED (box not ticked), MISSING
       (declared artifact path does not exist), EMPTY (artifact is 0 bytes).
       --capture additionally flags an empty or absent lane capture dir.
       On any failure, prints the GENERIC NUDGE to re-dispatch the lane with
       (verbatim, per the talk: generic beats specific because you do not know
-      where it failed).
+      where it failed). Default exits 0 (lens); --strict exits 1 on any
+      failure (hard gate).
 
 Steps file format: one step per line, `#` comments ignored. Inline artifact
 after ` @ ` (a path containing `/` or a dot-suffixed name).
@@ -51,6 +53,96 @@ NUDGE = (
     "have their artifact; do not report a verdict without the raw observable."
 )
 
+RULE_VOCAB = frozenset((
+    "sha256_pass", "table_min_rows", "no_cell_contains", "md_table_headers",
+    "md_table_or_explicit_empty", "dir_count_matches", "all_exist",
+    "contains_lane_id",
+))
+
+import hashlib
+import re
+
+_RULE_RE = re.compile(r"\[rule:\s*([^\]]+)\]")
+
+def _rules_of(step_text):
+    """`@ path [rule:name=arg] [rule:name2]` -> [(name, arg), ...]."""
+    out = []
+    for m in _RULE_RE.finditer(step_text):
+        clause = m.group(1).strip()
+        name, _, arg = clause.partition("=")
+        name = name.strip()
+        arg = arg.strip().strip('"').strip("'")
+        out.append((name, arg))
+    return out
+
+
+def _check_rule(name, arg, art_path, ledger_dir, lane_id):
+    """None = pass; str = failure detail. Unknown rules fail closed."""
+    if name not in RULE_VOCAB:
+        return "unknown rule '%s' (closed vocabulary: %s)" % (name, ",".join(sorted(RULE_VOCAB)))
+    if name == "all_exist":
+        for rel in [p.strip() for p in arg.split(",") if p.strip()]:
+            p = _resolve(rel, ledger_dir)
+            if not os.path.exists(p):
+                return "all_exist: %s absent" % rel
+            if os.path.isfile(p) and os.path.getsize(p) == 0:
+                return "all_exist: %s empty" % rel
+        return None
+    if name == "contains_lane_id":
+        want = arg or lane_id
+        if not want:
+            return "contains_lane_id: no id given and no lane id derivable"
+        try:
+            with open(art_path, encoding="utf-8", errors="replace") as fh:
+                body = fh.read()
+        except OSError:
+            return "contains_lane_id: cannot read %s" % art_path
+        if want not in body:
+            return "contains_lane_id: '%s' not in %s" % (want, os.path.basename(art_path))
+        return None
+    if name == "sha256_pass":
+        try:
+            with open(art_path, encoding="utf-8", errors="replace") as fh:
+                lines = [l.split() for l in fh if l.split()]
+        except OSError:
+            return "sha256_pass: cannot read %s" % art_path
+        if not lines:
+            return "sha256_pass: ledger is empty"
+        checked = 0
+        for parts in lines:
+            if len(parts) >= 2 and re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+                f = os.path.join(os.path.dirname(art_path), parts[-1])
+                if not os.path.isfile(f):
+                    return "sha256_pass: %s missing" % parts[-1]
+                h = hashlib.sha256()
+                with open(f, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(65536), b""):
+                        h.update(chunk)
+                if h.hexdigest() != parts[0]:
+                    return "sha256_pass: hash mismatch for %s" % parts[-1]
+                checked += 1
+        if checked == 0:
+            return "sha256_pass: no `<sha256>  <file>` lines found"
+        return None
+    if name == "dir_count_matches":
+        if not os.path.isdir(art_path):
+            return "dir_count_matches: %s is not a directory" % art_path
+        n = len(list(os.scandir(art_path)))
+        if re.fullmatch(r"\d+", arg):
+            want = int(arg)
+            if n != want:
+                return "dir_count_matches: %d entries, expected %d" % (n, want)
+            return None
+        other = _resolve(arg, ledger_dir)
+        if not os.path.isdir(other):
+            return "dir_count_matches: comparison dir %s absent" % arg
+        m = len(list(os.scandir(other)))
+        if n != m:
+            return "dir_count_matches: %d entries vs %d in %s" % (n, m, arg)
+        return None
+    # table rules land in the next task; absent implementation fails closed
+    return "%s: not implemented" % name
+
 
 def _artifact_of(step_text):
     """Extract the inline artifact path from a step line, or None.
@@ -64,6 +156,8 @@ def _artifact_of(step_text):
     art = tail.split()[0] if tail.split() else ""
     # path-ish: contains a separator or a dot-suffix; rejects bare words like "done"
     if art and ("/" in art or "\\" in art or ("." in art and not art.endswith("."))):
+        return art
+    if art and any(n == "dir_count_matches" for n, _ in _rules_of(step_text)):
         return art
     return None
 
@@ -80,7 +174,7 @@ def cmd_init(args):
     path = os.path.join(args.dir, LEDGER)
     if os.path.exists(path):
         sys.stderr.write("completion-gate: %s already exists, leaving it alone\n" % path)
-        return
+        return False
     steps = []
     if args.steps:
         with open(args.steps, encoding="utf-8") as fh:
@@ -101,6 +195,7 @@ def cmd_init(args):
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
     print("wrote %s (%d steps)" % (path, len(steps)))
+    return False
 
 
 def cmd_check(args):
@@ -110,9 +205,11 @@ def cmd_check(args):
     if not os.path.isfile(target):
         print("VERDICT: NO LEDGER (%s not found) - run was never given a checklist" % target)
         print(NUDGE)
-        return
-    unchecked, missing, empty, stale, ok = [], [], [], [], 0
-    ledger_mtime = os.path.getmtime(target)
+        return True
+    unchecked, missing, empty, stale, rule_failed, ok = [], [], [], [], [], 0
+    baseline_ledger = os.path.join(os.path.dirname(os.path.abspath(target)), "run-ledger.md")
+    baseline = (os.path.getmtime(baseline_ledger)
+                if os.path.isfile(baseline_ledger) else os.path.getmtime(target))
     with open(target, encoding="utf-8", errors="replace") as fh:
         for raw in fh:
             line = raw.rstrip("\n").rstrip("\r")
@@ -124,20 +221,35 @@ def cmd_check(args):
             if not done:
                 unchecked.append(text)
                 continue
+            art_path = None
             if art:
                 art_path = _resolve(art, os.path.dirname(os.path.abspath(target)))
                 if not os.path.exists(art_path):
                     missing.append(art)
+                    continue
+                if os.path.isdir(art_path):
+                    ok += 1
                 elif os.path.getsize(art_path) == 0:
                     empty.append(art)
-                elif os.path.getmtime(art_path) < ledger_mtime - 2:
+                    continue
+                elif os.path.getmtime(art_path) < baseline - 2:
                     # artifact older than the ledger's last edit = residue from a
                     # PREVIOUS run; ticking the box does not make it fresh evidence
                     stale.append(art)
+                    continue
                 else:
                     ok += 1
-            else:
-                ok += 1
+            lane_id = os.path.basename(os.path.dirname(os.path.abspath(target)))
+            for rname, rarg in _rules_of(text):
+                if not art_path and rname != "contains_lane_id":
+                    rule_failed.append("%s: no artifact on the line" % rname)
+                    continue
+                why = _check_rule(rname, rarg, art_path,
+                                  os.path.dirname(os.path.abspath(target)), lane_id)
+                if why:
+                    rule_failed.append("%s (%s): %s" % (rname, art or "-", why))
+                else:
+                    ok += 1
     capture_note = ""
     if args.capture:
         if not os.path.isdir(args.capture):
@@ -146,9 +258,9 @@ def cmd_check(args):
             capture_note = "CAPTURE EMPTY (%s)" % args.capture
         else:
             capture_note = "capture OK"
-    if not unchecked and not missing and not empty and not stale and not capture_note.startswith("CAPTURE"):
+    if not unchecked and not missing and not empty and not stale and not rule_failed and not capture_note.startswith("CAPTURE"):
         print("VERDICT: COMPLETE (%d steps verified%s)" % (ok, ", " + capture_note if capture_note else ""))
-        return
+        return False
     print("VERDICT: INCOMPLETE run-ledger=%s" % os.path.abspath(target))
     for t in unchecked:
         print("  UNCHECKED: %s" % t)
@@ -158,10 +270,13 @@ def cmd_check(args):
         print("  EMPTY (0 bytes): %s" % a)
     for a in stale:
         print("  STALE (artifact predates the ledger edit - previous run's residue): %s" % a)
+    for r in rule_failed:
+        print("  RULE_FAILED: %s" % r)
     if capture_note.startswith("CAPTURE"):
         print("  %s" % capture_note)
     print("  verified: %d" % ok)
     print(NUDGE)
+    return True
 
 
 def main():
@@ -175,10 +290,13 @@ def main():
     p_chk = sub.add_parser("check", help="verify a ledger (dir or file)")
     p_chk.add_argument("target", help="engagement/lane dir or run-ledger.md path")
     p_chk.add_argument("--capture", help="lane capture dir to also flag if empty/absent")
+    p_chk.add_argument("--strict", action="store_true", help="exit 1 on any failure (hard gate; default is exit-0 lens)")
     p_chk.set_defaults(func=cmd_check)
     args = ap.parse_args()
-    args.func(args)
-    sys.exit(0)  # lens, not gate
+    failed = args.func(args)
+    if getattr(args, "strict", False) and failed:
+        sys.exit(1)
+    sys.exit(0)  # lens, not gate, unless --strict
 
 
 if __name__ == "__main__":
