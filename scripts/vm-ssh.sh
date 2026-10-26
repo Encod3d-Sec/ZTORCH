@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Direct driver to the Kali VM (fastest path on a WSL seat). Prefers key-based SSH
-# as root when /root/.ssh/ztorch_vm is authorized on the VM; otherwise delegates to
-# the machine-side /root/vm.sh (password path, creds in /root/creds.txt). VM_KEY and
-# VM_SH overridable for tests. Usage: bash scripts/vm-ssh.sh '<remote bash command>'
+# Direct driver to the Kali VM (fastest path on a WSL seat). Tries key-based SSH
+# as root via VM_KEY (default /root/.ssh/ztorch_vm) when that key is authorized
+# on the VM; on a seat without the key it delegates to the machine-side /root/vm.sh
+# (password path: VM ip/user/password in /root/creds.txt, per docs/virtual-machine.md).
+# VM_KEY and VM_SH overridable for tests. Usage: bash scripts/vm-ssh.sh '<remote bash command>'
 set -uo pipefail
 CMD="${1:?need a command}"
 KEY="${VM_KEY:-/root/.ssh/ztorch_vm}"

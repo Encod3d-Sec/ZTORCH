@@ -1,6 +1,6 @@
 ---
 name: brain
-description: Brain mode - the main chat keeps strategy/driver/triage while 2-3 concurrent subagents execute. DEFAULT posture once the board has 2+ open assets. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
+description: Brain mode - the main chat keeps strategy/driver/triage while 2-3 concurrent subagents execute. Mandatory from move 0. engage routes straight into brain; there is no open-asset precondition. Serial single-agent execution is the fallback when fewer than 2 disjoint rows exist, not a reason to skip brain. Use for "/brain", "brain mode", "run offensive via brain", "dispatch this via brain".
 metadata:
   hermes:
     tags: [brain, orchestration, lanes, concurrency]
@@ -192,8 +192,9 @@ minutes, not at session end.
 
 The brain runs this loop; it is a posture, not a script. Every iteration:
 
-1. DRIVE: `python3 scripts/offensive.py --caveman --eng <eng> next` (caveman =
-   token-lean serves). If terminal 3x -> STOP, operator decision.
+1. DRIVE: `python3 scripts/offensive.py --eng <eng> next`. Prose compression is
+   not a driver flag; engagement output discipline comes from AGENTS.md output
+   rules. If terminal 3x -> STOP, operator decision.
 2. FIRE the mapped `Skill(hunt-*)` in the MAIN session (G2 + doctrine).
 3. DISPATCH the distilled action as a lane at the tier from the table above
    (briefs are .md file paths under poc/<lane>/; completion-gate init before
