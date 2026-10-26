@@ -64,6 +64,33 @@ import re
 
 _RULE_RE = re.compile(r"\[rule:\s*([^\]]+)\]")
 
+_ROW_RE = re.compile(r"^\s*\|(.+)\|\s*$")
+
+
+def _md_tables(path):
+    """Markdown file -> list of tables, each a list of rows (list of stripped cells).
+    Divider rows (---) are dropped."""
+    tables, cur = [], []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for raw in fh:
+                m = _ROW_RE.match(raw)
+                if not m:
+                    if cur:
+                        tables.append(cur)
+                        cur = []
+                    continue
+                cells = [c.strip() for c in m.group(1).split("|")]
+                if all(re.fullmatch(r":?-{3,}:?", c) for c in cells if cells):
+                    continue
+                cur.append(cells)
+        if cur:
+            tables.append(cur)
+    except OSError:
+        pass
+    return tables
+
+
 def _rules_of(step_text):
     """`@ path [rule:name=arg] [rule:name2]` -> [(name, arg), ...]."""
     out = []
@@ -140,7 +167,39 @@ def _check_rule(name, arg, art_path, ledger_dir, lane_id):
         if n != m:
             return "dir_count_matches: %d entries vs %d in %s" % (n, m, arg)
         return None
-    # table rules land in the next task; absent implementation fails closed
+    tables = _md_tables(art_path)
+    if name == "md_table_headers":
+        want = [w.strip() for w in arg.split(",")]
+        if not tables:
+            return "md_table_headers: no table in %s" % os.path.basename(art_path)
+        hdr = [re.sub(r"\s+", "_", h.lower()) for h in tables[0][0]]
+        if hdr != want:
+            return "md_table_headers: got '%s', want '%s'" % (",".join(hdr), ",".join(want))
+        return None
+    if name == "table_min_rows":
+        n = max((len(t) - 1 for t in tables), default=0)
+        want = int(arg) if arg else 1
+        if n < want:
+            return "table_min_rows: %d data rows, want >= %d" % (n, want)
+        return None
+    if name == "md_table_or_explicit_empty":
+        if any(len(t) > 1 for t in tables):
+            return None
+        try:
+            with open(art_path, encoding="utf-8", errors="replace") as fh:
+                body = fh.read()
+        except OSError:
+            body = ""
+        if "(none found)" in body:
+            return None
+        return "md_table_or_explicit_empty: no data rows and no '(none found)' line"
+    if name == "no_cell_contains":
+        for t in tables:
+            for row in t:
+                for cell in row:
+                    if arg and arg in cell:
+                        return "no_cell_contains: '%s' found in cell" % arg
+        return None
     return "%s: not implemented" % name
 
 
