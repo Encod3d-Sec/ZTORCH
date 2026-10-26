@@ -119,6 +119,8 @@ def _check_rule(name, arg, art_path, ledger_dir, lane_id):
         want = arg or lane_id
         if not want:
             return "contains_lane_id: no id given and no lane id derivable"
+        if not art_path:
+            return "contains_lane_id: no artifact on the line"
         try:
             with open(art_path, encoding="utf-8", errors="replace") as fh:
                 body = fh.read()
@@ -178,7 +180,11 @@ def _check_rule(name, arg, art_path, ledger_dir, lane_id):
         return None
     if name == "table_min_rows":
         n = max((len(t) - 1 for t in tables), default=0)
-        want = int(arg) if arg else 1
+        want = 1
+        if arg:
+            if not re.fullmatch(r"\d+", arg):
+                return "table_min_rows: non-numeric arg '%s' (want an integer)" % arg
+            want = int(arg)
         if n < want:
             return "table_min_rows: %d data rows, want >= %d" % (n, want)
         return None
@@ -265,50 +271,85 @@ def cmd_check(args):
         print("VERDICT: NO LEDGER (%s not found) - run was never given a checklist" % target)
         print(NUDGE)
         return True
-    unchecked, missing, empty, stale, rule_failed, ok = [], [], [], [], [], 0
+    unchecked, missing, empty, stale, rule_failed, na_failed, ok = [], [], [], [], [], [], 0
     baseline_ledger = os.path.join(os.path.dirname(os.path.abspath(target)), "run-ledger.md")
     baseline = (os.path.getmtime(baseline_ledger)
                 if os.path.isfile(baseline_ledger) else os.path.getmtime(target))
     with open(target, encoding="utf-8", errors="replace") as fh:
-        for raw in fh:
-            line = raw.rstrip("\n").rstrip("\r")
-            if not line.startswith("- ["):
+        ledger_text = fh.read()
+    wf_ref = ""
+    for line in ledger_text.splitlines():
+        if line.startswith("Workflow-Ref:"):
+            wf_ref = line.split(":", 1)[1].strip()
+            break
+    wf_path = wf_ref if wf_ref and os.path.isfile(wf_ref) else os.path.join(
+        os.path.dirname(os.path.abspath(target)), "workflow.md")
+    na_tokens = []
+    if os.path.isfile(wf_path):
+        with open(wf_path, encoding="utf-8", errors="replace") as fh:
+            grab = False
+            for line in fh:
+                if line.startswith("## "):
+                    grab = line.strip() == "## N/A escapes"
+                    continue
+                if grab and line.strip().startswith(("-", "`", "N")):
+                    tok = line.strip().strip("-` ").strip()
+                    if tok.startswith("N/A:"):
+                        tok = tok[len("N/A:"):].strip()
+                    if tok:
+                        na_tokens.append(tok)
+    for raw in ledger_text.splitlines():
+        line = raw.rstrip("\n").rstrip("\r")
+        if not line.startswith("- ["):
+            continue
+        text = line[3:].lstrip(" ]").lstrip()
+        na = line.startswith("- [-]")
+        if na:
+            claim = ""
+            m = re.search(r"N/A:\s*(.+)$", text)
+            if m:
+                claim = m.group(1).strip()
+            if not claim or not any(t and t in claim for t in na_tokens):
+                na_failed.append(text)
+            else:
+                ok += 1
+            continue
+        done = line.startswith("- [x]") or line.startswith("- [X]")
+        art = _artifact_of(text)
+        if not done:
+            unchecked.append(text)
+            continue
+        art_path = None
+        if art:
+            art_path = _resolve(art, os.path.dirname(os.path.abspath(target)))
+            if not os.path.exists(art_path):
+                missing.append(art)
                 continue
-            text = line[3:].lstrip(" ]").lstrip()
-            done = line.startswith("- [x]") or line.startswith("- [X]")
-            art = _artifact_of(text)
-            if not done:
-                unchecked.append(text)
+            if os.path.isdir(art_path):
+                ok += 1
+            elif os.path.getsize(art_path) == 0:
+                empty.append(art)
                 continue
-            art_path = None
-            if art:
-                art_path = _resolve(art, os.path.dirname(os.path.abspath(target)))
-                if not os.path.exists(art_path):
-                    missing.append(art)
-                    continue
-                if os.path.isdir(art_path):
-                    ok += 1
-                elif os.path.getsize(art_path) == 0:
-                    empty.append(art)
-                    continue
-                elif os.path.getmtime(art_path) < baseline - 2:
-                    # artifact older than the ledger's last edit = residue from a
-                    # PREVIOUS run; ticking the box does not make it fresh evidence
-                    stale.append(art)
-                    continue
-                else:
-                    ok += 1
-            lane_id = os.path.basename(os.path.dirname(os.path.abspath(target)))
-            for rname, rarg in _rules_of(text):
-                if not art_path and rname != "contains_lane_id":
-                    rule_failed.append("%s: no artifact on the line" % rname)
-                    continue
-                why = _check_rule(rname, rarg, art_path,
-                                  os.path.dirname(os.path.abspath(target)), lane_id)
-                if why:
-                    rule_failed.append("%s (%s): %s" % (rname, art or "-", why))
-                else:
-                    ok += 1
+            elif os.path.getmtime(art_path) < baseline - 2:
+                # artifact older than the ledger's last edit = residue from a
+                # PREVIOUS run; ticking the box does not make it fresh evidence
+                stale.append(art)
+                continue
+            else:
+                ok += 1
+        lane_id = os.path.basename(os.path.dirname(os.path.abspath(target)))
+        for rname, rarg in _rules_of(text):
+            if not art_path and rname != "contains_lane_id":
+                rule_failed.append("%s: no artifact on the line" % rname)
+                continue
+            why = _check_rule(rname, rarg, art_path,
+                              os.path.dirname(os.path.abspath(target)), lane_id)
+            if why:
+                rule_failed.append("%s (%s): %s" % (rname, art or "-", why))
+            else:
+                ok += 1
+    placeholders = [tok for tok in ("{{", "}}", "TBD", "<TODO>")
+                    if tok in ledger_text]
     capture_note = ""
     if args.capture:
         if not os.path.isdir(args.capture):
@@ -317,7 +358,9 @@ def cmd_check(args):
             capture_note = "CAPTURE EMPTY (%s)" % args.capture
         else:
             capture_note = "capture OK"
-    if not unchecked and not missing and not empty and not stale and not rule_failed and not capture_note.startswith("CAPTURE"):
+    if (not unchecked and not missing and not empty and not stale
+            and not rule_failed and not na_failed and not placeholders
+            and not capture_note.startswith("CAPTURE")):
         print("VERDICT: COMPLETE (%d steps verified%s)" % (ok, ", " + capture_note if capture_note else ""))
         return False
     print("VERDICT: INCOMPLETE run-ledger=%s" % os.path.abspath(target))
@@ -331,6 +374,10 @@ def cmd_check(args):
         print("  STALE (artifact predates the ledger edit - previous run's residue): %s" % a)
     for r in rule_failed:
         print("  RULE_FAILED: %s" % r)
+    for t in na_failed:
+        print("  NA_FAILED: %s" % t)
+    for tok in placeholders:
+        print("  PLACEHOLDER: '%s' left in the checklist (lane-init substitution missed or ticked template text)" % tok)
     if capture_note.startswith("CAPTURE"):
         print("  %s" % capture_note)
     print("  verified: %d" % ok)
