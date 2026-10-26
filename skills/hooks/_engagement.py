@@ -877,90 +877,6 @@ def append_draft_chain_rows(d):
         return 0
 
 
-def cmdlog_entry_count(d):
-    """Captured entries across poc/cmdlog/*.md (the '## ts' blocks capture-poc appends). The
-    work record that exists even when every state file is still blank."""
-    cdir = os.path.join(d, "poc", "cmdlog")
-    n = 0
-    try:
-        for fn in os.listdir(cdir):
-            if fn.endswith(".md"):
-                try:
-                    with open(os.path.join(cdir, fn), encoding="utf-8", errors="ignore") as fh:
-                        n += fh.read().count("\n## ")
-                except OSError:
-                    pass
-    except OSError:
-        pass
-    return n
-
-
-_HOST_TELL_RE = re.compile(r"https?://([^/\s:'\"]+)|\b(\d{1,3}(?:\.\d{1,3}){3})\b")
-
-
-def append_activity_draft(d, minimum=10):
-    """Activity auto-synthesis for the webserver-lab shape: poc/cmdlog holds the whole work
-    record but every state file is still template-blank (loot rows 0, chain rows 0), so the
-    engagement carries NOTHING forward and closes unmeasured. Drafts an '## Activity
-    (auto-draft)' block into state.md: date, per-tool entry counts, hosts touched. Skipped
-    when loot/chain substance exists (those syntheses own state). Idempotent on the heading.
-    Returns 1 when drafted, 0 otherwise. Fail-open (0)."""
-    if not d:
-        return 0
-    try:
-        state_p = os.path.join(d, "state.md")
-        if not os.path.isfile(state_p):
-            return 0
-        state = open(state_p, encoding="utf-8", errors="ignore").read()
-        if "## Activity" in state:
-            return 0
-        loot_rows = 0
-        loot_p = os.path.join(d, "loot.md")
-        if os.path.isfile(loot_p):
-            loot_rows = _table_data_rows(open(loot_p, encoding="utf-8", errors="ignore").read())
-        chain_rows = 0
-        if "## Chain" in state:
-            tail = state.split("## Chain", 1)[1]
-            chain_rows = max(_table_data_rows(tail), _chain_substance_rows(tail))
-        kc_p = os.path.join(d, "Killchain.md")
-        kc_rows = _table_data_rows(open(kc_p, encoding="utf-8", errors="ignore").read()) \
-            if os.path.isfile(kc_p) else 0
-        if loot_rows >= 1 or chain_rows >= 1 or kc_rows >= 1:
-            return 0
-        cdir = os.path.join(d, "poc", "cmdlog")
-        tools, hosts, total = [], set(), 0
-        try:
-            names = sorted(fn for fn in os.listdir(cdir) if fn.endswith(".md"))
-        except OSError:
-            names = []
-        for fn in names:
-            try:
-                with open(os.path.join(cdir, fn), encoding="utf-8", errors="ignore") as fh:
-                    text = fh.read()
-            except OSError:
-                continue
-            n = text.count("\n## ")
-            if n:
-                total += n
-                tools.append("%s x%d" % (fn[:-3], n))
-            for m in _HOST_TELL_RE.finditer(text):
-                hosts.add((m.group(1) or m.group(2)).lower())
-        if total < minimum:
-            return 0
-        host_line = ", ".join(sorted(hosts)[:8]) or "?"
-        block = ("\n## Activity (auto-draft %s)\n\n%d captured command(s) live in poc/cmdlog/ "
-                 "while the state files above stayed blank. Tools: %s. Hosts touched: %s.\n"
-                 "Polish into real state rows (assets, loot, chain) or close the box:\n"
-                 "`python3 scripts/eng-close.py SOLVED|SUSPEND`.\n"
-                 % (date.today().isoformat(), total, "; ".join(tools[:10]), host_line))
-        if not state.endswith("\n"):
-            state += "\n"
-        open(state_p, "w", encoding="utf-8").write(state + block)
-        return 1
-    except Exception:
-        return 0
-
-
 # placeholder 'why exhausted' cells that carry no reusable signal (machine-read by G4)
 _PLACEHOLDER_WHY = {"", "-", "n/a", "na", "none", "no", "x", "?", "tbd", "dead", "failed",
                     "exhausted", "nothing", "no luck", "not working", "didn't work"}
@@ -1085,8 +1001,6 @@ def unmarked_close_gap(d):
             tail = state.split("## Chain", 1)[1]
             chain_rows = max(_table_data_rows(tail), _chain_substance_rows(tail))
         sub = max(loot_rows, chain_rows)
-        if sub < 1 and cmdlog_entry_count(d) >= 10:
-            sub = 1                # webserver-lab shape: work only in cmdlog, state files blank
         if sub < 1:
             return 0
         age = _last_event_age_hours(d)

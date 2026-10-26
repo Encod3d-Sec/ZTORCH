@@ -32,8 +32,6 @@
 
 ## Hard rules
 
-- Lanes never read `ledgers/cmdlog/`; neither does the brain (stallcheck +
-  human inspection only).
 - Every lane directive carries verbatim: the full-read mandate, the
   Obsidian-safe backtick rule, the no-list-edits rule.
 - Budget: bounded stop conditions per vector still apply (OOB sink ~30-40

@@ -155,12 +155,12 @@ def _save_state(eng, state):
 
 
 def _emit_workflow_tree(eng_dir, eng):
-    """Phase-1 additive engagement tree: lists/, osint/, ledgers/cmdlog/, .paths.json.
+    """Phase-1 additive engagement tree: lists/, osint/, ledgers/, .paths.json.
 
     Mirrors setup/new-engagement.sh. Exist-guarded throughout: re-running init (or
     --rebase) on an existing engagement never overwrites operator data."""
     vault = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for rel in (("lists",), ("osint",), ("ledgers", "cmdlog")):
+    for rel in (("lists",), ("osint",), ("ledgers",)):
         os.makedirs(os.path.join(eng_dir, *rel), exist_ok=True)
     paths_p = os.path.join(eng_dir, ".paths.json")
     if os.path.exists(paths_p):
@@ -2171,7 +2171,6 @@ Checklist: {lane_dir}/checklist.md
   locate, never to summarize.
 - Obsidian-safe: any angle-bracketed token you write into a `.md` is wrapped
   in inline backticks.
-- Never read `ledgers/cmdlog/` (stallcheck + human inspection only).
 - Subagents never edit `state.md`, `Approach.md`, `Deadends.md`, or
   `lists/*.md`; return the 15-line envelope (Scope, Result, Key files, Issues,
   Pending-Writes) and the brain merges.
@@ -2300,7 +2299,7 @@ def cmd_init(args):
         if not dst.exists():
             shutil.copyfile(TEMPLATE_DIR / name, dst)
 
-    # phase-1 workflow tree (lists/, osint/, ledgers/cmdlog/, .paths.json); additive +
+    # phase-1 workflow tree (lists/, osint/, ledgers/, .paths.json); additive +
     # exist-guarded, so the --rebase path below also just fills gaps, never overwrites.
     _emit_workflow_tree(eng, args.name)
 

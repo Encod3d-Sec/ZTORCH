@@ -346,13 +346,6 @@ def main():
                     _telemetry.hook("close-out", action="deadends-quality-nudge")
                 except Exception:
                     pass
-        # Activity auto-synthesis (webserver-lab shape): every state file blank but poc/cmdlog
-        # holds the whole work record -> draft an ## Activity block so the box carries SOMETHING
-        # forward. Idempotent (quiet on the second Stop), never fires once loot/chain exist.
-        if _engagement.append_activity_draft(d):
-            print("Activity auto-draft: state files were blank while poc/cmdlog held the work; "
-                  "drafted an ## Activity block into state.md (tools, counts, hosts). Polish it "
-                  "into real state rows, or close the box with scripts/eng-close.py.")
         # Unmarked-close reflex (the close-out root cause): substance captured, NO '## STATUS:'
         # heading at all, last activity > 12h ago (the first Stop of a session after the box
         # was left mid-close-out). The entire close-out chain -- eval-metrics write, walkthrough

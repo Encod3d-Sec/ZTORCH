@@ -121,8 +121,8 @@ TODAY="$(date +%F)"
 # poc/ is scaffolded for ALL types (curated exploit/PoC/flag shots); ingest/ = raw
 # tool output. Vulns/ is created lazily on the first FIND. lists/ (in/out-of-scope
 # vhost tracking), osint/ (landing dir; JSON not allowed there, so a README stub),
-# ledgers/cmdlog/ (driver cmdlog drop) are the phase-1 workflow tree.
-mkdir -p "$DEST/ingest" "$DEST/poc" "$DEST/lists" "$DEST/osint" "$DEST/ledgers/cmdlog"
+# ledgers/ are the phase-1 workflow tree.
+mkdir -p "$DEST/ingest" "$DEST/poc" "$DEST/lists" "$DEST/osint" "$DEST/ledgers"
 
 sub "$VAULT/setup/templates/_inscope-hosts.md" "$NAME" "$TODAY" "$DEST/lists/inscope-hosts.md"
 sub "$VAULT/setup/templates/_outscope-3rdparty.md" "$NAME" "$TODAY" "$DEST/lists/outscope-3rdparty.md"

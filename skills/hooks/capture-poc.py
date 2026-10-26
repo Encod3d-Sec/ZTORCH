@@ -1,28 +1,17 @@
 #!/usr/bin/env python3
-"""PostToolUse(Bash): append every meaningful command + its output to
-targets/<eng>/ledgers/cmdlog/<tool>.md, grouped by the primary binary, so the operator has a readable,
-per-tool record of exactly what ran and what came back - without any manual capture step.
+"""PostToolUse(Bash): two fail-open reflexes over each captured Bash pair.
 
-Example: `bash /root/vm.sh 'nmap -sCV 10.1.1.5'` appends to ledgers/cmdlog/nmap.md:
+1. Finding-grade auto-cards: a captured pair holding a CONFIRMED finding (a flag
+   token, a root-shell banner, a hashcat run that cracked something) is persisted
+   immediately as poc/NN-<kind>-auto.md (deduped on the signal token), with an
+   advisory to render the operator-facing card NOW while the pane is live.
+2. Empty-output streak: >= 2 empty outputs in a row -> whoami-probe advisory
+   (docs/shell-interaction.md); a real output resets the streak.
 
-    ## 2026-08-10 09:06:12
-
-    ```
-    nmap -sCV 10.1.1.5
-    ```
-
-    ```
-    PORT   STATE SERVICE VERSION
-    22/tcp open  ssh     OpenSSH 7.6p1 ...
-    ```
-
-Grouped by the INNER binary (via tool-telemetry._binaries), so vm.sh-wrapped scans land under the
-real tool. Skips framework/dev commands (pytest, offensive.py, git, editing the vault) and empty
-output. Fail-open and silent; capped so one runaway scan can't bloat the file. Records into
-`ledgers/cmdlog/` (not poc/ root) so it never mixes with curated PoC screenshots.
+Skips framework/dev commands (pytest, offensive.py, git, editing the vault).
+Fail-open and silent on any error.
 """
 import base64
-import datetime
 import json
 import os
 import re
@@ -30,20 +19,6 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-
-MAX_OUT = 4000         # per-entry output cap (chars); a huge scan is truncated, not dropped
-
-
-def _cap_output(out):
-    """4000-char cap: head 2000 + pointer + tail 2000. Raw full output belongs
-    in the lane capture dir; cmdlog is for stallcheck + human skimming only."""
-    if len(out) <= MAX_OUT:
-        return out
-    cut = len(out) - MAX_OUT
-    return (out[:2000]
-            + "\n...[truncated %d chars; full output in the lane capture dir]\n"
-            % cut
-            + out[-2000:])
 
 
 def _emit(text):
@@ -98,8 +73,8 @@ def _response_text(data):
 
 
 def _unwrap(cmd):
-    """The INNER command of a `bash /root/vm.sh '<inner>'` (or vm-rsh/win-rsh) transport, so the
-    entry is grouped by the real tool (nmap) not the wrapper (bash)."""
+    """The INNER command of a `bash /root/vm.sh '<inner>'` (or vm-rsh/win-rsh) transport, so
+    the card shows the real tool's command (nmap) not the wrapper (bash)."""
     m = re.search(r"(?:vm\.sh|vm-rsh\.sh|win-rsh\.sh)\b[^'\"]*['\"](.+)['\"]\s*$", cmd or "", re.S)
     return m.group(1) if m else (cmd or "")
 
@@ -121,7 +96,7 @@ _COMPOUND_RE = re.compile(r"\bdone\b|\bthen\b|\bfi\b|\besac\b|;\s*do\b|^\s*(?:fo
 def _split_top_level(cmd):
     """Split on top-level `;` `&&` `||` that are NOT inside single/double quotes. A `|` pipe is
     kept intact inside a segment. Fail-soft: on any confusion the worst case is one un-split
-    segment, which is still logged (never dropped)."""
+    segment, which is still shown (never dropped)."""
     segs, buf, quote, i, n = [], [], None, 0, len(cmd or "")
     while i < n:
         c = cmd[i]
@@ -170,10 +145,10 @@ def _decode_b64_pipe(seg):
 
 
 def _clean_for_display(cmd):
-    """Turn the raw issued command into the REAL command(s) for the cmdlog: strip the vm.sh/rsh
+    """Turn the raw issued command into the REAL command(s) for the auto-card: strip the vm.sh/rsh
     transport, decode literal base64 cradles, and drop top-level noise segments (cd/echo banners,
     local state reads). Returns '' when nothing meaningful remains (all transport/noise) so the
-    caller skips the entry entirely. Fail-soft: any parse trouble falls back to the unwrapped
+    caller skips the card entirely. Fail-soft: any parse trouble falls back to the unwrapped
     command rather than dropping it."""
     try:
         inner = _unwrap(cmd).strip()
@@ -260,11 +235,10 @@ def main():
     out = _response_text(data)
     if not out.strip():
         # Empty tool output is SIGNAL, not noise (docs/shell-interaction.md:43-58):
-        # count the streak; >= 2 in a row -> whoami-probe advisory. Never a cmdlog
-        # entry (nothing to show), just the counter + one-shot nudge.
+        # count the streak; >= 2 in a row -> whoami-probe advisory.
         import _engagement as _e
         d_empty = _e.active_dir()
-        if d_empty and not _META_RE.search(cmd):
+        if d_empty:
             m = os.path.join(d_empty, ".empty-streak")
             try:
                 n = int(open(m).read().strip() or 0) + 1
@@ -283,9 +257,9 @@ def main():
                 pass
         return
 
-    # Show the REAL command, not the raw issued line: unwrap the vm.sh/rsh transport, decode
-    # literal base64 cradles, drop cd/echo-banner/local-read noise. Empty -> the command was pure
-    # transport/navigation, nothing worth a cmdlog entry.
+    # Show the REAL command on the card, not the raw issued line: unwrap the vm.sh/rsh
+    # transport, decode literal base64 cradles, drop cd/echo-banner/local-read noise.
+    # Empty -> the command was pure transport/navigation, nothing worth a card.
     display = _clean_for_display(cmd)
     if not display.strip():
         return
@@ -299,110 +273,25 @@ def main():
     except OSError:
         pass
 
-    bins = _binaries(display.replace("\n", " ; ")) or []
-    # first binary that is not a pure wrapper/transport is the meaningful tool
-    tool = next((b for b in bins if b not in ("bash", "sh", "sudo", "env", "time")), None) \
-        or (bins[0] if bins else "misc")
-
-    pdir = os.path.join(d, "ledgers", "cmdlog")
+    # Finding-grade auto-capture: persist the pair as a poc card the MOMENT the finding
+    # lands (no re-execution; the curated card was skipped under momentum on every
+    # engagement to date). Deduped on the signal token.
     try:
-        os.makedirs(pdir, exist_ok=True)
-        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        body = _cap_output(out)
-        entry = "\n## %s\n\n```\n%s\n```\n\n```\n%s\n```\n" % (ts, display, body.rstrip())
-        with open(os.path.join(pdir, _slug(tool) + ".md"), "a", encoding="utf-8") as fh:
-            fh.write(entry)
-
-        # Finding-grade auto-capture: persist the pair as a poc card the MOMENT the finding
-        # lands (no re-execution; the curated card was skipped under momentum on every
-        # engagement to date). Deduped on the signal token.
         sig = _finding_signal(display, out)
         if sig:
-            line = _auto_card(d, tool, display, body, sig[0], sig[1])
+            line = _auto_card(d, _tool_for(display), display, out, sig[0], sig[1])
             if line:
                 _emit(line)
-
-        # Mechanical wrong-vector tells, injected at decision time: after any scan/probe/
-        # crack capture lands, run the stall battery over the WHOLE cmdlog (consecutive
-        # failures against one host = target starvation, any connectivity tool; repeated
-        # Exhausted-with-0-cracked = stop cracking; scanner zero-yield; frozen vm-bg log).
-        # The prose version of these rules sat in hunt-core and was ignored under momentum.
-        # Deduped to one verdict per 30 min so a starved loop surfaces, not spams.
-        if tool in ("curl", "hashcat", "nmap", "nc", "nxc", "netexec", "ssh",
-                    "hydra", "nuclei", "ffuf", "feroxbuster", "vm-bg"):
-            import subprocess, time
-            smarker = os.path.join(d, ".stall-nudged")
-            fresh = True
-            try:
-                if time.time() - os.path.getmtime(smarker) < 1800:
-                    fresh = False
-            except OSError:
-                pass                     # no marker yet
-            if fresh:
-                sc = os.path.join(_engagement.VAULT, "scripts", "stallcheck.py")
-                try:
-                    r = subprocess.run(["python3", sc, d], capture_output=True, text=True,
-                                       timeout=5, stdin=subprocess.DEVNULL)
-                    if r.stdout.strip():
-                        _emit(r.stdout.strip())
-                        open(smarker, "w").close()
-                        # A starvation/zero-yield verdict on the row the driver last
-                        # served is doom-loop closure: the driver itself said try this;
-                        # the data says it can never land. Close it --dead so the cursor
-                        # advances (G4 suppression) instead of the row re-serializing.
-                        # (done --dead skips G1/G2 by design: a dead-end needs no
-                        # evidence, so this close can never be gate-blocked.)
-                        state_p = os.path.join(d, ".offensive.json")
-                        try:
-                            st = json.loads(open(state_p, encoding="utf-8").read())
-                            rid = ((st.get("last_move") or {}).get("row") or "").strip()
-                        except Exception:
-                            rid = ""
-                            try:   # corrupt state: stall auto-close silently off; record it
-                                if os.path.isfile(state_p):
-                                    import _telemetry
-                                    _telemetry.log_event(
-                                        "hook", d=d, hook="capture-poc",
-                                        error=".offensive.json unparseable - stall auto-close skipped")
-                            except Exception:
-                                pass
-                        # host-match guard: the verdict may name a DIFFERENT host than
-                        # the row the driver last served - closing that row would kill
-                        # an unrelated vector. Only auto-close when the verdict's host
-                        # token appears in the served row's target/notes (or the verdict
-                        # names no host at all, e.g. hash exhaustion).
-                        row_ok = True
-                        host_m = re.search(r"against (\S+)", r.stdout)
-                        if rid and host_m:
-                            host = host_m.group(1).strip("'\".,")
-                            row_ok = False
-                            try:
-                                sys.path.insert(0, os.path.join(_engagement.VAULT, "scripts"))
-                                import offensive as _off
-                                for rw in (_off.read_board(d)
-                                           + (_off.read_board_4b(d)
-                                              if st.get("foothold") else [])):
-                                    if (rw.get("id") or "").strip() == rid:
-                                        hay = " ".join(str(rw.get(k) or "")
-                                                       for k in ("asset", "notes", "target"))
-                                        row_ok = host.lower() in hay.lower()
-                                        break
-                            except Exception:
-                                row_ok = True    # board unreadable -> old behavior
-                        if rid and row_ok and "STALL SIGNAL" in r.stdout:
-                            try:
-                                subprocess.run(
-                                    ["python3", os.path.join(_engagement.VAULT, "scripts",
-                                     "offensive.py"), "--eng", d, "done", rid,
-                                     "--dead", "auto-stall: cmdlog stall verdict"],
-                                    capture_output=True, timeout=10,
-                                    stdin=subprocess.DEVNULL)
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
     except Exception:
         pass
+
+
+def _tool_for(display):
+    """The meaningful binary of the cleaned command (pipe sink, wrapper stripped), for the
+    card header. Falls back to 'misc'."""
+    bins = _binaries(display.replace("\n", " ; ")) or []
+    return next((b for b in bins if b not in ("bash", "sh", "sudo", "env", "time")), None) \
+        or (bins[0] if bins else "misc")
 
 
 if __name__ == "__main__":

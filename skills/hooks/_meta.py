@@ -46,7 +46,7 @@ def is_prompt_framework_meta(text):
     return is_framework_meta(text) or bool(_PROMPT_META.search(text or ""))
 
 
-# Framework/dev-command exemption: shared by capture-poc.py (skip logging to poc/cmdlog/) and
+# Framework/dev-command exemption: shared by capture-poc.py (skip auto-card advisories) and
 # drift-guard.py (skip drift-nudging) -- both ask "is this a framework/dev command, not
 # engagement activity", a narrower/different question than is_framework_meta's "does this
 # operate on the vault's own wiring". Kept as ONE source after the two callers' independent
