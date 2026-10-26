@@ -1,6 +1,6 @@
 ---
 name: osint-workflow
-description: Always-on passive OSINT for the engagement. Two flash-tier lanes
+description: >- Always-on passive OSINT for the engagement. Two flash-tier lanes
   (osint-archive: Wayback/CommonCrawl/URLScan/OTX via waymore+gau+wigolo;
   osint-infra: CT logs, DNS/ASN, repos, third-party refs) running in parallel
   with active-workflow from move 0. Zero packets to in-scope targets.
