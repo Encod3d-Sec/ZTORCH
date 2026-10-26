@@ -397,6 +397,11 @@ def derive_rows(eng, index, etype):
         vh = (r.get("vhost") or "").strip()
         if not vh or vh == "?":
             continue
+        # m1 (T7 review): a COMPLETE vhost is spent - seeding it here would
+        # re-derive its rows as open, so `next` re-serves a finished vhost
+        # forever once no lock is held. QUEUED / ACTIVE / blank seed as before.
+        if (r.get("status") or "").strip().upper() == "COMPLETE":
+            continue
         hay = (r.get("tech_hint") or "").strip().lower()
         implied = []
         for fp, frow in routing.items():
@@ -470,15 +475,24 @@ def _next_board_id(rows, prefix="4a"):
     return mx
 
 
-def _vhost_rows(rows, vhost):
-    """Locked-vhost scope filter (workflow rework phase 1): rows whose asset cell
-    contains the vhost string (lowercased substring). Empty vhost -> unchanged.
-    Shared by cmd_board's write filter and cmd_next's candidate set, so the two
-    always agree on what is in scope."""
+def _vhost_match(asset, vhost):
+    """True iff `asset` is the vhost itself or a dot-bounded subdomain of it
+    (case-insensitive). Substring containment let an attacker-coined
+    `evil-sub.internet.com.attacker.tld` scope into a `sub.internet.com` lock
+    (T7 review m2)."""
+    a = (asset or "").strip().lower()
     v = (vhost or "").strip().lower()
-    if not v:
+    return bool(v) and (a == v or a.endswith("." + v))
+
+
+def _vhost_rows(rows, vhost):
+    """Locked-vhost scope filter (workflow rework phase 1): rows whose asset is
+    the vhost or a dot-bounded subdomain of it (_vhost_match). Empty vhost ->
+    unchanged. Shared by cmd_board's write filter, its offboard split, and
+    cmd_next's candidate set, so all three always agree on what is in scope."""
+    if not (vhost or "").strip():
         return rows
-    return [r for r in rows if v in (r.get("asset") or "").strip().lower()]
+    return [r for r in rows if _vhost_match(r.get("asset"), vhost)]
 
 
 def cmd_board(args):
@@ -495,6 +509,20 @@ def cmd_board(args):
     existing = read_board(eng)
     dead = _deadend_pairs(eng)
     merged = 0
+    # m4 (T7 review): rows stashed by the last locked-vhost board write come
+    # back BEFORE `have` is built, so derivation skips their (asset, class)
+    # key and each stashed row keeps its id and hand-set status.
+    stash = state.pop("offboard_rows", None) or []
+    stash_dirty = bool(stash)
+    if stash:
+        keys = {((r.get("asset") or "").strip().lower(),
+                 (r.get("vuln class") or "").strip().lower()) for r in existing}
+        for r in stash:
+            k = ((r.get("asset") or "").strip().lower(),
+                 (r.get("vuln class") or "").strip().lower())
+            if k not in keys:
+                existing.append(r)
+                keys.add(k)
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())
@@ -526,9 +554,18 @@ def cmd_board(args):
     # the locked vhost's rows. No lock -> exactly today's behavior.
     lock = (state.get("locked_vhost") or "").strip()
     if lock:
+        # m4 (T7 review): the off-vhost rows are stashed in the engagement
+        # state as full row dicts, not discarded - hand-set statuses are not
+        # re-derivable. Newly-derived off-vhost rows are part of the stash.
+        offboard = [r for r in rows if not _vhost_match(r.get("asset"), lock)]
+        if offboard:
+            state["offboard_rows"] = offboard
+        else:
+            state.pop("offboard_rows", None)
+        stash_dirty = True
         rows = _vhost_rows(rows, lock)
     write_board(eng, rows, merged=merged)
-    if added:
+    if added or stash_dirty:
         _save_state(eng, state)
     # drain AFTER derive_rows: it parses state.md/Deadends.md too, and a warning
     # from those files must be announced here, not leak into the next command
