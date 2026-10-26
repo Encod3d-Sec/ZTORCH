@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1014,12 +1015,19 @@ def _set_inscope_status(eng, host, status, passes):
     return hit
 
 
-def _rtl_review_present(eng):
+def _rtl_review_present(eng, host):
+    """True iff decisions.md holds an RTL-review line naming THIS host: a line
+    containing both the RTL marker and the host name (case-insensitive on the
+    host). The old whole-file substring test was engagement-scoped, so one RTL
+    consult satisfied unlock for every vhost forever (T6 review R15)."""
     p = os.path.join(eng, "decisions.md")
     if not os.path.isfile(p):
         return False
+    h = (host or "").strip().lower()
+    if not h:
+        return False
     with open(p, encoding="utf-8", errors="replace") as fh:
-        return "RTL" in fh.read()
+        return any("RTL" in line and h in line.lower() for line in fh)
 
 
 def _next_queued(eng):
@@ -1811,6 +1819,24 @@ def cmd_done(args):
     if args.skill and args.skill.strip() != (row.get("skill") or "").strip():
         row["skill"] = args.skill.strip()   # correct the board to what landed
 
+    # G10: a lane row closes only when its checklist passes --strict
+    row_text = " ".join(str(row.get(c) or "") for c in BOARD_COLS) + " " + (args.poc or "")
+    for tok in re.findall(r"lane-\d+", row_text):
+        host = state.get("locked_vhost") or ""
+        ckl = os.path.join(eng, "poc", host, tok, "checklist.md")
+        if host and os.path.isfile(ckl):
+            gate = os.path.join(os.path.dirname(os.path.abspath(__file__)), "completion-gate.py")
+            g = subprocess.run([sys.executable, gate, "check", ckl, "--strict"],
+                               capture_output=True, text=True)
+            if g.returncode != 0:
+                print("G10 REFUSED: lane %s checklist incomplete" % tok)
+                for l in g.stdout.splitlines():
+                    if l.strip().startswith(("UNCHECKED", "MISSING", "EMPTY", "STALE",
+                                             "RULE_FAILED", "NA_FAILED", "PLACEHOLDER")):
+                        print("  " + l)
+                print("re-dispatch hint: SendMessage to the lane with the failed step list above")
+                sys.exit(1)
+
     row["status"] = "[x]"
     row["poc"] = args.poc
     row["poc_kind"] = args.kind
@@ -1939,8 +1965,23 @@ def cmd_rebase(args):
 # --------------------------------------------------------------------------- vhost subcommands
 
 def _gate_lanes_strict(eng, host):
-    """G10 pre-pass-done lane gate. T8 replaces this body with completion-gate calls."""
-    return []
+    """G10: every poc/<host>/lane-*/checklist.md must pass completion-gate --strict."""
+    fails = []
+    vroot = os.path.join(eng, "poc", host)
+    if not os.path.isdir(vroot):
+        return fails
+    gate = os.path.join(os.path.dirname(os.path.abspath(__file__)), "completion-gate.py")
+    for name in sorted(os.listdir(vroot)):
+        ckl = os.path.join(vroot, name, "checklist.md")
+        if not (name.startswith("lane-") and os.path.isfile(ckl)):
+            continue
+        r = subprocess.run([sys.executable, gate, "check", ckl, "--strict"],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            first = next((l for l in r.stdout.splitlines() if l.strip().startswith(
+                ("UNCHECKED", "MISSING", "EMPTY", "STALE", "RULE_FAILED", "NA_FAILED", "PLACEHOLDER"))), "")
+            fails.append("%s/%s: %s" % (host, name, first or "strict gate failed"))
+    return fails
 
 
 def cmd_vhost(args):
@@ -1958,9 +1999,13 @@ def cmd_vhost(args):
         if not host:
             print("error: vhost lock requires a host argument")
             return 2
-        if state.get("locked_vhost") and state["locked_vhost"] != host:
-            print("REFUSED: %s is locked; unlock it first (`vhost unlock`)"
-                  % state["locked_vhost"])
+        if state.get("locked_vhost"):
+            # R14 (T6 review): refuse ANY lock while one is held - the old
+            # != host guard let a same-host `lock` re-lock and bump the pass
+            # counter, bypassing the pass-done G10 gate entirely.
+            print("REFUSED: %s is locked (one vhost at a time, same host included) - "
+                  "run `vhost pass-done` to advance the pass or `vhost unlock` to "
+                  "finish it first" % state["locked_vhost"])
             sys.exit(1)
         state["locked_vhost"] = host
         state.setdefault("vhost_passes", {})[host] = \
@@ -2029,8 +2074,16 @@ def cmd_vhost(args):
                   "`--force-reason \"...\"` to force (logged to decisions.md)."
                   % (host, passes))
             sys.exit(1)
-        if not _rtl_review_present(eng) and not args.force_reason:
-            print("REFUSED: no RTL review in decisions.md (stage 6 requirement).")
+        if not _rtl_review_present(eng, host) and not args.force_reason:
+            print("REFUSED: no RTL review in decisions.md naming %s (stage 6 "
+                  "requirement)." % host)
+            sys.exit(1)
+        fails = _gate_lanes_strict(eng, host)
+        if fails and not args.force_reason:
+            for f in fails:
+                print("G10 FAIL: %s" % f)
+            print("REFUSED: open lane checklists under %s - close them first or "
+                  "pass --force-reason" % host)
             sys.exit(1)
         if args.force_reason:
             p = os.path.join(eng, "decisions.md")
