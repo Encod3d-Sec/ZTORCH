@@ -28,7 +28,7 @@ set -euo pipefail
 
 VAULT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 
-sub() { sed -e "s/{{ENGAGEMENT}}/$2/g" -e "s/{{DATE}}/$3/g" "$1" > "$4"; }
+sub() { sed -e "s/{{ENGAGEMENT}}/$2/g" -e "s/{{DATE}}/$3/g" -e "s|{{VAULT}}|$VAULT|g" "$1" > "$4"; }
 
 # --rename OLD NEW: move an engagement dir and re-run the sed substitution so no
 # managed file keeps the old name in its title:/engagement: frontmatter or its H1
@@ -113,8 +113,15 @@ TODAY="$(date +%F)"
 [ -e "$DEST" ] && { echo "already exists: $DEST"; exit 1; }
 
 # poc/ is scaffolded for ALL types (curated exploit/PoC/flag shots); ingest/ = raw
-# tool output. Vulns/ is created lazily on the first FIND.
-mkdir -p "$DEST/ingest" "$DEST/poc"
+# tool output. Vulns/ is created lazily on the first FIND. lists/ (in/out-of-scope
+# vhost tracking), osint/ (landing dir; JSON not allowed there, so a README stub),
+# ledgers/cmdlog/ (driver cmdlog drop) are the phase-1 workflow tree.
+mkdir -p "$DEST/ingest" "$DEST/poc" "$DEST/lists" "$DEST/osint" "$DEST/ledgers/cmdlog"
+
+sub "$VAULT/setup/templates/_inscope-hosts.md" "$NAME" "$TODAY" "$DEST/lists/inscope-hosts.md"
+sub "$VAULT/setup/templates/_outscope-3rdparty.md" "$NAME" "$TODAY" "$DEST/lists/outscope-3rdparty.md"
+sub "$VAULT/setup/templates/_paths.md" "$NAME" "$TODAY" "$DEST/.paths.json"
+printf '# OSINT landing\n\nwayback-urls.md, infra-intel.md, osint-findings.md self-create on first osint-workflow wave.\n' > "$DEST/osint/README.md"
 
 # state/loot/Approach (+ Killchain for pentest/bugbounty) from the type's own template
 # dir (per-type columns). Keep in sync with state_files() in skills/hooks/_engagement.py.
@@ -168,7 +175,7 @@ sub "$VAULT/setup/templates/_deadends.md" "$NAME" "$TODAY" "$DEST/Deadends.md"
 # --park`) writes to it; see skills/hooks/_engagement.py's ensure_optional_file().
 if [ "$TYPE" != "ctf" ]; then
   for f in identities source-ledger write-ledger; do
-    sub "$VAULT/setup/templates/_$f.md" "$NAME" "$TODAY" "$DEST/$f.md"
+    sub "$VAULT/setup/templates/_$f.md" "$NAME" "$TODAY" "$DEST/ledgers/$f.md"
   done
 fi
 
@@ -181,7 +188,7 @@ else
 fi
 [ "$WITH_OOB" = 1 ] && FILES="$FILES, oob"
 [ "$TYPE" != "ctf" ] && FILES="$FILES, Vuln-index"
-echo "created $TYPE engagement: targets/$NAME/ ($FILES, ingest/, poc/)"
+echo "created $TYPE engagement: targets/$NAME/ ($FILES, ingest/, poc/, lists/, osint/, ledgers/, .paths.json)"
 echo "fill targets/$NAME/scope.md with in/out-of-scope + RoE before testing (or pass --scope <host> next time)."
 echo "active engagement set to: $NAME"
 echo "drop raw recon output into targets/$NAME/ingest/ then run the ingest skill."

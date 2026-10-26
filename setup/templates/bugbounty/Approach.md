@@ -42,6 +42,16 @@ GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the 
 
 ## 4. Exploit
 
+## Workflow stages (per locked vhost)
+
+- [ ] Stage 0: vhost locked + Caido project + identities recorded
+- [ ] Stage 1: surface probe + wiki/graphify context pass
+- [ ] Stage 2: js-discover corpus + js-extractor lists
+- [ ] Stage 3: list-fed fuzz + param mining
+- [ ] Stage 4: version/CVE research lane
+- [ ] Stage 5: signal-gated hunts via dispatch-queue
+- [ ] Stage 6: RTL consult + pass decision
+
 ### 4a. Findings  (subsumes coverage.md: asset x class x status)
 | id | asset | vuln class | arsenal | skill | tool | status | poc | poc_kind |
 |----|-------|-----------|---------|-------|------|--------|-----|----------|

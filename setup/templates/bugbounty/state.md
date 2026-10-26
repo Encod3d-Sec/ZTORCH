@@ -14,6 +14,8 @@ Asset / endpoint inventory. Drop raw recon (subfinder/httpx/nuclei) in `ingest/`
 
 `access`: none / recon / tested / vuln
 
+Asset inventory (first table; driver + hooks append rows).
+
 | asset | url | endpoint | param | tech | access | notes |
 |-------|-----|----------|-------|------|--------|-------|
 
@@ -27,7 +29,13 @@ in-scope findings triaged to Completed and reported/submitted -- and is the trig
 close-out reflex, walkthrough auto-assembly, and learn harvest all watch for. Without this
 marker a finished programme never auto-triggers Skill(walkthrough)/Skill(learn).
 
+## STATUS:
+
+- engagement open
+
 ## Facts
+
+- (none yet)
 
 One line per fact: key | confidence | summary. Summary must carry what + where + how to
 verify. Body lives on demand in the poc/ card or loot entry the key names. Deprecation is
@@ -36,4 +44,12 @@ and prevent retries exactly like Deadends.md.
 
 | key | conf | summary |
 |---|---|---|
+
+## Vhost queue
+
+mirror of `lists/inscope-hosts.md`; the driver owns both
+
+## Active lanes
+
+- (none)
 

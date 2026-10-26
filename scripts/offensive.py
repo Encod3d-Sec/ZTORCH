@@ -149,6 +149,30 @@ def _save_state(eng, state):
     os.replace(tmp, p)
 
 
+def _emit_workflow_tree(eng_dir, eng):
+    """Phase-1 additive engagement tree: lists/, osint/, ledgers/cmdlog/, .paths.json.
+
+    Mirrors setup/new-engagement.sh. Exist-guarded throughout: re-running init (or
+    --rebase) on an existing engagement never overwrites operator data."""
+    vault = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for rel in (("lists",), ("osint",), ("ledgers", "cmdlog")):
+        os.makedirs(os.path.join(eng_dir, *rel), exist_ok=True)
+    paths_p = os.path.join(eng_dir, ".paths.json")
+    if os.path.exists(paths_p):
+        return
+    paths = {
+        "eng": eng,
+        "vault_dir": os.path.join(vault, "targets", eng),
+        "vmshare_seat": "/mnt/c/Users/Lenovo/Desktop/VMshare/%s/%s" % (eng, eng),
+        "vmshare_vm": "/mnt/VMshare/%s/%s" % (eng, eng),
+        "lists_dir": os.path.join(vault, "targets", eng, "lists"),
+        "ledgers_dir": os.path.join(vault, "targets", eng, "ledgers"),
+    }
+    with open(paths_p, "w", encoding="utf-8") as fh:
+        json.dump(paths, fh, indent=2)
+        fh.write("\n")
+
+
 # --------------------------------------------------------------------------- board (4a matrix)
 
 def _parse_table(path):
@@ -1836,6 +1860,10 @@ def cmd_init(args):
         dst = eng / name
         if not dst.exists():
             shutil.copyfile(TEMPLATE_DIR / name, dst)
+
+    # phase-1 workflow tree (lists/, osint/, ledgers/cmdlog/, .paths.json); additive +
+    # exist-guarded, so the --rebase path below also just fills gaps, never overwrites.
+    _emit_workflow_tree(eng, args.name)
 
     state_path = eng / STATE_NAME
     if state_path.exists():
