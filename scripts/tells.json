@@ -39,6 +39,12 @@
       "note": "server-side fetch; check whether the URL is user-influenced"
     },
     {
+      "re": "['\"`/]fetch-[a-z][a-z0-9_-]{2,}",
+      "class": "ssrf",
+      "skill": "hunt-ssrf",
+      "note": "route NAMED fetch-<x> (endpoint or JS route string); server-side fetch ENDPOINT candidate - look for a url param and test who fetches"
+    },
+    {
       "re": "DocumentBuilder|SAXParser|libxml|etree\\.parse|XMLInputFactory",
       "class": "injection",
       "skill": "hunt-injection",

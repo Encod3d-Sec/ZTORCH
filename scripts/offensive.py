@@ -960,6 +960,27 @@ def _status_of(r):
     return (r.get("status") or "").strip()
 
 
+def _pool_candidates(rows):
+    """D21 (advisory): open rows sharing a vuln class across 2+ DISTINCT
+    assets are one pooled lane with a per-host cap, not N micro-lanes.
+    Same-asset rows never pool (that is depth, not duplication)."""
+    groups = {}
+    for r in rows:
+        if _status_of(r) not in ("[ ]", "[~]"):
+            continue
+        cls = (r.get("vuln class") or "").strip().lower()
+        asset = (r.get("asset") or "").strip()
+        if not cls or not asset:
+            continue
+        groups.setdefault(cls, []).append(asset)
+    out = []
+    for cls in sorted(groups):
+        assets = sorted(set(groups[cls]))
+        if len(groups[cls]) >= 2 and len(assets) >= 2:
+            out.append({"class": cls, "rows": len(groups[cls]), "assets": assets})
+    return out
+
+
 def _row_by_id(rows, rid):
     for r in rows:
         if (r.get("id") or "").strip() == rid:
@@ -1129,7 +1150,8 @@ def _next_json_payload(eng, state, vault):
            "invocation": None, "board": {}, "gates_remaining": [],
            "gate_action": None, "runner": None, "cmd": None, "read_cmd": None,
            "evidence_cmd": None, "posture": None, "chain": None,
-           "autonomy": autonomy_of(eng)[0], "warnings": [], "terminal": None}
+           "autonomy": autonomy_of(eng)[0], "warnings": [], "terminal": None,
+           "pool": []}
     if index_stale(eng, vault):
         out["terminal"] = "stale-index"
         out["warnings"].append("run: offensive.py --eng %s index" % eng.name)
@@ -1164,6 +1186,12 @@ def _next_json_payload(eng, state, vault):
         "stuck": sum(1 for r in rows if _status_of(r) in ("[?]", "[!]")),
     }
     out["posture"] = "parallel" if out["board"]["open_assets"] >= 2 else "serial"
+    out["pool"] = _pool_candidates(rows)
+    out["dependencies"] = [
+        {"asset": (r.get("asset") or "").strip(),
+         "vuln class": (r.get("vuln class") or "").strip()}
+        for r in rows if _status_of(r) == "[?]"
+    ]
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
@@ -1324,8 +1352,23 @@ def cmd_next(args):
                   "back?) - suppressed: %s" % (len(zombie),
                   ", ".join((r.get("id") or "?") for r in zombie)))
         rows = [r for r in rows if _low(r) not in dead]
+    for p in _pool_candidates(rows):
+        print("POOL: %d open rows share class '%s' across %d assets (%s) - run ONE "
+              "pooled lane with a per-host cap, not %d micro-lanes [D21] "
+              "(shape: skills/workflow/workflow-brain/references/pooled-lane.md)"
+              % (p["rows"], p["class"], len(p["assets"]),
+                 ", ".join(p["assets"][:4]), p["rows"]))
     for w in _drain_board_warnings():
         print("BOARD (parsed best-effort): %s" % w)
+    parked = [r for r in rows if _status_of(r) == "[?]"]
+    for r in parked[:8]:
+        print("DEPENDENCY: %s %s parked on operator input (decisions.md); "
+              "not ranked [D28]"
+              % ((r.get("asset") or "?").strip(),
+                 (r.get("vuln class") or "?").strip()))
+    if len(parked) > 8:
+        print("DEPENDENCY: ... and %d more parked rows (see `board`) [D28]"
+              % (len(parked) - 8))
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
@@ -2015,10 +2058,22 @@ def _gate_lanes_strict(eng, host):
         r = subprocess.run([sys.executable, gate, "check", ckl, "--strict"],
                            capture_output=True, text=True)
         if r.returncode != 0:
-            first = next((l for l in r.stdout.splitlines() if l.strip().startswith(
-                ("UNCHECKED", "MISSING", "EMPTY", "STALE", "RULE_FAILED", "NA_FAILED", "PLACEHOLDER"))), "")
-            fails.append("%s/%s: %s" % (host, name, first or "strict gate failed"))
+            defects = [l.strip() for l in r.stdout.splitlines()
+                       if l.strip().startswith(
+                           ("UNCHECKED", "MISSING", "EMPTY", "STALE",
+                            "RULE_FAILED", "NA_FAILED", "PLACEHOLDER"))]
+            for d in defects or ["strict gate failed"]:
+                fails.append("%s/%s: %s" % (host, name, d))
     return fails
+
+
+def _open_rows_for(eng, host):
+    """D7 accounting check: 4a rows of the locked vhost still todo/doing.
+    A pass closing (advisory) or a vhost unlocking (refusal) with rows in
+    limbo is how portal pass 1 drifted - every row terminal-or-parked first."""
+    return ["%s (%s)" % ((r.get("id") or "?").strip(), _status_of(r))
+            for r in _vhost_rows(read_board(eng), host)
+            if _status_of(r) in ("[ ]", "[~]")]
 
 
 def cmd_vhost(args):
@@ -2087,6 +2142,11 @@ def cmd_vhost(args):
             print("REFUSED: close the failing lane checklists first "
                   "(`completion-gate.py check <lane>/checklist.md --strict`)")
             sys.exit(1)
+        open_rows = _open_rows_for(eng, host)
+        if open_rows:
+            print("ADVISORY: 4a rows still open for %s: %s - close, dead-end, "
+                  "or park (`done <id> --park`) them before unlock" % (
+                      host, ", ".join(open_rows)))
         state["vhost_passes"][host] += 1
         state["vhost_stage"] = 0
         _save_state(eng, state)
@@ -2121,6 +2181,12 @@ def cmd_vhost(args):
                 print("G10 FAIL: %s" % f)
             print("REFUSED: open lane checklists under %s - close them first or "
                   "pass --force-reason" % host)
+            sys.exit(1)
+        open_rows = _open_rows_for(eng, host)
+        if open_rows and not args.force_reason:
+            print("REFUSED: 4a rows still open for %s: %s - give each a terminal "
+                  "disposition ([x]/[-]/[?]/[!]) or pass --force-reason" % (
+                      host, ", ".join(open_rows)))
             sys.exit(1)
         if args.force_reason:
             p = os.path.join(eng, "decisions.md")
@@ -2174,6 +2240,17 @@ Checklist: {lane_dir}/checklist.md
 - Subagents never edit `state.md`, `Approach.md`, `Deadends.md`, or
   `lists/*.md`; return the 15-line envelope (Scope, Result, Key files, Issues,
   Pending-Writes) and the brain merges.
+- Platform-pattern memo: if `platform-patterns.md` exists at the engagement
+  root, read it first and DROP any probe row whose class it refutes
+  platform-wide, unless your lane states the delta for this host.
+- Anchors: an `## Anchors` row in `state.md` (md5-pinned, under 24h old) is
+  verified with ONE request - md5 match = trust it, never re-derive; mismatch
+  or stale = re-probe and report the new anchor in your envelope.
+- Sealed gates: root probe hits the authz gate + OPTIONS returns the same
+  gate with no `Allow` + the 404 anchor is nonsense on this prefix = record
+  SEALED in your envelope and STOP at 3 probes.
+- Terminal hosts: any host this brief lists as EXCLUDE (no-upstream /
+  unresolvable / SEALED) is not probed at all.
 """
 
 

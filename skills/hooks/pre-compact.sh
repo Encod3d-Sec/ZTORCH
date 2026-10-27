@@ -11,6 +11,10 @@
 #
 # Fail-open: any python/vault failure still prints the generic directives.
 HOOKDIR="$(cd "$(dirname "$0")" && pwd)"
+# hook stdin JSON (carries transcript_path) must be read BEFORE any heredoc consumes
+# fd0; timeout keeps a manual terminal run from hanging on a tty (5s = headroom for a
+# large payload still in flight, not a stall).
+PAYLOAD="$(timeout 5 cat 2>/dev/null || true)"
 ENG="$(python3 - "$HOOKDIR" <<'PY' 2>/dev/null
 import sys
 sys.path.insert(0, sys.argv[1])
@@ -70,6 +74,28 @@ try:
 except Exception:
     pass
 PY
+# Recent task tail: the in-flight work thread, extracted from the live transcript and
+# handed to the summarizer as evidence (engagement-init.py re-injects the same tail
+# post-compact via the only channel the summarizer cannot drop). Single copy of the
+# parsing logic lives in engagement-init.py:_task_tail. Fail-open.
+TAIL="$(python3 - "$HOOKDIR" "$PAYLOAD" <<'PY' 2>/dev/null
+import importlib.util, json, os, sys
+hookdir, payload = sys.argv[1], sys.argv[2]
+try:
+    tp = ""
+    if payload:
+        tp = (json.loads(payload) or {}).get("transcript_path") or ""
+    spec = importlib.util.spec_from_file_location(
+        "engagement_init", os.path.join(hookdir, "engagement-init.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    t = m._task_tail(tp)
+    if t:
+        print(t)
+except Exception:
+    pass
+PY
+)"
 {
   echo "SUMMARIZER INSTRUCTIONS (what the post-compact context must keep):"
   if [ -n "$ENG" ]; then
@@ -79,6 +105,7 @@ PY
   echo "- BE EXHAUSTIVE, NOT CONCISE: copy finding text, error messages, versions, and exact strings VERBATIM. A paraphrased finding or a rounded value is a lost finding; compression is for prose narration, never for evidence."
   echo "- DROP: raw tool output, scan dumps, file listings, narrated prose (one line each at most)."
   echo "- Do NOT inline full state files: the SessionStart(compact) hook re-injects engagement state after compaction."
-  echo "- Framework/generic work: one-line pointers to session/hot.md only; no client specifics ever."
+  echo "- CURRENT TASK THREAD (the last thing being worked on, engagement OR framework): preserve in full - the objective, files edited, exact commands and their outcomes, and the immediate next step. Never compress the live task to a pointer; only OLDER completed work collapses to one-line pointers to session/hot.md. No client specifics beyond what PRESERVE above already demands."
 } 2>/dev/null
+[ -n "$TAIL" ] && printf '\n%s\n' "$TAIL"
 exit 0

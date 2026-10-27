@@ -37,6 +37,38 @@
 - Budget: bounded stop conditions per vector still apply (OOB sink ~30-40
   payloads, spray matrix once); rotate within the pass, never grind.
 
+## Speed rules (D19-D27, 2026-10-27 retro)
+
+- **Platform-pattern memo (D20).** At move 0 create `platform-patterns.md`
+  (engagement root) with the table `| pattern | class | evidence |`; after any
+  lane that establishes a platform-wide negative (edge block class, authz
+  gate, uniform error collapse), append the pattern with its cap citation.
+  Briefs and RTL consult it and DROP probe rows whose class is refuted
+  platform-wide unless the brief states the delta.
+- **Anchors registry (D22).** Route-oracle / block-page anchors live in
+  `state.md` under `## Anchors`:
+  `| host | path | md5 | bytes | cap-cite | date |`. A consumer verifies with
+  ONE request: md5 match = trust the anchor; mismatch or row older than 24h =
+  full re-probe and update the row. Never re-derive a pinned anchor.
+- **Sealed-gate short-circuit (D23).** Root probe hits the authz gate +
+  OPTIONS returns the same gate with no `Allow` + the 404 anchor is nonsense
+  on this prefix = record SEALED in `Deadends.md` and STOP at 3 probes. Same
+  rule for a uniform no-upstream proxy error across paths.
+- **Terminal-host suppression (D19).** Multi-host sweep briefs run
+  `python3 scripts/terminal_hosts.py <eng>` first and DROP every listed host
+  (no-upstream / unresolvable / NXDOMAIN / SEALED already recorded) instead
+  of re-probing recorded terminal states.
+- **Verifier-fanout (D24).** When 2+ lanes return in one wave, dispatch ONE
+  verifier fork (cheap tier) to pre-check the returned envelopes' mechanical
+  claims - md5 of cited captures, jq/line counts, exit trailers, file
+  existence. It returns a pass/fail table; the brain deep-reads ONLY the
+  failures and anything feeding a FIND. Lane verdicts are still never trusted
+  raw - the fork narrows what the brain reads, it does not replace the read.
+- **Spec-extract-first (D27).** A captured API spec or doc (OpenAPI/Redoc/
+  swagger/GraphQL SDL) makes OFFLINE extraction the next lane on that
+  surface - extracted routes/params seed board rows - before any live probing
+  of the same surface. Extraction is free; probing spends the request budget.
+
 ## N/A escapes
 
 - `N/A: fewer than 2 disjoint rows (serial fallback per AGENTS.md)`

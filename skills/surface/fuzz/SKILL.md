@@ -29,8 +29,12 @@ bash scripts/wl-pick.sh content "" ctf          # generic content discovery
 bash scripts/wl-pick.sh content wordpress bb    # WordPress-aware, BB-stealth
 bash scripts/wl-pick.sh vhost "" pt
 bash scripts/wl-pick.sh params "" bb
+# custom per-host compose: tech theme + config-exposure matrix + JS-corpus stems:
+bash scripts/wl-pick.sh compose symfony bb targets/<eng>/lists/stems-<host>.txt 200
 ```
 It prints the seclists base, the profile flags line, and the ordered absolute paths (T0 harness -> T3 fingerprint list -> T1 surface lists, size-ordered). NEVER hand-pick a list from memory and NEVER start with `directory-list-2.3-medium` (220k). The size order is already correct in the output; run top-to-bottom, stop climbing when you have enough signal.
+
+**Compose mode (custom lists):** once a host is fingerprinted, PREFER `compose <fingerprint> <etype> [stems-file] [cap]` over a stock directory list. It merges the config-exposure theme matrix (`scripts/config-exposure-map.json`: actuator set, `_profiler`, `.env` variants, `parameters.yml`, secrets/backup files, keyed by fingerprint) with optional JS-corpus route stems (parent dirs auto-added), deduped and size-capped, into one inline list; the matched seclists tech list is emitted as `# vm-wordlist:` comment lines for the VM. The theme list runs FIRST after fingerprinting a host - it beats directory lists on requests-per-finding by orders of magnitude. Bounded lane shape (calibrate, run, triage classes, envelope): `references/content-discovery-lane.md`.
 
 Seat/VM split: on a seat-driven VM setup the seclists tree lives ON THE VM (`/usr/share/seclists`) while wl-pick.sh resolves bases seat-side and will try to INSTALL seclists on the seat when it finds none - do not let it. Run the pick seat-side for the ORDER and profile flags, then execute the scanner on the VM against the VM-side absolute list paths. Pass `-` (not an empty string) as the fingerprint argument placeholder where none applies.
 
@@ -62,15 +66,16 @@ When a discovered endpoint takes input, fuzz hidden params: `arjun -u https://TA
 Detect: `wafw00f`/`whatwaf` up front; headers `cf-ray`/`server: cloudflare`/`x-sucuri`/`x-datadome`/`incapsula`; mid-run `429`+`Retry-After`, climbing latency, `000`/timeouts, a wall of uniform `403`.
 Respond, in order:
 1. **WAF fingerprinted up front** -> stealth posture regardless of profile, and PREFER BYPASS over throttle: find the origin IP (cert SANs, historical DNS) and fuzz origin directly - see [[cdn-waf-bypass]].
-2. **Throttle mid-run** -> auto-backoff: halve rate, add `-p 0.1-2.0` jitter, drop one size-tier.
-3. **Ban / DoS tell** (sustained all-timeout after a burst) -> HARD STOP, do not grind: stop fuzzing the host and call `Skill(redteamlead)` for a re-vector rather than tuning the tooling.
-4. **RoE** `no_bruteforce`/`no_dos` -> skip the brute tiers; scope-guard also enforces this at the Bash layer.
+2. **Edge/WAF blocks a sensitive path SHAPE pre-origin** (fixed-size block page while ordinary 404s pass) -> the plain form is terminal-DENIED, never re-hit it; give its variants ONE bounded pass: `python3 scripts/wl_mutate.py <base-list>` emits null-byte (`%00`), double/single URL-encoding (`%252e`/`%252f`), Unicode overlong (`%c0%af`), case, trailing junk (`;.js`, `?.x`, `%20`), and path-param (`..;/`) shapes. One pass, record the negative, move on.
+3. **Throttle mid-run** -> auto-backoff: halve rate, add `-p 0.1-2.0` jitter, drop one size-tier.
+4. **Ban / DoS tell** (sustained all-timeout after a burst) -> HARD STOP, do not grind: stop fuzzing the host and call `Skill(redteamlead)` for a re-vector rather than tuning the tooling.
+5. **RoE** `no_bruteforce`/`no_dos` -> skip the brute tiers; scope-guard also enforces this at the Bash layer.
 
 ## 7. 403 is not a dead end
-A `403` on a discovered dir is a signal, not an end. Try bypass BEFORE abandoning: path mutations (`/admin/`, `/admin/.`, `/admin/..;/`, `/%2e/admin`, case, trailing `?`), method swap (`GET`->`POST`/`HEAD`/`TRACE`), and header spoofs (`X-Forwarded-For: 127.0.0.1`, `X-Original-URL`, `X-Rewrite-URL`). Use a dedicated tool (`byp4xx`/`nomore403`) rather than a wordlist - 403 bypass is mutation, not brute. See [[cdn-waf-bypass]].
+A `403` on a discovered dir is a signal, not an end. Try bypass BEFORE abandoning: path mutations (`/admin/`, `/admin/.`, `/admin/..;/`, `/%2e/admin`, case, trailing `?`), method swap (`GET`->`POST`/`HEAD`/`TRACE`), and header spoofs (`X-Forwarded-For: 127.0.0.1`, `X-Original-URL`, `X-Rewrite-URL`). Use a dedicated tool (`byp4xx`/`nomore403`) rather than a wordlist - 403 bypass is mutation, not brute; `python3 scripts/wl_mutate.py <path-list>` ships the mutation ladder as data (same variant set as the WAF pass above) so a negative is recorded once per engagement, not re-derived. See [[cdn-waf-bypass]].
 
 ## Wiki
-Tools: [[wiki/tools/ffuf]] [[wiki/tools/feroxbuster]] [[wiki/tools/cewl]] [[wiki/tools/arjun]]. Reference: [[wordlists]] (the selection matrix, human-readable twin of wordlist-map.json), [[cdn-waf-bypass]] (WAF/origin bypass). Stuck -> Skill(redteamlead).
+Tools: [[wiki/tools/ffuf]] [[wiki/tools/feroxbuster]] [[wiki/tools/cewl]] [[wiki/tools/arjun]]. Reference: [[wordlists]] (the selection matrix, human-readable twin of wordlist-map.json), [[cdn-waf-bypass]] (WAF/origin bypass), `references/content-discovery-lane.md` (bounded custom-wordlist lane archetype). Stuck -> Skill(redteamlead).
 
 ## Deadends
 

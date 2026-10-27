@@ -327,6 +327,60 @@ def write_stamp(fp):
         pass
 
 
+def _task_tail(transcript_path, n_tools=30, cmd_chars=140, text_chars=220):
+    """Last tool_use digests + last assistant text from the session transcript.
+    Post-compact re-injection for the in-flight task thread: the board has
+    _compact_restore, but framework/mid-task state (what we were literally doing)
+    survives compaction only if the summarizer chooses to keep it. Fail-open: any
+    parse problem returns ''. Called by pre-compact.sh too (single copy of the
+    parsing logic; keep the output format stable, it is load-bearing text)."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return ""
+    try:
+        with open(transcript_path, "rb") as fh:
+            fh.seek(0, 2)
+            start = max(0, fh.tell() - 512 * 1024)
+            fh.seek(start)
+            blob = fh.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+    lines = blob.splitlines()
+    if start:
+        lines = lines[1:]  # a mid-file seek truncates the first line
+    digs = []
+    last_text = ""
+    for ln in lines:
+        try:
+            e = json.loads(ln)
+        except Exception:
+            continue
+        if e.get("type") != "assistant":
+            continue
+        for c in (e.get("message") or {}).get("content") or []:
+            t = c.get("type")
+            if t == "text":
+                if (c.get("text") or "").strip():
+                    last_text = " ".join(c["text"].split())[-text_chars:]
+            elif t == "tool_use":
+                inp = c.get("input") or {}
+                name = str(c.get("name") or "?")
+                if name == "Bash":
+                    d = " ".join((inp.get("command") or "").split())[:cmd_chars]
+                elif name in ("Write", "Edit", "NotebookEdit"):
+                    d = str(inp.get("file_path") or inp.get("notebook_path") or "")
+                else:
+                    d = json.dumps(inp)[:cmd_chars] if inp else ""
+                if d:
+                    digs.append("%s: %s" % (name, d))
+    if not digs and not last_text:
+        return ""
+    parts = ["recent task tail (last tool calls before compaction; keep exact paths/commands):"]
+    parts += ["- " + d for d in digs[-n_tools:]]
+    if last_text:
+        parts.append("last assistant line: " + last_text)
+    return "\n".join(parts)
+
+
 def _compact_restore():
     """SessionStart(source=='compact') addition: after compaction the context holds the
     summary plus capped attachments, and this hook's normal output re-injects counts and
@@ -423,6 +477,12 @@ def main():
             cr = _compact_restore()
             if cr:
                 print(cr)
+                print()
+            # in-flight task thread, independent of the board restore (framework
+            # sessions have no board but still lose the live task to compaction)
+            tt = _task_tail(payload.get("transcript_path"))
+            if tt:
+                print(tt)
                 print()
 
     # Session lineage: the host passes session_id on every SessionStart fire; one line

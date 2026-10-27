@@ -242,9 +242,15 @@ def cmd_init(args):
         return False
     steps = []
     if args.steps:
-        with open(args.steps, encoding="utf-8") as fh:
-            steps = [l.strip() for l in fh
-                     if l.strip() and not l.strip().startswith("#")]
+        if args.steps == "-":
+            raw = sys.stdin.read()
+        elif "\n" in args.steps:
+            raw = args.steps
+        else:
+            with open(args.steps, encoding="utf-8") as fh:
+                raw = fh.read()
+        steps = [l.strip() for l in raw.splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
     if not steps:
         steps = list(GENERIC_SKELETON)
     lines = [
@@ -348,8 +354,11 @@ def cmd_check(args):
                 rule_failed.append("%s (%s): %s" % (rname, art or "-", why))
             else:
                 ok += 1
+    # rule annotations legitimately name their arg (no_cell_contains="TBD"):
+    # strip them before the placeholder scan or every such rule self-flags
+    scan_text = _RULE_RE.sub("", ledger_text)
     placeholders = [tok for tok in ("{{", "}}", "TBD", "<TODO>")
-                    if tok in ledger_text]
+                    if tok in scan_text]
     capture_note = ""
     if args.capture:
         if not os.path.isdir(args.capture):
@@ -391,7 +400,7 @@ def main():
     p_init = sub.add_parser("init", help="write a run-ledger.md checklist")
     p_init.add_argument("dir")
     p_init.add_argument("--title", default="lane run")
-    p_init.add_argument("--steps", help="steps file, one per line, optional inline artifact after ' @ '")
+    p_init.add_argument("--steps", help="steps file (one per line), inline multiline steps text, or '-' for stdin; optional inline artifact after ' @ '")
     p_init.set_defaults(func=cmd_init)
     p_chk = sub.add_parser("check", help="verify a ledger (dir or file)")
     p_chk.add_argument("target", help="engagement/lane dir or run-ledger.md path")
