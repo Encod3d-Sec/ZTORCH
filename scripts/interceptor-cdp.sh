@@ -53,13 +53,18 @@ bun_js() { # bun_js <windows-form .js path> [args...]
   ps "& '$BUN_WIN' '$js'${a[*]+ ${a[*]}}"
 }
 
-# first real page target in the automation instance (skips devtools/edge:// internal)
-page_id() {
+# first real page target in the automation instance (skips devtools/edge:// internal).
+# D17: with MORE than one real page tab open, a silent first-tab default attached
+# parallel lanes to whichever tab sorted first - refuse and demand INTERCEPTOR_PAGE.
+page_pick() {
   cdp_http GET /json | python3 -c "
 import json,sys
-for t in json.load(sys.stdin):
-    if t.get('type')=='page' and not t.get('url','').startswith(('devtools:','edge://','chrome://')):
-        print(t['id']); break
+ts=[t for t in json.load(sys.stdin) if t.get('type')=='page' and not t.get('url','').startswith(('devtools:','edge://','chrome://'))]
+if not ts: print('no real page targets', file=sys.stderr); sys.exit(3)
+if len(ts)==1: print(ts[0]['id'])
+else:
+    for t in ts: print(f\"  {t['id']}  {t.get('url','')[:80]}\", file=sys.stderr)
+    print('multiple page targets, first-tab default is unsafe', file=sys.stderr); sys.exit(4)
 " | tr -d '\r'
 }
 
@@ -72,14 +77,18 @@ for t in json.load(sys.stdin):
 "
     ;;
   eval|dom|netwatch)
-    PAGE="${INTERCEPTOR_PAGE:-$(page_id)}"
-    [ -n "$PAGE" ] || { echo "no page target on 127.0.0.1:$CDP - stack up?" >&2; exit 1; }
+    if [ -n "${INTERCEPTOR_PAGE:-}" ]; then PAGE="$INTERCEPTOR_PAGE"
+    else PAGE="$(page_pick)" || { echo "set INTERCEPTOR_PAGE=<id> (see list above; from: bash scripts/interceptor-cdp.sh targets)" >&2; exit 1; }
+    fi
     # ACTIVE-TAB LAW (operator 2026-10-15): the operator watches the foreground tab -
     # bring our target to the front before driving it, so what's "going on" is always
     # visible. Blank parked tabs lead nowhere; the working tab must be the shown tab.
     # Two layers: CDP tab activation + window restore (a minimized/multi-window Edge
     # keeps every tab "hidden" no matter what bringToFront alone says).
-    cat > "$TOOLS_LOCAL/.cdp-front.js" <<EOF
+    # D16: per-invocation temp files - fixed names raced under concurrent lanes
+    FRONT="$(mktemp "$TOOLS_LOCAL/.cdp-front.XXXXXX")"; FRONT_WIN="$TOOLS_WIN/${FRONT##*/}"
+    trap 'rm -f "$FRONT" "${WORKER:-}"' EXIT
+    cat > "$FRONT" <<EOF
 const ws = new WebSocket('ws://127.0.0.1:$CDP/devtools/page/$PAGE');
 let id = 0; const send = (m,p={}) => ws.send(JSON.stringify({id:++id,method:m,params:p}));
 let wid = null;
@@ -95,12 +104,21 @@ ws.onmessage = (m) => {
 };
 setTimeout(()=>process.exit(0), 3000);
 EOF
-    bun_js "$TOOLS_WIN/.cdp-front.js" >/dev/null 2>&1 || true
+    bun_js "$FRONT_WIN" >/dev/null 2>&1 || true
 # NOTE: under multi-lane contention a parallel driver can flip the foreground right
 # back - each lane pins ITS tab (PARALLEL-LANE TAB PINNING law in the skill).
     export PAGE MODE="$1" EXPR="${2:-}" OUT="${2:-cdp.jsonl}" SECS="${3:-60}"
-    cat > "$TOOLS_LOCAL/.cdp-worker.js" <<'EOF'
-const [CDP, PAGE, MODE, EXPR, OUT, SECS] = process.argv.slice(2);
+    # D15: hard deadline for eval/dom - a never-resolving Runtime.evaluate used to
+    # leave the bun worker alive forever (leaked processes wedged the shared tab)
+    DEADLINE="${INTERCEPTOR_EVAL_TIMEOUT:-30000}"
+    export DEADLINE
+    WORKER="$(mktemp "$TOOLS_LOCAL/.cdp-worker.XXXXXX")"; WORKER_WIN="$TOOLS_WIN/${WORKER##*/}"
+    cat > "$WORKER" <<'EOF'
+const [CDP, PAGE, MODE, EXPR, OUT, SECS, DEADLINE] = process.argv.slice(2);
+const armDeadline = () => setTimeout(() => {
+  console.error(`[cdp] TIMEOUT ${DEADLINE}ms with no reply (D15 guard) - exiting`);
+  process.exit(2);
+}, Number(DEADLINE));
 const ws = new WebSocket(`ws://127.0.0.1:${CDP}/devtools/page/${PAGE}`);
 const fs = require("fs");
 let id = 0;
@@ -117,8 +135,10 @@ ws.onopen = () => {
     setInterval(flush, 5000);
     setTimeout(done, Number(SECS) * 1000);
   } else if (MODE === "dom") {
+    armDeadline();
     send("Runtime.evaluate", {expression: "document.documentElement.outerHTML", returnByValue: true});
   } else {
+    armDeadline();
     console.error(`[cdp] > ${EXPR.slice(0, 300)}`);
     send("Runtime.evaluate", {expression: EXPR, returnByValue: true, awaitPromise: true});
   }
@@ -158,7 +178,7 @@ ws.onmessage = (m) => {
 };
 ws.onerror = () => { console.error("CDP ws error - stack up? (interceptor-automation.sh up)"); process.exit(1); };
 EOF
-    bun_js "$TOOLS_WIN/.cdp-worker.js" "$CDP" "$PAGE" "$MODE" "$EXPR" "$OUT" "$SECS"
+    bun_js "$WORKER_WIN" "$CDP" "$PAGE" "$MODE" "$EXPR" "$OUT" "$SECS" "$DEADLINE"
     ;;
   clean)
     # ACTIVE-TAB LAW sweeper: close parked blank/internal tabs so the tab bar (and the
@@ -236,15 +256,17 @@ if in_scope(host_of(seen)):
 back = f"https://{ins[0]}/"
 print(f"[oos] still OOS ({host_of(seen)}) after 10s - closing the path, back to {back}")
 # Page.navigate via WS; JS written to a temp file, run through PS (seat law)
-jspath = os.path.join(tools_local, ".cdp-oos.js")
+jspath = os.path.join(tools_local, f".cdp-oos.{os.getpid()}.js")
 with open(jspath, "w", encoding="utf-8") as f:
     f.write(f"""const ws = new WebSocket('ws://127.0.0.1:{cdp}/devtools/page/{main['id']}');
 ws.onopen = () => ws.send(JSON.stringify({{id:1, method:'Page.navigate', params:{{url:'{back}'}}}}));
 ws.onmessage = () => process.exit(0);
 setTimeout(() => process.exit(0), 5000);
 """)
-subprocess.run([ps, "-NoProfile", "-Command", f"& '{bun}' '{tools_win}/.cdp-oos.js'"],
+subprocess.run([ps, "-NoProfile", "-Command", f"& '{bun}' '{tools_win}/{os.path.basename(jspath)}'"],
                capture_output=True)
+try: os.unlink(jspath)
+except OSError: pass
 print("[oos] back on in-scope ground")
 PYEOF
     ;;

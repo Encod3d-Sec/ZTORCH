@@ -12,128 +12,127 @@ metadata:
 
 # Interceptor - real-browser driving + local traffic capture
 
-STATUS: OPERATIONAL.
+STATUS: OPERATIONAL. History/why detail lives in `references/gotchas.md`; every
+HARD law is below - if it has a law name, it is binding.
 
-BROWSER LAW (operator standing rule, hard): NEVER drive the operator's
-personal Chrome profiles - they are OUT OF BOUNDS. Every Interceptor run uses
-a DEDICATED throwaway Chrome instance: its own --user-data-dir under the tool
-tree, launched with --incognito. Logins inside it are minted fresh via the
-engagement's own accounts (magic-link etc.), never by riding an existing
-signed-in profile. Keeps personal sessions untouched and test isolation exact.
-
-NEVER-CHROME corollary (2026-10-15, hook-ENFORCED): agents never LAUNCH or
-CDP-drive Chrome on the seat - no chrome.exe, no --remote-debugging-port, no
-connecting to seat 9333/9222. The scope-guard hook hard-denies these. The one
-seat browser is the automation EDGE instance (CDP 9334); the generic seat
-launcher scripts/browser.sh is Edge-only with no fallback. VM chromium work
-runs ON the VM. CONTEXT PINNING: the daemon accepts ANY extension connection -
-if the operator's Chrome ever joins (contexts shows 2+), export
-INTERCEPTOR_CONTEXT from edge-context.txt before every CLI call and treat a
-foreign context as a violation to report, never a target to drive.
-KILL-VERIFY-LISTENER: killing a browser's main pid does NOT close its debug
-port - the process tree promotes/respawns a child that keeps the listener.
-After killing any browser that held a CDP port, verify the LISTENER died
-(PS: `netstat -ano | Select-String :<port>`) and repeat the kill on the new
-owner pid until the port is free; a dead pid with a live listener is an open
-CDP hole. WSL seat: run these checks through powershell.exe - Linux netstat
-cannot see Windows loopback.
-
-WAKE LAW (the operational gotcha): CLI-spawned daemons die before the
-extension service worker's WS retry, so `interceptor open` fails with
-"no extensions connected" forever. The fix: hold a PERSISTENT standalone
-daemon first (WSL seat, PS 5.1-safe env inheritance; Start-Process detaches
-so it survives the shell):
-powershell.exe -NoProfile -Command "$env:INTERCEPTOR_SPIN_WATCHDOG='off'; Start-Process -FilePath 'C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor/daemon/interceptor-daemon.exe' -ArgumentList '--standalone' -WindowStyle Hidden"
-(the sleeping worker auto-reconnects to ws://127.0.0.1:19222; WSL->Windows
-env does NOT cross interop, so the env var must be set INSIDE the PS command).
-LIFECYCLE: the worker falls back
-asleep after ~30s idle and drops the socket - before any CLI command, check
-for ESTABLISHED via PS `netstat -an | Select-String 19222`; if down, trigger
-ANY navigation in the automation instance and poll until ESTABLISHED returns.
-
-CDP PITFALL: --remote-debugging-port is IGNORED by Chrome 136+ on the default
-user-data-dir, and /json/new no longer navigates - do not burn time on CDP
-control of an existing profile. EXCEPTION: the dedicated automation instance
-has its own --user-data-dir, so its --remote-debugging-port=9334 IS live -
-see DEV-TOOLS CONTEXT LAW below.
-
-MULTI-PROFILE PITFALL: chrome:// URLs opened via Start-Process land in the
-LAST-ACTIVE profile's window, and each profile has its own extension set -
-the card you need may not be in the window you opened. A chrome-extension://
-URL in a context without the extension redirects to the Chrome Web Store
-("app not found" symptom). "Allow in Incognito" is per-profile; in a
-DEDICATED automation instance it can be set PROGRAMMATICALLY via CDP on the
-extensions WebUI - navigate a target to edge://extensions (or chrome://),
-then Runtime.evaluate
-chrome.developerPrivate.updateExtensionConfiguration({extensionId:'<id>',incognitoAccess:true},()=>{})
-- idempotent, persists in that user-data-dir. Without the grant,
-window_create --incognito returns "no window".
-
-EDGE BRING-UP (the working automation stack): Chrome Stable STRIPS
---load-extension (ignored silently), and forcelist policy needs elevation -
-so the automation instance is EDGE, not Chrome: msedge --user-data-dir=<tool
-Tree>/edge-profile --load-extension=<extension/dist>
---disable-extensions-except=<same> --incognito --remote-debugging-port=9334.
-Edge honors --load-extension; CDP works on its non-default user-data-dir;
-NM host registered per-browser (HKCU\Software\Microsoft\Edge\NativeMessagingHosts
--> same host manifest; no admin needed). --disable-extensions-except kills
-the junk store extensions Edge auto-installs on first run (ad-blockers
-corrupt traffic capture). ONE COMMAND: `bash scripts/interceptor-automation.sh
-up|down|status|context` (repo scripts/) brings the whole stack - daemon,
-Edge, incognito grant, context pin - and `context` prints the
-INTERCEPTOR_CONTEXT id to export before CLI calls (pins the automation
-context, never any other).
-
-TAB DISCIPLINE (operator, standing): ONE managed tab per lane - first
-`open <url>`, then ALWAYS `open <url> --reuse --group <lane-label>`. Never
-plain-open twice - tab/window spam churns the browser and orphans state.
-POPUP LAW (operator, standing): before reading or acting on ANY page,
-dismiss JS overlays BY CLICKING - cookie banners, newsletter modals, age
-gates, onboarding overlays, full-screen backdrops (query visible close
-buttons [aria-label*="close" i], .modal [class*="close"], button[class*="dismiss"]
-filtered to offsetParent!==null, click each, dispatch Escape, repeat until
-0). A modal-blocked page is NOT the page state: never report a gated page
-as a finding.
-STACK BOOKING: ONE lane on the Edge stack at a time - concurrent lanes on the
-shared instance kill each other's sessions, hijack tabs, and trip the
-magic-link rate limiter. Serialize lanes; prefer password login in the
-automation instance (bot-wall captchas usually pass invisibly in the real
-browser) over magic-link relay. If a session wedges into an out-of-scope
-OAuth bounce loop, do NOT follow it: CDP Network.clearBrowserCookies on the
-automation instance clears the poisoned state; note the dangling server
-session for revoke on next login. THE MAIN SESSION COUNTS AS A LANE: an
-operator-requested main-session drive while a lane holds the stack is the
-same collision - `open --reuse --group <distinct-label>` does NOT protect,
-because reuse resolves across the shared extension context and can navigate
-ANOTHER lane's managed tab (the auth session survives, the page state does
-not). If you must drive while a lane runs, steer the lane instead; never
-issue open/reuse yourself.
-
-CONTEXT HARDENING (built + verified): the CLI reads
-<install>/context-config.json ({defaultContext, allowedContexts}); the
-launcher writes it on every `up`. Unpinned calls default to the automation
-context; any context NOT in allowedContexts is refused outright, including
-an explicit --context - so the daemon can never auto-route a call to a
-stray extension (e.g. the operator's personal browser if its extension
-ever returns). Invoke the compiled CLI directly (dist/interceptor.exe,
-no bun prefix). When patching the CLI source: `bun build --compile`
-artifacts do NOT carry argv[1] as the script path (it is the first
-command word) - resolve install-relative files from process.execPath,
-with an argv fallback for source runs.
+## Lane quick path (a dispatched subagent starts here, in this order)
 
 SUBAGENT BRIEF LAW (operator 2026-10-15): any dispatched subagent doing
-browsing MUST receive the automation-stack commands IN ITS BRIEF
-(automation.sh up, INTERCEPTOR_CONTEXT export, bun CLI path, window
---incognito + --reuse --group). A generic "use browser tools / curl
-fallback" brief violates BROWSER LAW and gets driven in the wrong browser -
-the skill only loads for agents told to load it. No non-incognito fallback
-exists: if the stack fails, report the blocker.
+browsing MUST have these steps IN ITS BRIEF - a generic "use browser tools /
+curl fallback" brief violates BROWSER LAW and gets driven in the wrong
+browser. No non-incognito fallback exists: if the stack fails, report the
+blocker.
 
-Agent-driven Chrome extension + CLI (Hacker-Valley-Media/Interceptor). Unlike
-CDP/headless automation it drives a REAL desktop Chrome: genuine fingerprint,
-real codecs, full extension surface - with the isolation of a throwaway
-profile. `we drive the website with Interceptor and capture all traffic
-locally.`
+```sh
+# 1. bring the stack up (daemon + automation Edge + context pin; idempotent)
+bash scripts/interceptor-automation.sh up
+CTX=$(bash scripts/interceptor-automation.sh context)   # or cat <tool>/edge-context.txt
+
+# 2. wake check: worker asleep => ESTABLISHED down. Trigger any navigation,
+#    poll `netstat -an | Select-String 19222` until ESTABLISHED (WAKE LAW)
+# 3. ONE managed tab per lane, then always reuse+group
+#    (window new --incognito only for a fresh window; needs the incognito grant)
+# 4. EVERY CLI call goes THROUGH powershell.exe with the context pin inside:
+PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+BUN=C:/Users/Lenovo/.bun/bin/bun.exe
+CLI=C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor/dist/interceptor
+$PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' open 'https://<in-scope-host>' --reuse --group <lane-label>"
+
+# 5. pin YOUR tab for every cdp call (id from `targets`, matched by URL)
+bash scripts/interceptor-cdp.sh targets
+INTERCEPTOR_PAGE=<own-tab-id> bash scripts/interceptor-cdp.sh netwatch <out.jsonl> 60
+
+# 6. before reading/acting on any page: dismiss overlays BY CLICKING (POPUP LAW)
+# 7. capture PAIR: netwatch (bodies, ground truth) + `net log` (HAR), reconcile
+# 8. stay in scope: verify every host you will visit is in scope.md BEFORE clicks
+```
+
+One lane on the Edge stack at a time (STACK BOOKING) unless the operator
+authorized parallel lanes - then tab pinning (step 5) is mandatory.
+
+## Hard laws
+
+**BROWSER LAW (operator standing, hard):** NEVER drive the operator's
+personal Chrome profiles - OUT OF BOUNDS. Every run uses the DEDICATED
+automation instance (own `--user-data-dir`, incognito); logins are minted
+fresh via the engagement's own accounts, never by riding a signed-in profile.
+**NEVER-CHROME corollary (2026-10-15, hook-ENFORCED):** agents never LAUNCH
+or CDP-drive Chrome on the seat (no chrome.exe, no `--remote-debugging-port`,
+no seat 9333/9222) - scope-guard hard-denies. The one seat browser is the
+automation EDGE instance (CDP 9334); `scripts/browser.sh` is Edge-only, no
+fallback. VM chromium work runs ON THE VM. **Context pinning:** the daemon
+accepts ANY extension connection - export `INTERCEPTOR_CONTEXT` before every
+CLI call; a foreign context (contexts shows 2+) is a violation to REPORT,
+never a target to drive.
+
+**STACK BOOKING:** ONE lane on the Edge stack at a time - concurrent lanes
+kill each other's sessions, hijack tabs, and trip the magic-link rate
+limiter. Prefer password login in the automation instance (bot-wall captchas
+usually pass invisibly) over magic-link relay. Out-of-scope OAuth bounce
+loop: do NOT follow it; CDP `Network.clearBrowserCookies` clears the poisoned
+state, note the dangling server session for revoke. **THE MAIN SESSION
+COUNTS AS A LANE:** an operator-requested main-session drive while a lane
+holds the stack is the same collision - `--reuse --group <distinct>` does
+NOT protect (reuse resolves across the shared context and can navigate
+ANOTHER lane's tab). Steer the lane instead; never issue open/reuse yourself.
+
+**PARALLEL-LANE TAB PINNING:** when the operator authorizes concurrent lanes
+(each overriding STACK BOOKING), each lane opens its OWN tab and pins every
+netwatch/eval with `INTERCEPTOR_PAGE=<own id>` (from `targets`, matched by
+URL). Never reuse a tab id you did not create; never trust the first-tab
+default in a multi-tab session - it silently attaches to whichever tab sorts
+first, so captures interleave and UI actions fight over one page. Discard as
+contaminated any capture taken on a foreign tab. `interceptor-cdp.sh` refuses
+multi-tab sessions without `INTERCEPTOR_PAGE` (exit 4).
+
+**TAB DISCIPLINE (operator, standing):** ONE managed tab per lane - first
+`open <url>`, then ALWAYS `open <url> --reuse --group <lane-label>`. Never
+plain-open twice; tab spam churns the browser and orphans state.
+**POPUP LAW (operator, standing):** before reading or acting on ANY page,
+dismiss JS overlays BY CLICKING - cookie banners, modals, age gates,
+onboarding overlays, full-screen backdrops (query visible close buttons
+`[aria-label*="close" i]`, `.modal [class*="close"]`,
+`button[class*="dismiss"]` filtered to `offsetParent!==null`, click each,
+dispatch Escape, repeat until 0). A modal-blocked page is NOT the page state:
+never report a gated page as a finding.
+
+**WAKE LAW:** CLI-spawned daemons die before the extension service worker's
+WS retry, so commands fail with "no extensions connected" forever. The
+persistent standalone daemon is held by `interceptor-automation.sh up`
+(Start-Process detach, PS 5.1-safe env; the env var must be set INSIDE the
+PS command - WSL->Windows env does NOT cross interop). The worker falls
+asleep after ~30s idle: before any CLI command check ESTABLISHED on 19222
+via PS netstat; if down, trigger any navigation and poll until it returns.
+
+**ACTIVE-TAB LAW (operator 2026-10-15) + OPERATOR VISIBILITY (hard):** the
+operator must always be LOOKING AT the tab that is doing something -
+`interceptor-cdp.sh` activates the target tab before every eval/dom/netwatch
+(`clean` closes parked blanks; open real URLs, not blanks). Everything
+through the console channel echoes live (`[cdp] > <expr>` results,
+`[console:*]` netwatch lines). Never run silent JS; a probe that cannot echo
+does not run. Visibility is the TERMINAL ECHO LAYER ONLY - the operator
+declined a DevTools frontend window: do not build or open one.
+
+**KILL-VERIFY-LISTENER:** killing a browser's main pid does NOT close its
+debug port - the tree promotes/respawns a child holding the listener. After
+killing any CDP-port browser, verify the LISTENER died
+(`netstat -ano | Select-String :<port>` via PS) and repeat the kill on the
+new owner pid until the port is free. A dead pid with a live listener is an
+open CDP hole. Linux netstat cannot see Windows loopback - route through
+powershell.exe.
+
+**CONTEXT HARDENING (built + verified):** the CLI reads
+`<install>/context-config.json` (`{defaultContext, allowedContexts}`);
+unpinned calls default to the automation context, any context NOT in
+allowedContexts is refused outright - the daemon can never auto-route a call
+to a stray extension. Invoke the compiled CLI directly (`dist/interceptor.exe`,
+no bun prefix). (CLI-source patching note: `references/gotchas.md`.)
+
+**Scope warning (compensating control):** the VM PATH scope-shim CANNOT see
+this traffic. Mandatory: before ANY click execution, verify every host
+Interceptor will visit is in the engagement scope.md in-scope list. The
+checklist box `every Interceptor-visited host verified in-scope BEFORE click
+execution` is hard.
 
 ## Choose the tool
 
@@ -143,175 +142,107 @@ locally.`
 | Bot wall detected (403/challenge), login-gated surface, dynamic SPA | **Interceptor** |
 | Cross-domain chunked JS discovery | **Interceptor -Spider** |
 
-## Wiki
+## Capture levers (CLI + CDP)
 
-Hub: [[web-moc]] - Primary page: [[static-code-analysis]] - no dedicated
-page yet (tool-specific). Anchors: none. This tool has no wiki
-technique page of its own; stage one via wiki-stage.py when a
-confirmed finding derives from an Interceptor-only capture.
-
-## Scope warning (compensating control)
-
-The VM PATH scope-shim CANNOT see this traffic (real browser on the seat, not
-the VM). Compensating control, mandatory: before ANY click execution, verify
-every host Interceptor will visit is in the engagement scope.md in-scope list.
-The checklist box `every Interceptor-visited host verified in-scope BEFORE
-click execution` is hard. The real fix is the nftables egress allowlist
-(deferred; the donor-side design notes did not travel with the port).
-
-## Install state
-
-- DONE: repo cloned to `/mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor`,
-  bun installed, `bun install` + `bun run build` run; daemon + CLI built.
-- LOCAL PATCHES ARE NEVER PUSHABLE: the tool tree is a clone of the VENDOR
-  repo (we have no push rights), so any local change (context-config
-  allowlist, Edge MV2 extension build) exists ONLY there. Preserve every
-  local patch TWICE on change: commit it locally in the tool clone
-  (`git -c user.name=seat commit -m "LOCAL (do not push upstream): ..."`)
-  AND export the full diff to `setup/interceptor/local-patches.patch` in the
-  main repo, then push the main repo - that patch file is the only
-  disaster-recoverable copy. Runtime state (edge-profile sessions, daemon
-  binary, compiled exe) stays untracked: profiles are disposable engagement
-  state, binaries rebuild from the patch.
-- Automation-instance bring-up (CRX forcelist auto-install + NM host via HKCU
-  registry + ID derivation): follow references/crx-forcelist-setup.md. The
-  CRX's real ID must be derived from the packing key and MUST match the
-  forcelist + update.xml appid - on mismatch Chrome silently drops the
-  install with no error anywhere.
-- One-time manual toggle in the automation instance (user-only):
-  chrome://extensions -> Interceptor -> Details -> "Allow in Incognito".
-  Persists in that user-data-dir; without it, window_create --incognito
-  returns "no window".
-
-## CLI pattern (WSL seat, 2026-10-17: ALL Windows-side runs go THROUGH
-## powershell.exe - NAT-mode hides Windows loopback from Linux, PATH has no
-## Windows dirs, and WSL->Windows env does NOT cross interop, so the context
-## pin rides `$env:` inside the PS command)
-
-    PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
-    CTX=$(cat /mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor/edge-context.txt)
-    BUN=C:/Users/Lenovo/.bun/bin/bun.exe
-    CLI=C:/Users/Lenovo/AppData/Local/hermes/tools/interceptor/dist/interceptor
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' status"
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' window new 'https://<in-scope-host>' --incognito"
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' open 'https://<in-scope-host>'"
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' net log"      (drain captured HAR; NO `net start` - subcommands are log|clear|headers)
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' links"        (all links on page)
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' act <ref>"    (per control, tree refs)
-    $PS -NoProfile -Command "`$env:INTERCEPTOR_CONTEXT='$CTX'; & '$BUN' '$CLI' eval --main <js>"  (in-page JS; fetch-patch)
-    INTERCEPTOR_PAGE=<id> bash scripts/interceptor-cdp.sh eval '<js>'   (CDP on a CHOSEN tab; script handles the PS routing)
+All CLI calls use the powershell.exe routing from the quick path. Verbs:
+`status`, `window new <url> --incognito`, `open <url> [--reuse --group <g>]`,
+`net log` (drain HAR; NO `net start` - subcommands are log|clear|headers),
+`links`, `act <ref>` (per control, tree refs), `eval --main <js>` (in-page
+JS; the fetch-patch lever).
 
 CAPTURE CAVEAT: passive `net log` misses APQ POST bodies (beacons only);
-recover bodies via eval --main fetch-patch - override window.fetch to record
-OR REWRITE outgoing request bodies. The rewrite form is the in-flight
+recover bodies via `eval --main` fetch-patch - override window.fetch to
+record OR REWRITE outgoing request bodies. The rewrite form is the in-flight
 TAMPERING lever: mutations fire from genuine browser context and beat any
-curl-fingerprint wall (seat replays of context-gated op classes ISE; the same
-bodies through the page succeed). Full page loads can beat the patch - fire
-captures from SPA-internal navigation.
+curl-fingerprint wall (seat replays of context-gated op classes ISE; the
+same bodies through the page succeed). Full page loads can beat the patch -
+fire captures from SPA-internal navigation.
+
 APQ HASH LAW: persisted-query hashes are computed CLIENT-SIDE at runtime by
-the minified Apollo link - they are NOT strings you can grep out of bundles
-(mine all you want, zero sha256 hits). When you need a mutation body + hash,
-CLICK the real control in the UI with a CDP netwatch running on that tab and
-harvest the POST from the JSONL; replay that body verbatim (variables
-swapped) instead of hunting for a registry.
+the minified Apollo link - NOT strings you can grep out of bundles. When you
+need a mutation body + hash, CLICK the real control with a CDP netwatch
+running on that tab and harvest the POST from the JSONL; replay that body
+verbatim (variables swapped).
+
 TWO-TIER PATCH LAW: an in-page fetch wrapper (eval --main) survives SPA
-CLICKS but dies on any full URL load; a CDP Fetch.enable requestStage:Response
-interception over the automation instance's debug port patches response
-bodies before the framework sees them AND survives full navigations (python
-over the CDP WebSocket needs suppress_origin=True or the handshake 403s).
-Pick per probe: request tampering = in-page wrapper on SPA nav; response
-forgery (client-trust probing) = CDP response-stage.
+CLICKS but dies on any full URL load; a CDP `Fetch.enable`
+requestStage:Response interception patches response bodies before the
+framework sees them AND survives full navigations (python over the CDP
+WebSocket needs `suppress_origin=True` or the handshake 403s). Pick per
+probe: request tampering = in-page wrapper on SPA nav; response forgery
+(client-trust probing) = CDP response-stage.
 
 ## DEV-TOOLS CONTEXT LAW (operator 2026-10-14)
 
-Every Interceptor investigation runs the CDP DevTools channel IN PARALLEL
-with the extension verbs. The automation instance is launched by
-`scripts/interceptor-automation.sh up` with `--remote-debugging-port=9334`
-on its own user-data-dir, so CDP works there (the Chrome 136 default-profile
-ignore does NOT apply). Drive it via `scripts/interceptor-cdp.sh`:
+Every investigation runs the CDP DevTools channel IN PARALLEL with the
+extension verbs. The automation instance is launched with
+`--remote-debugging-port=9334` on its own user-data-dir, so CDP works there
+(the Chrome 136 default-profile ignore does NOT apply). Drive it via
+`scripts/interceptor-cdp.sh`:
 
-    bash scripts/interceptor-cdp.sh targets
-    bash scripts/interceptor-cdp.sh eval '<js>'
-    bash scripts/interceptor-cdp.sh dom > page.html
-    bash scripts/interceptor-cdp.sh netwatch <out.jsonl> [secs]
+```sh
+bash scripts/interceptor-cdp.sh targets
+INTERCEPTOR_PAGE=<id> bash scripts/interceptor-cdp.sh eval '<js>'
+INTERCEPTOR_PAGE=<id> bash scripts/interceptor-cdp.sh dom > page.html
+INTERCEPTOR_PAGE=<id> bash scripts/interceptor-cdp.sh netwatch <out.jsonl> [secs]
+```
 
-Ground rules:
-- netwatch is the BODY recovery channel: Network events + getResponseBody
-  carry POST bodies the passive `net log` misses. Run it during every
-  act/eval sequence, then reconcile against the drained HAR.
+- netwatch is the BODY recovery channel (Network events + getResponseBody).
+  Run it during every act/eval sequence, then reconcile against the HAR.
 - Console + exceptions are a free error oracle: grep the netwatch JSONL
   after each mutation.
-- Cross-check rule: HAR vs CDP trace disagree -> CDP is ground truth for
-  bodies/status. Extension `net log` capture is CONTEXT-SCOPED: traffic from
-  tabs outside the pinned context can be entirely absent from a drained
-  HAR that otherwise looks healthy - never conclude "no such requests"
-  from the HAR alone; the CDP netwatch JSONL is the complete record.
-  Extension `eval --main` stays the TAMPERING lever; CDP
-  Runtime.evaluate is the read/context lever.
-- CDP attaches, it does not drive: navigation stays with extension verbs
-  (open/window new). /json/new needs PUT on modern Edge.
-- netwatch outfile: full Windows path (C:/...) - bun.exe drops POSIX paths
-  at C:\ root.
+- Cross-check rule: HAR vs CDP disagree -> CDP is ground truth for
+  bodies/status. `net log` is CONTEXT-SCOPED: never conclude "no such
+  requests" from the HAR alone. `eval --main` stays the TAMPERING lever;
+  CDP Runtime.evaluate is the read/context lever.
+- CDP attaches, it does not drive: navigation stays with extension verbs.
+  `/json/new` needs PUT on modern Edge. Derive target ids programmatically
+  (curl /json -> filter), never hand-type a 32-hex id.
+- netwatch outfile: full Windows path (`C:/...`) - bun.exe drops POSIX
+  paths at `C:\` root.
 - OOS MAIN-PAGE LAW: link/redirect drift on the MAIN test tab -> observe
-  first, recover after. Run `bash scripts/interceptor-cdp.sh oos
-  <eng>/scope.md`: it watches the drifted path for 10s (logging the
-  redirect chain; requests land in netwatch), and only if it stayed
-  out-of-scope navigates the tab back to the first in-scope host. If the
-  path returned in-scope by itself, it is kept. Test-opened tabs are
-  never touched.
+  first, recover after. `interceptor-cdp.sh oos <eng>/scope.md` watches the
+  drifted path 10s (logging the chain), and only if it stayed out-of-scope
+  navigates back to the first in-scope host. Test-opened tabs never touched.
 
-- Derive CDP target ids programmatically (curl /json -> filter), never
-  hand-type a 32-hex id into a ws URL - one wrong character silently
-  points the connection at nothing.
-- PARALLEL-LANE TAB PINNING: when the operator authorizes concurrent lanes
-  on the one automation instance (overriding STACK BOOKING), each lane opens
-  its OWN tab (interceptor open) and pins every netwatch/eval to that tab
-  with INTERCEPTOR_PAGE=<own id>, taken from `targets` and matched by URL.
-  Never reuse a tab id you did not create in your lane, and never trust the
-  page_id first-tab default in a multi-tab session - it silently attaches to
-  whichever tab sorts first, so lane captures interleave and UI actions fight
-  over one page. Discard as contaminated any capture taken on a foreign tab.
+## Spider = composed loop (upstream -Spider is a fork feature; compose it)
 
-OPERATOR VISIBILITY (hard): everything run through the console channel must
-be visible to the operator live - interceptor-cdp.sh echoes each eval as
-`[cdp] > <expr>` with its result on stdout/stderr, and netwatch streams
-`[console:*]` lines to the terminal pane as they fire. Never run silent
-JS in the automation instance; if a probe cannot echo, it does not run.
-
-ACTIVE-TAB LAW (operator 2026-10-15): blank/parked tabs lead nowhere - the
-operator must always be LOOKING AT the tab that is doing something. Wired
-into interceptor-cdp.sh: every eval/dom/netwatch call first activates its
-target tab (Browser.getWindowForTarget -> setWindowBounds normal ->
-Page.bringToFront), so the working tab is the shown tab. `clean` verb closes
-parked about:blank/edge:// tabs. Open tabs with a real URL, not blanks; under
-multi-lane contention each lane pins its own tab (foreground may flip between
-active lanes - that is two things happening, not zero).
-Visibility is the TERMINAL ECHO LAYER ONLY - the operator declined a real
-DevTools frontend tab/window on the automation instance (opening one via
-PUT /json/new + devtools://inspector.html works technically, extension
-`open` refuses devtools://): do not build or open one.
-
-## Spider = composed loop (the upstream -Spider mode is a fork feature not in
-## this build; compose it from verbs)
-
-For each in-scope URL: open -> links -> enqueue unvisited ->
-act click each control (buttons/tabs) -> net captures every request/response
-to HAR -> pull all .js URLs from the HAR into the js-discover corpus
-(raw/external/). Cross-domain chunks ARE captured (the network log sees
-everything the real session loads). Record every visited host in the run
-manifest + _requests.md.
+For each in-scope URL: open -> links -> enqueue unvisited -> act click each
+control -> net captures every request/response to HAR -> pull all .js URLs
+from the HAR into the js-discover corpus (`raw/external/`). Cross-domain
+chunks ARE captured. Record every visited host in the run manifest +
+`_requests.md`.
 
 ## Auth note
 
 Sessions are minted INSIDE the automation instance with the engagement's own
-accounts (magic-link typed via act refs, link pulled from the pool inbox).
-identities.md still owns the credentials; the instance only holds the
-resulting cookies. Teardown = UI logout-all + verify; the whole user-data-dir
-can be deleted afterwards for a clean slate.
+accounts (magic-link typed via act refs, link from the pool inbox).
+identities.md owns the credentials; the instance only holds resulting
+cookies. Teardown = UI logout-all + verify; the user-data-dir is disposable.
 
 ## Contract with js-discover
 
 - Corpus owner is js-discover; Interceptor output is INGESTED into its tree.
 - Every visited host also appended to `_requests.md`.
-- Findings never leave without the G1 proof gate (this tool produces surface,
-  not findings).
+- Findings never leave without the G1 proof gate (this tool produces
+  surface, not findings).
+
+## Install state
+
+- Tool tree: `/mnt/c/Users/Lenovo/AppData/Local/hermes/tools/interceptor`
+  (vendor clone; bun build done). Local patches are NEVER PUSHABLE - commit
+  locally in the clone AND export the diff to
+  `setup/interceptor/local-patches.patch` (the only disaster-recoverable
+  copy). Runtime state stays untracked.
+- Automation bring-up (CRX forcelist + NM host + ID derivation):
+  `references/crx-forcelist-setup.md` (ID mismatch = silent drop, no error).
+  One-time user-only toggle: extension Details -> "Allow in Incognito"
+  (CDP-settable, see `references/gotchas.md`).
+- Why Edge not Chrome, Chrome 136 CDP ignore, multi-profile pitfalls, CLI
+  patching notes: `references/gotchas.md`.
+
+## Wiki
+
+Hub: [[web-moc]] - Primary page: [[static-code-analysis]] - no dedicated
+page yet (tool-specific). Anchors: none. Stage one via wiki-stage.py when a
+confirmed finding derives from an Interceptor-only capture.
