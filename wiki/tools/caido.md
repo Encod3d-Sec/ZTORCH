@@ -120,3 +120,17 @@ resp.code.gte:500 and req.method.eq:"POST"
 | Scopes | target allowlists to cut noise |
 
 Related: [[burp-mcp]] (primary proxy lane), [[burp-suite]].
+
+## 502 error pages are proxy artifacts: body-size classes, not target behavior
+
+When Caido returns a 502, the HTML body is Caido's own error page, not the target's. Three recurring classes, distinguishable by body size (or md5 fingerprint, hashed once per install):
+
+| class | body size (approx) | meaning |
+|---|---|---|
+| no-upstream | ~9054B | request matched no upstream rule: host/port not configured in the project |
+| unresolvable | ~9143B | upstream configured but name resolution failed (typo, NXDOMAIN) |
+| bad-request wrap | ~8960B, status 400 | Caido-side 400 wrap, not the origin's JSON error contract |
+
+Debugging these as target behavior burns lanes. Fingerprint the class FIRST (body size or hash), then decide whether the observation says anything about the target at all. A target's real error contract (JSON envelope, version headers) never appears inside a 9KB proxy HTML page.
+
+<!-- promoted-slug: caido-502-md5-classes -->

@@ -248,6 +248,41 @@ Chained with a session cookie issued without `Secure`, this becomes a demonstrab
 
 Audit takeaway: grep security-header scans specifically for `max-age=0`, not just header presence/absence; a scanner checking presence alone reports this host as compliant.
 
+## SPA deep-link token injection: URL params adopted as auth credentials client-side
+
+Modern hybrid SPAs (web + mobile from one bundle) sometimes implement cross-context handoff — SSO return, app-link continuation, support or observation hops — by passing credential material IN the link: a base64/JSON blob in a `hash`/`token`/`data` query param or custom-scheme URL. The failure shape: the handler decodes it (`atob` + `JSON.parse`) and dispatches it straight into the auth store (logout + "update user token" style reducer), with the fields becoming the `Authorization: Bearer` credential for every API call AND the refresh token replayed to the token endpoint. Zero validation anywhere in the chain: no signature/JWT verify library in the bundle, no expiry check (expiry is client arithmetic from an attacker-chosen `expires_in`), no origin binding. Result: attacker-crafted links fixate the victim's session to attacker-controlled tokens (session fixation / forced session swap); the reverse direction exfiltrates anything the victim enters while believing they are in their own account.
+
+Hunt recipe (offline, no target contact needed for the first pass):
+- Linking config in the bundle: grep for `prefixes:[` / custom-scheme literals (`myapp://`) — lists every URL shape the app claims.
+- Custom `getStateFromPath` / `parse` overrides on the router: every opened URL transits them; check for raw `String.includes("/route")` substring triggers (no registered route needed — any path containing the substring fires).
+- The consumption chain: `atob(` followed by `JSON.parse(` followed by a dispatch into the auth reducer. Read the FULL path between parse and dispatch; absence of a verify step is the finding.
+- Zero-validation negative (make it strong): case-insensitive grep for `jwt|jose|verifySignature|jsonwebtoken` across the whole bundle = 0 hits; the trigger route string occurs exactly once (the handler itself); the action name occurs only at creator + reducer.
+- Persistence: check redux-persist storage adapters — on web the adapter is often COOKIE-backed (`document.cookie` get/set with TTL), not localStorage; the injected token survives reload either way.
+
+Transport confirmation (GET-only, canary-safe): fire the crafted URL with a benign canary blob; a 200 app shell with identical headers vs a no-hash control proves the param transits the edge unfiltered and consumption is entirely client-side. Server never evaluates the hash (same bytes back either way).
+
+Attack surface detail: the handler chain typically performs two dispatches back to back, a forced logout of the current session followed by installation of the URL-borne credential object as the new session. Both fire on page load with no consent step, so one link click (or custom-scheme open) simultaneously destroys the victim's real session and replaces it with the attacker-chosen one. Two attacker-token classes set the severity ceiling: an own-account pair yields account confusion and a phishing surface (the victim transacts inside an account the attacker also controls) with no privilege escalation by itself; a pair harvested elsewhere turns the gadget into full session fixation against a victim the attacker does not control. The expiry field is consumed as raw seconds into client-side date arithmetic, so the attacker also chooses how long the injected session persists client-side.
+
+Malformed payload = router crash (nuisance DoS): because the decode sits inside the router's path-parsing routine with no error handling, a payload that is invalid base64 or invalid JSON throws unhandled during URL handling and crashes the app on link open. Any user who opens the crafted link, including a reload of the poisoned URL, hits the crash; no valid token is needed. Test with a canary whose length is not a multiple of 4 (never valid base64) before touching any real-token scenario.
+
+Persistence varies by build; read the storage shim instead of assuming: the injected credential object can land in `localStorage` under a `persist:`-prefixed key just as well as in the cookie-backed adapter. Read the actual storage config in the bundle and name the real landing zone; the injected session survives reload either way.
+
+Related pattern, hash-borne consent auto-confirm: same source class (URL segment carried into app state), different sink. A server-issued confirmation hash from the URL is written into persisted state and a screen effect auto-fires the authenticated confirm/accept API call on mount, with response errors swallowed and the hash cleared afterwards. There is no in-app prompt: the link click IS the consent action, making this a consent-bypass amplifier rather than a fixation primitive. Standalone impact is INFO/LOW unless a live victim-issued hash reaches the attacker; escalation testing (does the endpoint accept a hash issued for a different grant context?) requires explicit authorization.
+
+Falsifiable test recipe (canary-first, own-account-only):
+
+1. Reach, zero side effects: fire the crafted deep link with a benign canary in the credential parameter (invalid-base64 length). Expected if reachable: the app shell returns 200 with headers identical to a no-param control (consumption is purely client-side; the server never evaluates the value) and the client errors on parse. Record both fetches raw.
+2. Crash class: the canary above reproducing an unhandled client exception on link open confirms the nuisance-DoS subclass without any account (browser required; curl only proves the transport shape).
+3. Install class (own account ONLY): base64-encode a JSON object shaped like the app's credential payload, carrying a sentinel-marked token pair from an account you own. Open the link logged in as that same account. Confirm: old session logged out, sentinel session installed (visible in the persisted storage key), and the sentinel `Authorization: Bearer` value on subsequent API calls. Never use a token pair belonging to anyone else.
+4. STOP criteria: any sign of another real account's data, any harvested or victim-owned token in play, any endpoint accepting the injected token cross-account, or any server-side rejection that would log the attempt as abuse. Stop, capture, report; do not chain further without an explicit owner decision.
+
+Detection addition: adjacent-triplet grep over the bundle, `atob(` near `JSON.parse(` near an auth-action dispatch (`logout`, `setToken`, `signIn` shapes). Every hit needs the full path read between parse and dispatch; the trigger route string occurring exactly once (only at the handler) plus the action name occurring only at creator + reducer confirms no second validation site. Run this sweep together with the substring-trigger and zero-validation checks above.
+
+Remediation: signed, short-TTL, single-use, server-issued opaque hash resolved server-side; never raw token material in URLs; register the route instead of substring matching; strip consumed params. Additions:
+- Server-bound one-time exchange codes instead of raw token material in URLs: the URL carries an opaque short-TTL single-use code the client exchanges server-to-server for the real session.
+- Validate token identity against the session server-side (issuer, subject, and audience binding) before honoring any client-supplied credential object, even one delivered through a legitimate handoff.
+- Fail closed on parse errors: wrap the decode in error handling so a malformed parameter can never throw inside the router; strip the consumed parameter after use.
+
 ## Sources
 
 - TryHackMe: Session Management room

@@ -28,8 +28,6 @@ The server transitions through a temporary sub-state: it has accepted the attack
 - The server must actually perform the request (not just validate the URL format)
 - For useful impact: internal services reachable from the server but not directly from the internet
 
-## Methodology
-
 ### 1. Find injection points
 
 Look for:
@@ -144,8 +142,6 @@ Tuning knobs that form the oracle:
 
 Even without a body leak, "follows redirect" versus "too many redirects" is itself a no-OOB confirmation that the sink actually issues the outbound request, and the loop-vs-single differential can distinguish live internal hosts (which redirect) from dead ones.
 
-## Key payloads / examples
-
 ### Basic localhost access
 
 ```http
@@ -181,8 +177,6 @@ GET /product HTTP/1.1
 Host: vulnerable-site.com
 Referer: https://YOUR-COLLABORATOR.oastify.com
 ```
-
-## Bypasses and variants
 
 ### Blacklist bypass — alternative IP representations
 
@@ -520,8 +514,6 @@ location /proxy {
 - THM CTFs: Creative, Include, md2pdf, Surfer
 - Assetnote (@shubs), "Novel SSRF Technique Involving HTTP Redirect Loops" (2025 top-10 #3) (slug: assetnote-ssrf-redirect-loops) (`https://slcyber.io/research-center/novel-ssrf-technique-involving-http-redirect-loops/`).
 
-## From the Wild
-
 ### HTB — Browsed (2026)
 - **Technique variant**: Browser Extension Exploitation, Headless Chrome
 - **Attack path**: Exploit vulnerable browser extension in headless Chrome instance, escalate via debug port
@@ -658,8 +650,6 @@ dict://127.0.0.1:6379/INFO
 ```
 
 Use **Gopherus** to auto-generate Gopher payloads for Redis, MySQL, FastCGI, memcached, and SMTP targets.
-
-## PortSwigger Labs
 
 ### Lab 1 — Basic SSRF against the local server (Apprentice)
 
@@ -874,3 +864,14 @@ is the reliable primitive. Reads any file readable by the renderer's user (usual
 `wp-config.php` DB creds, apache vhost confs, `/etc/passwd`.
 
 <!-- promoted-slug: wkhtmltopdf-redirect-to-file-lfi -->
+
+## Validator-collapse observability (fetched-refused vs fetched-invalid look identical)
+
+A fetch-validate-return sink whose validator collapses every non-target outcome into ONE uniform error (same status, byte length, and body hash, e.g. a 400 `Invalid content`) is black-box unobservable for internal reach: the uniform error answers "connection refused" and "fetched, but content failed validation" identically. Before pricing internal reach as disproven:
+
+- Hash the uniform error body; N byte-identical responses across DNS aliases, IP encodings, and rebinding names prove only the collapse, never the refusal.
+- Plant an OOB canary (an interactsh hostname as the fetch target): a callback proves the fetch WAS performed from the target's egress while the caller still sees the uniform error. Fetch-performed is provable; internal-destination is not, on this sink class.
+- The canary doubles as a fetcher fingerprint: read the callback request's headers (instrumentation headers such as `traceparent`, absent User-Agent) to identify the runtime, and use the egress IP to decide whether the fetcher sits inside or outside the origin network.
+- Severity pricing: arbitrary-destination fetch with content return prices HIGH; internal reach stays UNPROVEN (not CRITICAL) until some oracle distinguishes fetched-internal from refused. Validator-passing content planted on an internal endpoint would be that discriminator.
+
+<!-- promoted-slug: ssrf-validator-collapse-observability -->

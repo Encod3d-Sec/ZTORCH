@@ -447,3 +447,13 @@ re-read BOTH balances afterward as the impact proof. A string amount that 500s w
 validation TypeError is its own minor finding (error disclosure).
 
 <!-- promoted-slug: negative-amount-transfer -->
+
+## Stock-gated writes: the public catalog is the gate's oracle
+
+When an unauthenticated write endpoint answers with a business-rule error (e.g. `lack of stock`) instead of an auth error, the business rule IS the gate: authentication never ran. Generic two-step:
+
+- The validator's 400 contract walks the caller to an all-valid request one field at a time (each rejection names the next missing or invalid field); iterate submissions until only the business-rule error remains, then read the required field set straight out of the errors.
+- The gate value is usually PUBLISHED: product/pricing catalogs commonly expose per-region availability (`stock_qty`-class fields) on an unauthenticated read. Pick an in-stock (region, plan) pair from the public catalog and the gated write succeeds.
+- Pricing: the successful gated write itself (a priced, discounted line item in an unauthenticated cart) is the finding; stop before checkout, never transact. The checkout-manipulation ceiling stays unproven until a post-checkout vantage exists, so price on the write primitive, not the theoretical checkout chain.
+
+<!-- promoted-slug: stock-gate-public-oracle -->
