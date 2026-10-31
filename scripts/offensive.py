@@ -2064,6 +2064,20 @@ def _gate_lanes_strict(eng, host):
                             "RULE_FAILED", "NA_FAILED", "PLACEHOLDER"))]
             for d in defects or ["strict gate failed"]:
                 fails.append("%s/%s: %s" % (host, name, d))
+        else:
+            # Envelope hardening: envelope.md must reference its own lane id,
+            # stay ASCII, and keep its tail stable (R10 checks).
+            dv = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "disk_verify.py")
+            env_path = os.path.join(vroot, name, "envelope.md")
+            if os.path.isfile(env_path):
+                r = subprocess.run(
+                    [sys.executable, dv, env_path, "--contains", name,
+                     "--ascii", "--tail", "3"],
+                    capture_output=True, text=True)
+                if r.returncode != 0:
+                    print("DISK_VERIFY FAIL %s\n%s" % (env_path, r.stdout))
+                    fails.append("%s/%s: disk_verify failed" % (host, name))
     return fails
 
 
