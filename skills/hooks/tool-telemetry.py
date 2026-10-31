@@ -325,6 +325,13 @@ def main():
     # context-remainder advisory (the one thing telemetry is positioned to see: it holds
     # the transcript path every call). Silent on the healthy ~75% of the window.
     low = _context_low(data.get("transcript_path"), d)
+    # Stamp every low firing: output_econ keys its 10KB stub tier off this per-engagement
+    # stamp; _admit's marker is per-hooks-dir, so gating the write starves concurrent sessions.
+    if low is not None:
+        try:
+            open(os.path.join(d, ".ctx-low-stamp"), "w").close()
+        except Exception:
+            pass
     if low is not None and _admit(".ctx-low-seen", 900):
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PostToolUse",
@@ -334,7 +341,6 @@ def main():
                 "next compaction (last_move survives it)." % low,
         }}))
         try:
-            open(os.path.join(d, ".ctx-low-stamp"), "w").close()
             _telemetry.drift("context-low", "~%d%% context remaining" % low, d=d)
         except Exception:
             pass

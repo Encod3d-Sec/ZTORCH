@@ -117,7 +117,7 @@ PY
 # (an odd-cwd PreCompact still finds the vault). Fail-open. Sits after the last use
 # of ENG above, so reusing the name is safe.
 ENG_ROOT="${ZT_ENG_DIR:-$(pwd)/targets}"
-[ -f "$ENG_ROOT/active.md" ] || ENG_ROOT="$HOOKDIR/../targets"
+[ -f "$ENG_ROOT/active.md" ] || ENG_ROOT="$HOOKDIR/../../targets"
 ENG="$(cat "$ENG_ROOT/active.md" 2>/dev/null | tr -d '[:space:]')"
 if [ -n "$ENG" ] && [ -d "$ENG_ROOT/$ENG" ]; then
   M="$ENG_ROOT/$ENG/.recovery.md"
