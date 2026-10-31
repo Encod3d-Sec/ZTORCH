@@ -1467,6 +1467,15 @@ def cmd_next(args):
         if line.strip():
             print("BACKLOG candidate: %s" % line.strip())
 
+    # WS10 chaining pass: confirmed findings exist -> chaining stays on the
+    # agenda every serve (it is the close-out gate's precondition, chaining_ok).
+    if _confirmed_findings(os.path.abspath(str(eng))) >= 1:
+        print("CHAINING-PASS: enumerate confirmed findings, look each up in "
+              "scripts/chains.json, test plausibly-related combinations (shared "
+              "component, shared auth context, shared data flow), record every tried "
+              "combination + outcome in targets/<ENG>/Killchain.md; learned edges "
+              "append to chains.json.")
+
     # Default posture (2026-09-08): 2+ open assets -> run the loop under Skill(brain)
     # (main = strategy/board/triage, execution in 2-3 concurrent disjoint lanes).
     # Below 2 open assets the serial single-agent loop stays correct.
@@ -2011,6 +2020,43 @@ def collect_rulings(log_path):
     return [l.strip() for l in lines if "Ruling:" in l]
 
 
+CHAIN_ATTEMPT_MARKERS = ("chain attempt", "chained", "nothing to chain")
+
+
+def _confirmed_findings(eng):
+    """Confirmed finding cards under targets/<eng>/. Card naming is a union:
+    scaffolded `_find*.md` names AND the real-tree `FIND-*.md` cards
+    (targets/TARGETS.md names them FIND-NNN-SEVERITY-slug.md) - matching
+    only one pattern left the gate counting zero cards in production."""
+    import glob as _g
+    n = 0
+    for pat in ("_find*.md", "FIND-*.md"):
+        for c in _g.glob(os.path.join("targets", eng, "**", pat),
+                         recursive=True):
+            try:
+                head = "".join(open(c, encoding="utf-8",
+                                    errors="replace").readlines()[:25])
+            except OSError:
+                continue
+            if re.search(r"(?i)\bconfirmed\b", head):
+                n += 1
+    return n
+
+
+def chaining_ok(eng):
+    ok = _confirmed_findings(eng)
+    if ok < 2:
+        return True, "%d confirmed finding(s): record a one-line " \
+                     "'nothing to chain with' note in Killchain.md" % ok
+    kc = os.path.join("targets", eng, "Killchain.md")
+    body = open(kc, encoding="utf-8", errors="replace").read() \
+        if os.path.isfile(kc) else ""
+    if any(m in body.lower() for m in CHAIN_ATTEMPT_MARKERS):
+        return True, "chaining attempts recorded"
+    return False, "REFUSED: %d confirmed findings, Killchain.md shows " \
+                  "zero recorded chaining attempts" % ok
+
+
 def cmd_closeout(args):
     """Print the per-type close-out chain (Skill names, in order) for the
     engagement. G7: no question, just the ordered chain."""
@@ -2033,6 +2079,12 @@ def cmd_closeout(args):
         for r in rows:
             print("  - %s" % r)
         print("close-out may proceed; clear the verified column or record why not.")
+    # WS10 chaining gate: >= 2 confirmed findings and Killchain.md shows zero
+    # chaining attempts -> close-out stops (record attempts, then re-run).
+    ok, why = chaining_ok(os.path.abspath(str(eng)))
+    if not ok:
+        print(why)
+        return 1
     return 0
 
 

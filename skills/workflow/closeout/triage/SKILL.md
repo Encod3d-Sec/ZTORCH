@@ -80,6 +80,8 @@ Version banner alone
 Missing headers alone (no impact PoC)
 ```
 
+Before promoting: run the chains-into check - which existing findings share a component, auth context, or data flow with this one; record the answer in the finding card.
+
 ---
 
 ## Proof gate (G1 per-finding validators)
