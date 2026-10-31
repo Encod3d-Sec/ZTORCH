@@ -405,7 +405,16 @@ def main(argv=None):
     g.add_argument("--list", action="store_true")
     g.add_argument("--review", metavar="SLUG")
     g.add_argument("--promote", metavar="SLUG|all")
+    ap.add_argument("--i-am-the-operator", action="store_true",
+                    help="required companion to --promote; agents never pass this")
     args = ap.parse_args(argv)
+
+    if args.promote and not args.i_am_the_operator:
+        print("REFUSED: --promote without --i-am-the-operator.")
+        print("Staging-only rule: wiki-candidates/ distills are promoted by the")
+        print("operator, never automatically. Re-run with --i-am-the-operator")
+        print("appended to apply the move set.")
+        return 1
 
     inbox = inbox_dir()
     if not inbox:
