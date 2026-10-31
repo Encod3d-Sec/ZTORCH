@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -1456,6 +1457,16 @@ def cmd_next(args):
               "%s (%s) - advisory only, not a gate; park the row or raise the "
               "envelope" % (lvl, cls, lvl, AUTONOMY_DESC[lvl]))
 
+    # WS9.4: open backlog rows rank alongside the lane candidates - each row is
+    # a discovered surface nobody has hunted yet (claimed via lane-init --skill).
+    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "surface_backlog.py")
+    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open"],
+                       capture_output=True, text=True)
+    for line in r.stdout.splitlines():
+        if line.strip():
+            print("BACKLOG candidate: %s" % line.strip())
+
     # Default posture (2026-09-08): 2+ open assets -> run the loop under Skill(brain)
     # (main = strategy/board/triage, execution in 2-3 concurrent disjoint lanes).
     # Below 2 open assets the serial single-agent loop stays correct.
@@ -1943,6 +1954,14 @@ def cmd_done(args):
         added = seed_4b(eng, load_index(eng), state.get("type", "pentest"), state)
         print("  foothold recorded on %s (tmux %s%s); 4b: %d post-ex rows"
               % (asset, args.win, "" if matched else ", no state.md row", added))
+    # WS9.4 census: open backlog rows the engagement still owes a disposition.
+    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "surface_backlog.py")
+    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open"],
+                       capture_output=True, text=True)
+    for line in r.stdout.splitlines():
+        if line.strip():
+            print("OWED (unresolved backlog row): %s" % line.strip())
     _ckpt(eng, "done %s poc" % args.row)
     return 0
 
@@ -2086,6 +2105,15 @@ def _gate_lanes_strict(eng, host):
                 if r.returncode != 0:
                     print("DISK_VERIFY FAIL %s\n%s" % (env_path, r.stdout))
                     fails.append("%s/%s: disk_verify failed" % (host, name))
+            # WS5.6: a sub-120s clean return is the shallow-work smell. Duration
+            # is advisory; the walked-rows artifact stays the gate.
+            started = os.path.join(vroot, name, ".started")
+            if os.path.isfile(started):
+                age = time.time() - os.path.getmtime(started)
+                if age < 120:
+                    print("SHALLOW: %s returned clean in %ds "
+                          "(duration is the smell; walked-rows artifact "
+                          "is the gate)" % (name, int(age)))
     return fails
 
 
@@ -2349,6 +2377,27 @@ def cmd_lane_init(args):
         fh.write(BRIEF_TEMPLATE.format(skill=args.skill, vhost=host, lane=lane,
                                        workflow_abs=os.path.join(skdir, "workflow.md"),
                                        lane_dir=ld))
+    # .started stamp: the G10 sweep's SHALLOW check reads its mtime (WS5.6).
+    open(os.path.join(ld, ".started"), "w").close()
+    # WS5.6: claim matching open backlog rows into the brief - the lane now owes
+    # a clear-or-why disposition per embedded row.
+    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "surface_backlog.py")
+    lane_class = (args.skill[len("hunt-"):]
+                  if args.skill.startswith("hunt-") else args.skill)
+    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open",
+                        "--class", lane_class], capture_output=True, text=True)
+    rows = [l for l in r.stdout.splitlines() if l.strip()]
+    if rows:
+        with open(os.path.join(ld, "brief.md"), "a", encoding="utf-8") as f:
+            f.write("\n## Claimed backlog rows (clear each via "
+                    "surface_backlog.py clear --id N, or leave open with why)\n\n")
+            for l in rows:
+                f.write("- %s\n" % l)
+                rid = json.loads(l)["id"]
+                subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "claim",
+                                "--id", str(rid), "--lane", lane],
+                               capture_output=True)
     title = (getattr(args, "title", "") or "").strip()
     _append_line(os.path.join(eng, "log.md"),
                  "[lane] %s %s opened (skill %s%s)" % (

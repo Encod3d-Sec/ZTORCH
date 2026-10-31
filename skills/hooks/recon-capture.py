@@ -1415,6 +1415,33 @@ def main():
                                 _fh.write(_lbl + "\n")
                     except Exception:
                         pass
+                # WS9.3 producer: each NEW routed tech is a candidate hunt surface -
+                # one JSONL row into recon/surfaces.jsonl, then an idempotent import
+                # into the backlog store. Hook stays fail-open like the blocks above.
+                if d:
+                    try:
+                        import subprocess
+                        _vault = os.path.dirname(os.path.dirname(os.path.dirname(
+                            os.path.abspath(__file__))))
+                        _rd = os.path.join(d, "recon")
+                        if not os.path.isdir(_rd):
+                            os.makedirs(_rd, exist_ok=True)
+                        _ep = os.path.join(_rd, "surfaces.jsonl")
+                        with open(_ep, "a", encoding="utf-8") as _fh:
+                            for _lbl, _spec in fingerprint_records(blob, skip=fp_seen):
+                                _hint = next((str(_s)[len("hunt-"):] for _s
+                                              in (_spec.get("skills") or [])
+                                              if str(_s).startswith("hunt-")), "")
+                                _fh.write(json.dumps({"surface": _lbl, "host": "",
+                                                      "class_hint": _hint}) + "\n")
+                        subprocess.run([sys.executable,
+                                        os.path.join(_vault, "scripts",
+                                                     "surface_backlog.py"),
+                                        d, "import-jsonl", _ep,
+                                        "--source", "fingerprint"],
+                                       capture_output=True)
+                    except Exception:
+                        pass
                 # log routed hunt skills so eval_metrics can flag any never invoked (drift signal)
                 if d:
                     try:

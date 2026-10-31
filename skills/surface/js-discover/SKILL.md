@@ -407,6 +407,13 @@ $ENG_DIR/_requests.md (VMshare spelling); create it if absent - it is the
 host-audit ledger the leak-gate reads, a missing file silently drops the
 audit trail.
 
+After writing `endpoints.jsonl`, import it into the hunt feed with the
+`surface_backlog.py import-jsonl` subcommand: `python3
+scripts/surface_backlog.py <eng> import-jsonl <corpus>/endpoints.jsonl
+--source js-discover` (rows need `surface` and `class_hint`; class_hint
+from the endpoint shape: api-ish -> `api`, param-heavy -> `sqli`/`xss`
+per param context).
+
 ## Step 7 - AST + symbols
 
 Per-file AST (jsluice tree emits tree-sitter s-expressions with a
