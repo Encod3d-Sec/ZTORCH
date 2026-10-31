@@ -14,6 +14,7 @@
 # are ever scanned/exposed; they only define what to look for elsewhere.
 set -uo pipefail
 
+INVOKE_CWD="$PWD"
 VAULT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 cd "$VAULT" || exit 1
 
@@ -114,6 +115,16 @@ PY
 )
 fi
 
+# 3c. test-mode override: ZT_LEAK_TERMS (space-separated) replaces the derived
+#     markers entirely, and the tracked-file scan below runs against the repo the
+#     script was INVOKED from (INVOKE_CWD, captured before the cd above), so a
+#     throwaway git repo can drive the scan. Normal mode is unchanged.
+TEST_MODE=""
+if [ -n "${ZT_LEAK_TERMS:-}" ]; then
+  read -r -a TERMS <<< "$ZT_LEAK_TERMS"
+  TEST_MODE=1
+fi
+
 if [ -n "$SCAN_FILE" ]; then
   # Fail closed: a missing/unreadable candidate must never read as clean.
   [ -r "$SCAN_FILE" ] || { echo "FAIL: candidate file not readable: $SCAN_FILE" >&2; exit 1; }
@@ -138,15 +149,33 @@ if [ -n "$SCAN_FILE" ]; then
 fi
 
 TMP="$(mktemp "${TMPDIR:-/tmp}/leakhits.XXXXXX")"
-trap 'rm -f "$TMP"' EXIT
+trap 'rm -f "$TMP" "$TMP.f"' EXIT
 if [ "${#TERMS[@]}" -eq 0 ]; then
   echo "No client names found (targets/ empty) - skipping marker scan."
 else
+  # Committed ignore file (vault-absolute so it applies from any invoke cwd):
+  # one substring per line, generic English only, never engagement names; any
+  # HIT LINE containing one is a known false positive and is dropped.
+  IGNORE="$VAULT/.check-leaks-ignore"
+  # Test mode scans the invoke-cwd repo; normal mode scans the vault itself.
+  if [ -n "$TEST_MODE" ]; then
+    GIT_SCAN=(git -C "$INVOKE_CWD" grep)
+  else
+    GIT_SCAN=(git grep)
+  fi
   HITS=0
   while IFS= read -r term; do
     [ -n "$term" ] || continue
     # git grep only searches tracked files; targets/ is excluded explicitly too.
-    if git grep -niIF "$term" -- . ':(exclude)targets/' >"$TMP" 2>/dev/null && [ -s "$TMP" ]; then
+    # -w: match at word boundaries only, so an English substring (e.g. the term
+    # inside "debited") stops masquerading as a client marker.
+    if "${GIT_SCAN[@]}" -niIwF "$term" -- . ':(exclude)targets/' >"$TMP" 2>/dev/null && [ -s "$TMP" ]; then
+      if [ -s "$IGNORE" ]; then
+        grep -viFf "$IGNORE" "$TMP" >"$TMP.f" 2>/dev/null
+        mv -f "$TMP.f" "$TMP"
+      fi
+    fi
+    if [ -s "$TMP" ]; then
       echo "LEAK: client marker '$term' in tracked files:"
       sed 's/^/  /' "$TMP"
       HITS=$((HITS+1))
@@ -160,6 +189,10 @@ else
   fi
   echo "clean: no client markers (${#TERMS[@]} checked) in tracked files."
 fi
+
+# Test mode ends here: the advisory passes below read live vault state a
+# throwaway-repo sandbox must not depend on.
+[ -n "$TEST_MODE" ] && exit 0
 
 # 4. generic high-signal WARN pass (advisory, never fails the gate): emails and
 #    RFC1918 IPs in tracked files often mark a leaked host/contact. Review them.
