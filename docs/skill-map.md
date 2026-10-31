@@ -25,8 +25,8 @@ organizational only.
 | `ponytail:` marker ledger sweep | `ponytail-debt` plugin skill (harvests `ponytail:` comments; the close-out Stop hook nudges this) |
 | Relational wiki queries (path between pages, hubs, orphans) | `graphify` skill (`scripts/wiki-graph.py`, live wikilink graph over `wiki/`; graphify CLI for code trees) |
 | Load engagement playbook / FIND schema        | Read `targets/TARGETS.md`                                                              |
-| Audit AGENTS.md (full review)                 | `agents-md-improver` skill (vault-local offline reviewer)                              |
-| Update AGENTS.md (targeted session learnings) | `agents-md-improver` skill, targeted mode                                              |
+| Audit AGENTS.md (full review)                 | `claude-md-management:claude-md-improver` skill (vault-local offline reviewer)                              |
+| Update AGENTS.md (targeted session learnings) | `claude-md-management:claude-md-improver` skill, targeted mode                                              |
 | Session end / pause work                      | `gsd:pause-work` (optional plugin) or the manual pause-work steps                      |
 | Parallel independent tasks                    | Dispatch several Agent tool calls in one message, or `superpowers:dispatching-parallel-agents` (optional) |
 | Run a full pentest/bb/ctf engagement autonomously  | `offensive` skill (driver: `scripts/offensive.py --type pentest\|bb\|ctf`; the single source of truth for the execution loop) |
@@ -62,7 +62,7 @@ discovers every skill by basename regardless of depth): `exploit/` holds `hunt/`
 entry points `offensive` (the driver) and `engage` (the router), plus `brain`
 (subagent dispatch mode over the driver) and `kali-seat`; `platform/` holds the
 process utilities (`caveman`, `graphify`, `ponytail` + `ponytail-debt`/`ponytail-review`,
-`obsidian-lint`, `wiki`, and `agents-md-improver`, the offline instruction-file
+`obsidian-lint`, `wiki`, and `claude-md-management:claude-md-improver`, the offline instruction-file
 reviewer); `research/` holds `research`, `nday`, `searchsploit`, `wiki-arsenal`,
 `wiki-recon`; `surface/` holds the by-surface tooling: `vector-workflow` (the
 board-seeding pipeline reference, not a loop step), `browser/`

@@ -96,6 +96,17 @@ def check_classes(pb, repo=VAULT):
                     if d.startswith("hunt-") and d not in covered]
     except OSError:
         unmapped = []
+    # orphan tools pages: a decision, not silence (advisory, never exit-code)
+    import glob
+    vault_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    referenced = " ".join(json.dumps(r) for r in rows.values())
+    orphans = [os.path.basename(p) for p in glob.glob(
+        os.path.join(vault_root, "wiki", "tools", "*.md"))
+        if os.path.basename(p) not in referenced]
+    if orphans:
+        print("unmapped wiki/tools pages (intentionally unmapped list):")
+        for o in sorted(orphans):
+            print("  - %s" % o)
     return bad, unmapped
 
 
