@@ -113,6 +113,27 @@ def _tools(off):
           "no usage command: " + ", ".join(noinv))
 
 
+# --------------------------------------------------------------------------- driver helpers
+
+DRIVER_HELPERS = [
+    "completion-gate.py", "merge_append.py", "disk_verify.py",
+    "capture.sh", "vm-bg.sh", "vm-rsh.sh", "vm-scan.sh",
+    "status.py", "next_move.py",
+]
+
+def _helpers():
+    base = os.path.dirname(os.path.abspath(__file__))
+    for h in DRIVER_HELPERS:
+        p = os.path.join(base, h)
+        if not os.path.isfile(p):
+            check("helper %s" % h, False, "missing: %s" % p)
+            continue
+        if h.endswith(".sh") and not os.access(p, os.X_OK):
+            check("helper %s" % h, False, "not executable: %s" % p)
+        else:
+            check("helper %s" % h, True, p)
+
+
 # --------------------------------------------------------------------------- 4. skill + 5. hook
 
 def _skill_and_hook():
@@ -342,6 +363,7 @@ def main(argv):
     if off is not None:
         _routing(off)
         _tools(off)
+    _helpers()
     _skill_and_hook()
     _index_freshness()
     _bench()
