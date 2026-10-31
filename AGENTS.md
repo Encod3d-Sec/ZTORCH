@@ -69,6 +69,13 @@ the new model performs unaided - skills get leaner each generation.
 
 Output/mode plugins (optional; the harness degrades gracefully without them): **ponytail** (lazy-code discipline - YAGNI, stdlib first, shortest working diff; auto-activates at SessionStart when installed, level `full`, switch via `/ponytail lite|full|ultra`) governs what you build, not prose. **caveman** (prose compression) is a vault skill (ultra level in-file: `/caveman ultra`), manual per session; it stays off in engagement turns, where the output caps above already govern.
 
+Seat pins (2026-10-31 retro): wigolo MCP tools by full `mcp__wigolo__*` name;
+generated artifacts land in `/tmp` first, then move into the vault; lane
+briefs scaffold via `completion-gate.py init`, never hand-typed; JSON
+fragments inside inline shell commands are single-quoted (word-splitting
+phantom-command class); size files with `wc -l` before a Read that may
+exceed the read cap.
+
 SessionStart also auto-loads `session/hot.md`. No manual reads needed.
 
 Engagement-state hooks (workspace-scoped, registered in the committed `.zcode/config.json`, scripts under `skills/hooks/`). All fail open (any error -> allow, never trap). Policy (operator directive 2026-10-05): **only scope-guard denies** - out-of-scope host/IP, a deterministic no-judgement check; RoE-forbidden tooling is an OPERATOR decision (the hook asks; pre-approvable), and every other guard (blind sleeps, drift) ADVISES - a false block wastes more time than it saves (the drift hard advisories and the operator-opt-in spend cap `ZT_MAX_ENG_USD` are the loud exceptions: the cap still denies). Escape hatch for a bad block: `touch skills/hooks/.enforce-off` (downgrades the scope deny and the RoE ask to advisory). Six hook events are registered here, including `PreCompact` (`pre-compact.sh`). Per-hook events and mechanics (all of it) live in `docs/auto-triggers.md`; the set at a glance:
@@ -152,6 +159,9 @@ Read `docs/workflows.md` before performing any ingest, target session, lint, or 
 - Non-trivial logic leaves one runnable check behind (an assert-based `__main__` or one small `test_*`).
 - Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, anything explicitly requested.
 - Push back in one line when a simpler path exists than the one requested.
+- Tests live under `tests/` (gitignored by design; the harness ships without
+  them). Run the battery as `python3 -m pytest tests/ -q` from the vault root;
+  never `git add tests/`.
 
 ---
 
