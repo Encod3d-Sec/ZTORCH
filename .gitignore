@@ -39,6 +39,9 @@ docs/specs/
 
 # --- Local hook toggles (per-machine kill-switch, never ship) ----------------
 skills/hooks/.enforce-off
+skills/hooks/.lane-pattern-seen
+skills/hooks/.ctx-low-seen
+skills/hooks/.session-guard-ack
 
 # --- Runtime stamps, telemetry, caches --------------------------------------
 .zvec-grep/

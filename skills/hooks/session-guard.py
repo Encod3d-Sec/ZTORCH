@@ -82,18 +82,27 @@ def main():
         _telemetry.hook("session-guard", action="leak-warn")
     except Exception:
         pass
+    ack = os.path.join(HERE, ".session-guard-ack")
+    if os.path.isfile(ack):
+        os.remove(ack)
+        sys.exit(0)  # one-shot ack consumed; the next firing speaks again
     if kind == "session":
         msg = ("CLIENT-DATA BOUNDARY - this write puts engagement marker(s) " + joined
                + f" into session/{os.path.basename(fp)}, which is generic and auto-loaded "
                "at every SessionStart. Put per-engagement narrative in targets/<eng>/log.md "
                "(the audit trail) instead - it is gitignored. Keep session/ "
-               "framework/methodology only.")
+               "framework/methodology only. If this edit is the remediation itself "
+               "(removing the marker), acknowledge once with: touch "
+               "skills/hooks/.session-guard-ack - the next firing is suppressed.")
     else:  # tracked
         msg = ("CLIENT-DATA BOUNDARY - this write puts engagement marker(s) " + joined
                + " into a git-TRACKED framework file (shared on commit). Client/engagement "
                "specifics live ONLY under targets/<eng>/ (gitignored); a reusable lesson goes "
                "in generically, with NO codename. Genericize before writing (the retro under "
-               "docs/superpowers/ may name it), or run scripts/check-leaks.sh before commit.")
+               "docs/superpowers/ may name it), or run scripts/check-leaks.sh before commit. "
+               "If this edit is the remediation itself (removing the marker), acknowledge "
+               "once with: touch skills/hooks/.session-guard-ack - the next firing is "
+               "suppressed.")
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",

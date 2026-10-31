@@ -13,6 +13,7 @@ import json
 import os
 import re
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -40,6 +41,21 @@ _FUNC_DEF = re.compile(r"^[A-Za-z_]\w*\(\)\{?$")
 # function defined earlier in the same command, e.g. `q(){ curl ...; }; q "x"` -- `q` must not
 # be logged from either the def or the call. Optional whitespace before `()` covers `q ()`.
 _FUNC_DEF_ANY = re.compile(r"\b([A-Za-z_]\w*)\s*\(\)")
+
+
+def _admit(marker_file, min_interval_s, hooks_dir=None):
+    """Once-per-interval admission for noisy advisories."""
+    d = hooks_dir or os.path.dirname(os.path.abspath(__file__))
+    p = os.path.join(d, marker_file)
+    now = time.time()
+    if os.path.isfile(p):
+        try:
+            if now - os.path.getmtime(p) < min_interval_s:
+                return False
+        except OSError:
+            pass
+    open(p, "w").close()
+    return True
 
 
 def _blank_quotes(s):
@@ -254,10 +270,12 @@ def _mentor_check(d, tool, bins):
                 _telemetry.drift("mentor", "same-tool threshold: %s" % ",".join(fired), d=d)
             except Exception:
                 pass
-            return ("LANE PATTERN (mentor): %s fired %d times in this %s. Answer from the "
-                    "output you already have, switch tool or approach, or state what is "
-                    "missing before the next call."
-                    % (", ".join(fired), _MENTOR_SAME_TOOL, bucket))
+            # once per ~session (6h): the drift record above still logs every firing
+            if _admit(".lane-pattern-seen", 6 * 3600):
+                return ("LANE PATTERN (mentor): %s fired %d times in this %s. Answer from the "
+                        "output you already have, switch tool or approach, or state what is "
+                        "missing before the next call."
+                        % (", ".join(fired), _MENTOR_SAME_TOOL, bucket))
     except Exception:
         return None
     return None
@@ -307,7 +325,7 @@ def main():
     # context-remainder advisory (the one thing telemetry is positioned to see: it holds
     # the transcript path every call). Silent on the healthy ~75% of the window.
     low = _context_low(data.get("transcript_path"), d)
-    if low is not None:
+    if low is not None and _admit(".ctx-low-seen", 900):
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PostToolUse",
             "additionalContext":
