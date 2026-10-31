@@ -1956,6 +1956,22 @@ def cmd_done(args):
                         print("  " + l)
                 print("re-dispatch hint: SendMessage to the lane with the failed step list above")
                 sys.exit(1)
+            # G10 hardening: an envelope on the closed lane must also pass
+            # disk_verify (same contract as _gate_lanes_strict close-out).
+            dv = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "disk_verify.py")
+            env_path = os.path.join(eng, "poc", host, tok, "envelope.md")
+            if os.path.isfile(env_path):
+                d = subprocess.run(
+                    [sys.executable, dv, env_path, "--contains", tok,
+                     "--ascii", "--tail", "3"],
+                    capture_output=True, text=True)
+                if d.returncode != 0:
+                    print("DISK_VERIFY FAIL %s" % env_path)
+                    for l in d.stdout.splitlines()[-3:]:
+                        print("  " + l)
+                    _die("cannot close %s: lane %s envelope fails disk_verify"
+                         % (args.row, tok))
 
     row["status"] = "[x]"
     row["poc"] = args.poc

@@ -414,6 +414,22 @@ def main(argv=None):
         print("Staging-only rule: wiki-candidates/ distills are promoted by the")
         print("operator, never automatically. Re-run with --i-am-the-operator")
         print("appended to apply the move set.")
+        try:
+            inbox = inbox_dir()
+            if inbox:
+                rows = [(p, fm) for p, fm, _b in candidates(inbox)
+                        if args.promote == "all"
+                        or fm.get("slug") == args.promote
+                        or os.path.basename(p)[:-3] == args.promote]
+                print("dry run (nothing moved yet):")
+                for _p, fm in rows:
+                    print("  would move: %s [%s] -> wiki/%s"
+                          % (fm.get("slug", "?"), fm.get("kind", "?"),
+                             fm.get("target_page", "?")))
+                if not rows:
+                    print("  (no staged candidate matches '%s')" % args.promote)
+        except Exception:
+            pass
         return 1
 
     inbox = inbox_dir()
