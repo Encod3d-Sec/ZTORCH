@@ -4,7 +4,7 @@ type: technique
 tags: [methodology, agents, coordination, campaign, planning]
 phase: exploitation
 date_created: 2026-08-06
-date_updated: 2026-10-05
+date_updated: 2026-10-31
 sources: [github-usestrix-strix]
 ---
 
@@ -142,6 +142,43 @@ what was tested, what was confirmed, what was ruled out, what is still open. Thr
 
 Peer-to-peer messaging between lanes is a side channel, deliberately starved: only when essential,
 batched, never routine status. Completion flows and shared artifacts carry the coordination load.
+
+## Continuity across compactions, and the mechanical merge
+
+A long campaign runs through dozens of context compactions and session restarts, and each one
+silently orphans anything that lived only in the orchestrator's working memory. The practices
+below were extracted from a full-engagement retrospective; every one pays for itself the first
+time it fires.
+
+- **Step zero after every compaction is mechanical, not situational.** Before any new action:
+  re-check the running fleet (a dispatch that returned nothing may still be running, or may be
+  gone), re-dispatch every lane that was sent but never returned, re-arm watchers, pin the
+  absolute paths the session will need next. Never assume a pre-compaction dispatch survived -
+  orphaned lanes cost more hours in one campaign than any other single failure class measured.
+- **The completion report hits disk before the lane returns.** A verdict that lives only in the
+  return message dies with the next compaction. The two-sided contract above gains a persistence
+  clause: the brief pins the envelope's path and filename, the lane writes the full report there
+  BEFORE returning, and its capture list matches the request ledger's numbering so a verifier can
+  cross-check without the lane present.
+- **Verify the brief's premises against the record before dispatching.** The route exists (in a
+  spec or a capture), the auth shape is stated per step (none / anon bearer / user), and every
+  banked artifact the brief cites is on disk. A lane made to guess a field name or re-derive a
+  premise spends its budget discovering the premise was wrong - the most expensive wrong-premise
+  case measured burned 40 minutes on a single line.
+- **Idle and degraded are dispatch triggers, not stops.** A stamp-only tick with an empty running
+  set means dispatch the next queued row. A hard dependency failing (an endpoint 500s, a seat
+  dies) means dispatch the bypass or alternate-vantage lane immediately, never park the dependent
+  queue behind one flap.
+- **State-file appends go through a merge script, not prose-anchored edits.** Guards that turn
+  each historical corruption into a refused exit instead of a repair: glue guard (the file's last
+  line never fuses with the block's first), duplicate id/tag refuse (a lane re-run or a
+  compaction replay must not double-write), an ASCII guard, and a read-back that fails when the
+  last line is not the block's last line. Deterministic post-write verification replaces the
+  per-write ritual of hand-run tick counts and byte dumps.
+- **A checklist that verifies nothing must not read as a pass.** A completion ledger whose boxes
+  declare no artifacts can print COMPLETE with zero steps verified, and in the field that verdict
+  was accepted as success. Gate rule: ticks with no verifiable artifact yield NEEDS-REVIEW (a
+  failure under a hard gate), never COMPLETE.
 
 ## Fleet budget: graduated bands and a close-out reserve
 
