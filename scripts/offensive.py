@@ -1482,7 +1482,7 @@ def cmd_next(args):
         print("RESEARCH (standing lane): per fingerprinted tech in state.md,")
         print("mcp__wigolo__search + mcp__wigolo__research for new CVEs,")
         print("technique deltas, KEV updates since the last pass. Outputs:")
-        print("targets/%s/recon/research-<date>.md (engagement findings) +")
+        print("targets/<ENG>/recon/research-<date>.md (engagement findings) +")
         print("generic distills staged in wiki-candidates/ (operator owns")
         print("promotion). cve-arsenal candidates stage in wiki-candidates/,")
         print("never direct into wiki/cheatsheets/cve-arsenal.md.")

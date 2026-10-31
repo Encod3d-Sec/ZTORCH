@@ -126,7 +126,7 @@ if [ -n "$ENG" ] && [ -d "$ENG_ROOT/$ENG" ]; then
     echo "step zero before new work: re-check fleet (ListAgents), re-dispatch"
     echo "dispatched-never-returned lanes, re-arm watchers, pin absolute paths."
     echo "--- driver status snapshot ---"
-    python3 "$ENG_ROOT/../scripts/offensive.py" status 2>&1 | head -40
+    python3 "$ENG_ROOT/../scripts/status.py" 2>&1 | head -40
   } > "$M"
 fi
 exit 0
