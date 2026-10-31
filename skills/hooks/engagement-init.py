@@ -484,6 +484,21 @@ def main():
             if tt:
                 print(tt)
                 print()
+            # pre-compact recovery manifest (pre-compact.sh wrote targets/<eng>/.recovery.md):
+            # surface step zero as one bounded block right after compaction; missing file =
+            # no output, never an exception (fail-open like everything above).
+            try:
+                eng_dir = _engagement.active_dir()
+                rec = os.path.join(eng_dir, ".recovery.md") if eng_dir else ""
+                if rec and os.path.isfile(rec):
+                    head = "".join(open(rec, encoding="utf-8",
+                                        errors="ignore").readlines()[:6])
+                    if head.strip():
+                        print("RECOVERY (pre-compact manifest, act on step zero, "
+                              "then ignore):\n%s" % head)
+                        print()
+            except Exception:
+                pass
 
     # Session lineage: the host passes session_id on every SessionStart fire; one line
     # per FRESH session in log.md is the evidence timeline (which sessions touched this

@@ -108,4 +108,25 @@ PY
   echo "- CURRENT TASK THREAD (the last thing being worked on, engagement OR framework): preserve in full - the objective, files edited, exact commands and their outcomes, and the immediate next step. Never compress the live task to a pointer; only OLDER completed work collapses to one-line pointers to session/hot.md. No client specifics beyond what PRESERVE above already demands."
 } 2>/dev/null
 [ -n "$TAIL" ] && printf '\n%s\n' "$TAIL"
+# Recovery manifest: targets/<eng>/.recovery.md so a post-compact session surfaces its
+# step-zero duties (fleet re-check, orphaned lanes, watchers, absolute paths);
+# engagement-init.py prints its head at SessionStart(compact). SILENT - stdout stays
+# the summarizer instruction channel; this only writes the private per-engagement
+# file. ENG_ROOT honors ZT_ENG_DIR, then cwd (hooks run with cwd=project dir in
+# normal mode; the test sandbox rides this), then the vault the hook ships in
+# (an odd-cwd PreCompact still finds the vault). Fail-open. Sits after the last use
+# of ENG above, so reusing the name is safe.
+ENG_ROOT="${ZT_ENG_DIR:-$(pwd)/targets}"
+[ -f "$ENG_ROOT/active.md" ] || ENG_ROOT="$HOOKDIR/../targets"
+ENG="$(cat "$ENG_ROOT/active.md" 2>/dev/null | tr -d '[:space:]')"
+if [ -n "$ENG" ] && [ -d "$ENG_ROOT/$ENG" ]; then
+  M="$ENG_ROOT/$ENG/.recovery.md"
+  {
+    echo "RECOVERY manifest (pre-compact $(date -u +%FT%TZ))"
+    echo "step zero before new work: re-check fleet (ListAgents), re-dispatch"
+    echo "dispatched-never-returned lanes, re-arm watchers, pin absolute paths."
+    echo "--- driver status snapshot ---"
+    python3 "$ENG_ROOT/../scripts/offensive.py" status 2>&1 | head -40
+  } > "$M"
+fi
 exit 0
