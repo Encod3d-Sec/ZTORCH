@@ -29,6 +29,9 @@
    then `python3 scripts/offensive.py done ...` (G10 re-checks).
 8. Pass close: `vhost pass-done`, RTL consult, stage re-entry per
    active-workflow pass focus; vhost closes only via `vhost unlock`.
+9. Standing research lane (standard, driver-fired: the `next` RESEARCH row
+   emits this whenever a version is fingerprinted and the last pass is older
+   than 14 days or absent)
 
 ## Hard rules
 

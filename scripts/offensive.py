@@ -1476,6 +1476,18 @@ def cmd_next(args):
               "combination + outcome in targets/<ENG>/Killchain.md; learned edges "
               "append to chains.json.")
 
+    # WS7 standing research lane: a fingerprinted version in state.md with no
+    # research pass in the last 14 days (or ever) -> advisory row per serve.
+    if _research_due(os.path.abspath(str(eng))):
+        print("RESEARCH (standing lane): per fingerprinted tech in state.md,")
+        print("mcp__wigolo__search + mcp__wigolo__research for new CVEs,")
+        print("technique deltas, KEV updates since the last pass. Outputs:")
+        print("targets/%s/recon/research-<date>.md (engagement findings) +")
+        print("generic distills staged in wiki-candidates/ (operator owns")
+        print("promotion). cve-arsenal candidates stage in wiki-candidates/,")
+        print("never direct into wiki/cheatsheets/cve-arsenal.md.")
+        print("On completion: touch targets/<ENG>/.research-last")
+
     # Default posture (2026-09-08): 2+ open assets -> run the loop under Skill(brain)
     # (main = strategy/board/triage, execution in 2-3 concurrent disjoint lanes).
     # Below 2 open assets the serial single-agent loop stays correct.
@@ -2041,6 +2053,19 @@ def _confirmed_findings(eng):
             if re.search(r"(?i)\bconfirmed\b", head):
                 n += 1
     return n
+
+
+def _research_due(eng):
+    state = os.path.join("targets", eng, "state.md")
+    if not os.path.isfile(state):
+        return False
+    body = open(state, encoding="utf-8", errors="replace").read()
+    if not re.search(r"\d+\.\d+", body):
+        return False
+    marker = os.path.join("targets", eng, ".research-last")
+    if not os.path.isfile(marker):
+        return True
+    return time.time() - os.path.getmtime(marker) > 14 * 86400
 
 
 def chaining_ok(eng):
