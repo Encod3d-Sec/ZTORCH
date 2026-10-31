@@ -21,7 +21,7 @@ sources: []
 
 ## Proof of Concept
 
-`<Numbered, reproducible steps. Exact requests/commands in fenced code blocks. A reviewer must be able to replay this verbatim. Fence sizing: if the content contains a backtick run, open the fence one backtick longer than the longest run inside (a ``` inside a ``` fence breaks the card render).>`
+`<Numbered, reproducible steps. Exact requests/commands in fenced code blocks. A reviewer must be able to replay this verbatim. Capture refs are BARE repo-relative paths (no backticks, no trailing slash, no markdown link) - the linter resolves them literally. Fence sizing: if the content contains a backtick run, open the fence one backtick longer than the longest run inside (a ``` inside a ``` fence breaks the card render).>`
 
 ```
 <# step 1 ...>

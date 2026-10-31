@@ -69,6 +69,46 @@
   surface - extracted routes/params seed board rows - before any live probing
   of the same surface. Extraction is free; probing spends the request budget.
 
+## Retro rules (R1-R10, 2026-10-31 engagement retrospective)
+
+- **Compaction step zero (R1).** After ANY compaction or restart, before the
+  next action: pin absolute vault-root paths, re-check the running fleet
+  (ListAgents), re-dispatch orphaned lanes (dispatched, never returned),
+  re-arm watchers. Never assume pre-compaction dispatches survived.
+- **Pre-dispatch premise check (R2).** Verify the lane's premises against
+  captures/state before dispatch: the route exists (spec or capture), the
+  auth shape is stated in the brief (none / anon bearer / user), every
+  banked artifact the brief cites exists on disk. Briefs state the required
+  auth shape and the exact request schema per step - a lane never guesses
+  field names (one lane burned 40 min on a single wrong premise line).
+- **Degraded-mode dispatch (R3).** A hard dependency failing (token endpoint
+  500, seat down) means dispatch a bypass / alternate-vantage lane
+  immediately; never park the whole dependent queue behind one flap.
+- **Idle-board rule (R4).** Stamp-only tick + empty running set = dispatch
+  the next queued board lane. Idle is a dispatch trigger, not a stop.
+- **Canonical timestamps (R5).** One format, writer-stamped true UTC
+  (`YYYY-MM-DD HH:MMZ`), never a hand-suffixed Z on local time (broke four
+  `find -newermt` scopes in one run). Never diff by mount mtime (/mnt/c
+  mtimes lie) - ledger timestamps + content hashes instead.
+- **Envelope contract (R6).** The brief pins the envelope path and analysis
+  filename; the lane persists the envelope to that file BEFORE returning
+  (a verdict only in the return message is lost to compaction); the
+  envelope's capture list matches the requests-ledger numbering.
+- **FIND numbering check (R7).** Before assigning a new FIND number, look
+  at `Vulns/` (or Vuln-index.md). A collision costs mv + N card edits.
+- **Multi-MB bundle exception (R8).** Any brief whose lane touches a bundle
+  over ~1MB carries the chunked-read + mechanical-extraction mandate
+  verbatim; a full read of multi-MB bytes thrashes the lane context and
+  killed lanes in two different slices.
+- **Budget-override note (R9).** A lane exceeding its stated request
+  ceiling logs the reason mid-flight as a ledger row, not after the fact.
+- **Merges through scripts (R10).** state.md / log.md appends go through
+  `scripts/merge_append.py` (newline-glue guard, duplicate/tag refuse,
+  ASCII guard, read-back echo) and post-write checks through
+  `scripts/disk_verify.py` - never Edit-on-prose-anchor (state.md was
+  corrupted twice the same way in one run) and no ad-hoc tick-count /
+  cat -A ritual per write.
+
 ## N/A escapes
 
 - `N/A: fewer than 2 disjoint rows (serial fallback per AGENTS.md)`
