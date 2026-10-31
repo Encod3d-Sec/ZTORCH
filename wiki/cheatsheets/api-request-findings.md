@@ -4,7 +4,7 @@ type: cheatsheet
 tags: [api, cheatsheet, web]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-10-19
+date_updated: 2026-10-31
 ---
 
 # API Request Findings
@@ -61,6 +61,17 @@ Reusable API request patterns that have produced findings. Product/tech + the re
 | Angular/Vue SPA fronting a double-submit XSRF filter (Symfony-style) | any state-changing API route | POST | self-minted pair: cookie `__Host-XSRF-TOKEN=<random-hex>` + header `X-XSRF-Token:<same-random-hex>`, alongside the session cookie jar | valid session jar | the filter checks only cookie==header equality, and the cookie value is CLIENT-generated (`crypto.getRandomValues` in the SPA), so a scripted client can mint its own pair and every CSRF-gated authed API call becomes drivable from curl without a browser. This is expected double-submit behavior, NOT a finding by itself - the value is operational: it unlocks the authed API test matrix (BOLA, workflow abuse, validator ladders) without driving the SPA. Gotchas: the random value must match EXACTLY between cookie and header; if the server re-issues its own XSRF cookie, drop it from the jar or the duplicate cookie breaks the equality check; when minting inside tmux/CI, generate the value fresh per request, never reuse across calls |
 | Drupal 8-10 core AJAX endpoints (any route the bundle hands to `Drupal.ajax({url: ...})`: search, autocomplete, views ajax) | that endpoint + query params | GET | run the 3-mode response ladder: (1) plain GET; (2) + `X-Requested-With: XMLHttpRequest`; (3) + `_wrapper_format=drupal_ajax_cache`. Derive mode 3's exact value from the client bundle, never guess: param name = `Drupal.ajax.WRAPPER_FORMAT`, value = `` `drupal_${elementSettings.dialogType||'ajax'}` `` appended UNCONDITIONALLY in the `Drupal.Ajax` constructor, so the wire value follows the call site's `dialogType` (`ajax_cache` -> `drupal_ajax_cache`; `drupal_ajax` is only the no-dialogType fallback) | none | the three modes answer DIFFERENTLY and each verdict needs the mode that matches the real wire call: no param = full HTML page shell (any endpoint/param behaviour you measured there is the UI-invisible mode); XRW-alone often still the shell; the wrapper param flips the response to a JSON array of Drupal commands (`insert`/`add_css`, `x-drupal-ajax-token: 1`, even 404s collapse to a JSON route error) whose payload can be smaller, emptier, and echo-FREE (a search term echoed+escaped in shell mode may be absent entirely from command mode). Gotcha: testing only the shell mode overstates the reflection surface, and testing only command mode understates it - state the mode next to every verdict; a populated-rows shape that no battery ever observed stays hypothesis-grade, not a negative proof |
 | Laravel Sanctum / Livewire SPA POST surfaces | `GET /sanctum/csrf-cookie` first, then the real POST route | any POST | two-step curl with a shared cookie jar: (1) `curl -c jar https://<host>/sanctum/csrf-cookie` -> 204, sets `XSRF-TOKEN` cookie; (2) POST with `-b jar` + header `X-XSRF-TOKEN: <URL-DECODED XSRF-TOKEN cookie value>` | none for the unlock itself (the POST may still hit auth) | drops the 419 `csrf_token_mismatch` wall on Laravel/Livewire POST routes. The URL-decode step is the whole trick: curl stores the cookie percent-encoded and Laravel percent-decodes on read, so shipping the raw stored value mismatches silently and looks like "CSRF unbreakable". Operational (expected framework behavior, not a finding): it unlocks the unauth-POST test matrix (password-reset differentials, broadcasting/auth, Livewire update messages) from curl without a browser |
+
+Platform-pattern memo: before attacking the next host on the same
+platform, build and consult the cross-host negative-pattern memo (the
+classes the platform refutes platform-wide, each with a cap citation);
+drop any direction it refutes unless you can state a delta for this host.
+
+Spec-extract-first: extract the API spec (OpenAPI/GraphQL schema/bundle
+routes) BEFORE touching endpoints; the mechanics table on this page drives
+the probe order. Endpoint-by-endpoint discovery on a spec'd surface is
+wasted requests.
+
 ## How to extend
 When a request pattern yields a finding on an engagement, add the **generic** form here (product, endpoint shape, payload, impact). Strip client host/path specifics. Cross-link the relevant technique page (e.g. [[supabase-attacks]], [[wiki/payloads/graphql]]).
 

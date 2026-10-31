@@ -4,7 +4,7 @@ type: technique
 tags: [methodology, testing, evidence, false-positives, sensitive-data, web]
 phase: exploitation
 date_created: 2026-08-04
-date_updated: 2026-10-05
+date_updated: 2026-10-31
 sources: [github-usestrix-strix]
 ---
 
@@ -82,6 +82,12 @@ GET /api/address/Vilniaus'   -> 200 []      # quote collapses a real match -> pa
 The third line is only meaningful because the second exists. Without it you know only that the endpoint
 returns empty, which proves nothing about injection. **A negative without a functional control is an
 assumption wearing a result's clothes.**
+
+A terminal rewriting output with carriage returns is SUPPRESSING content,
+not returning empty: force a raw capture to file (pipe through `cat -v`,
+or use the tool's raw-output flag) and read the file before concluding
+anything about the response. CR-overwritten lines hide exactly the output
+the probe was sent to collect.
 
 ## The opposite-payload pair
 

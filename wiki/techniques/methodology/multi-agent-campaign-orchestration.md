@@ -47,6 +47,11 @@ probe safe by construction see [[safe-probing-and-controls]]; for the per-target
    pressure unless something checks actual tool-call telemetry against it - and checking only at
    close-out is too late to fix a campaign already in progress. Check mid-campaign, while there is
    still time to act.
+4. **Sealed gates short-circuit.** A verifier that finds the gate already
+   sealed (a prior verdict recorded) must STILL re-verify from scratch;
+   echoing the recorded verdict is forbidden. The seal proves a past check
+   ran, not that it was correct, so a corrupted or fabricated seal launders
+   every candidate behind it.
 
 ## Pass-allocated bandwidth ledger
 
@@ -77,6 +82,11 @@ Disagreement between them is expected, not a bug: a claim can be technically tru
 reportable (test-only surface, already covered elsewhere, no realistic exploitation path). Promote
 to a finding only when BOTH clear it; either kill routes it to the dead-end log with the killing
 verifier's reasoning attached, never re-run.
+
+Dispatch the refuter and the grader in PARALLEL, not serially. They answer
+independent questions on independent axes; serializing doubles latency for
+zero information gain, and in practice the second dispatch gets skipped
+once the first comes back clean.
 
 A missing verdict (a verifier that errors or never runs) must count as REFUSED, not an implicit
 pass - otherwise a crashed verifier silently promotes a false positive.
@@ -175,6 +185,11 @@ time it fires.
   compaction replay must not double-write), an ASCII guard, and a read-back that fails when the
   last line is not the block's last line. Deterministic post-write verification replaces the
   per-write ritual of hand-run tick counts and byte dumps.
+- **Bank unique line-tail Edit anchors.** When the merge script cannot be
+  used, anchor the edit on a unique tail of an existing line and re-include
+  that line verbatim in the replacement; prefix-anchored inserts mangle
+  state files and have deleted a line in the field. Keep a short registry
+  of known-good anchors for the state files this engagement edits most.
 - **A checklist that verifies nothing must not read as a pass.** A completion ledger whose boxes
   declare no artifacts can print COMPLETE with zero steps verified, and in the field that verdict
   was accepted as success. Gate rule: ticks with no verifiable artifact yield NEEDS-REVIEW (a
