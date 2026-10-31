@@ -1005,8 +1005,16 @@ def _find_row_any(eng, rid):
 
 
 def _append_line(path, line):
-    with open(path, "a", encoding="utf-8") as fh:
-        fh.write(line.rstrip() + "\n")
+    """Every EOF append the driver makes to a .md state file goes through
+    merge_append.py (R10): glue, duplicate, ASCII and read-back guards make a
+    corrupting write a refused exit-1 instead of a repair. A refused merge is
+    loud (MERGE_REFUSED) and never falls back to a direct write."""
+    ma = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "merge_append.py")
+    r = subprocess.run([sys.executable, ma, path, "-"],
+                       input=line, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("MERGE_REFUSED %s: %s" % (path, (r.stderr or r.stdout).strip()))
 
 
 def _append_table_row(path, line):
