@@ -6,7 +6,7 @@ trigger / tell row forever - next_move.py, hunt-trigger.py, tells.py all `contin
 on re.error). This check makes that drift loud at edit time instead.
 
 Validated:
-  playbook.json    regexes, skills, refs, prio/approach/tools enums
+  playbook.json    regexes, skills, refs, prio/approach/tools enums, classes rows
   chains.json      edge keys + to_class in the class vocab, scalar-or-null skill,
                    cost/gate enums, gain/likelihood/to_phase types
   tells.json       re-or-fname present + compiles, scalar + resolving skill
@@ -78,6 +78,27 @@ def _didyoumean(name, names):
     return "; did you mean '%s'?" % m[0] if m else ""
 
 
+def check_classes(pb, repo=VAULT):
+    """playbook.json `classes` rows. Returns (bad, unmapped): a dangling skill
+    pointer (classes.<cls> -> missing skill) routes nothing, so it is a HARD
+    violation; hunt dirs with no row (sub-variants, shared-core skills) are
+    intentionally unmapped and only ever printed, never exit-code hits."""
+    hunt_dir = os.path.join(repo, "skills", "exploit", "hunt")
+    rows = pb.get("classes", {}) if isinstance(pb, dict) else {}
+    bad = []
+    for cls, row in rows.items():
+        sk = row.get("skill") if isinstance(row, dict) else None
+        if not isinstance(sk, str) or not os.path.isdir(os.path.join(hunt_dir, sk)):
+            bad.append(("classes.%s" % cls, "missing skill %s" % (sk,)))
+    covered = {r.get("skill") for r in rows.values() if isinstance(r, dict)}
+    try:
+        unmapped = [d for d in sorted(os.listdir(hunt_dir))
+                    if d.startswith("hunt-") and d not in covered]
+    except OSError:
+        unmapped = []
+    return bad, unmapped
+
+
 def violations(repo=VAULT):
     bad = []
     skills = _skill_names()
@@ -86,11 +107,12 @@ def violations(repo=VAULT):
     bad += lint.check_playbook(lint.existing_basenames(), repo)
     bad += lint.check_triggers(repo)
     try:
-        fps = json.load(open(os.path.join(repo, "scripts", "playbook.json"),
-                             encoding="utf-8"))["fingerprints"]
+        pb = json.load(open(os.path.join(repo, "scripts", "playbook.json"),
+                            encoding="utf-8"))
+        fps = pb["fingerprints"]
     except Exception as e:
         bad.append(("scripts/playbook.json", "unreadable: %s" % e))
-        fps = {}
+        pb, fps = {}, {}
     for key, fp in fps.items():
         if not isinstance(fp, dict):
             bad.append(("playbook [%s]" % key, "value is not an object"))
@@ -109,6 +131,14 @@ def violations(repo=VAULT):
                 bad.append(("playbook [%s]" % key,
                             "tool slug %r has no wiki/tools/ page (G8 serves a "
                             "generic '%s <target>' line and nothing catches it)" % (t, t)))
+
+    # -- classes map: dangling skill pointer fails; unmapped hunt dirs print
+    #    as an advisory (intentional, never an exit-code hit)
+    hard, unmapped = check_classes(pb, repo)
+    bad += hard
+    print("hunt skills without a classes row (intentionally unmapped):")
+    for d in unmapped:
+        print("  - %s" % d)
 
     # reverse direction (pass 13): CLASS_TOOL values must also resolve. A dangle
     # here is silent at runtime (the fallback invocation prints, no warning) and

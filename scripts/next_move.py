@@ -172,6 +172,19 @@ def in_scope_assets(state, etype, sc):
     return out
 
 
+def _class_tools(cls):
+    """`  tools: ...` suffix for a move line naming a vuln class: the class row's
+    primary tools from playbook.json `classes`. Loads the playbook per call -
+    the module-level PLAYBOOK holds only `fingerprints` - and this fires at
+    most once per printed move line (small file, cheap). Empty on any miss."""
+    try:
+        row = (json.load(open(_PB_PATH, encoding="utf-8")).get("classes")
+               or {}).get(cls)
+    except Exception:
+        row = None
+    return ("  tools: " + ", ".join(row["tools"])) if row and row.get("tools") else ""
+
+
 def format_chain_move(asset, cls, to_cls, cand, gate, sk):
     """One chain-edge move line; renders the optional verb tag when the edge
     carries one (cyberstrikeai L3). Absent verb renders exactly as before."""
@@ -314,7 +327,8 @@ def _ranked(limit=5):
                 gate = " (OOB-gate: confirm callback first)" if cand.get("gate") == "oob" else ""
                 sk = " [" + cand["skill"] + "]" if cand.get("skill") else ""
                 sugg.append((score, "chain",
-                             format_chain_move(asset, cls, to_cls, cand, gate, sk)))
+                             format_chain_move(asset, cls, to_cls, cand, gate, sk)
+                             + _class_tools(to_cls)))
 
     # 2+3. pentest-only: cred reuse spray + relay posture (AD-specific)
     if etype == "pentest" and not passive:
@@ -369,7 +383,8 @@ def _ranked(limit=5):
             untested = [c for c in base_classes if c.lower() not in tested]
             for i, cls in enumerate(untested[:5]):    # per-asset shortlist cap; matrix is uncapped
                 sugg.append((28 - i, "gap",
-                             f"{ent}: {cls} untested (offensive.py coverage for per-asset gaps)"))
+                             f"{ent}: {cls} untested (offensive.py coverage for per-asset gaps)"
+                             + _class_tools(cls)))
 
     # 5. blocked paths - surface unblock hint
     for r in paths:
