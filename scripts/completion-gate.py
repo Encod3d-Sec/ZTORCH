@@ -278,6 +278,7 @@ def cmd_check(args):
         print(NUDGE)
         return True
     unchecked, missing, empty, stale, rule_failed, na_failed, ok = [], [], [], [], [], [], 0
+    ticked = 0
     baseline_ledger = os.path.join(os.path.dirname(os.path.abspath(target)), "run-ledger.md")
     baseline = (os.path.getmtime(baseline_ledger)
                 if os.path.isfile(baseline_ledger) else os.path.getmtime(target))
@@ -325,6 +326,7 @@ def cmd_check(args):
         if not done:
             unchecked.append(text)
             continue
+        ticked += 1
         art_path = None
         if art:
             art_path = _resolve(art, os.path.dirname(os.path.abspath(target)))
@@ -370,6 +372,13 @@ def cmd_check(args):
     if (not unchecked and not missing and not empty and not stale
             and not rule_failed and not na_failed and not placeholders
             and not capture_note.startswith("CAPTURE")):
+        if ok == 0:
+            # a checklist whose boxes declare no artifacts verifies nothing;
+            # COMPLETE with "0 steps verified" was read as a pass in the field
+            print("VERDICT: NEEDS-REVIEW (%d boxes ticked, 0 steps verified - "
+                  "no box declares a verifiable artifact; spot-read the "
+                  "deliverables on disk before merging)" % ticked)
+            return True
         print("VERDICT: COMPLETE (%d steps verified%s)" % (ok, ", " + capture_note if capture_note else ""))
         return False
     print("VERDICT: INCOMPLETE run-ledger=%s" % os.path.abspath(target))

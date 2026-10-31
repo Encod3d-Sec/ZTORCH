@@ -89,34 +89,47 @@ def find_files(d):
     return sorted(out)
 
 
-def section_nonempty(text, header_re):
-    """True if a heading matching header_re exists with non-placeholder body."""
+def _after_heading(text, header_re):
+    """Raw lines after the first heading matching header_re, up to the next
+    REAL heading. Fenced blocks are opaque: a '#' bash comment inside a fence
+    is not a markdown heading (false section breaks cost edit-lint cycles)."""
     lines = text.splitlines()
+    fence_re = re.compile(r"^\s*(`{3,}|~{3,})")
     for i, ln in enumerate(lines):
         if re.match(header_re, ln.strip(), re.I):
-            body = []
+            body, in_fence, mark = [], False, ""
             for nxt in lines[i + 1:]:
-                if re.match(r"^#+\s", nxt):
+                m = fence_re.match(nxt)
+                if m:
+                    if not in_fence:
+                        in_fence, mark = True, m.group(1)[0] * 3
+                    elif nxt.lstrip().startswith(mark):
+                        in_fence = False
+                    body.append(nxt)
+                    continue
+                if not in_fence and re.match(r"^#+\s", nxt):
                     break
                 body.append(nxt)
-            txt = "\n".join(body).strip()
-            txt = re.sub(r"<[^>]+>", "", txt)  # drop <placeholder> angle tags
-            return len(txt) >= 15
-    return False
+            return body
+    return None
+
+
+def section_nonempty(text, header_re):
+    """True if a heading matching header_re exists with non-placeholder body."""
+    body = _after_heading(text, header_re)
+    if body is None:
+        return False
+    txt = "\n".join(body).strip()
+    txt = re.sub(r"<[^>]+>", "", txt)  # drop <placeholder> angle tags
+    return len(txt) >= 15
 
 
 def _section_body(text, header_re):
     """Body lines of the first heading matching header_re, or ''."""
-    lines = text.splitlines()
-    for i, ln in enumerate(lines):
-        if re.match(header_re, ln.strip(), re.I):
-            body = []
-            for nxt in lines[i + 1:]:
-                if re.match(r"^#+\s", nxt):
-                    break
-                body.append(nxt)
-            return "\n".join(body)
-    return ""
+    body = _after_heading(text, header_re)
+    if not body:
+        return ""
+    return "\n".join(body)
 
 
 _POC_RE = REQUIRED["Proof of Concept"]
@@ -132,9 +145,13 @@ def _evidence_issues(body, base_dir):
     the placeholder rule carries the 'not prose' half."""
     missing = []
     refs = sorted(set(re.findall(r"poc/[^\s\)\]\|]+", body)))
-    gone = [r.rstrip(".,") for r in refs
-            if not os.path.isfile(os.path.join(base_dir, r.rstrip(".,")
-                                               .split("#")[0].strip()))]
+    gone = []
+    for r in refs:
+        # bare-path contract; tolerate prose drift on the captured token
+        # (trailing backtick/slash/period) and accept dir refs, not just files
+        p = r.rstrip(".,`").split("#")[0].strip().rstrip("/")
+        if p and not os.path.exists(os.path.join(base_dir, p)):
+            gone.append(r)
     if gone:
         missing.append("capture files absent (%s)" % ", ".join(gone))
     poc = _section_body(body, _POC_RE)
