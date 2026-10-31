@@ -2265,6 +2265,12 @@ Checklist: {lane_dir}/checklist.md
   SEALED in your envelope and STOP at 3 probes.
 - Terminal hosts: any host this brief lists as EXCLUDE (no-upstream /
   unresolvable / SEALED) is not probed at all.
+- R2: report to disk - write the full completion report to {lane_dir}/envelope.md
+  BEFORE returning; the return message is color, the file is the record.
+- R6: verify premises - the route exists in a capture, auth shape is stated per
+  step, every banked artifact the brief cites is on disk; ask, never guess.
+- R8: idle means dispatch - an empty running set or a failed dependency queues
+  the bypass lane immediately; never park the queue behind one flap.
 """
 
 
