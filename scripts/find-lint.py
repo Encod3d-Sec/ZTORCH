@@ -73,6 +73,9 @@ REQUIRED = {
     "Remediation": r"^#+\s*(remediation|fix|mitigation)",
 }
 FNAME_RE = re.compile(r"FIND-\d+-([A-Z]+)-", re.I)
+# draft workspace files (WS5.4): a disclosure draft is edited before its
+# severity label settles, so the filename severity contract does not apply
+DRAFT_RE = re.compile(r"-disclosure-draft\.md$", re.I)
 
 
 def find_files(d):
@@ -219,9 +222,10 @@ def lint_file(path, base_dir=None):
         base_dir = os.path.dirname(path)
     text = open(path, encoding="utf-8", errors="ignore").read()
     issues = []
-    m = FNAME_RE.search(os.path.basename(path))
+    draft = DRAFT_RE.search(os.path.basename(path))
+    m = None if draft else FNAME_RE.search(os.path.basename(path))
     sev = m.group(1).upper() if m else None
-    if sev not in SEVERITIES:
+    if sev not in SEVERITIES and not draft:
         issues.append(f"bad/missing severity in filename ({sev})")
     for label, rx in REQUIRED.items():
         if not section_nonempty(text, rx):

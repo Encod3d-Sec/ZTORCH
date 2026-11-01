@@ -1015,6 +1015,29 @@ def unmarked_close_gap(d):
 _WALKTHROUGH_STUB_MARKERS = ("<entrypoint>", "<foothold")
 _WALKTHROUGH_STUB_LINES = ("- target:", "- reach:")
 
+# capture-card filename shapes (WS5.5), same families build-walkthrough's
+# _caption_from_filename recognizes: tmux-... and NNNN-{page,source,lead}-...
+_CAPTURE_CARD_RE = re.compile(r"^(?:tmux-|\d{1,5}-(?:page|source|lead)-)\S+")
+
+
+def _has_capture_card_fence(text):
+    """True when a fenced block cites a capture card: the fence's first line
+    matches the capture-card name pattern. Evidence pages that reference the
+    rendered cards by name (no ![](... embed) are still assembled evidence."""
+    in_fence = False
+    first = ""
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("```"):
+            in_fence = not in_fence
+            first = ""
+            continue
+        if in_fence and not first:
+            first = s
+            if _CAPTURE_CARD_RE.match(first):
+                return True
+    return False
+
 
 def walkthrough_stale(d):
     """True (needs assembling) iff <d>/walkthrough.md is absent/empty/whitespace, OR
@@ -1038,6 +1061,10 @@ def walkthrough_stale(d):
         m = re.search(r"^##\s+Evidence\s*$(.*?)(?=^##\s|\Z)", text, re.MULTILINE | re.DOTALL)
         section = m.group(1) if m else ""
         if not re.search(r"!\[[^\]]*\]\([^)]+\)", section):
+            # WS5.5: zero image embeds is still assembled evidence when the
+            # section cites its capture cards in a fenced block
+            if _has_capture_card_fence(section):
+                return False
             return True  # no markdown image row at all (any alt text counts; a bare '![](' check missed real galleries like '![auto laneFF](x.png)')
         # repro-command floor (pass 13): stubs cleared + one image can still be an
         # images-only gallery that cannot reproduce the box. Reuse build-walkthrough's

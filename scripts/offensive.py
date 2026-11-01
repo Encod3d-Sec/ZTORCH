@@ -2444,7 +2444,9 @@ def _gate_lanes_strict(eng, host):
                 fails.append("%s/%s: %s" % (host, name, d))
         else:
             # Envelope hardening: envelope.md must reference its own lane id,
-            # stay ASCII, and keep its tail stable (R10 checks).
+            # stay ASCII, and keep its tail stable (R10 checks). An ABSENT
+            # envelope on a fully-ticked checklist is a defect (WS5.3), not a
+            # skip: the lane never wrote its completion report.
             lane_failed = False
             if os.path.isfile(env_path):
                 rc, out = _disk_verify(env_path, [name])
@@ -2452,6 +2454,9 @@ def _gate_lanes_strict(eng, host):
                     print("DISK_VERIFY FAIL %s\n%s" % (env_path, out))
                     fails.append("%s/%s: disk_verify failed" % (host, name))
                     lane_failed = True
+            else:
+                fails.append("%s/%s: MISSING: envelope.md" % (host, name))
+                lane_failed = True
             # WS5.6: a sub-120s clean return is the shallow-work smell. Duration
             # is advisory; the walked-rows artifact stays the gate.
             started = os.path.join(vroot, name, ".started")
