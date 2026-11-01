@@ -1520,6 +1520,24 @@ def _next_json_payload(eng, state, vault):
     return out
 
 
+def _open_proof_gaps(eng):
+    """Finding cards carrying the closure status `open_proof_gap` (WS7.1): a
+    claim nobody has proven or ruled out. Same scan posture as the surface
+    backlog and _confirmed_findings: the cards are the store, nothing new."""
+    import glob as _g
+    out = []
+    for pat in ("_find*.md", "FIND-*.md"):
+        for c in _g.glob(os.path.join(str(eng), "**", pat), recursive=True):
+            try:
+                head = "".join(open(c, encoding="utf-8",
+                                    errors="replace").readlines()[:25])
+            except OSError:
+                continue
+            if re.search(r"(?im)^status:\s*open_proof_gap\b", head):
+                out.append(c)
+    return sorted(set(out))
+
+
 def cmd_next(args):
     vault = Path(args.vault) if args.vault else DEFAULT_VAULT
     eng = _resolve_eng(args.eng)
@@ -1707,6 +1725,15 @@ def cmd_next(args):
     # a discovered surface nobody has hunted yet (claimed via lane-init --skill).
     for row in _backlog_open(eng):
         print("BACKLOG candidate: %s" % json.dumps(row))
+
+    # WS7.1: open_proof_gap finding cards rank as follow-up moves - a claim on
+    # the board nobody has proven or ruled out.
+    gaps = _open_proof_gaps(eng)
+    if gaps:
+        print("OPEN PROOF GAPS: %d finding card(s) carry an unproven claim - "
+              "prove it or set `status: confirmed | ruled_out`:" % len(gaps))
+        for g in gaps:
+            print("  %s" % g)
 
     # WS10 chaining pass: confirmed findings exist -> chaining stays on the
     # agenda every serve (it is the close-out gate's precondition, chaining_ok).

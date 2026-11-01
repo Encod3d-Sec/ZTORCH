@@ -77,6 +77,14 @@ FNAME_RE = re.compile(r"FIND-\d+-([A-Z]+)-", re.I)
 # severity label settles, so the filename severity contract does not apply
 DRAFT_RE = re.compile(r"-disclosure-draft\.md$", re.I)
 
+# Closure contract (WS7.1): cards scaffolded from the current _find.md carry the
+# canonical-vocab marker line below; on those, counterevidence + a closure status
+# are REQUIRED. Legacy cards (no marker) keep the old contract; --strict-contract
+# opts them in. The marker text is the single source of truth in
+# setup/templates/_find.md's canonical-vocab comment block.
+CLOSURE_MARKER = "closure_status_enum: confirmed | ruled_out | open_proof_gap"
+CLOSURE_STATUSES = ("confirmed", "ruled_out", "open_proof_gap")
+
 
 def find_files(d):
     """Report-bound findings only: skip Skipped*/False* dirs (not deliverables)."""
@@ -215,7 +223,24 @@ def _claim_issues(body, dirname):
     return issues
 
 
-def lint_file(path, base_dir=None):
+def _closure_issues(fmt):
+    """Closure contract (WS7.1): non-empty counterevidence (what would make the
+    finding false and why that does not apply) + a closure status."""
+    issues = []
+    mv = re.search(r"^counterevidence:\s*(.+)$", fmt, re.M | re.I)
+    val = mv.group(1).strip().strip('"').strip("'") if mv else ""
+    if not val or _PLACEHOLDER_RE.search(val) or val.lower() in ("todo", "tbd", "n/a"):
+        issues.append("closure contract: counterevidence must state what would make "
+                      "this finding false and why that does not apply")
+    sv = re.search(r"^status:\s*(\S+)", fmt, re.M | re.I)
+    sval = sv.group(1).strip().lower() if sv else ""
+    if sval not in CLOSURE_STATUSES:
+        issues.append("closure contract: status must be one of %s (got '%s')"
+                      % (" | ".join(CLOSURE_STATUSES), sval or "(empty)"))
+    return issues
+
+
+def lint_file(path, base_dir=None, strict_contract=False):
     # base_dir defaults to the card's dir (tests co-locate cards+captures); the
     # main loop passes the engagement root so `poc/...` refs in Vulns/ resolve.
     if base_dir is None:
@@ -251,6 +276,10 @@ def lint_file(path, base_dir=None):
     m = re.search(r"^status:\s*(\w+)", fmt, re.M)
     status = (m.group(1).upper() if m else "")
     body = text[fm.end():] if fm else text   # same frontmatter boundary as the fm match above
+    # closure contract (WS7.1): marker cards, or legacy cards under
+    # --strict-contract, must carry counterevidence + a closure status
+    if strict_contract or CLOSURE_MARKER in text:
+        issues.extend(_closure_issues(fmt))
     if status in ("FALSE_POSITIVE", "IGNORED"):
         prefix = "FP:" if status == "FALSE_POSITIVE" else "IGNORED:"
         desc = re.sub(r"\s+", " ", _section_body(body, REQUIRED["Description"]).strip())
@@ -280,6 +309,7 @@ def lint_file(path, base_dir=None):
 
 def main():
     verbose = "-v" in sys.argv
+    strict = "--strict-contract" in sys.argv
     d = _engagement.active_dir()
     if not d:
         print("No active engagement.")
@@ -291,7 +321,7 @@ def main():
         return 0
     bad = 0
     for f in files:
-        issues, warnings = lint_file(f, d)
+        issues, warnings = lint_file(f, d, strict_contract=strict)
         rel = os.path.relpath(f, d)
         if issues:
             bad += 1
