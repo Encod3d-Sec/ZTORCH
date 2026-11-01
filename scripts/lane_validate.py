@@ -16,6 +16,7 @@ a false NOT VERIFIED trains the agent to ignore the validator). `in flight` line
 skipped (status, not guess). Exit 0 always - it prints verdicts, it does not gate; writing
 the verdict line into the log stays the main agent's job.
 """
+import json
 import os
 import re
 import sys
@@ -299,6 +300,91 @@ def main(argv=None):
     if n_ok == n_fail == 0:
         print("lane_validate: no returned lane lines with a SUCCESS criterion in %s" % log)
     return 0
+
+
+# --------------------------------------------------------------------------- reconciliation (WS2.3b-2.5)
+
+_LANE_DIR = re.compile(r"^lane-\d+$")
+
+
+def _lane_names_from_log(eng):
+    """Every lane name appearing in a log.md lane line (open OR closed - both
+    are claims the log makes). Fail-open: unreadable log -> []."""
+    try:
+        with open(os.path.join(eng, "log.md"), encoding="utf-8",
+                  errors="ignore") as fh:
+            text = fh.read()
+    except OSError:
+        return []
+    return sorted({n for n, _t in open_lanes_from_text(text)} |
+                  {n for n, _o, _c in lanes_from_text(text)})
+
+
+def _lane_dirs_of(eng):
+    """Sorted lane dirs (full paths + names) under <eng>/poc/<vhost>/lane-*/."""
+    poc = os.path.join(eng, "poc")
+    out = []
+    if not os.path.isdir(poc):
+        return out
+    for vh in sorted(os.listdir(poc)):
+        vroot = os.path.join(poc, vh)
+        if not os.path.isdir(vroot):
+            continue
+        for d in sorted(os.listdir(vroot)):
+            ld = os.path.join(vroot, d)
+            if _LANE_DIR.match(d) and os.path.isdir(ld):
+                out.append((d, ld))
+    return out
+
+
+def reconcile(vault, eng):
+    """(WS2.4) Lane-dir vs log.md reconciliation, mechanical: which lane dirs
+    have no lane line (dispatch line lost - the lane's work is invisible) and
+    which lane lines name a dir that was never created (ghost claim).
+    Returns {"dir_without_line": [names], "line_without_dir": [names]}."""
+    dirs = {d for d, _p in _lane_dirs_of(eng)}
+    lines = set(_lane_names_from_log(eng))
+    return {
+        "dir_without_line": sorted(dirs - lines),
+        "line_without_dir": sorted(lines - dirs),
+    }
+
+
+def unfolded_rows(vault, eng):
+    """(WS2.5) Fold-completeness JOIN: board row ids claimed by a lane whose
+    envelope says VERDICT: COMPLETE while the row is still open [ ] - the lane
+    folded without updating its board row. Trailing-int match, same key the
+    sidecars carry. Fail-open: unreadable boards parse as empty."""
+    complete = set()
+    for _d, ld in _lane_dirs_of(eng):
+        try:
+            env = open(os.path.join(ld, "envelope.md"), encoding="utf-8",
+                       errors="ignore").read()
+        except OSError:
+            continue
+        if "VERDICT: COMPLETE" not in env:
+            continue
+        try:
+            data = json.loads(open(os.path.join(ld, ".rows.json"),
+                                   encoding="utf-8", errors="ignore").read())
+        except (OSError, ValueError):
+            continue
+        for r in (data or {}).get("rows") or []:
+            try:
+                complete.add(int(r))
+            except (TypeError, ValueError):
+                continue
+    if not complete:
+        return []
+    import offensive    # lazy: keeps lane_validate importable standalone
+    out = []
+    for r in offensive.read_board(eng) + offensive.read_board_4b(eng):
+        rid = (r.get("id") or "").strip()
+        m = re.search(r"(\d+)\s*$", rid)
+        if (r.get("status") or "").strip() == "[ ]" and m \
+                and int(m.group(1)) in complete:
+            out.append(rid)
+    return out
 
 
 if __name__ == "__main__":

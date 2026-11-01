@@ -362,7 +362,8 @@ def render_attention(rows, d):
 
 
 def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_text, lanes=(),
-           died=0, spend=None, facts=None, risk=None, kpi=None):
+           died=0, spend=None, facts=None, risk=None, kpi=None,
+           lane_recon=None, unfolded=None):
     """Pure formatter -> the dashboard string. All inputs are precomputed (testable)."""
     head = "=== %s (%s)%s ===" % (name, etype, "  STATUS: SOLVED" if solved else "")
     lines = [head]
@@ -391,6 +392,17 @@ def render(name, etype, solved, summ, board, poc, cards, recon, deads, moves_tex
     if lanes:
         lines.append("open lanes:")
         lines += list(lanes)
+    # WS2.4/2.5: lane-dir vs log reconciliation + lane-done-vs-board fold check
+    # (advisory lines only - they name the drift, they never gate).
+    if lane_recon:
+        dwl = lane_recon.get("dir_without_line") or []
+        lwd = lane_recon.get("line_without_dir") or []
+        if dwl:
+            lines.append("DIR WITHOUT LINE: " + ", ".join(dwl))
+        if lwd:
+            lines.append("LINE WITHOUT DIR: " + ", ".join(lwd))
+    if unfolded:
+        lines.append("ROW UNFOLDED (lane done, row open): " + ", ".join(unfolded))
     if deads:
         lines.append("recent deadends:")
         lines += ["  - " + x for x in deads]
@@ -454,6 +466,13 @@ def main():
     except Exception:
         pass
     lanes = lane_lines(d)
+    lane_recon, unfolded = None, None
+    try:
+        import lane_validate
+        lane_recon = lane_validate.reconcile(HERE, d)
+        unfolded = lane_validate.unfolded_rows(HERE, d)
+    except Exception as e:
+        print("lane recon failed: %s" % str(e)[:80], file=sys.stderr)
     spend = spend_line(d)
     facts = facts_line(d)
     risk = risk_line(d)
@@ -475,7 +494,9 @@ def main():
     print((att + "\n" if att else "") + render(name, etype, solved, summ, board,
                                                poc, cards, recon, deads, moves_text,
                                                lanes, died=died, spend=spend,
-                                               facts=facts, risk=risk, kpi=kpi))
+                                               facts=facts, risk=risk, kpi=kpi,
+                                               lane_recon=lane_recon,
+                                               unfolded=unfolded))
     return 0
 
 
