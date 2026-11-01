@@ -5,8 +5,11 @@ targets/<eng>/.surface-backlog.json. Idempotent import dedupes on
 import argparse, datetime, json, os, sys
 
 
+VAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def _path(eng):
-    return os.path.join("targets", eng, ".surface-backlog.json")
+    return os.path.join(VAULT, "targets", eng, ".surface-backlog.json")
 
 
 def _load(p):
@@ -79,15 +82,15 @@ def cmd_claim(eng, rid, lane):
     return 0
 
 
-def cmd_clear(eng, rid):
+def cmd_clear(eng, rids):
     p = _path(eng)
     rows = _load(p)
     for r in rows:
-        if r["id"] == rid:
+        if r["id"] in rids:
             r["status"] = "cleared"
             r["cleared_at"] = _now()
     _save(p, rows)
-    print("cleared %d" % rid)
+    print("cleared %s" % ",".join(str(i) for i in sorted(rids)))
     return 0
 
 
@@ -104,7 +107,7 @@ def main():
     c.add_argument("--id", type=int, required=True)
     c.add_argument("--lane", required=True)
     d = sub.add_parser("clear")
-    d.add_argument("--id", type=int, required=True)
+    d.add_argument("--id", type=int, required=True, nargs="+")
     a = ap.parse_args()
     if a.cmd == "import-jsonl":
         return cmd_import(a.eng, a.source, a.file)
@@ -113,7 +116,6 @@ def main():
     if a.cmd == "claim":
         return cmd_claim(a.eng, a.id, a.lane)
     return cmd_clear(a.eng, a.id)
-
 
 if __name__ == "__main__":
     sys.exit(main())

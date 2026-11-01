@@ -27,6 +27,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VAULT = os.path.dirname(HERE)
@@ -336,6 +337,54 @@ def _caido():
           (out.splitlines() or ["no output"])[0][:80], warn=True)
 
 
+def _shim_sync():
+    # Advisory only: the VM scope-shim reads its own synced copy of
+    # targets/active.md, refreshed only by scripts/scope-sync.sh; a stale
+    # copy has made it resolve the WRONG engagement for days. This check
+    # warns; scope-sync.sh is the cure.
+    try:
+        eng = ""
+        with open(os.path.join(VAULT, "targets", "active.md")) as f:
+            eng = f.readline().strip()
+    except OSError:
+        return  # no engagement pointer on this seat; the shim check is moot
+    if not eng:
+        return
+    bridge = next((b for b in ("/root/vm.sh", os.path.join(VAULT, "scripts", "win-vm.sh"))
+                   if os.path.isfile(b)), None)
+    if bridge is None:
+        check("shim-sync: VM bridge present (advisory)", False,
+              "no /root/vm.sh or scripts/win-vm.sh on this seat", warn=True)
+        return
+    try:
+        r = subprocess.run(
+            ["bash", bridge,
+             'cat /opt/scope-shim/vault/targets/active.md 2>/dev/null; '
+             'cat /opt/scope-shim/vault/.sync-stamp 2>/dev/null'],
+            capture_output=True, text=True, timeout=40)
+    except Exception as e:
+        check("shim-sync: VM reachable (advisory)", False, str(e)[:80], warn=True)
+        return
+    lines = (r.stdout or "").split()
+    shim_eng = lines[0] if lines else ""
+    stamp = lines[1] if len(lines) > 1 else ""
+    if not shim_eng and not stamp:
+        check("shim-sync: shim installed (advisory)", True, "shim dir absent on VM; nothing to sync")
+        return
+    if shim_eng != eng:
+        check("shim-sync: shim engagement matches active.md (advisory)", False,
+              "shim=%s seat=%s; run: bash scripts/scope-sync.sh" % (shim_eng, eng), warn=True)
+        return
+    try:
+        age_days = (time.time() - float(stamp)) / 86400.0
+    except ValueError:
+        check("shim-sync: sync stamp readable (advisory)", False,
+              "missing/unreadable .sync-stamp; run: bash scripts/scope-sync.sh", warn=True)
+        return
+    check("shim-sync: scope-sync.sh fresh (advisory)", age_days <= 1.0,
+          "%.1f days stale; run: bash scripts/scope-sync.sh" % age_days, warn=True)
+
+
 def _skill_scan():
     # Advisory only: skillspector sweep vs baseline; new findings are a triage prompt,
     # not a broken driver. Incremental, so cheap after the first full run.
@@ -369,6 +418,7 @@ def main(argv):
     _bench()
     _zg()
     _caido()
+    _shim_sync()
     _skill_scan()
     _smoke(off)
 
