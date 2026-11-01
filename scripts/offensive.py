@@ -1169,6 +1169,12 @@ def _append_table_row(path, line):
 # --------------------------------------------------------------------------- vhost lock model
 
 INSCOPE = "lists/inscope-hosts.md"
+
+# WS3.5: `done --dead` reasons in this vocabulary are administrative closes
+# (irrelevant surface, class-sweep bookkeeping, placeholder rows), not no-find
+# signals - they are exempt from the dry_streak wall-break feed.
+_IRRELEVANT_CLOSE_RE = re.compile(r"^n/a|class-sweep|fingerprintless|placeholder",
+                                  re.IGNORECASE)
 VHOST_STATUSES = ("QUEUED", "ACTIVE", "COMPLETE")
 
 
@@ -1220,19 +1226,26 @@ def _rtl_review_present(eng, host):
         return any("RTL" in line and h in line.lower() for line in fh)
 
 
-def _next_queued(eng):
-    """First row still QUEUED in lists/inscope-hosts.md (board order), else None."""
+def _queued_vhosts(eng):
+    """Every vhost still QUEUED in lists/inscope-hosts.md (board order)."""
     path = _inscope_path(eng)
     if not os.path.isfile(path):
-        return None
+        return []
+    out = []
     with open(path, encoding="utf-8", errors="replace") as fh:
         for raw in fh:
             s = raw.strip()
             if s.startswith("|") and "QUEUED" in s:
                 cells = [c.strip() for c in s.strip("|").split("|")]
                 if cells:
-                    return cells[0]
-    return None
+                    out.append(cells[0])
+    return out
+
+
+def _next_queued(eng):
+    """First row still QUEUED in lists/inscope-hosts.md (board order), else None."""
+    q = _queued_vhosts(eng)
+    return q[0] if q else None
 
 
 def _open_assets(rows):
@@ -1508,14 +1521,11 @@ def cmd_next(args):
     for w in _drain_board_warnings():
         print("BOARD (parsed best-effort): %s" % w)
     parked = [r for r in rows if _status_of(r) == "[?]"]
-    for r in parked[:8]:
-        print("DEPENDENCY: %s %s parked on operator input (decisions.md); "
-              "not ranked [D28]"
-              % ((r.get("asset") or "?").strip(),
-                 (r.get("vuln class") or "?").strip()))
-    if len(parked) > 8:
-        print("DEPENDENCY: ... and %d more parked rows (see `board`) [D28]"
-              % (len(parked) - 8))
+    if parked:
+        # WS3.3: one count line, not a per-row dump (the full list stays on
+        # `board`); the subjects only starved the serve banner.
+        print("DEPENDENCY: %d rows parked, see board (decisions.md) [D28]"
+              % len(parked))
     asset = _cursor_asset(rows, state)
     row = _active_row(rows, asset) if asset else None
     if not asset or not row:
@@ -2012,8 +2022,11 @@ def cmd_done(args):
                              args.fail_class or ""))
         # WALL-BREAK feed: a no-find outcome bumps the dry streak (next fires
         # Skill(redteamlead) once it hits the type threshold). An administrative
-        # close (reason N/A) is not a no-find signal - skip it (B4).
-        if not (isinstance(args.dead, str) and args.dead.strip().upper().startswith("N/A")):
+        # close (irrelevant-close vocabulary) is not a no-find signal - skip it
+        # (B4, WS3.5: ^n/a / class-sweep / fingerprintless / placeholder,
+        # case-insensitive).
+        if not (isinstance(args.dead, str)
+                and _IRRELEVANT_CLOSE_RE.search(args.dead.strip())):
             state["dry_streak"] = state.get("dry_streak", 0) + 1
         _save_state(eng, state)
         print("done: %s dead [!] (dry_streak=%d) -> Deadends.md (loop advances)"
@@ -2405,7 +2418,11 @@ def cmd_vhost(args):
     elif cmd == "status":
         host = state.get("locked_vhost")
         if not host:
-            print("no locked vhost (global board behavior)")
+            # WS3.4: unlocked status still answers "what is the queue" - same
+            # source the AUTO-LOCK path reads (_next_queued/_queued_vhosts).
+            queued = _queued_vhosts(eng)
+            print("QUEUED: %s" % (", ".join(queued) if queued else "none"))
+            print("no locked vhost - lock one with `vhost lock <host>`")
             return
         print("locked: %s | pass %d | stage %s" % (
             host, state.get("vhost_passes", {}).get(host, 0),
