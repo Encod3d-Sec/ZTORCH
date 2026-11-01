@@ -2412,8 +2412,17 @@ def _skill_dir(name):
         subs = sorted(os.listdir(SKILLS_DIR))
     except OSError:
         subs = []
-    cands += [os.path.join(SKILLS_DIR, s, name) for s in subs
-              if os.path.isdir(os.path.join(SKILLS_DIR, s))]
+    for s in subs:
+        p = os.path.join(SKILLS_DIR, s)
+        if not os.path.isdir(p):
+            continue
+        cands.append(os.path.join(p, name))
+        try:
+            for t in sorted(os.listdir(p)):
+                if os.path.isdir(os.path.join(p, t)):
+                    cands.append(os.path.join(p, t, name))
+        except OSError:
+            pass
     for c in cands:
         if os.path.isfile(os.path.join(c, "checklist.md")):
             return c

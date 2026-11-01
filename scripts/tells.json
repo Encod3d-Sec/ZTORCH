@@ -562,6 +562,13 @@
       "skill": "hunt-smuggling",
       "note": "proxy/edge error page: infrastructure (not the app) parsed and rejected the request, so a SECOND parser sits on the path; note which component answered, then diff its parsing vs the backend (CL.TE / TE.CL, path normalization, header casing) -> Skill(hunt-smuggling); empty 200 through the same edge = keep both parsers in mind, not clean",
       "prio": 2
-    }
-  ]
+    },
+  {
+    "re": "AWSELBAuth|Location: [^\\s]*oauth2/authorize\\?",
+    "class": "auth-routing",
+    "skill": "hunt-auth",
+    "note": "AWS ALB OIDC gate is PATH-EXACT: a variant (case, trailing slash, encoding) of an authed path with a VALID session bounces to the IdP authorize redirect instead of the app - the variant missed the auth route table. Read next: path-variant/WCD probes on this host die at the gate (only byte-exact paths authenticate); a variant answering non-auth content (404/S3 shell) exposes the default-action fallthrough origin -> Skill(hunt-auth)",
+    "prio": 3
+  }
+ ]
 }
