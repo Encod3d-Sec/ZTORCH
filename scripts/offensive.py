@@ -921,12 +921,21 @@ def cmd_autonomy(args):
     return 0
 
 
+_events_cache = None   # ((path, mtime), parsed rows) - WS4.3 mtime-keyed parse
+
+
 def _events(eng):
     """Parsed .events.jsonl rows, or None if the telemetry file is absent (G2
-    then fails open - the skill is emitted)."""
+    then fails open - the skill is emitted). Parsed once per (path, mtime):
+    the file is append-only telemetry, so an unchanged mtime means unchanged
+    bytes; callers only read the rows, never mutate them."""
     p = Path(eng) / ".events.jsonl"
     if not p.is_file():
         return None
+    global _events_cache
+    key = (str(p), p.stat().st_mtime)
+    if _events_cache is not None and _events_cache[0] == key:
+        return _events_cache[1]
     out = []
     for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
         line = line.strip()
@@ -936,6 +945,7 @@ def _events(eng):
             out.append(json.loads(line))
         except ValueError:
             continue
+    _events_cache = (key, out)
     return out
 
 
@@ -2388,8 +2398,27 @@ def cmd_rebase(args):
 
 # --------------------------------------------------------------------------- vhost subcommands
 
+def _gated_ok(stamp, *refs):
+    """True when the stamp exists and is at/after every ref mtime (WS4.5): the
+    lane passed the strict sweep at/after its last content change, so a re-run
+    would re-verify the same bytes. A changed checklist/envelope invalidates."""
+    try:
+        sm = os.path.getmtime(stamp)
+    except OSError:
+        return False
+    for r in refs:
+        try:
+            if os.path.getmtime(r) > sm:
+                return False
+        except OSError:
+            pass
+    return True
+
+
 def _gate_lanes_strict(eng, host):
-    """G10: every poc/<host>/lane-*/checklist.md must pass completion-gate --strict."""
+    """G10: every poc/<host>/lane-*/checklist.md must pass completion-gate --strict.
+    A lane that passed at/after its last content change carries a .gated-ok
+    stamp (WS4.5) and is skipped until the checklist or envelope changes again."""
     fails = []
     vroot = os.path.join(eng, "poc", host)
     if not os.path.isdir(vroot):
@@ -2398,6 +2427,11 @@ def _gate_lanes_strict(eng, host):
     for name in sorted(os.listdir(vroot)):
         ckl = os.path.join(vroot, name, "checklist.md")
         if not (name.startswith("lane-") and os.path.isfile(ckl)):
+            continue
+        env_path = os.path.join(vroot, name, "envelope.md")
+        stamp = os.path.join(vroot, name, ".gated-ok")
+        refs = [ckl] + ([env_path] if os.path.isfile(env_path) else [])
+        if _gated_ok(stamp, *refs):
             continue
         r = subprocess.run([sys.executable, gate, "check", ckl, "--strict"],
                            capture_output=True, text=True)
@@ -2411,12 +2445,13 @@ def _gate_lanes_strict(eng, host):
         else:
             # Envelope hardening: envelope.md must reference its own lane id,
             # stay ASCII, and keep its tail stable (R10 checks).
-            env_path = os.path.join(vroot, name, "envelope.md")
+            lane_failed = False
             if os.path.isfile(env_path):
                 rc, out = _disk_verify(env_path, [name])
                 if rc != 0:
                     print("DISK_VERIFY FAIL %s\n%s" % (env_path, out))
                     fails.append("%s/%s: disk_verify failed" % (host, name))
+                    lane_failed = True
             # WS5.6: a sub-120s clean return is the shallow-work smell. Duration
             # is advisory; the walked-rows artifact stays the gate.
             started = os.path.join(vroot, name, ".started")
@@ -2426,6 +2461,11 @@ def _gate_lanes_strict(eng, host):
                     print("SHALLOW: %s returned clean in %ds "
                           "(duration is the smell; walked-rows artifact "
                           "is the gate)" % (name, int(age)))
+            if not lane_failed:
+                try:
+                    open(stamp, "w").close()
+                except OSError:
+                    pass
     return fails
 
 

@@ -18,6 +18,7 @@ per-asset "don't forget class X" nudge.
 CLI:  python3 scripts/next_move.py [-v]
 API:  next_move.suggest(limit=5) -> list[str]
 """
+import functools
 import json
 import os
 import re
@@ -172,16 +173,22 @@ def in_scope_assets(state, etype, sc):
     return out
 
 
+@functools.lru_cache(maxsize=1)
+def _classes_map():
+    """playbook.json `classes` map, loaded once per process (WS4.2): the
+    module-level PLAYBOOK holds only `fingerprints`, and _class_tools used to
+    re-read the file for every printed move line. Empty map on any read miss."""
+    try:
+        return json.load(open(_PB_PATH, encoding="utf-8")).get("classes") or {}
+    except Exception:
+        return {}
+
+
 def _class_tools(cls):
     """`  tools: ...` suffix for a move line naming a vuln class: the class row's
-    primary tools from playbook.json `classes`. Loads the playbook per call -
-    the module-level PLAYBOOK holds only `fingerprints` - and this fires at
-    most once per printed move line (small file, cheap). Empty on any miss."""
-    try:
-        row = (json.load(open(_PB_PATH, encoding="utf-8")).get("classes")
-               or {}).get(cls)
-    except Exception:
-        row = None
+    primary tools from playbook.json `classes` (cached, see _classes_map).
+    Empty on any miss."""
+    row = _classes_map().get(cls)
     return ("  tools: " + ", ".join(row["tools"])) if row and row.get("tools") else ""
 
 
@@ -424,18 +431,24 @@ def suggest_json(limit=5):
     return [{"score": s, "tag": t, "text": x} for s, t, x in (ranked or [])]
 
 
+def report(limit=5):
+    """The exact text main() prints, as one string (WS4.4: status.py imports
+    this module directly instead of running the CLI as a subprocess)."""
+    moves = suggest(limit=limit)
+    d = _engagement.active_dir()
+    name = os.path.basename(d) if d else "?"
+    lines = [f"Next moves ({name}): [advisory; the board is authoritative: "
+             f"`offensive.py next`]"]
+    for i, m in enumerate(moves, 1):
+        lines.append(f" {i}. {m}")
+    return "\n".join(lines)
+
+
 def main():
     if "--json" in sys.argv:   # structured candidates for the next-move skill's re-rank
         print(json.dumps(suggest_json(limit=999 if "-v" in sys.argv else 8)))
         return
-    limit = 999 if "-v" in sys.argv else 5
-    moves = suggest(limit=limit)
-    d = _engagement.active_dir()
-    name = os.path.basename(d) if d else "?"
-    print(f"Next moves ({name}): [advisory; the board is authoritative: "
-          f"`offensive.py next`]")
-    for i, m in enumerate(moves, 1):
-        print(f" {i}. {m}")
+    print(report(limit=999 if "-v" in sys.argv else 5))
 
 
 if __name__ == "__main__":

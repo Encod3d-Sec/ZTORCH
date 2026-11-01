@@ -17,7 +17,6 @@ import glob
 import json
 import os
 import re
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -246,11 +245,26 @@ def risk_line(d):
                round(100 * expl / len(rows)), expl, len(rows)))
 
 
-def activity_line(d):
+def _pending_cleanup(d):
+    """(unverified_count, details) from changelog_pending, computed ONCE per
+    render (WS4.4): the dashboard reads it twice (activity KPI + ATTENTION).
+    Fail-open (0, []) with a stderr trace (WS1.4)."""
+    try:
+        import offensive
+        return offensive.changelog_pending(d)
+    except Exception as e:
+        # WS1.4: absence of a note is itself observable - say why the check dropped
+        print("kpi import failed: %s" % str(e)[:80], file=sys.stderr)
+        return 0, []
+
+
+def activity_line(d, pend=None):
     """Activity KPI from the engagement telemetry (eval_metrics.read_events - the
     ONE loader, no second parser). Rate is executed/(executed+blocked): blocked
     calls never executed, so they sit in the denominator only. No per-call fail
-    dimension exists in .events.jsonl; do not invent one."""
+    dimension exists in .events.jsonl; do not invent one. pend = the
+    _pending_cleanup count, passed down by main() so the dashboard parses the
+    changelog once per render; None computes it here (standalone callers)."""
     sys.path.insert(0, HERE)
     import eval_metrics
     events = eval_metrics.read_events(d)
@@ -259,14 +273,8 @@ def activity_line(d):
     executed = sum(1 for e in events if e.get("kind") == "tool")
     blocked = sum(1 for e in events if e.get("kind") == "hook"
                   and e.get("action") == "deny")
-    try:
-        sys.path.insert(0, HERE)
-        from offensive import changelog_pending
-        pend = changelog_pending(d)[0]
-    except Exception as e:
-        # WS1.4: absence of a note is itself observable - say why the check dropped
-        print("kpi import failed: %s" % str(e)[:80], file=sys.stderr)
-        pend = 0
+    if pend is None:
+        pend = _pending_cleanup(d)[0]
     total = executed + blocked
     rate = (100.0 * executed / total) if total else 100.0
     return ("calls %d blocked %d rate %.1f%% cleanup-pending %d"
@@ -276,11 +284,13 @@ def activity_line(d):
 ACTIONABLE = ("oob", "cleanup")
 
 
-def attention_rows(d):
+def attention_rows(d, pend=None):
     """[(key, priority, prefix, text)] for the ATTENTION block, sorted p0 first.
     Reason keys are language-independent `kind:count` (cyberstrikeai
     dismissal-fingerprint pattern). wedged has no live feed in status.py this
-    pass - p1 is lane-only."""
+    pass - p1 is lane-only. pend = the _pending_cleanup count, passed down by
+    main() so the dashboard parses the changelog once per render (WS4.4);
+    None computes it here (standalone callers)."""
     rows = []
     oob_waiting = 0
     p = os.path.join(d, "oob.md")
@@ -294,14 +304,9 @@ def attention_rows(d):
     if oob_waiting:
         rows.append(("oob:%d" % oob_waiting, "p0", "ACTION REQUIRED ",
                      "OOB callbacks pending (see oob.md)"))
-    try:
-        sys.path.insert(0, HERE)
-        from offensive import changelog_pending
-        n, det = changelog_pending(d)
-    except Exception as e:
-        # WS1.4: a dropped cleanup check must leave a stderr trace, not silence
-        print("kpi import failed: %s" % str(e)[:80], file=sys.stderr)
-        n, det = 0, []
+    if pend is None:
+        pend = _pending_cleanup(d)[0]
+    n = pend
     if n:
         rows.append(("cleanup:%d" % n, "p0", "ACTION REQUIRED ",
                      "changelog rows lack verified rollback"))
@@ -460,9 +465,8 @@ def main():
     deads = deadend_lines(d)
     moves_text = ""
     try:
-        r = subprocess.run([sys.executable, os.path.join(HERE, "next_move.py")],
-                           capture_output=True, text=True, timeout=25)
-        moves_text = r.stdout or ""
+        import next_move                 # in-process, same ranking as the CLI
+        moves_text = next_move.report(limit=5)
     except Exception:
         pass
     lanes = lane_lines(d)
@@ -476,10 +480,11 @@ def main():
     spend = spend_line(d)
     facts = facts_line(d)
     risk = risk_line(d)
-    kpi = activity_line(d)
+    clp = _pending_cleanup(d)            # WS4.4: one pass per render, passed down
+    kpi = activity_line(d, pend=clp[0])
     if "--json" in sys.argv:
         # machine-readable dashboard (brain lanes / steering; mirrors render()'s inputs).
-        # moves_text stays raw prose - it is next_move.py's own output, already line-based.
+        # moves_text stays raw prose - it is next_move's own output, already line-based.
         print(json.dumps({
             "eng": name, "type": etype, "solved": solved,
             "summary": summ, "board_phase": board,
@@ -487,10 +492,10 @@ def main():
             "deadends": deads, "lanes": [ln.strip() for ln in lanes],
             "moves": moves_text.splitlines(), "spend": spend,
             "risk": risk, "activity": kpi,
-            "attention": [r[0] for r in attention_rows(d)],
+            "attention": [r[0] for r in attention_rows(d, pend=clp[0])],
         }, ensure_ascii=False))
         return 0
-    att = render_attention(attention_rows(d), d)
+    att = render_attention(attention_rows(d, pend=clp[0]), d)
     print((att + "\n" if att else "") + render(name, etype, solved, summ, board,
                                                poc, cards, recon, deads, moves_text,
                                                lanes, died=died, spend=spend,
