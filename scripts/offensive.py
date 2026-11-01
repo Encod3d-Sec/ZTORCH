@@ -2519,6 +2519,26 @@ def cmd_lane_init(args):
                 subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "claim",
                                 "--id", str(rid), "--lane", lane],
                                capture_output=True)
+    # WS2.1: --rows stamps the board rows this lane claims. The sidecar records
+    # the claim (`next` demotes in-flight rows off it, WS2.2); the board cell
+    # flips [ ] -> [~] through the same writer `done` uses, so the flip is a
+    # normal board write and the row text stays otherwise byte-identical.
+    ids = []
+    for tok in (getattr(args, "rows", "") or "").split(","):
+        tok = tok.strip()
+        if tok.isdigit():
+            ids.append(int(tok))
+    if ids:
+        with open(os.path.join(ld, ".rows.json"), "w", encoding="utf-8") as fh:
+            json.dump({"rows": ids}, fh)
+        for n in ids:
+            for rid in ("4a:%d" % n, "4b:%d" % n):
+                brows, brow, bwriter = _find_row_any(eng, rid)
+                if brow:
+                    if _status_of(brow) == "[ ]":
+                        brow["status"] = "[~]"
+                        bwriter(eng, brows)
+                    break
     title = (getattr(args, "title", "") or "").strip()
     _append_line(os.path.join(eng, "log.md"),
                  "[lane] %s %s opened (skill %s%s)" % (
@@ -2682,6 +2702,9 @@ def main(argv=None):
     p_li.add_argument("--vhost", required=True)
     p_li.add_argument("--skill", required=True)
     p_li.add_argument("--title", default="", help="one-line lane label (log line)")
+    p_li.add_argument("--rows", default="",
+                      help="comma-separated board row numbers this lane claims "
+                           "(row 3 -> 4a:3): sidecar + [~] flip")
     p_li.set_defaults(fn=cmd_lane_init)
 
     a = ap.parse_args(argv)
