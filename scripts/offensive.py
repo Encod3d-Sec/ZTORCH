@@ -3065,7 +3065,10 @@ def cmd_lane_init(args):
     ids = []
     for tok in (getattr(args, "rows", "") or "").split(","):
         tok = tok.strip()
+        if tok[:3] in ("4a:", "4b:"):
+            tok = tok[3:]
         if not tok.isdigit():
+            print("WARN: --rows token %r not a row id, skipped" % tok, file=sys.stderr)
             continue
         rid = "4a:%s" % tok
         brows, brow, bwriter = _find_row_any(eng, rid)
@@ -3073,6 +3076,8 @@ def cmd_lane_init(args):
             rid = "4b:%s" % tok
             brows, brow, bwriter = _find_row_any(eng, rid)
         if not brow:
+            print("WARN: --rows token %r matches no board row, skipped" % tok,
+                  file=sys.stderr)
             continue
         if _status_of(brow) == "[ ]":
             brow["status"] = "[~]"
