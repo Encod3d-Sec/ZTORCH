@@ -91,7 +91,12 @@ Route each output to the layer that will actually re-surface it:
    proven necessary, and the drifts recurred.
 5. **Mark each fix DONE / PROPOSED / DEFERRED.** Small fixes land this
    session with tests or a skill edit; larger mechanisms go to the
-   operator as a proposal with a one-line rationale.
+   operator as a proposal with a one-line rationale. **Every retro
+   sweep updates the proposal registry**
+   (`docs/framework-proposals.md`): re-count each open row's
+   recurrences, add new proposals as rows. Any item reaching 2
+   recurrences gets scheduled; 3 forces it into the next improvement
+   pass.
 6. **Write generic, never client-specific.** Codename the engagement;
    no hosts, IPs, creds, or client-identifying detail, so the retro
    file is safe to keep and share. check-leaks before any push.

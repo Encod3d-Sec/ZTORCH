@@ -385,6 +385,101 @@ def _shim_sync():
           "%.1f days stale; run: bash scripts/scope-sync.sh" % age_days, warn=True)
 
 
+# ------------------------------------------------- 5c. board staleness (advisory)
+
+# Phase labels that mean the board considers its work finished.
+_TERMINAL_PHASE_TOKENS = ("complete", "close-out", "closeout", "report", "wrap", "done", "solved")
+# state.md `## STATUS:` markers that close an engagement (mirrors the templates).
+_DONE_STATUS = ("COMPLETE", "SOLVED", "OWNED", "ROOTED")
+
+
+def _frontmatter_value(raw, key):
+    """Value of `key:` from the leading --- frontmatter block ('' if unset)."""
+    if not raw.startswith("---"):
+        return ""
+    block = raw.split("---", 2)
+    m = re.search(r"^%s:\s*\"?([^\"\n]*)\"?\s*$" % key, block[1] if len(block) > 1 else "", re.M)
+    return m.group(1).strip() if m else ""
+
+
+def _deadends_rows(eng):
+    """Data-row count of Deadends.md (0 when the file or any row is absent).
+    The table is a markdown pipe table; header + separator lines are not rows."""
+    p = os.path.join(eng, "Deadends.md")
+    try:
+        lines = open(p, encoding="utf-8", errors="ignore").read().splitlines()
+    except OSError:
+        return 0
+    rows = 0
+    for ln in lines:
+        s = ln.strip()
+        if not s.startswith("|"):
+            continue
+        if re.fullmatch(r"\|[\s:|-]+\|", s):
+            continue  # separator
+        cells = [c.strip().lower() for c in s.strip("|").split("|")]
+        if cells and cells[0] in ("asset", "host"):
+            continue  # header
+        rows += 1
+    return rows
+
+
+def _board_staleness(eng_dir=None):
+    """Advisory staleness check (the oldest deferred close-out signal, harness-retro
+    2026-07-16): WARN when the Approach.md board phase is terminal while state.md
+    STATUS is still active, and when exhausted vectors are named ([!] cells) while
+    Deadends.md has no rows (GATE 3 says every [!] gets one Deadends line). Warn
+    only, never deny, per the 2026-10-05 guardrail policy. Silent PASS when the
+    engagement files are absent (nothing to compare)."""
+    if eng_dir is None:
+        try:
+            with open(os.path.join(VAULT, "targets", "active.md"),
+                      encoding="utf-8", errors="ignore") as fh:
+                eng = fh.readline().strip()
+        except OSError:
+            return
+        if not eng:
+            return
+        eng_dir = os.path.join(VAULT, "targets", eng)
+    try:
+        approach = open(os.path.join(eng_dir, "Approach.md"),
+                        encoding="utf-8", errors="ignore").read()
+        state = open(os.path.join(eng_dir, "state.md"),
+                     encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return  # board or state absent; nothing to compare
+    if not approach.strip() and not state.strip():
+        return
+
+    # state STATUS terminal?
+    done = re.search(r"^##\s*STATUS:\s*(%s)\b" % "|".join(_DONE_STATUS),
+                     state, re.M | re.I)
+
+    # board phase: explicit current_phase when set, else heuristic (any open
+    # `[ ]`/`[~]` item = active; none = complete), mirroring status.py board_phase.
+    phase = _frontmatter_value(approach, "current_phase")
+    if phase:
+        low = phase.lower()
+        board_terminal = any(tok in low for tok in _TERMINAL_PHASE_TOKENS)
+    else:
+        board_terminal = not ("[ ]" in approach or "[~]" in approach)
+    if board_terminal and not done:
+        check("board staleness: terminal board vs active state (advisory)", False,
+              "Approach.md phase %s looks finished but state.md has no "
+              "`## STATUS: COMPLETE`-class marker; stamp the close-out or reopen the board"
+              % (phase or "complete"), warn=True)
+    else:
+        check("board staleness: board vs state aligned (advisory)", True)
+
+    # exhausted vectors named but Deadends empty (the deferred signal, I1)
+    if "[!]" in approach and _deadends_rows(eng_dir) == 0:
+        check("board staleness: exhausted vectors logged in Deadends (advisory)", False,
+              "Approach.md carries `[!]` cells but Deadends.md has no rows; "
+              "GATE 3: one Deadends line per exhausted vector", warn=True)
+    elif "[!]" in approach:
+        check("board staleness: exhausted vectors logged in Deadends (advisory)", True)
+
+
 def _skill_scan():
     # Advisory only: skillspector sweep vs baseline; new findings are a triage prompt,
     # not a broken driver. Incremental, so cheap after the first full run.
@@ -415,6 +510,7 @@ def main(argv):
     _helpers()
     _skill_and_hook()
     _index_freshness()
+    _board_staleness()
     _bench()
     _zg()
     _caido()
