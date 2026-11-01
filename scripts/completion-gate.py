@@ -56,8 +56,11 @@ NUDGE = (
 RULE_VOCAB = frozenset((
     "sha256_pass", "table_min_rows", "no_cell_contains", "md_table_headers",
     "md_table_or_explicit_empty", "dir_count_matches", "all_exist",
-    "contains_lane_id",
+    "contains_lane_id", "changelog_verified",
 ))
+
+# rules that bind to engagement state, not a line artifact (no `@ path` needed)
+NO_ARTIFACT_RULES = frozenset(("contains_lane_id", "changelog_verified"))
 
 import hashlib
 import re
@@ -103,10 +106,50 @@ def _rules_of(step_text):
     return out
 
 
+def _changelog_path(start_dir):
+    """changelog.md lives at the engagement root; lanes sit under poc/<host>/.
+    Walk up from the ledger dir (bounded) to the first changelog.md on the path."""
+    d = start_dir
+    for _ in range(12):
+        cand = os.path.join(d, "changelog.md")
+        if os.path.isfile(cand):
+            return cand
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return None
+
+
 def _check_rule(name, arg, art_path, ledger_dir, lane_id):
     """None = pass; str = failure detail. Unknown rules fail closed."""
     if name not in RULE_VOCAB:
         return "unknown rule '%s' (closed vocabulary: %s)" % (name, ",".join(sorted(RULE_VOCAB)))
+    if name == "changelog_verified":
+        # mirrors offensive.py changelog_pending's table shape (8 cols, row id
+        # in col 0, verified in col 7); the id matches the given prefix.
+        if not arg:
+            return "changelog_verified: no changelog id prefix given"
+        cl = _changelog_path(ledger_dir)
+        if not cl:
+            return "changelog_verified: changelog.md not found above %s" % ledger_dir
+        try:
+            with open(cl, encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    s = line.strip()
+                    if not s.startswith("|") or set(s) <= {"|", "-", " ", ":"}:
+                        continue
+                    cells = [c.strip() for c in s.strip("|").split("|")]
+                    if len(cells) < 8 or cells[0] in ("#", ""):
+                        continue
+                    if cells[0].startswith(arg):
+                        if cells[7]:
+                            return None
+                        return ("changelog_verified: changelog row %s has an "
+                                "empty verified cell (rollback unconfirmed)" % cells[0])
+        except OSError:
+            return "changelog_verified: cannot read %s" % cl
+        return "changelog_verified: no changelog row matches '%s'" % arg
     if name == "all_exist":
         for rel in [p.strip() for p in arg.split(",") if p.strip()]:
             p = _resolve(rel, ledger_dir)
@@ -279,9 +322,13 @@ def cmd_check(args):
         return True
     unchecked, missing, empty, stale, rule_failed, na_failed, ok = [], [], [], [], [], [], 0
     ticked = 0
-    baseline_ledger = os.path.join(os.path.dirname(os.path.abspath(target)), "run-ledger.md")
-    baseline = (os.path.getmtime(baseline_ledger)
-                if os.path.isfile(baseline_ledger) else os.path.getmtime(target))
+    lane_dir = os.path.dirname(os.path.abspath(target))
+    ledger = os.path.join(lane_dir, LEDGER)
+    ledger = ledger if os.path.isfile(ledger) else target
+    baseline = os.path.getmtime(ledger) - 300
+    started = os.path.join(lane_dir, ".started")
+    if os.path.isfile(started):
+        baseline = max(baseline, os.path.getmtime(started))
     with open(target, encoding="utf-8", errors="replace") as fh:
         ledger_text = fh.read()
     wf_ref = ""
@@ -347,7 +394,7 @@ def cmd_check(args):
                 ok += 1
         lane_id = os.path.basename(os.path.dirname(os.path.abspath(target)))
         for rname, rarg in _rules_of(text):
-            if not art_path and rname != "contains_lane_id":
+            if not art_path and rname not in NO_ARTIFACT_RULES:
                 rule_failed.append("%s: no artifact on the line" % rname)
                 continue
             why = _check_rule(rname, rarg, art_path,
