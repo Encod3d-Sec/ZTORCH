@@ -337,7 +337,7 @@ def _lane_dirs_of(eng):
     return out
 
 
-def reconcile(vault, eng):
+def reconcile(eng):
     """(WS2.4) Lane-dir vs log.md reconciliation, mechanical: which lane dirs
     have no lane line (dispatch line lost - the lane's work is invisible) and
     which lane lines name a dir that was never created (ghost claim).
@@ -350,12 +350,13 @@ def reconcile(vault, eng):
     }
 
 
-def unfolded_rows(vault, eng):
+def unfolded_rows(eng):
     """(WS2.5) Fold-completeness JOIN: board row ids claimed by a lane whose
     envelope says VERDICT: COMPLETE while the row is still open [ ] - the lane
-    folded without updating its board row. Trailing-int match, same key the
-    sidecars carry. Fail-open: unreadable boards parse as empty."""
-    complete = set()
+    folded without updating its board row. Sidecars carry the resolved board
+    id ("4a:3", exact match); legacy bare numbers match on trailing int.
+    Fail-open: unreadable boards parse as empty."""
+    complete_ids, complete_nums = set(), set()
     for _d, ld in _lane_dirs_of(eng):
         try:
             env = open(os.path.join(ld, "envelope.md"), encoding="utf-8",
@@ -370,19 +371,21 @@ def unfolded_rows(vault, eng):
         except (OSError, ValueError):
             continue
         for r in (data or {}).get("rows") or []:
-            try:
-                complete.add(int(r))
-            except (TypeError, ValueError):
-                continue
-    if not complete:
+            if isinstance(r, int) and not isinstance(r, bool):
+                complete_nums.add(r)
+            elif isinstance(r, str):
+                m = re.fullmatch(r"\s*(\S+:\d+)\s*", r)
+                if m:
+                    complete_ids.add(m.group(1))
+    if not complete_ids and not complete_nums:
         return []
     import offensive    # lazy: keeps lane_validate importable standalone
     out = []
     for r in offensive.read_board(eng) + offensive.read_board_4b(eng):
         rid = (r.get("id") or "").strip()
         m = re.search(r"(\d+)\s*$", rid)
-        if (r.get("status") or "").strip() == "[ ]" and m \
-                and int(m.group(1)) in complete:
+        if (r.get("status") or "").strip() == "[ ]" \
+                and (rid in complete_ids or (m and int(m.group(1)) in complete_nums)):
             out.append(rid)
     return out
 

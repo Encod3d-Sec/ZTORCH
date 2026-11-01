@@ -3,7 +3,7 @@ title: "<short title>"
 type: finding
 severity: MEDIUM
 class: ""            # optional: canonical vuln class (ssrf/idor/rce/...) for chain triggers + coverage; fuzzy-inferred from title if blank
-status: RESEARCH   # ladder: DETECTED (tool hit, unverified) -> CONFIRMED (PoC validated + poc/ capture) -> EXPLOITED (used in the chain); RESEARCH = alias of DETECTED; terminal-neutral: FALSE_POSITIVE / IGNORED (Description first sentence starts `FP:` / `IGNORED:`); closure (see closure_status_enum below): `confirmed` maps to the CONFIRMED rung, `ruled_out` / `open_proof_gap` are closure-only
+status: RESEARCH   # ladder: DETECTED (tool hit, unverified) -> CONFIRMED (PoC validated + poc/ capture) -> EXPLOITED (used in the chain); RESEARCH = alias of DETECTED; terminal-neutral: FALSE_POSITIVE / IGNORED (Description first sentence starts `FP:` / `IGNORED:`); closure (see closure_status_enum below): `confirmed` maps to the CONFIRMED rung, `exploited` maps to the EXPLOITED rung (a passing closure - find-lint still enforces the EXPLOITED evidence bar), `ruled_out` / `open_proof_gap` are closure-only
 cvss: ""
 affected: ""
 counterevidence: ""      # required: the strongest case AGAINST this finding - what would make it false and why that does not apply
@@ -51,6 +51,6 @@ find_status_neutral: FALSE_POSITIVE | IGNORED
 find_confirmed_fields: counterevidence | confidence | severity_change_conditions
 find_section: Recommended next
 closure_status_enum: confirmed | ruled_out | open_proof_gap
-closure_contract: counterevidence + closure status required on every card carrying this marker (find-lint --strict-contract opts legacy cards in); open_proof_gap cards are served back by `offensive.py next`
+closure_contract: counterevidence + closure status required on every card carrying this marker (find-lint --strict-contract opts legacy cards in); status EXPLOITED passes the closure as confirmed-equivalent (its own evidence bar still gates); open_proof_gap cards are served back by `offensive.py next`
 -->
 

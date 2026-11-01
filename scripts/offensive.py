@@ -1071,11 +1071,14 @@ def _lane_complete(ld):
         return False
 
 
-def _open_lane_row_ids(eng, vault=None):
-    """Board row numbers claimed by any OPEN lane's .rows.json sidecar (WS2.2):
-    walk poc/*/lane-*/.rows.json; a COMPLETE envelope releases the lane's
-    claims. Junk entries and unreadable sidecars are skipped (fail-open)."""
-    out = set()
+def _open_lane_row_ids(eng):
+    """Rows claimed by any OPEN lane's .rows.json sidecar (WS2.2): walk
+    poc/*/lane-*/.rows.json; a COMPLETE envelope releases the lane's claims.
+    Returns (full_ids, bare_nums): sidecars store the resolved board id
+    ("4a:3", exact match); legacy bare numbers demote on trailing int (both
+    4a/4b, old behavior). Junk entries and unreadable sidecars are skipped
+    (fail-open)."""
+    ids, nums = set(), set()
     for ld in _lane_dirs(eng):
         if _lane_complete(ld):
             continue
@@ -1087,11 +1090,13 @@ def _open_lane_row_ids(eng, vault=None):
         except (OSError, ValueError):
             continue
         for r in (data or {}).get("rows") or []:
-            try:
-                out.add(int(r))
-            except (TypeError, ValueError):
-                continue
-    return out
+            if isinstance(r, int) and not isinstance(r, bool):
+                nums.add(r)
+            elif isinstance(r, str):
+                m = re.fullmatch(r"\s*(\S+:\d+)\s*", r)
+                if m:
+                    ids.add(m.group(1))
+    return ids, nums
 
 
 def _lanes_open_lines(eng):
@@ -1631,9 +1636,24 @@ def cmd_next(args):
         rows = [r for r in rows if _low(r) not in dead]
     # WS2.2: rows claimed by an open lane (sidecar .rows.json) rank after fully
     # unclaimed rows - a stable-sort key bump; board order is otherwise kept.
-    claimed = _open_lane_row_ids(eng, str(vault))
-    if claimed:
-        rows = sorted(rows, key=lambda r: 1 if _rid_num(r) in claimed else 0)
+    claimed_ids, claimed_nums = _open_lane_row_ids(eng)
+    if claimed_ids or claimed_nums:
+        rows = sorted(rows, key=lambda r: 1 if (
+            (r.get("id") or "").strip() in claimed_ids
+            or _rid_num(r) in claimed_nums) else 0)
+    # WS2.3: the lane-dir vs log reconciliation renders on the next header too
+    # (status carries it; advisory-only, never gates). Reuses lane_validate's
+    # mechanical reconcile so both surfaces answer the same question.
+    try:
+        import lane_validate
+        recon = lane_validate.reconcile(eng)
+        for lbl, key in (("DIR WITHOUT LINE", "dir_without_line"),
+                         ("LINE WITHOUT DIR", "line_without_dir")):
+            names = recon.get(key) or []
+            if names:
+                print("%s: %s" % (lbl, ", ".join(names)))
+    except Exception:
+        pass
     for p in _pool_candidates(rows):
         if getattr(args, "dismiss_pool", "") \
                 and p["class"] == args.dismiss_pool.strip().lower():
@@ -1753,21 +1773,26 @@ def cmd_next(args):
 
     # WS7.5: unamended threat-model assumptions surface as a ranked move once
     # lanes have run - a lane close-out that broke an assumption amends the
-    # state.md section and logs `assumptions updated`; until then, next keeps
-    # naming them.
+    # state.md section and logs `assumptions updated: <which>`; until then,
+    # next keeps naming them. The gate is PER ASSUMPTION: a log line naming the
+    # assumption clears only that one, not the whole list.
     if _lane_dirs(eng):
-        try:
-            log_text = (eng / "log.md").read_text(
-                encoding="utf-8", errors="replace").lower()
-        except OSError:
-            log_text = ""
-        if "assumptions updated" not in log_text:
-            asm = _threat_assumptions(eng)
-            if asm:
-                print("THREAT-MODEL: %d unamended assumption(s) in state.md (no "
-                      "`assumptions updated` line after lane close-outs) - amend "
-                      "or confirm each, then log it:" % len(asm))
-                for a in asm:
+        asm = _threat_assumptions(eng)
+        if asm:
+            try:
+                log_lines = (eng / "log.md").read_text(
+                    encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                log_lines = []
+            amended = [ln.lower() for ln in log_lines
+                       if "assumptions updated" in ln.lower()]
+            pending = [a for a in asm
+                       if not any(a.lower() in ln for ln in amended)]
+            if pending:
+                print("THREAT-MODEL: %d unamended assumption(s) in state.md (log "
+                      "`assumptions updated: <which>` after lane close-outs) - "
+                      "amend or confirm each, then log it:" % len(pending))
+                for a in pending:
                     print("  - %s" % a)
 
     # WS10 chaining pass: confirmed findings exist -> chaining stays on the
@@ -2636,10 +2661,47 @@ def _gated_ok(stamp, *refs):
     return True
 
 
+def _stamp_manifest(lane_dir):
+    """{relpath: [mtime_ns, size]} of every non-dot file in the lane dir
+    (review minor 7): the strict rules check the lane's artifacts (captures,
+    walked-rows files), so the .gated-ok stamp records them, not just
+    checklist/envelope. Dot state (.rows.json, .started, the stamp) is
+    excluded."""
+    out = {}
+    for root, _dirs, files in os.walk(lane_dir):
+        for f in files:
+            if f.startswith("."):
+                continue
+            p = os.path.join(root, f)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            out[os.path.relpath(p, lane_dir)] = [st.st_mtime_ns, st.st_size]
+    return out
+
+
+def _stamp_valid(stamp, lane_dir):
+    """True when the stamp exists and its recorded manifest still matches the
+    lane dir file-for-file: an artifact rewritten or added after the sweep
+    invalidates it. ns+size keys so a same-tick rewrite on this seat's
+    coarse-mtime filesystem still invalidates when the length differs; a
+    legacy empty stamp (pre-manifest) fails this once and gets re-stamped."""
+    try:
+        with open(stamp, encoding="utf-8") as fh:
+            recorded = (json.load(fh) or {}).get("files")
+    except (OSError, ValueError):
+        return False
+    if not isinstance(recorded, dict):
+        return False
+    return _stamp_manifest(lane_dir) == recorded
+
+
 def _gate_lanes_strict(eng, host):
     """G10: every poc/<host>/lane-*/checklist.md must pass completion-gate --strict.
     A lane that passed at/after its last content change carries a .gated-ok
-    stamp (WS4.5) and is skipped until the checklist or envelope changes again."""
+    stamp (WS4.5) and is skipped until the checklist, envelope, or any lane
+    artifact (captures included) changes again."""
     fails = []
     vroot = os.path.join(eng, "poc", host)
     if not os.path.isdir(vroot):
@@ -2652,7 +2714,8 @@ def _gate_lanes_strict(eng, host):
         env_path = os.path.join(vroot, name, "envelope.md")
         stamp = os.path.join(vroot, name, ".gated-ok")
         refs = [ckl] + ([env_path] if os.path.isfile(env_path) else [])
-        if _gated_ok(stamp, *refs):
+        if _gated_ok(stamp, *refs) \
+                and _stamp_valid(stamp, os.path.join(vroot, name)):
             continue
         r = subprocess.run([sys.executable, gate, "check", ckl, "--strict"],
                            capture_output=True, text=True)
@@ -2689,7 +2752,9 @@ def _gate_lanes_strict(eng, host):
                           "is the gate)" % (name, int(age)))
             if not lane_failed:
                 try:
-                    open(stamp, "w").close()
+                    with open(stamp, "w", encoding="utf-8") as fh:
+                        json.dump({"files": _stamp_manifest(
+                            os.path.join(vroot, name))}, fh)
                 except OSError:
                     pass
     return fails
@@ -2993,25 +3058,39 @@ def cmd_lane_init(args):
                 f.write("- %s\n" % line)
                 _backlog_claim(eng, row["id"], lane)
     # WS2.1: --rows stamps the board rows this lane claims. The sidecar records
-    # the claim (`next` demotes in-flight rows off it, WS2.2); the board cell
-    # flips [ ] -> [~] through the same writer `done` uses, so the flip is a
-    # normal board write and the row text stays otherwise byte-identical.
+    # the RESOLVED board id ("4a:3"; review nit 11 - a bare number matched both
+    # boards' same-numbered rows in `next` demotion); the board cell flips
+    # [ ] -> [~] through the same writer `done` uses, so the flip is a normal
+    # board write and the row text stays otherwise byte-identical.
     ids = []
     for tok in (getattr(args, "rows", "") or "").split(","):
         tok = tok.strip()
-        if tok.isdigit():
-            ids.append(int(tok))
+        if not tok.isdigit():
+            continue
+        rid = "4a:%s" % tok
+        brows, brow, bwriter = _find_row_any(eng, rid)
+        if not brow:
+            rid = "4b:%s" % tok
+            brows, brow, bwriter = _find_row_any(eng, rid)
+        if not brow:
+            continue
+        if _status_of(brow) == "[ ]":
+            brow["status"] = "[~]"
+            bwriter(eng, brows)
+        ids.append(rid)
     if ids:
         with open(os.path.join(ld, ".rows.json"), "w", encoding="utf-8") as fh:
             json.dump({"rows": ids}, fh)
-        for n in ids:
-            for rid in ("4a:%d" % n, "4b:%d" % n):
-                brows, brow, bwriter = _find_row_any(eng, rid)
-                if brow:
-                    if _status_of(brow) == "[ ]":
-                        brow["status"] = "[~]"
-                        bwriter(eng, brows)
-                    break
+        # WS2.1: the claim is stamped into the brief frontmatter too, so a
+        # human reading the brief sees it, not just the machine sidecar.
+        bp = os.path.join(ld, "brief.md")
+        try:
+            body = open(bp, encoding="utf-8").read()
+            with open(bp, "w", encoding="utf-8") as fh:
+                fh.write("---\nrows: [%s]\n---\n\n%s"
+                         % (", ".join('"%s"' % i for i in ids), body))
+        except OSError:
+            pass
     # WS3.2: a lane whose routing class matches a live pool group auto-dismisses
     # that pool advisory (fingerprinted - new row ids of the class re-arm).
     if lane_class:
@@ -3191,7 +3270,7 @@ def main(argv=None):
     p_li.add_argument("--title", default="", help="one-line lane label (log line)")
     p_li.add_argument("--rows", default="",
                       help="comma-separated board row numbers this lane claims "
-                           "(row 3 -> 4a:3): sidecar + [~] flip")
+                           "(row 3 -> 4a:3): brief frontmatter + sidecar + [~] flip")
     p_li.set_defaults(fn=cmd_lane_init)
 
     a = ap.parse_args(argv)

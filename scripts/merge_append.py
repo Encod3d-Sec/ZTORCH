@@ -29,7 +29,6 @@ def append(file, raw, rid=None, tag=None, allow_nonascii=False):
     prints exactly what the CLI printed before (WS4.1: the driver calls this
     in-process; main() is a thin argparse wrapper around it)."""
     lines = [l.rstrip("\r\n") for l in raw.splitlines()]
-    lines = [l.rstrip("\r\n") for l in raw.splitlines()]
     while lines and not lines[0].strip():
         lines.pop(0)
     while lines and not lines[-1].strip():

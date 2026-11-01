@@ -463,6 +463,17 @@ def _board_staleness(eng_dir=None):
         board_terminal = any(tok in low for tok in _TERMINAL_PHASE_TOKENS)
     else:
         board_terminal = not ("[ ]" in approach or "[~]" in approach)
+        if board_terminal and "[x]" not in approach \
+                and ("[?]" in approach or "[!]" in approach):
+            # WALLED, not terminal (review minor 13, same split `next`/status
+            # draw): parked/dead-only with zero closed rows is a walled board,
+            # not a finished one - never advise stamping close-out on it.
+            check("board staleness: WALLED board vs active state (advisory)", False,
+                  "Approach.md has no open rows but zero closed ([x]) cells - the "
+                  "board is WALLED (parked/dead-only), not finished; run "
+                  "Skill(redteamlead) for a ranked re-plan instead of stamping "
+                  "close-out", warn=True)
+            board_terminal = False
     if board_terminal and not done:
         check("board staleness: terminal board vs active state (advisory)", False,
               "Approach.md phase %s looks finished but state.md has no "

@@ -84,6 +84,11 @@ DRAFT_RE = re.compile(r"-disclosure-draft\.md$", re.I)
 # setup/templates/_find.md's canonical-vocab comment block.
 CLOSURE_MARKER = "closure_status_enum: confirmed | ruled_out | open_proof_gap"
 CLOSURE_STATUSES = ("confirmed", "ruled_out", "open_proof_gap")
+# EXPLOITED is the ladder's positive terminal rung (review minor 6): it maps to
+# a passing closure, confirmed-equivalent - the ladder's own evidence bar still
+# applies (lint_file's EXPLOITED branch: poc/ capture, counterevidence, evidence
+# + claim checks). A fresh `status: RESEARCH` scaffold keeps failing.
+CLOSURE_PASS = CLOSURE_STATUSES + ("exploited",)
 
 
 def find_files(d):
@@ -234,9 +239,9 @@ def _closure_issues(fmt):
                       "this finding false and why that does not apply")
     sv = re.search(r"^status:\s*(\S+)", fmt, re.M | re.I)
     sval = sv.group(1).strip().lower() if sv else ""
-    if sval not in CLOSURE_STATUSES:
+    if sval not in CLOSURE_PASS:
         issues.append("closure contract: status must be one of %s (got '%s')"
-                      % (" | ".join(CLOSURE_STATUSES), sval or "(empty)"))
+                      % (" | ".join(CLOSURE_PASS), sval or "(empty)"))
     return issues
 
 

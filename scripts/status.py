@@ -473,8 +473,8 @@ def main():
     lane_recon, unfolded = None, None
     try:
         import lane_validate
-        lane_recon = lane_validate.reconcile(HERE, d)
-        unfolded = lane_validate.unfolded_rows(HERE, d)
+        lane_recon = lane_validate.reconcile(d)
+        unfolded = lane_validate.unfolded_rows(d)
     except Exception as e:
         print("lane recon failed: %s" % str(e)[:80], file=sys.stderr)
     spend = spend_line(d)
