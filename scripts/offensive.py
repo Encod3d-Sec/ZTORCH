@@ -1283,10 +1283,11 @@ def _append_table_row(path, line):
 
 INSCOPE = "lists/inscope-hosts.md"
 
-# WS3.5: `done --dead` reasons in this vocabulary are administrative closes
-# (irrelevant surface, class-sweep bookkeeping, placeholder rows), not no-find
-# signals - they are exempt from the dry_streak wall-break feed.
-_IRRELEVANT_CLOSE_RE = re.compile(r"^n/a|class-sweep|fingerprintless|placeholder",
+# WS3.5: `done --dead` reasons that START with one of these tokens (word-
+# bounded: prose that merely contains the word later in the reason, e.g. "found
+# placeholder admin page, sprayed, dead", still counts as a no-find signal and
+# feeds the dry_streak wall-break) are administrative closes, exempt from it.
+_IRRELEVANT_CLOSE_RE = re.compile(r"^(n/a|class-sweep|fingerprintless|placeholder)\b",
                                   re.IGNORECASE)
 VHOST_STATUSES = ("QUEUED", "ACTIVE", "COMPLETE")
 
@@ -2468,11 +2469,13 @@ def chaining_ok(eng):
 
 def _run_summary(eng):
     """WS7.6: close-out summary. Findings split by closure status (card scan,
-    same _find*/FIND-* union as _confirmed_findings); lanes = lane dirs under
-    poc/; started = state.md mtime, ended = now. Severity split skipped: board
-    rows carry no severity and the filename split would be over-build."""
+    same _find*/FIND-* union as _confirmed_findings) and by severity (the
+    FIND-<n>-<SEV>- filename contract find-lint enforces); lanes = lane dirs
+    under poc/; started = the engagement's started_at from .offensive.json
+    (state.md's mtime is rewritten by every driver save - useless as a start)."""
     import glob as _g
     counts = {"confirmed": 0, "ruled_out": 0, "open_proof_gap": 0}
+    sevs = {}
     for pat in ("_find*.md", "FIND-*.md"):
         for c in _g.glob(os.path.join(str(eng), "**", pat), recursive=True):
             try:
@@ -2484,11 +2487,22 @@ def _run_summary(eng):
                           head)
             if m:
                 counts[m.group(1)] += 1
-    sp = Path(eng) / "state.md"
-    started = (datetime.fromtimestamp(sp.stat().st_mtime, timezone.utc)
-               .isoformat(timespec="seconds")) if sp.is_file() else ""
+            sm = re.match(r"(?i)FIND-\d+-([A-Z]+)-", os.path.basename(c))
+            if sm:
+                s = sm.group(1).upper()
+                sevs[s] = sevs.get(s, 0) + 1
+    started = ""
+    st = _load_state(Path(eng), err=lambda *_a, **_k: None)
+    if st and st.get("started_at"):
+        started = st["started_at"]
+    else:
+        sp = Path(eng) / "state.md"
+        if sp.is_file():
+            started = datetime.fromtimestamp(sp.stat().st_mtime,
+                                             timezone.utc).isoformat(timespec="seconds")
     return {
         "findings": counts,
+        "severities": sevs,
         "lanes": len(_lane_dirs(eng)),
         "started": started,
         "ended": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -2556,6 +2570,9 @@ def cmd_closeout(args):
               "open_proof_gap %d, lanes %d)"
               % (f["confirmed"], f["ruled_out"], f["open_proof_gap"],
                  summary["lanes"]))
+        if summary["severities"]:
+            print("  by severity: %s" % ", ".join(
+                "%s %d" % (s, n) for s, n in sorted(summary["severities"].items())))
     except OSError as e:
         print("run summary: could not write %s (%s)" % (spath, e))
     # WS10 chaining gate: >= 2 confirmed findings and Killchain.md shows zero
