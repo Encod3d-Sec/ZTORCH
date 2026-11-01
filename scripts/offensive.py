@@ -9,6 +9,7 @@ consumes it via build_index/load_index/index_stale.
 Python 3 stdlib only.
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -964,7 +965,9 @@ def _status_of(r):
 def _pool_candidates(rows):
     """D21 (advisory): open rows sharing a vuln class across 2+ DISTINCT
     assets are one pooled lane with a per-host cap, not N micro-lanes.
-    Same-asset rows never pool (that is depth, not duplication)."""
+    Same-asset rows never pool (that is depth, not duplication). Each group
+    carries a fingerprint (sha1 of its sorted row-id set, WS3): the dismiss
+    memory keys on it, so any new row id of the class re-arms the advisory."""
     groups = {}
     for r in rows:
         if _status_of(r) not in ("[ ]", "[~]"):
@@ -973,13 +976,35 @@ def _pool_candidates(rows):
         asset = (r.get("asset") or "").strip()
         if not cls or not asset:
             continue
-        groups.setdefault(cls, []).append(asset)
+        g = groups.setdefault(cls, {"assets": [], "ids": []})
+        g["assets"].append(asset)
+        g["ids"].append((r.get("id") or "").strip())
     out = []
     for cls in sorted(groups):
-        assets = sorted(set(groups[cls]))
-        if len(groups[cls]) >= 2 and len(assets) >= 2:
-            out.append({"class": cls, "rows": len(groups[cls]), "assets": assets})
+        g = groups[cls]
+        assets = sorted(set(g["assets"]))
+        if len(g["assets"]) >= 2 and len(assets) >= 2:
+            ids = sorted(set(i for i in g["ids"] if i))
+            out.append({"class": cls, "rows": len(g["assets"]), "assets": assets,
+                        "ids": ids,
+                        "fingerprint": hashlib.sha1(
+                            ",".join(ids).encode("utf-8")).hexdigest()})
     return out
+
+
+def _advisory_dismiss(eng, state, cls, fingerprint):
+    """WS3: store a pool advisory dismissal in driver state (rendering only -
+    never scope enforcement). Re-dismissing the same shape just refreshes ts."""
+    state.setdefault("advisory", {}).setdefault("pool", {})[cls] = {
+        "ts": int(time.time()), "fingerprint": fingerprint}
+    _save_state(eng, state)
+
+
+def _advisory_pool_suppressed(state, pool):
+    """True while the stored fingerprint for this class equals the live one;
+    a new row id of the class (new fingerprint) re-arms the advisory."""
+    st = ((state.get("advisory") or {}).get("pool") or {}).get(pool["class"])
+    return bool(st) and st.get("fingerprint") == pool["fingerprint"]
 
 
 def _rid_num(r):
@@ -1465,6 +1490,14 @@ def cmd_next(args):
     if claimed:
         rows = sorted(rows, key=lambda r: 1 if _rid_num(r) in claimed else 0)
     for p in _pool_candidates(rows):
+        if getattr(args, "dismiss_pool", "") \
+                and p["class"] == args.dismiss_pool.strip().lower():
+            # WS3: manual dismiss of this pool group (rendering only; the
+            # advisory re-arms when a new row id changes the fingerprint)
+            _advisory_dismiss(eng, state, p["class"], p["fingerprint"])
+            continue
+        if _advisory_pool_suppressed(state, p):
+            continue    # WS3: fingerprinted dismissal still holds
         print("POOL: %d open rows share class '%s' across %d assets (%s) - run ONE "
               "pooled lane with a per-host cap, not %d micro-lanes [D21] "
               "(shape: skills/workflow/workflow-brain/references/pooled-lane.md)"
@@ -2625,6 +2658,12 @@ def cmd_lane_init(args):
                         brow["status"] = "[~]"
                         bwriter(eng, brows)
                     break
+    # WS3.2: a lane whose routing class matches a live pool group auto-dismisses
+    # that pool advisory (fingerprinted - new row ids of the class re-arm).
+    if lane_class:
+        for p in _pool_candidates(read_board(eng) + read_board_4b(eng)):
+            if p["class"] == lane_class.strip().lower():
+                _advisory_dismiss(eng, state, p["class"], p["fingerprint"])
     title = (getattr(args, "title", "") or "").strip()
     _append_line(os.path.join(eng, "log.md"),
                  "[lane] %s %s opened (skill %s%s)" % (
@@ -2734,6 +2773,9 @@ def main(argv=None):
     p_next = sub.add_parser("next", help="print the next action (cursor + gate walk)")
     p_next.add_argument("--json", action="store_true",
                         help="machine-readable cursor+gate payload (brain lanes / steering)")
+    p_next.add_argument("--dismiss-pool", dest="dismiss_pool", default="",
+                        help="dismiss the POOL advisory for this class (re-arms on "
+                             "new row ids of the class)")
     p_next.set_defaults(fn=cmd_next)
     p_plan = sub.add_parser("plan", help="dry-run of next: top-N candidate moves, writes nothing")
     p_plan.add_argument("--all", action="store_true", help="every open row's candidate, not the top 5")
