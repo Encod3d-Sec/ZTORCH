@@ -1005,17 +1005,25 @@ def _find_row_any(eng, rid):
     return None, None, None
 
 
+def _merge_append_run(args, input=None):
+    """Single seam around the merge_append subprocess so tests can monkeypatch
+    one point; keeps the subprocess fallback (Task WS1.1)."""
+    return subprocess.run(args, input=input, capture_output=True, text=True)
+
+
 def _append_line(path, line):
     """Every EOF append the driver makes to a .md state file goes through
     merge_append.py (R10): glue, duplicate, ASCII and read-back guards make a
     corrupting write a refused exit-1 instead of a repair. A refused merge is
-    loud (MERGE_REFUSED) and never falls back to a direct write."""
+    loud (MERGE_REFUSED) and never falls back to a direct write; it fails the
+    driver command (SystemExit 1) - a lost disposition is worse than a failed
+    command (WS1.1)."""
     ma = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                       "merge_append.py")
-    r = subprocess.run([sys.executable, ma, path, "-"],
-                       input=line, capture_output=True, text=True)
-    if r.returncode != 0:
+    r = _merge_append_run([sys.executable, ma, path, "-"], input=line)
+    if r.returncode != 0 or "MERGE_REFUSED" in (r.stdout or ""):
         print("MERGE_REFUSED %s: %s" % (path, (r.stderr or r.stdout).strip()))
+        sys.exit(1)
 
 
 def _append_table_row(path, line):
@@ -1023,7 +1031,14 @@ def _append_table_row(path, line):
     machine consumer (_parse_table twins, G4, the close-out lints) reads only
     the FIRST table block, and a template-shaped Deadends.md carries a
     `## False positives` section after it - a row appended at EOF is invisible
-    to all of them. No pipe block in the file yet -> plain append (creates it)."""
+    to all of them. No pipe block in the file yet -> the guarded EOF append
+    (creates it). The in-table write carries the same guards as the merge path
+    (ASCII row + read-back verification); any failure is a loud exit-1, never
+    a silently lost row (WS1.2)."""
+    row = line.rstrip()
+    if any(ord(c) > 127 for c in row):
+        print("MERGE_REFUSED %s: non-ASCII in table row %r" % (path, row[:60]))
+        sys.exit(1)
     p = Path(path)
     try:
         lines = p.read_text(encoding="utf-8").split("\n")
@@ -1037,10 +1052,14 @@ def _append_table_row(path, line):
         elif end is not None:
             break                # block ended: the insert position is fixed
     if end is None:
-        _append_line(p, line)    # no table yet: keep the create/append behavior
+        _append_line(p, line)    # no table yet: keep the guarded create/append
         return
-    lines.insert(end, line.rstrip())
-    p.write_text("\n".join(lines), encoding="utf-8")
+    lines.insert(end, row)
+    new = "\n".join(lines)
+    p.write_text(new, encoding="utf-8")
+    if p.read_text(encoding="utf-8") != new:
+        print("MERGE_REFUSED %s: table row read-back mismatch" % path)
+        sys.exit(1)
 
 
 # --------------------------------------------------------------------------- vhost lock model
