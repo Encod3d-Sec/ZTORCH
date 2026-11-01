@@ -12,3 +12,7 @@ Supersedes `brain` (which stays until cutover). The brain is the single writer
 of `state.md`, `Approach.md`, `Deadends.md`, and `lists/*.md`; lanes return
 envelopes and the brain merges between waves. Read `workflow.md` before the
 first dispatch.
+
+Law: the brain session never runs exploit-shaped commands directly - execution
+lives in dispatched lanes; the brain keeps strategy, the board, triage, and the
+state writes.

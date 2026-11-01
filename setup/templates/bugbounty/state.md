@@ -53,3 +53,11 @@ mirror of `lists/inscope-hosts.md`; the driver owns both
 
 - (none)
 
+
+## Threat model
+
+Standing assumptions the engagement runs on. One line each. A lane close-out that
+breaks one amends the line here and logs `assumptions updated: <which>` in log.md;
+until then `offensive.py next` serves the unamended assumptions as a ranked move.
+
+- assumption: (none yet)

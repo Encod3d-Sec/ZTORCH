@@ -1735,6 +1735,25 @@ def cmd_next(args):
         for g in gaps:
             print("  %s" % g)
 
+    # WS7.5: unamended threat-model assumptions surface as a ranked move once
+    # lanes have run - a lane close-out that broke an assumption amends the
+    # state.md section and logs `assumptions updated`; until then, next keeps
+    # naming them.
+    if _lane_dirs(eng):
+        try:
+            log_text = (eng / "log.md").read_text(
+                encoding="utf-8", errors="replace").lower()
+        except OSError:
+            log_text = ""
+        if "assumptions updated" not in log_text:
+            asm = _threat_assumptions(eng)
+            if asm:
+                print("THREAT-MODEL: %d unamended assumption(s) in state.md (no "
+                      "`assumptions updated` line after lane close-outs) - amend "
+                      "or confirm each, then log it:" % len(asm))
+                for a in asm:
+                    print("  - %s" % a)
+
     # WS10 chaining pass: confirmed findings exist -> chaining stays on the
     # agenda every serve (it is the close-out gate's precondition, chaining_ok).
     if _confirmed_findings(os.path.abspath(str(eng))) >= 1:
@@ -2267,6 +2286,56 @@ def cmd_done(args):
 # --------------------------------------------------------------------------- coverage / closeout
 
 
+# ------------------------------------------------------------------ coverage (WS7.3)
+
+# lane briefs carry a `## Close-out coverage` block (BRIEF_TEMPLATE); the driver
+# scans them into a PROPOSAL list - it never writes the board (WS7 constraint:
+# proposals never auto-tick; the poc-image gate governs, ticks go through
+# `note`/`done`).
+_LANE_COV_SECTION_RE = re.compile(r"^## Close-out coverage\s*$", re.M | re.I)
+_LANE_COV_RE = re.compile(r"^-\s*.*class:\s*([A-Za-z0-9_\-]+)", re.I)
+_OUTCOME_RE = re.compile(r"outcome:\s*(\w+)", re.I)
+_POC_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+
+
+def _lane_has_poc_image(ld):
+    for r, _, fs in os.walk(str(ld)):
+        for f in fs:
+            if f.lower().endswith(_POC_IMAGE_EXTS):
+                return True
+    return False
+
+
+def _lane_coverage_rows(eng):
+    """Lane briefs' `## Close-out coverage` rows: [(lane_dir, vhost, lane,
+    cls, tested, outcome)]. Scan, not a store - the briefs are the store."""
+    rows = []
+    for ld in _lane_dirs(eng):
+        brief = ld / "brief.md"
+        if not brief.is_file():
+            continue
+        try:
+            text = brief.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        sec = _LANE_COV_SECTION_RE.search(text)
+        if not sec:
+            continue
+        block = text[sec.end():]
+        nxt = re.search(r"^## ", block, re.M)
+        if nxt:
+            block = block[:nxt.start()]
+        for ln in block.splitlines():
+            m = _LANE_COV_RE.match(ln.strip())
+            if not m:
+                continue
+            om = _OUTCOME_RE.search(ln)
+            rows.append((ld, ld.parent.name, ld.name, m.group(1).lower(),
+                         "tested" in ln and "not-tested" not in ln,
+                         om.group(1).lower() if om else ""))
+    return rows
+
+
 def cmd_coverage(args):
     """G7 gap report: per IN-SCOPE asset, the coverage-classes.json vuln classes with
     no tested credit (4a/4b [x] rows + findings + Deadends lines). Untested = no closed
@@ -2296,6 +2365,29 @@ def cmd_coverage(args):
     elif not gaps_found:
         print("  none - every asset carries an [x] row for each base class "
               "(credit only, not evidence quality)")
+    # WS7.3: lane close-out coverage -> printed PROPOSALS, never a board write.
+    if getattr(args, "from_lanes", False):
+        props, blocked = [], []
+        for ld, vhost, lane, cls, tested, outcome in _lane_coverage_rows(str(eng)):
+            if not tested:
+                continue
+            if _lane_has_poc_image(ld):
+                props.append("PROPOSE [x] %s on %s (%s): outcome %s - poc capture "
+                             "on disk; apply via `note`/`done` (proposals never "
+                             "auto-tick)" % (cls, vhost, lane, outcome or "unrecorded"))
+            else:
+                blocked.append("BLOCKED (poc gate) %s on %s (%s): no poc image "
+                               "capture - the tick stays operator-owned"
+                               % (cls, vhost, lane))
+        if props or blocked:
+            print("lane close-out coverage (PROPOSALS only - the poc gate governs, "
+                  "the board tick stays operator/driver-owned):")
+            for l in props:
+                print("  " + l)
+            for l in blocked:
+                print("  " + l)
+        else:
+            print("lane coverage: no lane brief row is tested with a poc image yet")
     return 0
 
 
@@ -2359,6 +2451,63 @@ def chaining_ok(eng):
                   "zero recorded chaining attempts" % ok
 
 
+def _run_summary(eng):
+    """WS7.6: close-out summary. Findings split by closure status (card scan,
+    same _find*/FIND-* union as _confirmed_findings); lanes = lane dirs under
+    poc/; started = state.md mtime, ended = now. Severity split skipped: board
+    rows carry no severity and the filename split would be over-build."""
+    import glob as _g
+    counts = {"confirmed": 0, "ruled_out": 0, "open_proof_gap": 0}
+    for pat in ("_find*.md", "FIND-*.md"):
+        for c in _g.glob(os.path.join(str(eng), "**", pat), recursive=True):
+            try:
+                head = "".join(open(c, encoding="utf-8",
+                                    errors="replace").readlines()[:25])
+            except OSError:
+                continue
+            m = re.search(r"(?im)^status:\s*(confirmed|ruled_out|open_proof_gap)\b",
+                          head)
+            if m:
+                counts[m.group(1)] += 1
+    sp = Path(eng) / "state.md"
+    started = (datetime.fromtimestamp(sp.stat().st_mtime, timezone.utc)
+               .isoformat(timespec="seconds")) if sp.is_file() else ""
+    return {
+        "findings": counts,
+        "lanes": len(_lane_dirs(eng)),
+        "started": started,
+        "ended": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+
+_THREAT_ASSUMPTION_RE = re.compile(r"^\s*-\s+assumption:\s*(.+)$", re.I)
+_ASSUMPTION_PLACEHOLDERS = ("(none yet)", "none yet")
+
+
+def _threat_assumptions(eng):
+    """WS7.5 (minimal): the `- assumption:` lines of state.md's ## Threat model."""
+    sp = Path(eng) / "state.md"
+    if not sp.is_file():
+        return []
+    try:
+        body = sp.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    sec = re.search(r"^## Threat model\s*$", body, re.M | re.I)
+    if not sec:
+        return []
+    block = body[sec.end():]
+    nxt = re.search(r"^## ", block, re.M)
+    if nxt:
+        block = block[:nxt.start()]
+    out = []
+    for ln in block.splitlines():
+        m = _THREAT_ASSUMPTION_RE.match(ln)
+        if m and m.group(1).strip().lower() not in _ASSUMPTION_PLACEHOLDERS:
+            out.append(m.group(1).strip())
+    return out
+
+
 def cmd_closeout(args):
     """Print the per-type close-out chain (Skill names, in order) for the
     engagement. G7: no question, just the ordered chain."""
@@ -2381,6 +2530,19 @@ def cmd_closeout(args):
         for r in rows:
             print("  - %s" % r)
         print("close-out may proceed; clear the verified column or record why not.")
+    # WS7.6: run summary beside the close-out output (written even when the
+    # chaining gate below refuses - the numbers are the point of a close-out).
+    summary = _run_summary(eng)
+    spath = Path(eng) / ".run-summary.json"
+    try:
+        spath.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        f = summary["findings"]
+        print("run summary -> .run-summary.json (confirmed %d, ruled_out %d, "
+              "open_proof_gap %d, lanes %d)"
+              % (f["confirmed"], f["ruled_out"], f["open_proof_gap"],
+                 summary["lanes"]))
+    except OSError as e:
+        print("run summary: could not write %s (%s)" % (spath, e))
     # WS10 chaining gate: >= 2 confirmed findings and Killchain.md shows zero
     # chaining attempts -> close-out stops (record attempts, then re-run).
     ok, why = chaining_ok(os.path.abspath(str(eng)))
@@ -2695,6 +2857,15 @@ Checklist: {lane_dir}/checklist.md
   step, every banked artifact the brief cites is on disk; ask, never guess.
 - R8: idle means dispatch - an empty running set or a failed dependency queues
   the bypass lane immediately; never park the queue behind one flap.
+
+## Close-out coverage
+
+Before returning, append ONE line per vuln class this lane touched, in this
+shape (the driver ingests lane briefs via `offensive.py coverage --from-lanes`;
+the output is a PROPOSAL list only - it never ticks the board, the poc-image
+gate still governs, and the operator/driver apply ticks through `note`/`done`):
+
+- `class: <vuln-class> - tested|not-tested; outcome: <positive|negative|blocked>; needs_follow_up: <one line or none>`
 """
 
 
@@ -2931,7 +3102,12 @@ def main(argv=None):
     p_plan = sub.add_parser("plan", help="dry-run of next: top-N candidate moves, writes nothing")
     p_plan.add_argument("--all", action="store_true", help="every open row's candidate, not the top 5")
     p_plan.set_defaults(fn=cmd_plan)
-    sub.add_parser("coverage", help="per-asset untested vuln-class gaps (no [x] row)").set_defaults(fn=cmd_coverage)
+    p_cov = sub.add_parser("coverage", help="per-asset untested vuln-class gaps (no [x] row)")
+    p_cov.add_argument("--from-lanes", dest="from_lanes", action="store_true",
+                       help="also print coverage PROPOSALS from lane briefs' "
+                            "Close-out coverage blocks (never auto-ticks; the "
+                            "poc gate governs)")
+    p_cov.set_defaults(fn=cmd_coverage)
     sub.add_parser("closeout", help="print the per-type close-out Skill chain").set_defaults(fn=cmd_closeout)
 
     p_note = sub.add_parser("note", help="set a row's arsenal cell (G1 release)")

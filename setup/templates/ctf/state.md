@@ -52,3 +52,11 @@ and prevent retries exactly like Deadends.md.
 | key | conf | summary |
 |---|---|---|
 
+
+## Threat model
+
+Standing assumptions the box runs on. One line each. A lane close-out that breaks
+one amends the line here and logs `assumptions updated: <which>` in log.md; until
+then `offensive.py next` serves the unamended assumptions as a ranked move.
+
+- assumption: (none yet)
