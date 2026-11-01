@@ -309,15 +309,20 @@ _LANE_DIR = re.compile(r"^lane-\d+$")
 
 def _lane_names_from_log(eng):
     """Every lane name appearing in a log.md lane line (open OR closed - both
-    are claims the log makes). Fail-open: unreadable log -> []."""
+    are claims the log makes). Two grammars live in log.md: the delegate
+    format (`- lane <name> ... SUCCESS = ...`) and the driver's own dispatch
+    lines (`[lane] <host> lane-N opened ...`). Fail-open: unreadable log -> []."""
     try:
         with open(os.path.join(eng, "log.md"), encoding="utf-8",
                   errors="ignore") as fh:
             text = fh.read()
     except OSError:
         return []
+    driver = {m.group(1) for m in
+              re.finditer(r"^\[lane\] \S+ (lane-\S+) opened", text, re.MULTILINE)}
     return sorted({n for n, _t in open_lanes_from_text(text)} |
-                  {n for n, _o, _c in lanes_from_text(text)})
+                  {n for n, _o, _c in lanes_from_text(text)} |
+                  driver)
 
 
 def _lane_dirs_of(eng):
