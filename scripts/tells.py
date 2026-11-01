@@ -6,6 +6,9 @@ single source of truth; add rows as you learn them) and prints one line per
 hit: path:line [class] snippet -> Skill(x) | note. An accelerator, NOT a
 substitute for the read-first mandate: read the hit blocks first, then the
 full read where the mandate applies (post-foothold source review).
+An empty `skill` cell is legal and intentional: recon/fingerprint rows
+(version banner, debug flag, dir listing) route via playbook.json targeted
+tests instead of naming a hunt skill.
 
 Usage:
   python3 scripts/tells.py <path> [<path> ...]   # scan files/dirs
