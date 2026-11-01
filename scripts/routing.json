@@ -696,6 +696,18 @@
    "skill": "hunt-macos",
    "wiki": "macos-tcc",
    "arsenal": "macos-loot-locations"
+  },
+  "open-redirect": {
+   "class": "open-redirect",
+   "skill": "hunt-auth",
+   "wiki": "open-redirect",
+   "arsenal": "payloads/open-redirect"
+  },
+  "host-header": {
+   "class": "host-header",
+   "skill": "hunt-auth",
+   "wiki": "http-host-header-attacks",
+   "arsenal": "payloads/host-header"
   }
  }
 }
