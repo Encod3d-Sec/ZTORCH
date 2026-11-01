@@ -982,6 +982,85 @@ def _pool_candidates(rows):
     return out
 
 
+def _rid_num(r):
+    """Trailing board number of a row id ('4a:3' -> 3), else None."""
+    m = re.search(r"(\d+)\s*$", (r.get("id") or "").strip())
+    return int(m.group(1)) if m else None
+
+
+def _lane_dirs(eng):
+    """Every lane dir under poc/<vhost>/lane-*/, sorted; [] when no poc/ tree."""
+    poc = Path(eng) / "poc"
+    if not poc.is_dir():
+        return []
+    out = []
+    for vh in sorted(os.listdir(poc)):
+        vroot = poc / vh
+        if not vroot.is_dir():
+            continue
+        for d in sorted(os.listdir(vroot)):
+            ld = vroot / d
+            if d.startswith("lane-") and ld.is_dir():
+                out.append(ld)
+    return out
+
+
+def _lane_complete(ld):
+    """True when the lane's envelope.md carries VERDICT: COMPLETE (lane done)."""
+    p = ld / "envelope.md"
+    if not p.is_file():
+        return False
+    try:
+        return "VERDICT: COMPLETE" in p.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+
+
+def _open_lane_row_ids(eng, vault=None):
+    """Board row numbers claimed by any OPEN lane's .rows.json sidecar (WS2.2):
+    walk poc/*/lane-*/.rows.json; a COMPLETE envelope releases the lane's
+    claims. Junk entries and unreadable sidecars are skipped (fail-open)."""
+    out = set()
+    for ld in _lane_dirs(eng):
+        if _lane_complete(ld):
+            continue
+        rp = ld / ".rows.json"
+        if not rp.is_file():
+            continue
+        try:
+            data = json.loads(rp.read_text(encoding="utf-8", errors="ignore"))
+        except (OSError, ValueError):
+            continue
+        for r in (data or {}).get("rows") or []:
+            try:
+                out.add(int(r))
+            except (TypeError, ValueError):
+                continue
+    return out
+
+
+def _lanes_open_lines(eng):
+    """LANES OPEN header block lines (WS2.3a): one line per open lane dir -
+    lane name, minutes since the .started mtime (fallback dir mtime), and
+    envelope yes/no. Empty list -> no header at all."""
+    lines = []
+    for ld in _lane_dirs(eng):
+        if _lane_complete(ld):
+            continue
+        stamp = ld / ".started"
+        src = stamp if stamp.exists() else ld
+        try:
+            mins = max(0, int((time.time() - src.stat().st_mtime) // 60))
+        except OSError:
+            mins = 0
+        lines.append("  %s (%dm) envelope %s"
+                     % (ld.name, mins,
+                        "yes" if (ld / "envelope.md").is_file() else "no"))
+    if lines:
+        lines.insert(0, "LANES OPEN:")
+    return lines
+
+
 def _row_by_id(rows, rid):
     for r in rows:
         if (r.get("id") or "").strip() == rid:
@@ -1380,12 +1459,19 @@ def cmd_next(args):
                   "back?) - suppressed: %s" % (len(zombie),
                   ", ".join((r.get("id") or "?") for r in zombie)))
         rows = [r for r in rows if _low(r) not in dead]
+    # WS2.2: rows claimed by an open lane (sidecar .rows.json) rank after fully
+    # unclaimed rows - a stable-sort key bump; board order is otherwise kept.
+    claimed = _open_lane_row_ids(eng, str(vault))
+    if claimed:
+        rows = sorted(rows, key=lambda r: 1 if _rid_num(r) in claimed else 0)
     for p in _pool_candidates(rows):
         print("POOL: %d open rows share class '%s' across %d assets (%s) - run ONE "
               "pooled lane with a per-host cap, not %d micro-lanes [D21] "
               "(shape: skills/workflow/workflow-brain/references/pooled-lane.md)"
               % (p["rows"], p["class"], len(p["assets"]),
                  ", ".join(p["assets"][:4]), p["rows"]))
+    for line in _lanes_open_lines(eng):
+        print(line)
     for w in _drain_board_warnings():
         print("BOARD (parsed best-effort): %s" % w)
     parked = [r for r in rows if _status_of(r) == "[?]"]
