@@ -12,17 +12,34 @@ def _path(eng):
     return os.path.join(VAULT, "targets", eng, ".surface-backlog.json")
 
 
-def _load(p):
+class BacklogCorrupt(Exception):
+    """The .surface-backlog.json store is truncated or re-shaped (WS1.3).
+    str(e) is the operator hint. In-process callers (offensive.py WS4.1)
+    catch this and degrade; the CLI wrappers convert it to a clean exit-2."""
+
+
+def load_rows(p):
+    """Raw rows of the store, [] when the store is absent. Raises
+    BacklogCorrupt on a truncated/re-shaped store."""
     if not os.path.isfile(p):
         return []
     try:
         return json.load(open(p, encoding="utf-8"))["rows"]
     except (ValueError, KeyError, TypeError, OSError) as e:
-        # WS1.3: a truncated/re-shaped store must exit clean, never traceback
-        # at the operator or fail lane-init mid-scaffold.
-        print("backlog corrupt: move aside and re-import (%s): %s"
-              % (p, str(e)[:80]))
-        sys.exit(2)
+        raise BacklogCorrupt(
+            "backlog corrupt: move aside and re-import (%s): %s" % (p, str(e)[:80]))
+
+
+def _die_corrupt(e):
+    print(str(e), file=sys.stderr)
+    sys.exit(2)
+
+
+def _load(p):
+    try:
+        return load_rows(p)
+    except BacklogCorrupt as e:
+        _die_corrupt(e)
 
 
 def _save(p, rows):
@@ -62,18 +79,26 @@ def cmd_import(eng, source, file):
     return 0
 
 
-def cmd_open(eng, cls):
-    """Open rows matching cls ("" = all), as dicts. WS4.1: returns the rows so
-    the driver can call this in-process; main() keeps the CLI's json-per-line
-    stdout. _load keeps its corrupt-store exit-2 (WS1.3), inherited by every
-    in-process caller."""
-    return [r for r in _load(_path(eng))
+def open_rows(eng, cls=""):
+    """Open rows matching cls ("" = all), as dicts - the in-process API the
+    driver uses (WS4.1). Raises BacklogCorrupt on a corrupt store; cmd_open
+    keeps the CLI's exit-2 for its own callers."""
+    return [r for r in load_rows(_path(eng))
             if r["status"] == "open" and (not cls or r["class_hint"] == cls)]
 
 
-def cmd_claim(eng, rid, lane):
+def cmd_open(eng, cls):
+    try:
+        return open_rows(eng, cls)
+    except BacklogCorrupt as e:
+        _die_corrupt(e)
+
+
+def claim_row(eng, rid, lane):
+    """Claim one row for a lane - the in-process API (WS4.1). Raises
+    BacklogCorrupt on a corrupt store; returns 1 on refusal, 0 on claim."""
     p = _path(eng)
-    rows = _load(p)
+    rows = load_rows(p)
     hit = None
     for r in rows:
         if r["id"] == rid:
@@ -89,6 +114,13 @@ def cmd_claim(eng, rid, lane):
     _save(p, rows)
     print("claimed %d -> %s" % (rid, lane))
     return 0
+
+
+def cmd_claim(eng, rid, lane):
+    try:
+        return claim_row(eng, rid, lane)
+    except BacklogCorrupt as e:
+        _die_corrupt(e)
 
 
 def cmd_clear(eng, rids):

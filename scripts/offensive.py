@@ -921,26 +921,28 @@ def cmd_autonomy(args):
     return 0
 
 
-_events_cache = None   # ((path, mtime), parsed rows) - WS4.3 mtime-keyed parse
+_events_cache = None   # ((path, mtime_ns, size, last-line len), rows) - WS4.3 parse
 
 
 def _events(eng):
     """Parsed .events.jsonl rows, or None if the telemetry file is absent (G2
-    then fails open - the skill is emitted). Parsed once per (path, mtime):
-    the file is append-only telemetry, so an unchanged mtime means unchanged
-    bytes; callers only read the rows, never mutate them."""
+    then fails open - the skill is emitted). Parsed once per cache key:
+    (path, mtime_ns, size, length of the last line). Size + the last-line
+    length disambiguate same-tick rewrites (coarse mtime on /mnt/c drvfs:
+    empty-then-rewritten inside one tick must not serve a stale parse);
+    callers only read the rows, never mutate them."""
     p = Path(eng) / ".events.jsonl"
     if not p.is_file():
         return None
     global _events_cache
-    key = (str(p), p.stat().st_mtime)
+    st = p.stat()
+    lines = [l.strip() for l in
+             p.read_text(encoding="utf-8", errors="ignore").splitlines() if l.strip()]
+    key = (str(p), st.st_mtime_ns, st.st_size, len(lines[-1]) if lines else 0)
     if _events_cache is not None and _events_cache[0] == key:
         return _events_cache[1]
     out = []
-    for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = line.strip()
-        if not line:
-            continue
+    for line in lines:
         try:
             out.append(json.loads(line))
         except ValueError:
@@ -1201,26 +1203,39 @@ def _disk_verify(path, contains, tail=3):
 
 def _backlog_open(eng, cls=""):
     """Open surface-backlog rows as dicts, in-process (WS4.1) with the CLI run
-    as fallback. A corrupt store keeps the CLI's exit-2 semantics: the module's
-    _load sys.exits and the SystemExit propagates from here."""
+    as fallback. A corrupt store degrades to no rows with the corrupt hint on
+    stderr (WS1.3: lane-init finishes its scaffold and next keeps serving the
+    board - the same survive-the-store semantics the old subprocess seam had,
+    never a SystemExit through the driver)."""
     if _surface_backlog_mod is not None:
-        return _surface_backlog_mod.cmd_open(str(os.path.abspath(str(eng))), cls)
+        try:
+            return _surface_backlog_mod.open_rows(str(os.path.abspath(str(eng))), cls)
+        except _surface_backlog_mod.BacklogCorrupt as e:
+            print(str(e), file=sys.stderr)
+            return []
     sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                       "surface_backlog.py")
     r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open",
                         "--class", cls], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
     return [json.loads(l) for l in r.stdout.splitlines() if l.strip()]
 
 
 def _backlog_claim(eng, rid, lane):
     """Claim one backlog row for a lane, in-process (WS4.1) with the CLI run
     as fallback. Output is discarded and a refusal stays non-fatal - the same
-    contract the subprocess call had."""
+    contract the subprocess call had; a corrupt store degrades the same way
+    _backlog_open does (hint on stderr, rc 1), never a SystemExit."""
     if _surface_backlog_mod is not None:
         out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            return _surface_backlog_mod.cmd_claim(str(os.path.abspath(str(eng))),
-                                                  rid, lane)
+        try:
+            with contextlib.redirect_stdout(out):
+                return _surface_backlog_mod.claim_row(str(os.path.abspath(str(eng))),
+                                                      rid, lane)
+        except _surface_backlog_mod.BacklogCorrupt as e:
+            print(str(e), file=sys.stderr)
+            return 1
     sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                       "surface_backlog.py")
     r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "claim",
