@@ -15,7 +15,14 @@ def _path(eng):
 def _load(p):
     if not os.path.isfile(p):
         return []
-    return json.load(open(p, encoding="utf-8"))["rows"]
+    try:
+        return json.load(open(p, encoding="utf-8"))["rows"]
+    except (ValueError, KeyError, TypeError, OSError) as e:
+        # WS1.3: a truncated/re-shaped store must exit clean, never traceback
+        # at the operator or fail lane-init mid-scaffold.
+        print("backlog corrupt: move aside and re-import (%s): %s"
+              % (p, str(e)[:80]))
+        sys.exit(2)
 
 
 def _save(p, rows):

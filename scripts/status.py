@@ -263,7 +263,9 @@ def activity_line(d):
         sys.path.insert(0, HERE)
         from offensive import changelog_pending
         pend = changelog_pending(d)[0]
-    except Exception:
+    except Exception as e:
+        # WS1.4: absence of a note is itself observable - say why the check dropped
+        print("kpi import failed: %s" % str(e)[:80], file=sys.stderr)
         pend = 0
     total = executed + blocked
     rate = (100.0 * executed / total) if total else 100.0
@@ -296,7 +298,9 @@ def attention_rows(d):
         sys.path.insert(0, HERE)
         from offensive import changelog_pending
         n, det = changelog_pending(d)
-    except Exception:
+    except Exception as e:
+        # WS1.4: a dropped cleanup check must leave a stderr trace, not silence
+        print("kpi import failed: %s" % str(e)[:80], file=sys.stderr)
         n, det = 0, []
     if n:
         rows.append(("cleanup:%d" % n, "p0", "ACTION REQUIRED ",
@@ -437,8 +441,9 @@ def main():
             if popen != board[1]:
                 board = ("%s [line-count; board parses %d open]" % (board[0], popen),
                          board[1], board[2])
-        except Exception:
-            pass
+        except Exception as e:
+            # WS1.4: the skew note drops fail-open, but the drop is observable
+            print("board parse failed: %s" % str(e)[:80], file=sys.stderr)
     poc, cards, recon, died = evidence_counts(d)
     deads = deadend_lines(d)
     moves_text = ""
