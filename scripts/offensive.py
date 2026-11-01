@@ -9,7 +9,9 @@ consumes it via build_index/load_index/index_stale.
 Python 3 stdlib only.
 """
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import os
 import re
@@ -24,6 +26,22 @@ from offensive_index import (
     build_index, load_index, index_stale, CACHE_NAME, _die,
     parse_routing_table, parse_tool_index, parse_hunt_method, _read, _section,
 )
+
+# WS4.1: the helper CLIs live on the same dir as this script (already on
+# sys.path, same as the next_move import pattern) - call them in-process and
+# keep the subprocess seams as the fallback for a failed import (slow mounts).
+try:
+    import merge_append as _merge_append_mod
+except (ImportError, OSError):
+    _merge_append_mod = None
+try:
+    import surface_backlog as _surface_backlog_mod
+except (ImportError, OSError):
+    _surface_backlog_mod = None
+try:
+    import disk_verify as _disk_verify_mod
+except (ImportError, OSError):
+    _disk_verify_mod = None
 
 # vault root = the dir containing skills/ and wiki/. Resolve from the script
 # location by default; overridable via --vault / --eng path so the driver never
@@ -1115,19 +1133,89 @@ def _merge_append_run(args, input=None):
     return subprocess.run(args, input=input, capture_output=True, text=True)
 
 
+def _merge_append_inprocess(path, line):
+    """In-process merge_append.append (WS4.1); returns (rc, combined_stderr)
+    or None when the module import failed (caller falls back to the subprocess
+    seam). Success stdout is captured and dropped, same as the subprocess path."""
+    if _merge_append_mod is None:
+        return None
+    out, err = io.StringIO(), io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = _merge_append_mod.append(path, line)
+    except OSError as e:
+        # slow-mount read failure inside the helper behaves like a refused write
+        return 1, str(e)
+    return rc, err.getvalue().strip()
+
+
 def _append_line(path, line):
     """Every EOF append the driver makes to a .md state file goes through
-    merge_append.py (R10): glue, duplicate, ASCII and read-back guards make a
-    corrupting write a refused exit-1 instead of a repair. A refused merge is
-    loud (MERGE_REFUSED) and never falls back to a direct write; it fails the
+    merge_append (R10), in-process (WS4.1) with the WS1 CLI seam as fallback:
+    glue, duplicate, ASCII and read-back guards make a corrupting write a
+    refused exit-1 instead of a repair. A refused merge is loud
+    (MERGE_REFUSED) and never falls back to a direct write; it fails the
     driver command (SystemExit 1) - a lost disposition is worse than a failed
     command (WS1.1)."""
-    ma = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                      "merge_append.py")
-    r = _merge_append_run([sys.executable, ma, path, "-"], input=line)
-    if r.returncode != 0 or "MERGE_REFUSED" in (r.stdout or ""):
-        print("MERGE_REFUSED %s: %s" % (path, (r.stderr or r.stdout).strip()))
+    r = _merge_append_inprocess(path, line)
+    if r is None:
+        ma = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "merge_append.py")
+        r0 = _merge_append_run([sys.executable, ma, path, "-"], input=line)
+        r = (r0.returncode, (r0.stderr or r0.stdout or "").strip())
+        if r[0] == 0 and "MERGE_REFUSED" in r0.stdout:
+            r = (1, "MERGE_REFUSED in stdout")
+    if r[0] != 0:
+        print("MERGE_REFUSED %s: %s" % (path, r[1]))
         sys.exit(1)
+
+
+def _disk_verify(path, contains, tail=3):
+    """(rc, output) from disk_verify, in-process (WS4.1) with the CLI run as
+    fallback. The driver's two call sites always pass --ascii --tail."""
+    if _disk_verify_mod is not None:
+        try:
+            return _disk_verify_mod.verify(path, contains=list(contains),
+                                           is_ascii=True, tail=tail)
+        except OSError as e:
+            return 1, str(e)
+    dv = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "disk_verify.py")
+    cmd = [sys.executable, dv, path]
+    for c in contains:
+        cmd += ["--contains", c]
+    cmd += ["--ascii", "--tail", str(tail)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.returncode, r.stdout
+
+
+def _backlog_open(eng, cls=""):
+    """Open surface-backlog rows as dicts, in-process (WS4.1) with the CLI run
+    as fallback. A corrupt store keeps the CLI's exit-2 semantics: the module's
+    _load sys.exits and the SystemExit propagates from here."""
+    if _surface_backlog_mod is not None:
+        return _surface_backlog_mod.cmd_open(str(os.path.abspath(str(eng))), cls)
+    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "surface_backlog.py")
+    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open",
+                        "--class", cls], capture_output=True, text=True)
+    return [json.loads(l) for l in r.stdout.splitlines() if l.strip()]
+
+
+def _backlog_claim(eng, rid, lane):
+    """Claim one backlog row for a lane, in-process (WS4.1) with the CLI run
+    as fallback. Output is discarded and a refusal stays non-fatal - the same
+    contract the subprocess call had."""
+    if _surface_backlog_mod is not None:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            return _surface_backlog_mod.cmd_claim(str(os.path.abspath(str(eng))),
+                                                  rid, lane)
+    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "surface_backlog.py")
+    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "claim",
+                        "--id", str(rid), "--lane", lane], capture_output=True)
+    return r.returncode
 
 
 def _append_table_row(path, line):
@@ -1607,13 +1695,8 @@ def cmd_next(args):
 
     # WS9.4: open backlog rows rank alongside the lane candidates - each row is
     # a discovered surface nobody has hunted yet (claimed via lane-init --skill).
-    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                      "surface_backlog.py")
-    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open"],
-                       capture_output=True, text=True)
-    for line in r.stdout.splitlines():
-        if line.strip():
-            print("BACKLOG candidate: %s" % line.strip())
+    for row in _backlog_open(eng):
+        print("BACKLOG candidate: %s" % json.dumps(row))
 
     # WS10 chaining pass: confirmed findings exist -> chaining stays on the
     # agenda every serve (it is the close-out gate's precondition, chaining_ok).
@@ -2109,17 +2192,12 @@ def cmd_done(args):
                 sys.exit(1)
             # G10 hardening: an envelope on the closed lane must also pass
             # disk_verify (same contract as _gate_lanes_strict close-out).
-            dv = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              "disk_verify.py")
             env_path = os.path.join(eng, "poc", host, tok, "envelope.md")
             if os.path.isfile(env_path):
-                d = subprocess.run(
-                    [sys.executable, dv, env_path, "--contains", tok,
-                     "--ascii", "--tail", "3"],
-                    capture_output=True, text=True)
-                if d.returncode != 0:
+                rc, out = _disk_verify(env_path, [tok])
+                if rc != 0:
                     print("DISK_VERIFY FAIL %s" % env_path)
-                    for l in d.stdout.splitlines()[-3:]:
+                    for l in out.splitlines()[-3:]:
                         print("  " + l)
                     _die("cannot close %s: lane %s envelope fails disk_verify"
                          % (args.row, tok))
@@ -2143,13 +2221,8 @@ def cmd_done(args):
         print("  foothold recorded on %s (tmux %s%s); 4b: %d post-ex rows"
               % (asset, args.win, "" if matched else ", no state.md row", added))
     # WS9.4 census: open backlog rows the engagement still owes a disposition.
-    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                      "surface_backlog.py")
-    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open"],
-                       capture_output=True, text=True)
-    for line in r.stdout.splitlines():
-        if line.strip():
-            print("OWED (unresolved backlog row): %s" % line.strip())
+    for row in _backlog_open(eng):
+        print("OWED (unresolved backlog row): %s" % json.dumps(row))
     _ckpt(eng, "done %s poc" % args.row)
     return 0
 
@@ -2338,16 +2411,11 @@ def _gate_lanes_strict(eng, host):
         else:
             # Envelope hardening: envelope.md must reference its own lane id,
             # stay ASCII, and keep its tail stable (R10 checks).
-            dv = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              "disk_verify.py")
             env_path = os.path.join(vroot, name, "envelope.md")
             if os.path.isfile(env_path):
-                r = subprocess.run(
-                    [sys.executable, dv, env_path, "--contains", name,
-                     "--ascii", "--tail", "3"],
-                    capture_output=True, text=True)
-                if r.returncode != 0:
-                    print("DISK_VERIFY FAIL %s\n%s" % (env_path, r.stdout))
+                rc, out = _disk_verify(env_path, [name])
+                if rc != 0:
+                    print("DISK_VERIFY FAIL %s\n%s" % (env_path, out))
                     fails.append("%s/%s: disk_verify failed" % (host, name))
             # WS5.6: a sub-120s clean return is the shallow-work smell. Duration
             # is advisory; the walked-rows artifact stays the gate.
@@ -2638,23 +2706,17 @@ def cmd_lane_init(args):
     open(os.path.join(ld, ".started"), "w").close()
     # WS5.6: claim matching open backlog rows into the brief - the lane now owes
     # a clear-or-why disposition per embedded row.
-    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                      "surface_backlog.py")
     lane_class = (args.skill[len("hunt-"):]
                   if args.skill.startswith("hunt-") else args.skill)
-    r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "open",
-                        "--class", lane_class], capture_output=True, text=True)
-    rows = [l for l in r.stdout.splitlines() if l.strip()]
+    rows = _backlog_open(eng, lane_class)
     if rows:
         with open(os.path.join(ld, "brief.md"), "a", encoding="utf-8") as f:
             f.write("\n## Claimed backlog rows (clear each via "
                     "surface_backlog.py clear --id N, or leave open with why)\n\n")
-            for l in rows:
-                f.write("- %s\n" % l)
-                rid = json.loads(l)["id"]
-                subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "claim",
-                                "--id", str(rid), "--lane", lane],
-                               capture_output=True)
+            for row in rows:
+                line = json.dumps(row)
+                f.write("- %s\n" % line)
+                _backlog_claim(eng, row["id"], lane)
     # WS2.1: --rows stamps the board rows this lane claims. The sidecar records
     # the claim (`next` demotes in-flight rows off it, WS2.2); the board cell
     # flips [ ] -> [~] through the same writer `done` uses, so the flip is a

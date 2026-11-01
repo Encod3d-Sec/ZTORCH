@@ -63,10 +63,12 @@ def cmd_import(eng, source, file):
 
 
 def cmd_open(eng, cls):
-    for r in _load(_path(eng)):
-        if r["status"] == "open" and (not cls or r["class_hint"] == cls):
-            print(json.dumps(r))
-    return 0
+    """Open rows matching cls ("" = all), as dicts. WS4.1: returns the rows so
+    the driver can call this in-process; main() keeps the CLI's json-per-line
+    stdout. _load keeps its corrupt-store exit-2 (WS1.3), inherited by every
+    in-process caller."""
+    return [r for r in _load(_path(eng))
+            if r["status"] == "open" and (not cls or r["class_hint"] == cls)]
 
 
 def cmd_claim(eng, rid, lane):
@@ -119,7 +121,9 @@ def main():
     if a.cmd == "import-jsonl":
         return cmd_import(a.eng, a.source, a.file)
     if a.cmd == "open":
-        return cmd_open(a.eng, a.cls)
+        for r in cmd_open(a.eng, a.cls):
+            print(json.dumps(r))
+        return 0
     if a.cmd == "claim":
         return cmd_claim(a.eng, a.id, a.lane)
     return cmd_clear(a.eng, a.id)
