@@ -90,6 +90,11 @@ grep/head it instead of re-running the scan.
   carries `nameserver 192.168.23.2` + `options timeout:2 attempts:2`; after a sick-window
   firefight check the file wasn't hand-diverted (1.1.1.1/use-vc edits) and restore it.
   `options use-vc` is NOT a fix: TCP through the proxy measured ~12 s per lookup degraded.
+- **`/opt/scope-shim` may be missing on a fresh VM image.** This image shipped without the
+  shim the js-* skills predate on; recreate it from the seat with
+  `bash scripts/install-scope-shim.sh` (then `bash scripts/scope-sync.sh`, or let the
+  installer push the 3 vault files itself). Shim semantics: explicit out-of-scope token
+  = rc 126; in-scope = pass; UNKNOWN = advisory + proceed; no scope state = fail closed.
 
 ## Running scans in tmux + capturing the desktop
 
