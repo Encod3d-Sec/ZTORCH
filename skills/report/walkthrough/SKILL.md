@@ -85,6 +85,16 @@ chat input and send". If the delivery genuinely needed a custom script, preserve
 `poc/scripts/` (step d) and reference it in ONE "how the agent drove it" line - the repro step
 itself stays the human action.
 
+**Lane-jargon scrub (hard mandate).** The narrative is ZERO-to-IMPACT for a human reader: no
+`lane-N`, `brain`, `envelope`, `merge`, `dispatch`, board row ids (`4a:8`), driver commands
+(`offensive.py done`), `vhost pass`, or open/close lifecycle language anywhere in the repro
+steps or phase prose. Lanes are internal execution mechanics - the reader cares WHAT was done
+to the target and WHY it worked, not which subagent did it. Phase headings use the attack
+story (Recon, Foothold, Privesc, Root), never the harness story. An internal detail earns a
+mention only when it changed the attack (e.g. "shells are reaped by the room's automation, so
+re-send the phish to re-enter" is attack-relevant; "lane-6 returned COMPLETE" is not).
+`log.md` remains the lane-level audit; `walkthrough.md` is its lane-free retelling.
+
 ### (d) Preserve exploit scripts
 Copy any exploit script (payload, escape/forge script, webshell) into
 `targets/<eng>/poc/scripts/`, the same exploit-script-preservation discipline `ctf-box` and `screenshot` use --

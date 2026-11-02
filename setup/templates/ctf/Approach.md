@@ -20,38 +20,11 @@ GATE 1 (wiki): no hand-rolled exploit until its Weaponize wiki item is `[x]`.
 GATE 2 (poc):  no exploit step goes `[~]`->`[x]` without a poc/ image.
 GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the next open item. Never re-run `[!]`.
 
-## 1. Recon  ([[wiki/cheatsheets/recon]] · [[service-enumeration]] · [[network-service-attacks]])
-- [ ] rustscan all ports                 -> [[wiki/tools/rustscan]]
-- [ ] nmap -sCV on open ports            -> [[wiki/tools/nmap]]
-- [ ] service enum per port              -> [[service-enumeration]]
-- [ ] DNS enum (dig any / axfr)          -> [[wiki/cheatsheets/recon]]
-- [ ] wiki-query EACH fingerprinted tech/version   <-- GATE 1 source
-  (web, per http port:)
-- [ ] whatweb + httpx + screenshot       -> [[wiki/tools/whatweb]] [[wiki/tools/httpx]] + Skill(screenshot)
-- [ ] ffuf/feroxbuster dirs + vhosts     -> [[wiki/tools/ffuf]] [[wiki/tools/feroxbuster]] [[gobuster]] [[wordlists]]
-- [ ] dump TLS cert SANs for hidden vhosts: `echo | openssl s_client -connect <ip>:443 -servername <host> 2>/dev/null | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"`  -> [[cdn-waf-bypass]]
-- [ ] arjun param mining                 -> [[wiki/tools/arjun]]
-- [ ] nuclei                             -> [[wiki/tools/nuclei]] [[nuclei-arsenal]]
-- [ ] nikto ; wpscan (if WordPress)      -> [[nikto]] [[wiki/tools/wpscan]]
-- [ ] katana/gau crawl, then READ each .js / inline `<script>` / button `onclick` / `href` END-TO-END (open the file, do not grep - the initial vector hides in a handler grep skips)  -> [[wiki/tools/katana]] [[gau]] [[javascript-source-map-exploitation]]
-- [ ] trufflehog / .git exposure         -> [[wiki/tools/trufflehog]] [[git-exposure]]
-  (recon, multi-host / subdomains:)
-- [ ] subfinder + dnsx + gowitness       -> [[subfinder]] [[dnsx]] [[gowitness]]
-  (osint, if in scope -- ask:)
-- [ ] OSINT sweep                        -> [[osint-moc]] [[recon-dorks]] [[secret-hunting]]
-
-## 2. Weaponize  ([[cve-arsenal]] · [[attack-chains]] · [[oob-callbacks]])
-- [ ] searchsploit + wiki CVE lookup per version -> [[cve-arsenal]] [[metasploit]]
-- [ ] pick payload set from wiki/payloads/       -> Skill(wiki-arsenal)
-- [ ] stage exploit into poc/scripts/
-
-## 3. Deliver  ([[burp-mcp]] · [[reverse-shells]])
-- [ ] deliver payload (burp repeater / curl / upload) -> [[burp-mcp]] [[file-upload]]
-- [ ] get a shell (reverse / bind) + stable PTY       -> [[reverse-shells]]
-- [ ] cred reuse tried before new creds               -> loot.md [[default-credentials]]
-- [ ] fuzz params / request items                     -> [[wiki/tools/ffuf]] [[wiki/tools/arjun]]
-
 ## 4. Exploit
+
+Stage-by-stage recon/weaponize/deliver routing lives in Skill(engage) + the
+hunt skills; per-technique tooling in [[wiki/cheatsheets/recon]]. The board
+below is the only checklist this file carries.
 
 ### 4a. Foothold  (subsumes coverage.md: asset x class x status)
 | id | asset | vuln class | arsenal | skill | tool | status | poc | poc_kind |
@@ -61,14 +34,11 @@ cred attacks:  sqlmap / hydra / medusa / john / hashcat
   -> [[wiki/tools/sqlmap]] [[wiki/tools/hydra]] [[medusa]] [[wiki/tools/john]] [[wiki/tools/hashcat]] [[password-attacks]] [[wordlists]] [[default-credentials]]
 route by class: Skill(wiki-arsenal) -> Skill(`hunt-<class>`)
 
-### 4b. Post-Ex / Privesc  ([[linux-privesc]] · [[privesc-exploit-arsenal]])
-- [ ] pspy (cron/timers/bg jobs)     -> [[pspy]]
-- [ ] linpeas / winpeas              -> [[linpeas]] [[linux-enumeration]] [[windows-enumeration]]
-- [ ] sudo -l / SUID / caps / cron / timers / groups  -> [[linux-privesc]] [[windows-privesc]]
-- [ ] docker / lxd / container check -> [[docker-attacks]] [[linux-container-escape]]
-- [ ] internal services / pivot      -> [[pivoting-tunneling]] [[wiki/tools/chisel]] [[ligolo-ng]] [[file-transfer]]
-- [ ] persistence (if required)      -> [[linux-persistence]] [[windows-persistence]]
-
 ### 4c. Objective
 - [ ] user flag / initial objective
 - [ ] root flag / DA / target impact
+
+### 4b. Post-foothold (privesc / lateral)
+
+Filled by `offensive.py` (seed_4b) on the first foothold; rows land here as a
+table. Do not hand-add checklist items - the driver owns this section.

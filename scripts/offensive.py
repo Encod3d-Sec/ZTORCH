@@ -755,9 +755,10 @@ def changelog_pending(eng):
 
 
 def write_board_4b(eng, rows):
-    """Replace (or append) the `### 4b` section with `rows`. The 4b section is
-    always the last block, so its table body up to EOF is regenerated. The 4a
-    table (parsed/written separately) is untouched."""
+    """Replace (or append) the `### 4b` section with `rows`. Regeneration is
+    bounded: it splices from the `### 4b` heading to the NEXT heading, so a
+    trailing `### 4c` block survives (the ctf template orders 4a -> 4c -> 4b).
+    The 4a table (parsed/written separately) is untouched."""
     p = Path(eng) / "Approach.md"
     text = p.read_text(encoding="utf-8", errors="ignore") if p.exists() else "# Approach\n"
     header = "| " + " | ".join(BOARD_COLS) + " |\n"
@@ -765,8 +766,16 @@ def write_board_4b(eng, rows):
     body = "".join(_fmt_row(r) + "\n" for r in rows)
     block = _H4B + "\n\n" + header + sep + body
     idx = text.find("### 4b")
-    new = (text[:idx] + block) if idx >= 0 else (text.rstrip() + "\n\n" + block)
-    p.write_text(new, encoding="utf-8")
+    if idx < 0:
+        p.write_text(text.rstrip() + "\n\n" + block, encoding="utf-8")
+        return
+    end = idx + len("### 4b")
+    m = re.search(r"^#{2,3} ", text[idx + len("### 4b"):], re.M)
+    if m:
+        end += m.start()
+    else:
+        end = len(text)
+    p.write_text(text[:idx] + block + text[end:].lstrip("\n"), encoding="utf-8")
 
 
 def seed_4b(eng, index, etype, st):
@@ -1786,8 +1795,13 @@ def cmd_next(args):
                 log_lines = []
             amended = [ln.lower() for ln in log_lines
                        if "assumptions updated" in ln.lower()]
+            # an assumption line already carrying its amendment/confirmation marker
+            # in state.md is amended by definition - the marker IS the operator's
+            # record (uranium 2026-11-02: both lines prefixed AMENDED, banner still
+            # fired because it only recognized log lines)
             pending = [a for a in asm
-                       if not any(a.lower() in ln for ln in amended)]
+                       if not re.match(r"(amended|confirmed)\b", a.lower())
+                       and not any(a.lower() in ln for ln in amended)]
             if pending:
                 print("THREAT-MODEL: %d unamended assumption(s) in state.md (log "
                       "`assumptions updated: <which>` after lane close-outs) - "
@@ -2168,15 +2182,40 @@ def cmd_foothold(args):
 
 
 def cmd_done(args):
-    """Close a row. Exactly one disposition (G3): --poc P --kind K | --dead | --park.
+    """Close a row. Exactly one disposition (G3): --poc P --kind K | --dead | --park | --na.
     --poc closes [x] behind G1 (arsenal) + G2 (skill fired) + G3 (typed kind);
-    --dead marks [!] + one Deadends line; --park defers via cmd_park."""
+    --dead marks [!] + one Deadends line; --park defers via cmd_park; --na marks
+    [-] (no surface / not applicable - the hand-edit class lanes used to fall into)."""
     eng, state = _eng_state(args, "done")
     if eng is None:
         return 2
     rows, row, writer = _find_row_any(eng, args.row)
     if not row:
         _die("no such row: %s" % args.row)
+    # no-op report: the merge anchors on LIVE board state (uranium 2026-11-02:
+    # a hand replace anchored [ ] after lane-init had flipped the row [~] and
+    # silently wrote nothing), so every disposition says what it actually did.
+    st = _status_of(row)
+    if args.poc and st == "[x]":
+        _die("%s is already closed [x] poc=%s - re-closing is a no-op; open a new "
+             "row or edit the board deliberately" % (args.row, (row.get("poc") or "").strip()))
+    if args.dead and st == "[!]":
+        print("done: %s already [!] (no-op)" % args.row)
+        return 0
+    if args.park and st == "[?]":
+        print("done: %s already parked [?] (no-op)" % args.row)
+        return 0
+    if args.na:
+        if st == "[-]":
+            print("done: %s already [-] (no-op)" % args.row)
+            return 0
+        row["status"] = "[-]"
+        row["poc"] = "skip"
+        row["poc_kind"] = args.na
+        writer(eng, rows)
+        print("done: %s n/a [-] (%s)" % (args.row, args.na))
+        _ckpt(eng, "na %s" % args.row)
+        return 0
 
     # G3: exactly one typed disposition, else refuse.
     modes = [m for m in (args.poc, args.dead, args.park) if m]
@@ -3002,6 +3041,18 @@ def cmd_lane_init(args):
     skdir = _skill_dir(args.skill)
     if skdir is None:
         print("REFUSED: %s has no checklist.md" % args.skill); sys.exit(1)
+    # workflow.md is optional per skill; fall back to SKILL.md, then the checklist
+    # the gate above guarantees, so the brief never names a dead path (lanes
+    # 1-5 uranium 2026-11-02 all flagged the missing hunt-auth/hunt-rce workflow.md)
+    wf = os.path.join(skdir, "workflow.md")
+    if not os.path.isfile(wf):
+        alt = os.path.join(skdir, "SKILL.md")
+        if os.path.isfile(alt):
+            print("WARN: %s has no workflow.md; brief points at SKILL.md"
+                  % args.skill, file=sys.stderr)
+            wf = alt
+        else:
+            wf = os.path.join(skdir, "checklist.md")
     vroot = os.path.join(eng, "poc", host)
     os.makedirs(vroot, exist_ok=True)
     n = 1
@@ -3022,7 +3073,7 @@ def cmd_lane_init(args):
     sub_map = {
         "{{VHOST}}": host, "{{LANE_ID}}": lane, "{{ENG}}": os.path.basename(eng),
         "{{VAULT}}": vault,
-        "{{WORKFLOW}}": os.path.join(skdir, "workflow.md"),
+        "{{WORKFLOW}}": wf,
         "{{lists_dir}}": str(paths.get("lists_dir", os.path.join(eng, "lists"))),
         "{{ledgers_dir}}": str(paths.get("ledgers_dir", os.path.join(eng, "ledgers"))),
         "{{vault_dir}}": str(paths.get("vault_dir", eng)),
@@ -3040,7 +3091,7 @@ def cmd_lane_init(args):
                  % (os.path.basename(eng), host, lane))
     with open(os.path.join(ld, "brief.md"), "w", encoding="utf-8") as fh:
         fh.write(BRIEF_TEMPLATE.format(skill=args.skill, vhost=host, lane=lane,
-                                       workflow_abs=os.path.join(skdir, "workflow.md"),
+                                       workflow_abs=wf,
                                        lane_dir=ld))
     # .started stamp: the G10 sweep's SHALLOW check reads its mtime (WS5.6).
     open(os.path.join(ld, ".started"), "w").close()
@@ -3065,19 +3116,29 @@ def cmd_lane_init(args):
     ids = []
     for tok in (getattr(args, "rows", "") or "").split(","):
         tok = tok.strip()
-        if tok[:3] in ("4a:", "4b:"):
-            tok = tok[3:]
-        if not tok.isdigit():
-            print("WARN: --rows token %r not a row id, skipped" % tok, file=sys.stderr)
-            continue
-        rid = "4a:%s" % tok
-        brows, brow, bwriter = _find_row_any(eng, rid)
-        if not brow:
-            rid = "4b:%s" % tok
+        m = re.fullmatch(r"(4[ab]):(\d+)", tok)
+        if m:
+            # prefixed id: EXACT match on that board, no cross-board fallback
+            # (uranium 2026-11-02: "4b:2" stripped to "2" and silently bound DONE
+            # row "4a:2" into the sidecar)
+            rid = tok
             brows, brow, bwriter = _find_row_any(eng, rid)
-        if not brow:
-            print("WARN: --rows token %r matches no board row, skipped" % tok,
-                  file=sys.stderr)
+            if not brow:
+                print("WARN: --rows token %r matches no board row, skipped" % tok,
+                      file=sys.stderr)
+                continue
+        elif tok.isdigit():
+            rid = "4a:%s" % tok
+            brows, brow, bwriter = _find_row_any(eng, rid)
+            if not brow:
+                rid = "4b:%s" % tok
+                brows, brow, bwriter = _find_row_any(eng, rid)
+            if not brow:
+                print("WARN: --rows token %r matches no board row, skipped" % tok,
+                      file=sys.stderr)
+                continue
+        else:
+            print("WARN: --rows token %r not a row id, skipped" % tok, file=sys.stderr)
             continue
         if _status_of(brow) == "[ ]":
             brow["status"] = "[~]"
@@ -3107,6 +3168,11 @@ def cmd_lane_init(args):
                  "[lane] %s %s opened (skill %s%s)" % (
                      host, lane, args.skill, ": %s" % title if title else ""))
     print("LANE %s on %s -> %s" % (lane, host, ld))
+    print("  on return, append the close block under the opened line "
+          "(docs/log-grammar.md):")
+    print("  ## %s close: <goal label> (%s)" % (lane, args.skill))
+    print("  - goal: ... / - result: COMPLETE|PARTIAL|DEAD - ... / "
+          "- key finding: ... / - capture: poc/<vhost>/%s/" % lane)
 
 
 # --------------------------------------------------------------------------- cli
@@ -3240,6 +3306,8 @@ def main(argv=None):
     p_done.add_argument("--dead", nargs="?", const="exhausted",
                         help="mark the row [!] exhausted (optional reason)")
     p_done.add_argument("--park", help="defer the row [?] with a decision note (G7 no-ask)")
+    p_done.add_argument("--na", help="dispose of the row [-] n/a with a reason (no "
+                        "surface exists / class not applicable; NOT a dead-end)")
     p_done.add_argument("--fail-class", choices=("technical", "environmental",
                                                  "conceptual", "external"), default="",
                         help="with --dead: type the exhaustion (close-out drift-count)")

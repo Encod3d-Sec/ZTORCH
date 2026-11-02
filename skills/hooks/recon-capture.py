@@ -684,15 +684,16 @@ def _gate1_unmet(d):
 def _weaponize_undone(d):
     """GATE 1 signal: True iff the active Approach.md has a '## 2. Weaponize' section that
     has open '[ ]' items but NO '[~]'/'[x]' -- i.e. exploitation is starting before the
-    wiki/CVE weaponization step. Fail-closed to False (no nudge) if the board or section is
-    absent/unreadable, so this never fires spuriously."""
+    wiki/CVE weaponization step. A board WITHOUT the section (slim templates carry only
+    4a/4b/4c) falls back to '### 4a present': the fire-once nudge still fires there once
+    per session. Fail-closed to False (no nudge) if the board is absent/unreadable."""
     try:
         txt = open(os.path.join(d, "Approach.md"), encoding="utf-8", errors="ignore").read()
     except OSError:
         return False
     m = re.search(r"^##\s+2\.\s+Weaponize\b.*?(?=^##\s+\d|\Z)", txt, re.M | re.S)
     if not m:
-        return False
+        return "### 4a" in txt
     body = m.group(0)
     return "[x]" not in body and "[~]" not in body and "[ ]" in body
 

@@ -94,6 +94,26 @@ def _norm_key(text):
     return " ".join(toks)
 
 
+def _in_scope_entries(sc):
+    """Lower-cased in-scope bullets PLUS their machine tokens. scope.md's documented
+    bullet style is `token -- prose`; _scope_entry_match on the raw bullet fails that
+    form (coverage printed "no assets on a fully populated board, uranium 2026-11-02).
+    _machine_token is the same head-extraction out_of_scope_match uses, so the in-scope
+    allowlist and the enforcing deny agree on the same convention. A prose-only bullet
+    keeps its raw text (matches nothing, current behaviour)."""
+    out = []
+    for o in sc.get("in_scope", []):
+        o = (o or "").lower().strip()
+        if not o:
+            continue
+        if o not in out:
+            out.append(o)
+        tok = _engagement._machine_token(o)
+        if tok and tok not in out:
+            out.append(tok)
+    return out
+
+
 def _row_in_scope(r, etype, sc):
     """Scope gate for a full state ROW: not out-of-scope AND (no in-scope allowlist OR at least
     one of the row's identifiers matches an entry). Checks EVERY identifier column (host AND ip
@@ -110,7 +130,7 @@ def _row_in_scope(r, etype, sc):
         return False
     if any(_engagement.out_of_scope_match(i, sc) for i in ids):
         return False
-    inl = [(o or "").lower().strip() for o in sc.get("in_scope", []) if o]
+    inl = _in_scope_entries(sc)
     if inl and not any(_engagement._scope_entry_match(i, o) for i in ids for o in inl):
         return False
     return True
@@ -125,7 +145,7 @@ def _chain_asset_in_scope(asset, sc):
         return False
     if _engagement.out_of_scope_match(a, sc):
         return False
-    inl = [(o or "").lower().strip() for o in sc.get("in_scope", []) if o]
+    inl = _in_scope_entries(sc)
     if inl and not any(_engagement._scope_entry_match(a, o) for o in inl):
         return False
     return True

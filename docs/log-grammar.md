@@ -17,6 +17,32 @@ what status.py already reads; this page is the vocabulary.
 - `Ruling: <decision> - <why> - <cost if wrong>` - a mid-run judgment call the operator
   would rubber-stamp; lanes log it and keep going; closeout prints every `Ruling:` line.
 
+## Lane timeline (the readable layer)
+
+`[lane] <host> <lane-N> opened (...)` dispatch lines stay verbatim - the driver writes
+them at lane-init and `lane_validate.py` reconciliation matches them against
+`poc/<vhost>/lane-*/` dirs. The delegate dispatch format
+(`- lane <name> ... SUCCESS = <obs> | tmux win <w> | capture <dir>`) is unchanged too -
+`lane_validate.py` + drift-guard + status.py aging parse it.
+
+On a lane's RETURN the main session appends one close block right after the lane's
+opened line. A bare `[lane] ... closed (...)` one-liner is NOT enough: it buries what
+the lane learned inside a parenthetical and the file reads as lifecycle noise. The
+close block is the useful layer:
+
+```
+## lane-N close: <one-line goal label> (<skill>)
+- goal: <what the lane set out to do>
+- result: <COMPLETE|PARTIAL|DEAD> - <what actually happened, board rows touched>
+- key finding: <the one thing the next reader must know>
+- capture: poc/<vhost>/<lane-N>/
+```
+
+Keep the block ASCII, one bullet per label, angle-bracketed values backticked
+(Obsidian-safe). `assumptions updated: ...` summary lines keep their existing role
+(the threat-model gate greps them); dedupe repeated driver `opened` lines when
+restructuring a log by hand, but never drop the one line per lane dir.
+
 ## Audit line convention (framework events)
 
 `<TS> | <category> | <action> | <result> | <detail>`

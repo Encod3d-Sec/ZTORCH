@@ -20,27 +20,11 @@ GATE 1 (wiki): no hand-rolled exploit until its Weaponize wiki item is `[x]`.
 GATE 2 (poc):  no exploit step goes `[~]`->`[x]` without a poc/ image.
 GATE 3 (loop): a vector exhausted -> mark `[!]`, one Deadends line, move to the next open item. Never re-run `[!]`.
 
-## 1. Recon  ([[web-attack-surface]] · [[wiki/cheatsheets/recon]])
-- [ ] subfinder + amass + dnsx (subdomains) -> [[subfinder]] [[amass]] [[dnsx]]
-- [ ] httpx probe + gowitness               -> [[wiki/tools/httpx]] [[gowitness]]
-- [ ] dump TLS cert SANs for hidden vhosts: `echo | openssl s_client -connect <ip>:443 -servername <host> 2>/dev/null | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"`  -> [[cdn-waf-bypass]]
-- [ ] gau + katana crawl (urls, .js)        -> [[gau]] [[wiki/tools/katana]] [[javascript-source-map-exploitation]]
-- [ ] arjun param mining                     -> [[wiki/tools/arjun]]
-- [ ] nuclei                                 -> [[wiki/tools/nuclei]] [[nuclei-arsenal]]
-- [ ] trufflehog / .git / secrets            -> [[wiki/tools/trufflehog]] [[git-exposure]] [[secret-hunting]]
-- [ ] wiki-query EACH fingerprinted tech/version   <-- GATE 1 source
-
-## 2. Weaponize  ([[owasp-top-10]] · [[oob-callbacks]] · [[cve-arsenal]])
-- [ ] pick payload class from wiki/payloads/ -> Skill(wiki-arsenal)
-- [ ] CVE lookup for named tech/version      -> [[cve-arsenal]]
-- [ ] stage PoC into poc/scripts/
-
-## 3. Deliver  ([[burp-mcp]] · [[api-security]])
-- [ ] deliver via burp repeater / curl       -> [[burp-mcp]]
-- [ ] token / cookie / cred reuse            -> loot.md
-- [ ] fuzz params / request items            -> [[wiki/tools/ffuf]] [[wiki/tools/arjun]]
-
 ## 4. Exploit
+
+Stage-by-stage routing lives in Skill(active-workflow) (the stage table below)
++ Skill(engage); per-technique tooling in [[wiki/cheatsheets/recon]]. The
+stage table + board below are the only checklists this file carries.
 
 ## Workflow stages (per locked vhost)
 
