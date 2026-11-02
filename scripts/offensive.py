@@ -2604,6 +2604,29 @@ def _threat_assumptions(eng):
 def cmd_closeout(args):
     """Print the per-type close-out chain (Skill names, in order) for the
     engagement. G7: no question, just the ordered chain."""
+    # self-heal: a hand-driven engagement (box churn pulls work off the board)
+    # can reach closeout without driver state; refusing here cost a whole
+    # close-out pass once. Detect the type from state.md frontmatter and init
+    # minimal state instead of failing.
+    eng_path = _resolve_eng(args.eng)
+    if eng_path is not None and eng_path.is_dir() \
+            and not (eng_path / STATE_NAME).is_file():
+        m = re.search(r"^engagement_type:\s*(\S+)",
+                      (eng_path / "state.md").read_text(errors="replace"),
+                      re.M) if (eng_path / "state.md").is_file() else None
+        etype = m.group(1) if m else "pentest"
+        if etype not in CLOSEOUT_CHAINS:
+            etype = "pentest"
+        _save_state(eng_path, {
+            "type": etype,
+            "pass": 0,
+            "asset_cursor": None,
+            "dry_streak": 0,
+            "foothold": False,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        })
+        print("closeout: driver state was missing - self-initialized "
+              "type=%s (hand-driven engagement)" % etype)
     eng, state = _eng_state(args, "closeout")
     if eng is None:
         return 2

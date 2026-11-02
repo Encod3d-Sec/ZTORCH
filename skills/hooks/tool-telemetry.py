@@ -229,6 +229,19 @@ def _context_low(transcript, d):
 
 
 _MENTOR_SAME_TOOL = 5   # pentagi helpers.go:164-197 threshold; reset-on-fire
+_MENTOR_SAME_TOOL_CTF = 10  # ctf: every bash is a distinct ssh/vm.sh one-shot; 5 is pure noise
+
+
+def _mentor_threshold(d):
+    """ctf engagements run ssh/one-shot-heavy (thm_cave eval: ~14 bash advisories,
+    every call a distinct remote command) - double the threshold there."""
+    try:
+        with open(os.path.join(d, "state.md"), encoding="utf-8", errors="replace") as fh:
+            if re.search(r"^engagement_type:\s*ctf\b", fh.read(), re.M):
+                return _MENTOR_SAME_TOOL_CTF
+    except Exception:
+        pass
+    return _MENTOR_SAME_TOOL
 
 
 def _mentor_check(d, tool, bins):
@@ -253,10 +266,11 @@ def _mentor_check(d, tool, bins):
         except Exception:
             m = {}
         mc = (m.get("mentor") or {}).get(bucket) or {}
+        threshold = _mentor_threshold(d)
         fired = []
         for k in keys[:4]:
             mc[k] = int(mc.get(k, 0) or 0) + 1
-            if mc[k] >= _MENTOR_SAME_TOOL:
+            if mc[k] >= threshold:
                 fired.append(k)
                 mc[k] = 0
         while len(mc) > 16:
@@ -275,7 +289,7 @@ def _mentor_check(d, tool, bins):
                 return ("LANE PATTERN (mentor): %s fired %d times in this %s. Answer from the "
                         "output you already have, switch tool or approach, or state what is "
                         "missing before the next call."
-                        % (", ".join(fired), _MENTOR_SAME_TOOL, bucket))
+                        % (", ".join(fired), threshold, bucket))
     except Exception:
         return None
     return None

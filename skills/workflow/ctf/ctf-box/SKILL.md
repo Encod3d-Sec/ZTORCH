@@ -175,6 +175,8 @@ Box-specific chains now live in wiki (see the technique pages linked per class o
 
 **Don't assume the flag path** (e.g. `/root/root.txt`); once you have exec, `find` it - the root flag can live at a non-standard path, and the USER flag has TWO conventions (`/user.txt` at the filesystem root AND `/home/*/local.txt`): check both before declaring one absent.
 
+**Live-script edits (brick law, load-bearing).** A root-owned script a live process is currently executing (PID 1's start script, a cron wrapper) is edited by APPEND ONLY: bash reads scripts by byte offset, so an in-place rewrite makes the shell resume at an OLD offset inside NEW content (misaligned bytes, EOF, often container death with no restart policy = operator reload). `sed -i`/tmp+mv (new inode) affects only a restart instance. The payload line fires ONCE: if the listener was down, re-arm it persistently, append payload + a `/bin/bash` keep-alive tail again, then kill the leaf child PID the wrapper is parked on. Full table + retrigger recipe: [[live-bash-script-edit-offset-law]]. Related: never kill `su`/bash wrappers or PID 1 in a container (the pidns kernel drops fatal signals to PID 1); kill the leaf child that blocks the wrapper, and arm reverse-shell listeners as persistent `while true; nc -lvnp` loops BEFORE any connectivity sanity probe - a single-shot `nc -lvnp` is consumed by the first probe.
+
 ## Capture (engagement discipline)
 
 After each phase, write to `targets/<eng>/`: hosts/access -> `state.md`, creds -> `loot.md`, chain -> `state.md`'s `## Chain` section, vulns -> `Vuln-index.md`, dead-ends -> `Deadends.md`, narrative -> `walkthrough.md` (at close-out). Flags go in the writeup, never in `session/*` or `wiki/`.
