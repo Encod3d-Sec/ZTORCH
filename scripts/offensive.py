@@ -2550,7 +2550,7 @@ def _run_summary(eng):
             m = re.search(r"(?im)^status:\s*(confirmed|ruled_out|open_proof_gap)\b",
                           head)
             if m:
-                counts[m.group(1)] += 1
+                counts[m.group(1).lower()] += 1
             sm = re.match(r"(?i)FIND-\d+-([A-Z]+)-", os.path.basename(c))
             if sm:
                 s = sm.group(1).upper()
