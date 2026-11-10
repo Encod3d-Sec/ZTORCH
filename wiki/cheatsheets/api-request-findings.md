@@ -4,7 +4,7 @@ type: cheatsheet
 tags: [api, cheatsheet, web]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-10-31
+date_updated: 2026-11-09
 ---
 
 # API Request Findings
@@ -124,3 +124,36 @@ When a request pattern yields a finding on an engagement, add the **generic** fo
 <!-- promoted-slug: wordpress-s-query-string-rest-routing-form-rest-route-bypass -->
 
 <!-- promoted-slug: tomcat-mgr-gui-war-deploy -->
+
+## NEW 2025-2026 access-control classes (auth/IDOR/API)
+
+Full ladders live in the hunt arsenals:
+`skills/exploit/hunt/hunt-{idor,auth,api,federation}/references/bypass-arsenal.md`.
+
+- **Standing grants** (Frappe CVE-2026-66000/58/59): follow/subscribe/export/
+  webhook/digest = a momentary read converted to a grant nobody re-validates.
+  Test: subscribe -> REVOKE access -> does delivery continue?
+- **Unauth replay of interesting requests** (DHL externalId class, $5k):
+  strip Authorization/Cookie entirely - BOLA may need no auth at all.
+- **403 value ladder**: array-wrap `{"id":[19]}`, leading zeros `00001234`,
+  float `1234.0`, comma-split, HPP duplicate param, verb swap
+  (`X-HTTP-Method-Override`), Content-Type swap, `.json` extension route,
+  `/v1` version rollback.
+- **GET-copy-PUT mass assignment**: GET the resource, PUT the ENTIRE response
+  body back - hidden writable fields (role, isVerified, ownerId, deletedAt)
+  apply.
+- **Async worker authz gap**: job submission authorized, the worker's later
+  privileged action is not (batch/export/callback workers).
+- **JWT when /jwks.json is absent**: `docker run --rm -it portswigger/sig2n
+  <token1> <token2>` derives the RSA public key from two same-kid tokens and
+  forges HS256 candidates.
+- **Easy Auth misconfig**: `GET /.auth/me` (Accept: application/json) ->
+  `"clientPrincipal": null` = anon allowed on the proxy surface.
+- **GraphQL login coercion**: `{"password":null}` / `{"password":[]}` on every
+  sign-in mutation (ORM comparator fails open).
+- **Single-packet racing** on auth flows (reset redemption, 2FA enrollment,
+  invite, CAPTCHA single-use): HTTP/2, 20-30 parallel requests in one packet
+  (Burp Repeater), not threads.
+
+Two-account triple-replay triage (Autorize): 200/200/401 = horizontal IDOR;
+200/200/200 = unauth critical; 200/200-different-body = diff-required.

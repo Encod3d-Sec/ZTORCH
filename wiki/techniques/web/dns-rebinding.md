@@ -59,3 +59,10 @@ host 7f000001.c0a80001.rbndr.us
 
 ## Sources
 - PayloadsAllTheThings - DNS Rebinding
+
+### 2025 real-world TOCTOU (CVE-2025-69660)
+
+Validate-then-fetch on two separate DNS resolutions still loses to rebinding: the checker
+resolves the attacker domain to a public IP, the fetcher re-resolves to the internal target
+before pinning. The fix pattern is DNS pinning at the fetch site, not the validator.
+https://aydinnyunus.github.io/2026/03/14/ssrf-dns-rebinding-vulnerability/

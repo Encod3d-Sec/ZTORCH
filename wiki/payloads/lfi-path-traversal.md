@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, lfi, rfi, path-traversal, php-wrappers, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-06-16
+date_updated: 2026-11-09
 ---
 
 # Payloads: LFI / RFI / Path Traversal
@@ -86,3 +86,22 @@ LFISuite / kadimus / liffy for automated LFI->RCE
 
 ## Real-world
 php://filter chain-to-RCE is the current go-to LFI exploit (replaces log poisoning where logs are unreadable); `data://`/`expect://` and SMB-RFI (NetNTLM leak) are recurring CTF + real findings.
+
+
+## NEW 2025-2026 parser differentials
+
+- **TCPDF/html2pdf SVG/IMG traversal**: SVG `xlink:href` read BEFORE
+  urldecode -> `..%2f` bypasses literal-`../` checks (fixed 6.9.1);
+  `%252f` double-encode; TCPDF prepends DOCUMENT_ROOT to leading `/` then
+  resolves `..` -> use `/../../..`. Data-URI-wrapped SVG dodges HTML
+  sanitizers. Fingerprint the engine via the PDF `Producer` field.
+- **Go `path.Clean` vs Windows**: forward-slash semantics do not understand
+  `\` or drive letters -> `safe\..\..\Windows\win.ini` survives; Windows
+  APIs later treat `\` as separators. `filepath.IsLocal` (Go 1.20+) is the
+  lexical gate.
+- **PHP filter-chain error oracle** (synacktiv): file READ from error
+  messages via convert.iconv.* chains, no include needed.
+- **CVE-2024-2961** glibc iconv overflow via `convert.iconv.*` = LFI2RCE
+  (PHP <= 8.3.7).
+- Orange Tsai "Art of PHP Chain" (2025-08) is the current reference for
+  chaining minor PHP file-read quirks into RCE.

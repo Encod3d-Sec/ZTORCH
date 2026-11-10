@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, oauth, saml, sso, federation, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-07-02
+date_updated: 2026-11-09
 ---
 
 # Payloads: OAuth & SAML
@@ -164,3 +164,20 @@ confuse RS256 -> HS256 using the public key as the HMAC secret
 
 ## Real-world
 redirect_uri suffix/userinfo bypasses and missing `state` are classic OAuth ATOs; SAML signature-stripping/XSW and Golden SAML (SolarWinds) are the canonical federation breaks.
+
+## NEW 2025-2026
+
+- Dynamic Client Registration (DCR) = second-order SSRF by design
+  (Steankin/PortSwigger): `POST /register` (or `/connect/register`) with
+  `logo_uri` (fetched at the consent page), `jwks_uri` (fetched at /token),
+  `sector_identifier_uri` (fetched at authorization), `request_uris`. URLs
+  stored at registration, fetched LATER - OOB callback lands mid-flow.
+  `logo_uri` is also XSS (rendered in consent, Content-Type unenforced).
+- `request_uri` on /authorize = direct server-side fetch:
+  `GET /authorize?client_id=...&request_uri=https://<oob>/r.jwt` - unlike
+  redirect_uri the server FETCHES it. May need pre-registered request_uris
+  via DCR (which is itself open).
+- WebFinger enumeration: `?resource=acct:user@host`.
+- SAML: Entra External IdP chain bypasses hardened AD CS (see
+  [[ad-cheatsheet]] ESC15/16); appliance SAML portals with a native login
+  form that skips the SAML leg entirely ([[cve-arsenal]]).

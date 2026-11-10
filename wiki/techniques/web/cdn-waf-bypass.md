@@ -423,3 +423,13 @@ Field-verified sibling of the invalid-byte keyword split above, against a CDN MA
   reflection exists - before building the real payload.
 
 <!-- promoted-slug: invalid-byte-split-managed-ruleset-transport-only -->
+
+### WAFFLED: HTTP-request parsing discrepancies as a bypass class (2025)
+
+Systematic study (AWS WAF, Cloudflare, GCP Cloud Armor, Azure WAF, ModSecurity/NGINX) shows
+each edge WAF parses requests with a different HTTP implementation than the origin, and a
+payload routed through the disagreement re-attains exploitability without any classic
+obfuscation. Practically: send the same exploit-shaped body in request shapes the two parsers
+disagree on (chunked + content-length conflict, malformed framing, method/URI confusion) and
+watch which side's parse the origin uses.
+Source: https://arxiv.org/html/2503.10846v1

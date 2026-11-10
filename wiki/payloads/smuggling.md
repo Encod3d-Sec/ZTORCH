@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, smuggling, desync, web]
 sources: []
 date_created: 2026-06-17
-date_updated: 2026-06-29
+date_updated: 2026-11-09
 ---
 
 # Payloads: HTTP Request Smuggling
@@ -97,3 +97,19 @@ Subject: spoofed (passes DMARC via the carrier)
 .
 # end-of-data variants to try: <LF>.<LF>   <CR>.<CR>   <LF>.<CR><LF>   <CR><LF>.<CR>
 ```
+
+
+## NEW 2024-2026: H2 downgrade + CONTINUATION flood
+
+- **H2.CL / H2.TE**: H2 front-end downgrades to H1 backend -> content-length
+  or injected TE honored post-downgrade. H2-only sites are NOT immune.
+- **CONTINUATION flood** (VU#421644): unlimited HEADERS+CONTINUATION frames
+  on ONE connection -> OOM/CPU, invisible to access logs. Vulnerable: httpd,
+  Tomcat, Envoy, Go net/http, Node, nghttp2. Immune: nginx, HAProxy, Jetty,
+  Varnish, NetScaler. DoS class - version-verify only, never fire.
+- **Browser-powered desync**: the victim's browser is the desync point
+  (HTTP/1 Upgrade / auth front-end); Turbo Intrucer race-the-browser.
+- Detection ladder: timing oracle (last-byte) -> differential response
+  (smuggled second request, distinct path) -> victim-content capture.
+
+Arsenal: `skills/exploit/hunt/hunt-smuggling/references/bypass-arsenal.md`.

@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, idor, bola, access-control, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-06-16
+date_updated: 2026-11-09
 ---
 
 # Payloads: IDOR / BOLA
@@ -55,3 +55,19 @@ note 2 accounts' ids -> swap A<->B systematically across every object endpoint
 
 ## Real-world
 BOLA is OWASP API #1 and the single most common high-bounty web bug: sequential/UUID id swap on `/api/.../{id}` leaking other users' or cross-tenant data (Optus, countless H1 reports).
+
+## NEW 2025-2026
+
+- Value ladder on 403: `[19]` array-wrap, `019` leading zeros, `19.0` float,
+  `19,20` comma-split, HPP `?id=19&id=20`, verb/Content-Type swap, `.json`
+  suffix, /v1 rollback. The guard regex-matches one shape; the ORM accepts
+  all of them.
+- Strip-auth-field replay: take the WORKING authorized request, delete the
+  user-identifying field entirely (`userId`, `tenant`) - the backend often
+  re-derives it or defaults to the victim.
+- ORM base-model without user_id (Nginx UI CVE-2026-33030): the update
+  handler binds the raw model and never scopes the query - PUT any id.
+- GET-copy-PUT mass assignment (see [[api]]): read object, flip owner/team
+  field, PUT back.
+- Standing grants: revoke/opt-out does not cancel delivery (Frappe
+  CVE-2026-66000 family) - post-revoke replay is part of the IDOR sweep.

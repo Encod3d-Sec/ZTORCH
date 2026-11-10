@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, xxe, xml, ssrf, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-07-21
+date_updated: 2026-11-09
 ---
 
 # Payloads: XXE
@@ -75,3 +75,16 @@ php://filter/convert.base64-encode/resource=/var/www/html/index.php
 
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[xpath]]
+
+
+## NEW 2025-2026 carriers + OOB-blocked fallback
+
+- **XML inside files**: XMP, PDF XFA, ODF, EPUB, KMZ, OOXML
+  (`xl/sharedStrings.xml` PhpSpreadsheet class). Start from a VALID file of
+  the expected type; add DOCTYPE + OOB parameter entity to the embedded XML
+  only. Processing often ASYNCHRONOUS - wait for late callbacks before a
+  miss.
+- All OOB blocked: error-based via LOCAL system DTD redefinition (GoSecure
+  dtd-finder); jar:// (Java); slow-server temp-file pin.
+
+Full ladder: `skills/exploit/hunt/hunt-injection/references/bypass-arsenal.md`.

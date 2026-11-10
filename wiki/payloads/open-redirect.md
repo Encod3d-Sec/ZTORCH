@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, open-redirect, ssrf, oauth, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-07-21
+date_updated: 2026-11-09
 ---
 
 # Payloads: Open Redirect
@@ -47,3 +47,16 @@ CRLF in a redirect param -> response splitting (see crlf)
 
 ## Real-world
 Open redirect alone is low severity, but as an OAuth `redirect_uri` chain or SSRF-allowlist bypass it escalates to account takeover / metadata-cred theft - the reason it stays a high-signal recon target.
+
+
+## NEW 2025-2026 validator seams
+
+- **Fragment smuggling** (Grafana CVE-2025-6023): validators inspect only
+  `URL.Path`, handler builds Location from the RAW string ->
+  `?redirectTo=/%23/..//\//attacker.com`. Generalizes to ANY Go service
+  validating parsed path but redirecting the original string.
+- **Regex allowlist wildcards** (authentik CVE-2024-52289): unescaped `.`
+  in a glob/regex redirect allowlist -> `appXexample.com` accepted. Only
+  exact-string compare is safe.
+- Userinfo parser confusion still landing:
+  `https://trusted.example[@attacker.example` / `%5B@` variants.

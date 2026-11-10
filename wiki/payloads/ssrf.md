@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, ssrf, web, cloud]
 sources: [hacktricks-web]
 date_created: 2026-06-05
-date_updated: 2026-07-21
+date_updated: 2026-11-09
 ---
 
 # Payloads: SSRF
@@ -229,3 +229,52 @@ Same idea for any framework that echoes a sink's result into a client-readable s
 rather than the HTTP body: the channel is the cookie, not the page.
 
 <!-- promoted-slug: flask-flash-cookie-exfil -->
+
+## Cloud-metadata PUT-token bypass conditions (IMDSv2 era)
+
+IMDSv2 demands a PUT to `/latest/api/token` with `X-aws-ec2-metadata-token-ttl-seconds`, then
+the token echoed as a request header. Four conditions still pop it through an SSRF:
+1. Header-injection SSRF: the fetcher lets you set arbitrary headers, so run the two-step flow
+   yourself (PUT token, then GET with the token header).
+2. Redirect-chain fetchers: a 307/308 re-issues the original method (PUT) to the redirect
+   target; chain a PUT-receiving host you control to mint the flow.
+3. Headless-browser SSRF: `fetch()`/XHR inside the SSRF-rendered page issues PUT + headers
+   natively.
+4. IMDSv1-adjacent misconfig: `--http-tokens optional` instances accept plain GET - test GET
+   first, it is still the majority posture (only about a third of fleets enforce IMDSv2).
+GCP needs `Metadata-Flavor: Google`; Azure rides 169.254.169.254 with `Metadata: true`.
+Sources: https://breachvex.com/learn/ssrf-cloud-metadata ,
+https://0xashfaq.github.io/blog/web-exploitation/ssrf-cloud-metadata-modern-bypasses/
+
+## IPv6 metadata endpoints (NEW 2025-2026)
+
+```
+http://[fd00:ec2::254]/latest/meta-data/          # EC2 IMDS over IPv6
+http://[fd00:ec2::23]/v1/credentials              # EKS Pod Identity agent
+```
+Denylists that block every encoding of 169.254.169.254 do NOT block these
+(Nitro with `HttpProtocolIpv6=enabled`, opt-in but increasingly common in
+IPv6-native subnets). EKS Pod Identity also on IPv4
+`169.254.170.23/v1/credentials`; chain with LFI
+(`file:///proc/self/environ` -> `AWS_CONTAINER_CREDENTIALS_FULL_URI`)
+for pod IAM creds. IMDSv2 quirks: token PUTs are REJECTED when carrying
+`X-Forwarded-For` (an SSRF that controls headers should OMIT it); the PUT
+response hop limit 1 means a host-local reverse proxy reaches IMDS but
+in-host containers do not. Azure IMDS is the opposite polarity: it rejects
+requests WITH `X-Forwarded-For`.
+
+## Defense -> bypass map (shared arsenal)
+
+Full ladder (IP representations, r3dir 302/307, 1u.ms rebinding, Orange
+Tsai parser differentials, gopher->Redis RCE): `skills/exploit/hunt/
+hunt-ssrf/references/bypass-arsenal.md`. Quick map:
+
+| Defense | Bypass |
+|---|---|
+| Denylist 127.0.0.1 / 169.254.169.254 strings | int/hex/octal/IPv6-mapped/zero-drop forms, `.localhost` TLD, `[fd00:ec2::254]` |
+| Resolve-then-connect validation | DNS rebinding (1u.ms), r3dir 302/307 |
+| Domain allowlist | open-redirect on an allowed host, `@` userinfo confusion |
+| Scheme allowlist http(s) | redirect chains to gopher/file via r3dir, `jar:` wrapping |
+| IMDSv2 enforced | hop-limit-1 proxy path, container env leak, Lambda runtime API on localhost, IPv6 endpoint |
+| Blind (no reflection) | interactsh canary, port-scan timing, HTTP-only RCE chains (assetnote blind-ssrf-chains) |
+| WAF blocks `169.254` | decimal `2852039166`, hex `0xa9fea9fe`, DNS names resolving there |

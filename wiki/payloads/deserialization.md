@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, deserialization, rce, java, dotnet, php, python]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-06-30
+date_updated: 2026-11-09
 ---
 
 # Payloads: Insecure Deserialization
@@ -140,3 +140,20 @@ successful readObject that still returns normally is consistent with the gadget 
 effect. See [[insecure-deserialization]].
 
 <!-- promoted-slug: deser-build-gadget-jdk-gotchas -->
+
+## Where the sinks moved (NEW 2025-2026 posture)
+
+Frameworks replaced `unserialize` with allowlist serializers, so live sinks
+are now:
+1. legacy ViewState with leaked machineKey (IIS `validation=3DES` class)
+2. cache/session stores (memcached/redis values deserialized on read) -
+   poison via a SEPARATE SSRF; the two hunts chain
+3. document pipelines (PDF export, imaging) that unpickle job parameters
+4. **polymorphic JSON**: `@type`/`type` keys instantiating classes -
+   fastjson `@type`, Jackson default-typing, .NET `TypeNameHandling`;
+   exploit with known gadget classes, JNDI/LDAP sink for fastjson/Jackson
+
+Blind deser: ysoserial DNS/time canaries per chain (interactsh token in the
+command); bisect library versions by WHICH chain fires. Defense->bypass
+table + fingerprint matrix:
+`skills/exploit/hunt/hunt-deserialization/references/bypass-arsenal.md`.

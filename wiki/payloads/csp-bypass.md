@@ -112,3 +112,22 @@ The same choice matters off the page too: some corporate egress proxies block ou
 - HackTricks (pentesting-web) (slug: hacktricks-web).
 
 <!-- promoted-slug: once-script-execution-is-confirmed-the-exfiltration-channel -->
+
+## 2025-2026 engine and sanitizer gaps (policy looks strict, execution still lands)
+
+- **Sanitizer mXSS through Trusted-Types-compliant code**: DOMPurify before 3.2.4
+  (CVE-2025-26791) mishandled a template-literal regex and emitted markup that re-mutates into
+  executable content after assignment. Wherever a sanitizer sits INSIDE a `createHTML` policy
+  path, a sanitizer bypass is a TT bypass. Check the page's DOMPurify version in its bundles
+  before writing off a stored sink as TT-protected.
+  https://nvd.nist.gov/vuln/detail/CVE-2025-26791
+- **Firefox XSLT exemption from `strict-dynamic`**: XSLT-initiated loads are not marked as
+  propagating script trust, so an injected `<?xml-stylesheet?>`/XSLT path executes despite
+  strict-dynamic; CVE-2025-8032 fixed one `document()` variant, the class reopened in
+  bug 2025067. If the app serves XML or accepts XML-derived content, test the XSLT lane.
+  https://bugzilla.mozilla.org/show_bug.cgi?id=2025067
+- **Nonce leak via CSS injection + cache**: with a per-request nonce and a same-origin CSS
+  injection primitive, `script-src` can be enumerated attribute-style (`script[nonce^="a"]`)
+  and the matched value cached/reloaded, recovering the live nonce for a forged script tag.
+  Pair with the existing querySelector nonce steal above for the no-CSS-injection case.
+  https://github.com/Karthikdude/Advanced-XSS

@@ -583,3 +583,19 @@ window.addEventListener('message', function(e) {
 
 - TryHackMe: OAuth Vulnerabilities room
 - PortSwigger Web Security Academy: OAuth 2.0 Authentication Vulnerabilities labs
+
+### Client-assertion replay (private_key_jwt) - 2025 advisory class
+
+OIDF advisories CVE-2025-27370 (OpenID Connect private_key_jwt) and CVE-2025-27371 (RFC
+7521/7523 JWT client authentication) cover implementations that accept client-assertion JWTs
+outside their narrow validity window: a captured assertion replays against the token endpoint.
+On any OIDC integration, capture a client assertion during your own authorized session and
+retry it after its `exp`/`iat` window - acceptance = replay-able client auth.
+https://openid.net/notice-of-a-security-vulnerability/
+
+### Mobile custom-scheme code interception
+
+Auth-code flow on mobile with a custom-URL-scheme redirect and no PKCE: any co-installed app
+that registers the same scheme receives the `code` and completes the exchange. Confirmed ATO
+pattern in 2025-2026 writeups; check the Android manifest deep links of any companion app.
+https://tehreem-iqbal.github.io/posts/OAuth-Code-Interception-through-Custom-Scheme-Hijacking/

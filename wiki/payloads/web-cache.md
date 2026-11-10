@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, web-cache, poisoning, deception, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-06-16
+date_updated: 2026-11-09
 ---
 
 # Payloads: Web Cache
@@ -51,3 +51,21 @@ Cache Deception Armor bypass: application/octet-stream ; .jpg served as image/we
 
 ## Real-world
 X-Forwarded-Host -> cached XSS (Kettle's Practical Web Cache Poisoning), and `.css`-suffix deception leaking session/PII, are repeated high-impact reports.
+
+
+## NEW 2025-2026: delimiter differentials + key normalization
+
+- **Cache deception via delimiter confusion**: `/api/me;x.css` - origin
+  delimiters (`;` `?` `#`, framework-specific) differ from cache delimiters;
+  the authenticated victim response gets cached as "static" and is fetchable
+  unauthenticated. Enumerate the delimiter set per framework (Rails `;`,
+  Werkzeug `;=`, Tomcat/Jetty `;`, CDN variance).
+- **Key-normalization collision**: cache decodes/case-folds differently than
+  origin -> two responses share one key.
+- **Static-rule confusion**: `/static/../api/me`, `/robots.txt/../api/me`.
+- Cloudflare still excludes the Host port from the key (`Host: target:1337`).
+- Methodology: Cache-What-Where first (param-miner + oracle:
+  `CF-Cache-Status`, Akamai `akamai-x-get-cache-key`), then unkeyed gadget,
+  then chain (Gotta Cache 'em All, updated 2026-01; Entanglement).
+
+Arsenal: `skills/exploit/hunt/hunt-cache/references/bypass-arsenal.md`.

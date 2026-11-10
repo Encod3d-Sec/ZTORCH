@@ -272,3 +272,20 @@ reverse-shell connection wedges the whole service (~2 min until the TCP timeout 
 kill the shell session before doing more web work on the same app.
 
 <!-- promoted-slug: websocket-client-hint-cmdi -->
+
+## socket.io / Engine.IO namespace and room authz bypass
+
+Engine.IO frames wrap socket.io packets with numeric prefixes (`4`=MESSAGE wrapping socket.io
+`0`=CONNECT, `1`=DISCONNECT, `2`=EVENT); the CONNECT frame names the namespace. Auth middleware
+is usually attached to the default namespace only, while privileged namespaces (`/admin`,
+`/internal`) trust whoever CONNECTs:
+
+["0","/admin"]        # socket.io v4 CONNECT frame to the /admin namespace over the SAME public socket
+42["join","room:1"]   # EVENT frame joining a room by guessed id - room membership is rarely re-authorized
+
+The engine.io polling transport means all of this rides plain GET/POST on
+`/socket.io/?EIO=4&transport=polling&sid=...` - no upgrade required, so Apache/WAF layers that
+inspect WebSocket frames see nothing. Enumerate namespaces from the client bundle
+(`io("/name")` calls), CONNECT to each, and diff the join/membership events per user role.
+Sources: https://socket.io/docs/v4/engine-io-protocol/ ,
+https://github.com/aiaztec/pentest-recon-skills/blob/main/redteam/hunt-websocket/SKILL.md

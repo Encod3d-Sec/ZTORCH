@@ -389,3 +389,21 @@ query=%0A++++mutation+changeEmail%28%24input%3A+ChangeEmailInput%21%29+%7B%0A+++
 5. Use Burp Pro "Generate CSRF PoC" on the form-encoded request
 6. Update the action URL in the PoC HTML to the lab's domain
 7. Store the exploit and deliver to the victim
+
+### 6.5 APQ (persisted-query hash) GET replay
+
+Apollo Automatic Persisted Queries let clients send
+`?extensions={"persistedQuery":{"version":1,"sha256Hash":"..."}}` over **GET**; the server
+executes the cached query document for that hash. Exploit angles:
+
+- **GET-executed operations dodge POST-only guards**: CSRF checks, introspection blocking and
+  body-scanning WAF rules are commonly wired to POST `/graphql` only. Replay the hash-carrying
+  GET and the operation runs anyway; the response may even be CDN-cacheable.
+- **Hash registration abuse**: when APQ registration is open, an attacker plants a hash whose
+  document is a sensitive query, then gets victims' browsers to execute that hash from the
+  site's own origin (cache-poisoning the persisted-query registry).
+- Probe unauth: `GET /graphql?extensions={"persistedQuery":{"version":1,"sha256Hash":"<32-bytes-of-any-hash>"}}` -
+  `PersistedQueryNotFound` proves the APQ protocol is enabled; then replay hashes harvested
+  from the site's JS bundles with variable values swapped.
+Sources: https://www.apollographql.com/docs/apollo-server/performance/apq ,
+https://the-guild.dev/graphql/yoga-server/docs/features/automatic-persisted-queries

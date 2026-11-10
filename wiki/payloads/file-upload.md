@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, file-upload, rce, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-07-21
+date_updated: 2026-11-09
 ---
 
 # Payloads: File Upload
@@ -101,3 +101,24 @@ see [[reverse-shells]]; prefer it over the web shell when egress allows, fall ba
 the web shell when egress filtering or disabled functions block the callback.
 
 <!-- promoted-slug: upload-webshell-arsenal-asp-oneliner -->
+
+
+## NEW 2025-2026 upload classes
+
+- **CSPT via upload URL** (doyensec 2025): `../` in the upload request path;
+  proxy normalizes differently than backend -> file lands outside the API
+  namespace.
+- **Malformed part Content-Type -> stored XSS**: `Content-Type: image/`;
+  stored verbatim, returned without nosniff -> browser sniffs HTML. Check
+  app URL AND CDN/storage URL.
+- **Same-family extension, different policy** (Archibus): `.jspx` skipped
+  the auth redirect `.jsp` enforced -> unauth RCE. Diff access policy per
+  extension.
+- **Nginx include replacement** (upload over headers.conf + reload) and
+  **uWSGI `@(exec://cmd)` .ini inside an image/PDF**.
+- 2025-26 pre-auth writer wave: Jira CVE-2026-21589, Ahsay CBS
+  CVE-2026-105133/4, TruFusion, Xerox FreeFlow, vtenext - every
+  export/report/attachment writer with a path/extension param is an RCE
+  candidate.
+
+Full ladder: `skills/exploit/hunt/hunt-upload/references/bypass-arsenal.md`.

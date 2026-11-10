@@ -563,40 +563,75 @@
       "note": "proxy/edge error page: infrastructure (not the app) parsed and rejected the request, so a SECOND parser sits on the path; note which component answered, then diff its parsing vs the backend (CL.TE / TE.CL, path normalization, header casing) -> Skill(hunt-smuggling); empty 200 through the same edge = keep both parsers in mind, not clean",
       "prio": 2
     },
-  {
-    "re": "AWSELBAuth|Location: [^\\s]*oauth2/authorize\\?",
-    "class": "auth-routing",
-    "skill": "hunt-auth",
-    "note": "AWS ALB OIDC gate is PATH-EXACT: a variant (case, trailing slash, encoding) of an authed path with a VALID session bounces to the IdP authorize redirect instead of the app - the variant missed the auth route table. Read next: path-variant/WCD probes on this host die at the gate (only byte-exact paths authenticate); a variant answering non-auth content (404/S3 shell) exposes the default-action fallthrough origin -> Skill(hunt-auth)",
-    "prio": 3
-  },
-  {
-    "re": "ws://|wss://|Upgrade:\\s*websocket|Sec-WebSocket-(Key|Protocol|Accept)",
-    "class": "auth",
-    "skill": "hunt-auth",
-    "note": "websocket endpoint: Origin echo -> CSWSH (cross-site websocket hijacking), auth/token on the handshake vs per-message, session reuse over the socket; doctrine: hunt-auth + [[websocket-attacks]]",
-    "prio": 2
-  },
-  {
-    "re": "[?&](user|account|order|invoice|doc|cust|patient|member)_?id=\\d{2,}",
-    "class": "idor",
-    "skill": "hunt-idor",
-    "note": "sequential object id in a param: swap to another user's id (or increment) and DIFF the response vs your own baseline; missing authz = IDOR -> ATO via reset/profile endpoints",
-    "prio": 2
-  },
-  {
-    "re": "/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=[/?#]|$)",
-    "class": "idor",
-    "skill": "hunt-idor",
-    "note": "uuid object reference in the path: uuids are NOT authz - obtain a second account's uuid (email headers, profile page, referral link, export) and replay with response-delta comparison",
-    "prio": 2
-  },
-  {
-    "re": "\"(id|user_id|account_id|orderId)\"\\s*:\\s*[0-9]{2,}",
-    "class": "idor",
-    "skill": "hunt-idor",
-    "note": "object id in an API JSON body: change it to another user's and diff the response; also check the id in the RESPONSE of create/get against your own account's",
-    "prio": 2
-  }
- ]
+    {
+      "re": "AWSELBAuth|Location: [^\\s]*oauth2/authorize\\?",
+      "class": "auth-routing",
+      "skill": "hunt-auth",
+      "note": "AWS ALB OIDC gate is PATH-EXACT: a variant (case, trailing slash, encoding) of an authed path with a VALID session bounces to the IdP authorize redirect instead of the app - the variant missed the auth route table. Read next: path-variant/WCD probes on this host die at the gate (only byte-exact paths authenticate); a variant answering non-auth content (404/S3 shell) exposes the default-action fallthrough origin -> Skill(hunt-auth)",
+      "prio": 3
+    },
+    {
+      "re": "ws://|wss://|Upgrade:\\s*websocket|Sec-WebSocket-(Key|Protocol|Accept)",
+      "class": "auth",
+      "skill": "hunt-auth",
+      "note": "websocket endpoint: Origin echo -> CSWSH (cross-site websocket hijacking), auth/token on the handshake vs per-message, session reuse over the socket; doctrine: hunt-auth + [[websocket-attacks]]",
+      "prio": 2
+    },
+    {
+      "re": "[?&](user|account|order|invoice|doc|cust|patient|member)_?id=\\d{2,}",
+      "class": "idor",
+      "skill": "hunt-idor",
+      "note": "sequential object id in a param: swap to another user's id (or increment) and DIFF the response vs your own baseline; missing authz = IDOR -> ATO via reset/profile endpoints",
+      "prio": 2
+    },
+    {
+      "re": "/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=[/?#]|$)",
+      "class": "idor",
+      "skill": "hunt-idor",
+      "note": "uuid object reference in the path: uuids are NOT authz - obtain a second account's uuid (email headers, profile page, referral link, export) and replay with response-delta comparison",
+      "prio": 2
+    },
+    {
+      "re": "\"(id|user_id|account_id|orderId)\"\\s*:\\s*[0-9]{2,}",
+      "class": "idor",
+      "skill": "hunt-idor",
+      "note": "object id in an API JSON body: change it to another user's and diff the response; also check the id in the RESPONSE of create/get against your own account's",
+      "prio": 2
+    },
+    {
+      "re": "\\$queryRawUnsafe|\\$executeRawUnsafe",
+      "class": "sqli",
+      "skill": "hunt-sqli",
+      "note": "Prisma raw-SQL escape hatch; param into it = quote canary first",
+      "message": "Prisma unsafe raw query ({match}) - probe its params"
+    },
+    {
+      "re": "\\b(rO0|gASV|AAEAAAD)[A-Za-z0-9+/=]{16,}",
+      "class": "deserialization",
+      "skill": "hunt-deserialization",
+      "note": "serialized-object base64 prefix (Java rO0 / pickle gASV / .NET AAEAAAD) in any param/cookie",
+      "message": "serialized blob prefix ({match}) - magic-byte class identified"
+    },
+    {
+      "re": "[?&](url|dest|next|callback|webhook|feed|proxy|img_url|return_to)=https?:",
+      "class": "ssrf",
+      "skill": "hunt-ssrf",
+      "note": "URL-valued param (fetcher sink candidate) - canary + scheme battery",
+      "message": "URL-valued param ({match}) - SSRF fetcher candidate"
+    },
+    {
+      "re": "(find|findOne|aggregate)\\s*\\(\\s*(req\\.(query|body)|params|body)\\s*[,)]",
+      "class": "sqli",
+      "skill": "hunt-sqli",
+      "note": "NoSQL query-object passthrough - operator injection surface",
+      "message": "NoSQL passthrough sink ({match}) - operator-inject it"
+    },
+    {
+      "re": "__proto__\\s*[:\\]]|constructor\\s*\\[\\s*['\"]",
+      "class": "xss",
+      "skill": "hunt-xss",
+      "note": "prototype-pollution merge sink or gadget; server-side = mass-assignment adjacent",
+      "message": "prototype-pollution sink ({match}) - trace the merge"
+    }
+  ]
 }

@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, llm, mcp, ai-agent, prompt-injection, supply-chain]
 sources: [invariant-mcp-tool-poisoning, willison-mcp-prompt-injection, git-deepteam, git-agentdojo]
 date_created: 2026-09-03
-date_updated: 2026-09-09
+date_updated: 2026-11-09
 ---
 
 # Payloads: MCP Tool Poisoning
@@ -224,3 +224,16 @@ curl -s http://<host>:<port>/mcp/list_tools
 grep -nP '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{206F}\x{E0000}-\x{E007F}]' \
   .cursor/rules/* .github/copilot-instructions.md README.md 2>/dev/null
 ```
+
+
+## NEW 2025-2026: spec-codified attack classes
+
+MCP spec 2025-11-25 security best practices codify: confused deputy on MCP
+proxies (static client ID + dynamic registration + consent cookie = code
+theft), token passthrough forbidden. Invariant classes: tool poisoning
+(description-field instructions, zero-width chars), rug pull (post-install
+description/code change), cross-server contamination via poisoned tool
+RESULTS. Config tells: `npx -y <pkg>@latest`, inline keys in `.mcp.json` /
+mcpServers blocks.
+
+Arsenal: `skills/exploit/hunt/hunt-mcp/references/bypass-arsenal.md`.

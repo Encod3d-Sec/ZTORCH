@@ -3,7 +3,7 @@ title: "Active Directory Cheatsheet"
 type: cheatsheet
 tags: [active-directory, adcs, cheatsheet, delegation, enumeration, kerberos, lateral-movement, pass-the-hash, persistence, rbcd, thm, windows]
 date_created: 2026-05-08
-date_updated: 2026-05-13
+date_updated: 2026-11-09
 sources: [thm-ad-breaching, thm-ad-lateral, thm-ad-persistence, thm-ad-enumeration, git-htb-writeups]
 ---
 
@@ -508,6 +508,19 @@ certipy relay -ca ca.domain.htb -template DomainController
 # Authenticate with obtained certificate
 certipy auth -pfx administrator.pfx -dc-ip 10.10.10.X
 ```
+
+### ESC15 / ESC16 (2025) + the trust bypass
+
+- **ESC15** (Delinea, 2025): certificate template with **schema version 1** behaves like
+  EDITF_ATTRIBUTESUBJECTALTNAME - SAN injection on templated issuance even when ESC1
+  flags look clean. Tell: templates still on schema v1. `certipy req -template VulnTemplate -upn administrator@domain.htb`
+- **ESC16** (Sygnia, 2025): Security Extension (CT_FLAG_SECURITY_EXTENSION) absent +
+  KERB_AUTH/NT_AUTH mapping -> the cert maps to ANY account when UPN is absent or
+  ambiguous. Tell: UPN-less / duplicate-UPN accounts in the domain.
+- **ADCS hardened? Audit the trust instead.** On-prem IdP compromise (Entra External IdP
+  chain) lets you sign Entra-bound SAML tokens directly - the IdP is trusted, no AD CS
+  touched. Also FIC wildcard subject/issuer confusion on Entra app manifests
+  (`hunt-cloud`), and Golden SAML via stolen TokenSigning cert (check cert age).
 
 ---
 

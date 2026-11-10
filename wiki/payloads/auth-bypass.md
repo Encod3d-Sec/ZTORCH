@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, authentication, bypass, 2fa, web]
 sources: [hacktricks-web]
 date_created: 2026-06-16
-date_updated: 2026-09-10
+date_updated: 2026-11-09
 ---
 
 # Payloads: Authentication Bypass
@@ -89,3 +89,20 @@ This is not weak/default credentials: no password is accepted, guessed, or check
 `X-Original-URL`/`X-Custom-IP-Authorization` ACL bypass, response-flag tampering, OTP no-rate-limit, and reset poisoning are recurring high-bounty ATOs.
 
 <!-- promoted-slug: a-multi-operation-soap-rest-service-can-have-one-operation-w -->
+
+## NEW 2025-2026
+
+- Easy Auth (Azure App Service): `GET /.auth/me` - if `clientPrincipal` is
+  null the site is ANONYMOUS behind the auth facade; the app's own role
+  checks are then the only barrier. Walk `/admin` style paths directly.
+- Debug identity headers: `X-User-Id`, `X-Forwarded-User`, `X-Original-URL`,
+  `X-Rewrite-URL` honored by the app (left on from staging) - set them and
+  become any user. Prefer Burp Repeater for the replay.
+- Single-packet racing on auth flows (last-byte sync, Beta/Turbo Intruder):
+  login+MFA, password-reset+login, email-change+session-refresh. The window
+  between two requests is the bug.
+- GraphQL login type-coercion: `password: null` / `password: ["x"]` in the
+  login mutation ([[graphql]]).
+- MFA: OTP reuse across sessions, bombing/fatigue loops, and the 2026
+  appliance wave - SAML portals whose NATIVE login form bypasses the
+  SAML-enforced MFA entirely ([[cve-arsenal]]).
