@@ -9,6 +9,9 @@ affected: ""
 counterevidence: ""      # required: the strongest case AGAINST this finding - what would make it false and why that does not apply
 confidence: ""           # required on CONFIRMED+: high | medium | low + one-line basis
 severity_change_conditions: ""   # required on CONFIRMED+: what discovered fact would raise/lower this rating
+fingerprint: ""          # required on CONFIRMED+: 12-hex = first 12 of sha256("class|affected|primary endpoint"); stable root-cause ID for dedup + chains.json matching, never changes across validation states
+proof_gap: ""            # required on open_proof_gap closure: the ONE exact unresolved fact (never a parking place for a speculative idea)
+validation_plan: ""      # required on open_proof_gap closure: `local:` bounded fixture/second-account test OR `deployment:` owner-observed fact to check; never live traffic on a hunch
 date_created: "{{DATE}}"
 sources: []
 ---
@@ -48,9 +51,10 @@ find_filename_placeholder: FIND-XXX-SEVERITY-short-slug.md
 vuln_index_status: CONFIRMED | PARTIAL
 find_status_ladder: RESEARCH -> DETECTED -> CONFIRMED -> EXPLOITED
 find_status_neutral: FALSE_POSITIVE | IGNORED
-find_confirmed_fields: counterevidence | confidence | severity_change_conditions
+find_confirmed_fields: counterevidence | confidence | severity_change_conditions | fingerprint
+find_confirmed_fingerprint: 12-hex, first 12 of sha256("class|affected|primary endpoint")
 find_section: Recommended next
 closure_status_enum: confirmed | ruled_out | open_proof_gap
-closure_contract: counterevidence + closure status required on every card carrying this marker (find-lint --strict-contract opts legacy cards in); status EXPLOITED passes the closure as confirmed-equivalent (its own evidence bar still gates); open_proof_gap cards are served back by `offensive.py next`
+closure_contract: counterevidence + closure status required on every card carrying this marker (find-lint --strict-contract opts legacy cards in); status EXPLOITED passes the closure as confirmed-equivalent (its own evidence bar still gates); open_proof_gap cards are served back by `offensive.py next`; open_proof_gap additionally requires proof_gap (the one exact unresolved fact) + validation_plan (local fixture or deployment owner-observed check)
 -->
 

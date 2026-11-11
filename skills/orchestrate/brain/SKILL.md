@@ -69,6 +69,15 @@ unnamed execution lanes.
   the delegate cheap-tier trap; package file only, verdicts
   CONFIRMED/NOT CONFIRMED/UNVERIFIABLE citing package lines, claims-extraction pass,
   UNVERIFIABLE routes to Skill(triage).
+  Independence rules (hard): a verifier's input is the discovering lane's
+  evidence package only - it never receives another verifier's conclusion;
+  a malformed or prose-wrapped verifier result is discarded and re-dispatched
+  fresh, never repaired in place.
+  Material-replacement rule: when a verifier's re-derivation materially
+  CHANGES the finding (different root cause, endpoint, or severity raised),
+  that replacement is not final - dispatch a second fresh verifier on the
+  replacement before it enters the board. Wording-only corrections apply
+  directly.
 - Research lane: glm-5.3-flash. CVE/PoC lookup across NVD, MITRE, CISA KEV,
   GHSA/GitHub search, Exploit-DB, vendor advisories, Packet Storm, Vulners,
   returning a credibility read plus publication/last-updated dates. Output is

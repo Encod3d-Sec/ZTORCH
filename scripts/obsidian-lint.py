@@ -81,8 +81,8 @@ def lint_file(p: pathlib.Path, is_find: bool):
     fm_end = 0
     if text.startswith("---"):
         m2 = re.search(r"\n---\s*\n", text[3:])
-        fm_end = m2.end() + 3 if m2 else 0
-    lines2 = [l for l in text.split("\n")[fm_end:]] if fm_end else [l for l in text.split("\n")]
+        fm_end = text[:m2.end() + 3].count("\n") if m2 else 0  # LINE index, not char
+    lines2 = text.split("\n")[fm_end:]
     for i in range(len(lines2) - 1):
         a, b = lines2[i].rstrip(), lines2[i + 1].lstrip()
         if (len(a) > 60 and len(b) > 25 and b[:1].islower()
@@ -91,6 +91,30 @@ def lint_file(p: pathlib.Path, is_find: bool):
                 and not b.lstrip().startswith(("#", "|", ">", "-", "*", "```", "1.", "2.", "3."))):
             issues.append("%s:%d-%d: mid-sentence hard wrap ('...%s' / '%s...') - rejoin into one line"
                           % (p, i + 1, i + 2, a[-25:], b[:25]))
+            break
+    # blank-line sentence split (operator pain 2026-11-12, "new lines in mid
+    # sections"): a prose line that does NOT end a sentence, then a blank line,
+    # then a lowercase continuation - an Edit/insert mangle the adjacent-line
+    # rule above cannot see
+    _skip = lambda s: (not s) or s.lstrip().startswith(("#", "|", ">", "-", "*", "```", "!"))
+    in_fence = [False] * len(lines2)
+    fstate = False
+    for j, ln in enumerate(lines2):
+        if ln.strip().startswith("```"):
+            fstate = not fstate
+            in_fence[j] = True  # a fence line itself is never a split member
+            continue
+        in_fence[j] = fstate
+    for i in range(len(lines2) - 2):
+        if in_fence[i] or in_fence[i + 1] or in_fence[i + 2]:
+            continue  # fenced bash legitimately blank-lines between commands
+        a, gap, b = lines2[i].rstrip(), lines2[i + 1].strip(), lines2[i + 2].lstrip()
+        if (not gap and len(a) > 30 and len(b) > 15 and b[:1].islower()
+                and not a.endswith((".", ":", "!", "?", ")", "`", ">", "|", ";", ","))
+                and not _skip(a) and not _skip(b)
+                and not re.match(r"^\d+\. ", b)):
+            issues.append("%s:%d-%d: sentence split by blank line ('...%s' / '%s...') - "
+                          "rejoin the paragraph" % (p, i + 1, i + 3, a[-25:], b[:25]))
             break
     if is_find:
         m = re.match(r"\A---\s*\n(.*?)\n---\s*\n", text, flags=re.S)

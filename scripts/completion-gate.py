@@ -408,6 +408,14 @@ def cmd_check(args):
     scan_text = _RULE_RE.sub("", ledger_text)
     placeholders = [tok for tok in ("{{", "}}", "TBD", "<TODO>")
                     if tok in scan_text]
+    # cloudflare adopt 2026-11-12: a transient provider error riding inside a
+    # 200-OK response stream reads as a cleanly finished lane. Classify the
+    # response TEXT, not just the exit; provider tokens only (target HTTP 5xx
+    # in captures is legitimate lane content and stays out of this list).
+    provider_errs = [tok for tok in (
+        "api error", "api_error", "overloaded_error", "rate_limit_error",
+        "quota exceeded", "model not found", "capacity, please try again")
+        if tok in ledger_text.lower()]
     capture_note = ""
     if args.capture:
         if not os.path.isdir(args.capture):
@@ -418,6 +426,7 @@ def cmd_check(args):
             capture_note = "capture OK"
     if (not unchecked and not missing and not empty and not stale
             and not rule_failed and not na_failed and not placeholders
+            and not provider_errs
             and not capture_note.startswith("CAPTURE")):
         if ok == 0:
             # a checklist whose boxes declare no artifacts verifies nothing;
@@ -443,6 +452,9 @@ def cmd_check(args):
         print("  NA_FAILED: %s" % t)
     for tok in placeholders:
         print("  PLACEHOLDER: '%s' left in the checklist (lane-init substitution missed or ticked template text)" % tok)
+    for tok in provider_errs:
+        print("  PROVIDER_ERROR: '%s' text in the ledger - the lane may have swallowed "
+              "an API error as a clean result; re-dispatch, never log it as a negative" % tok)
     if capture_note.startswith("CAPTURE"):
         print("  %s" % capture_note)
     print("  verified: %d" % ok)

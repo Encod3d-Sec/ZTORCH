@@ -242,6 +242,15 @@ def _closure_issues(fmt):
     if sval not in CLOSURE_PASS:
         issues.append("closure contract: status must be one of %s (got '%s')"
                       % (" | ".join(CLOSURE_PASS), sval or "(empty)"))
+    # open_proof_gap is a blocked lead, not a parking place (cloudflare adopt
+    # 2026-11-12): the ONE exact unresolved fact + a concrete plan to resolve it
+    if sval == "open_proof_gap":
+        for fld, hint in (("proof_gap", "the ONE exact unresolved fact"),
+                          ("validation_plan", "a local: bounded test or deployment: owner-observed check")):
+            v = re.search(r"^%s:\s*(.+)$" % fld, fmt, re.M | re.I)
+            val = v.group(1).strip().strip('"').strip("'") if v else ""
+            if not val or _PLACEHOLDER_RE.search(val) or val.lower() in ("todo", "tbd", "n/a"):
+                issues.append("open_proof_gap contract: %s must state %s" % (fld, hint))
     return issues
 
 
@@ -305,6 +314,13 @@ def lint_file(path, base_dir=None, strict_contract=False):
             val = mv.group(1).strip().strip('"').strip("'") if mv else ""
             if not val or _PLACEHOLDER_RE.search(val) or val.lower() in ("todo", "tbd", "n/a"):
                 issues.append("status %s needs non-empty %s: (%s)" % (status, fld, hint))
+        # stable root-cause ID (cloudflare adopt 2026-11-12): dedup + chains.json
+        # matching key; never changes across validation states
+        mv = re.search(r"^fingerprint:\s*(\S+)", fmt, re.M | re.I)
+        fp = mv.group(1).strip().strip('"').strip("'") if mv else ""
+        if not re.fullmatch(r"[0-9a-f]{12}", fp):
+            issues.append("status %s needs fingerprint: 12-hex = first 12 of "
+                          "sha256(\"class|affected|primary endpoint\")" % status)
         ev = _evidence_issues(body, base_dir)
         if ev:
             issues.append(ev)
@@ -324,10 +340,24 @@ def main():
     if not files:
         print(f"find-lint ({eng}): no FIND-*.md files yet.")
         return 0
+    # cloudflare adopt 2026-11-12: same fingerprint on two cards = same root
+    # cause filed twice; warn (never gate) so the operator merges or splits
+    seen = {}
+    for f in files:
+        fmt = re.search(r"^---\r?\n(.*?)\r?\n---",
+                        open(f, encoding="utf-8", errors="ignore").read(), re.S)
+        mv = re.search(r"^fingerprint:\s*(\S+)", fmt.group(1), re.M | re.I) if fmt else None
+        if mv and re.fullmatch(r"[0-9a-f]{12}", mv.group(1)):
+            seen.setdefault(mv.group(1), []).append(os.path.relpath(f, d))
+    dups = {fp: rels for fp, rels in seen.items() if len(rels) > 1}
     bad = 0
     for f in files:
         issues, warnings = lint_file(f, d, strict_contract=strict)
         rel = os.path.relpath(f, d)
+        for fp, rels in dups.items():
+            if rel in rels:
+                warnings.append("duplicate fingerprint %s (root cause also filed as %s) "
+                                "- merge or split the cards" % (fp, ", ".join(r for r in rels if r != rel)))
         if issues:
             bad += 1
             print(f"  FAIL {rel}")

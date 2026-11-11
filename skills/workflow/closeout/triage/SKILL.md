@@ -39,6 +39,9 @@ If you CANNOT write the Request line as a real reproducing command -> keep in Re
 - Does it affect an in-scope asset?
 - Does the impact match the severity level being claimed?
 - Not a third-party service the target merely uses?
+- **Severity cap (hard): overall severity can never exceed DEMONSTRATED impact.**
+  Likelihood never inflates the cap - a write primitive you did not exercise,
+  a "potential" chain you did not run, caps the card at what the PoC actually showed.
 
 ### Q3: Is the root cause in an in-scope asset?
 - Production asset (not staging/dev unless in scope)
