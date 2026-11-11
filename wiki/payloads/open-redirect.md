@@ -48,7 +48,6 @@ CRLF in a redirect param -> response splitting (see crlf)
 ## Real-world
 Open redirect alone is low severity, but as an OAuth `redirect_uri` chain or SSRF-allowlist bypass it escalates to account takeover / metadata-cred theft - the reason it stays a high-signal recon target.
 
-
 ## NEW 2025-2026 validator seams
 
 - **Fragment smuggling** (Grafana CVE-2025-6023): validators inspect only

@@ -87,7 +87,6 @@ LFISuite / kadimus / liffy for automated LFI->RCE
 ## Real-world
 php://filter chain-to-RCE is the current go-to LFI exploit (replaces log poisoning where logs are unreadable); `data://`/`expect://` and SMB-RFI (NetNTLM leak) are recurring CTF + real findings.
 
-
 ## NEW 2025-2026 parser differentials
 
 - **TCPDF/html2pdf SVG/IMG traversal**: SVG `xlink:href` read BEFORE

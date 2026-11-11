@@ -76,7 +76,6 @@ php://filter/convert.base64-encode/resource=/var/www/html/index.php
 <!-- auto-wired: context-reachable sub-technique pages -->
 - [[xpath]]
 
-
 ## NEW 2025-2026 carriers + OOB-blocked fallback
 
 - **XML inside files**: XMP, PDF XFA, ODF, EPUB, KMZ, OOXML

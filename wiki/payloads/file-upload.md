@@ -102,7 +102,6 @@ the web shell when egress filtering or disabled functions block the callback.
 
 <!-- promoted-slug: upload-webshell-arsenal-asp-oneliner -->
 
-
 ## NEW 2025-2026 upload classes
 
 - **CSPT via upload URL** (doyensec 2025): `../` in the upload request path;

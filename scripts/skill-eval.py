@@ -29,7 +29,6 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 HUNT = os.path.join(ROOT, "skills", "exploit", "hunt")
 
-
 def _load_hook():
     path = os.path.join(ROOT, "skills", "hooks", "hunt-trigger.py")
     spec = importlib.util.spec_from_file_location("hunt_trigger", path)
@@ -37,10 +36,8 @@ def _load_hook():
     spec.loader.exec_module(mod)
     return mod
 
-
 HT = _load_hook()
 TRIG = json.load(open(os.path.join(HUNT, "triggers.json"), encoding="utf-8"))
-
 
 def route(prompt):
     """Replicate hunt-trigger.py main() tiering minus telemetry/meta hooks."""
@@ -53,7 +50,6 @@ def route(prompt):
             seen.add(x)
             s.append(x)
     return hard, s
-
 
 ROUTING = [
     # (name, prompt, {"hard": [must be hard], "soft": [must be hard-or-soft],
@@ -122,7 +118,6 @@ RECALL = [
     ("ldap filter-template", "wiki/payloads/ldap.md", ["CVE-2026-90979", "4515"]),
 ]
 
-
 def eval_routing():
     out = []
     for name, prompt, exp in ROUTING:
@@ -146,11 +141,9 @@ def eval_routing():
         out.append((ok, "routing:" + name, "; ".join(why)))
     return out
 
-
 def _wiki_exists(link):
     return (bool(glob.glob(os.path.join(ROOT, "wiki", "*", link + ".md")))
             or bool(glob.glob(os.path.join(ROOT, "wiki", "*", "*", link + ".md"))))
-
 
 def eval_wiring():
     out = []
@@ -176,7 +169,6 @@ def eval_wiring():
                         "arsenal links [[%s]] but no wiki/*/%s.md exists" % (link, link)))
     return out
 
-
 def eval_recall():
     out = []
     for label, rel, alts in RECALL:
@@ -187,7 +179,6 @@ def eval_recall():
                     "recall:" + label,
                     "none of %s found in %s" % (alts, rel)))
     return out
-
 
 def main():
     results = eval_routing() + eval_wiring() + eval_recall()
@@ -200,7 +191,6 @@ def main():
             print("[PASS] %s" % name)
     print("skill-eval: %d passed, %d failed" % (len(results) - fails, fails))
     return 1 if fails else 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

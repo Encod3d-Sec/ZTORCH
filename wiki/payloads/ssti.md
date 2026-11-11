@@ -75,7 +75,6 @@ Gotchas when shelling through it: `execSync` throws on any nonzero exit and the 
 
 <!-- promoted-slug: ejs-node-ssti-rce -->
 
-
 ## NEW 2025-2026: two-stage stored + no-RCE ATO
 
 - **Two-stage stored SSTI** (StyleSmuggler/Magento class): poison a

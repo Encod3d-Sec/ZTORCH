@@ -850,7 +850,6 @@ Code-review signature: grep client bundles for a function whose body is exactly 
 
 Separately, do not stop at the first render location that looks safe: when the same stored field (a filename, a title) is displayed in more than one consumer, one view may correctly encode it while a second view decodes that encoded value client-side and passes it to a DOM-write sink with no re-escaping. Grep the client bundle for every place the field is read, not just the first found. Recurred via two unrelated findings sharing this exact root cause.
 
-
 ## Protocol-relative URLs survive a tag-unaware bare-URL autolinker
 
 Some homegrown markdown-to-HTML converters skip escaping raw HTML entirely (a `<img>`/`<a>` tag in

@@ -42,7 +42,6 @@ _FUNC_DEF = re.compile(r"^[A-Za-z_]\w*\(\)\{?$")
 # be logged from either the def or the call. Optional whitespace before `()` covers `q ()`.
 _FUNC_DEF_ANY = re.compile(r"\b([A-Za-z_]\w*)\s*\(\)")
 
-
 def _admit(marker_file, min_interval_s, hooks_dir=None):
     """Once-per-interval admission for noisy advisories."""
     d = hooks_dir or os.path.dirname(os.path.abspath(__file__))
@@ -57,13 +56,11 @@ def _admit(marker_file, min_interval_s, hooks_dir=None):
     open(p, "w").close()
     return True
 
-
 def _blank_quotes(s):
     """Blank single/double-quoted spans (length-preserving) so shell operators and words
     INSIDE quotes are inert -- e.g. a `grep -qiE 'a|b|kerbrute'` pattern must not be split
     on its `|` alternation, nor have `kerbrute` read as an invoked command."""
     return _QUOTED.sub(lambda m: " " * len(m.group(0)), s)
-
 
 def _binaries(cmd):
     """Program names invoked by a shell command.
@@ -98,7 +95,6 @@ def _binaries(cmd):
             break
     return out[:8]
 
-
 def _out_bytes(data):
     """Response size in bytes (output-economy metric: how much tool output each call
     pulled into context). A number only -- leak-safe by construction."""
@@ -111,7 +107,6 @@ def _out_bytes(data):
             if isinstance(v, str):
                 return len(v)
     return None
-
 
 def _spend_update(transcript, d):
     """Accumulate est. USD spend into .metrics.json['spend_usd'] (status.py renders it;
@@ -192,7 +187,6 @@ def _spend_update(transcript, d):
         return None
     return None
 
-
 def _context_low(transcript, d):
     """Percent remaining when the last transcript usage row exceeds 75% of the model
     window, else None (clone formula: input + cache_read + cache_creation + output,
@@ -227,10 +221,8 @@ def _context_low(transcript, d):
         return None
     return None
 
-
 _MENTOR_SAME_TOOL = 5   # pentagi helpers.go:164-197 threshold; reset-on-fire
 _MENTOR_SAME_TOOL_CTF = 10  # ctf: every bash is a distinct ssh/vm.sh one-shot; 5 is pure noise
-
 
 def _mentor_threshold(d):
     """ctf engagements run ssh/one-shot-heavy (thm_cave eval: ~14 bash advisories,
@@ -242,7 +234,6 @@ def _mentor_threshold(d):
     except Exception:
         pass
     return _MENTOR_SAME_TOOL
-
 
 def _mentor_check(d, tool, bins):
     """PentAGI Mentor pattern: one tool/binary accumulating _MENTOR_SAME_TOOL calls inside
@@ -293,7 +284,6 @@ def _mentor_check(d, tool, bins):
     except Exception:
         return None
     return None
-
 
 def main():
     try:
@@ -366,7 +356,6 @@ def main():
             "hookEventName": "PostToolUse",
             "additionalContext": budget,
         }}))
-
 
 if __name__ == "__main__":
     try:

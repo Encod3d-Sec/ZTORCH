@@ -141,7 +141,6 @@ JSONP endpoint on allowed origin · unsafe-inline · base-uri missing · object-
 'nonce' reuse · angular/vue gadget if framework on page
 ```
 
-
 ## `Reflect.get()` retrieves a blocklisted function with no property-access token in the payload
 
 A keyword blocklist that catches both the bare name (`alert`) and its split/concatenated

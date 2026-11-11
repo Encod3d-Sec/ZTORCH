@@ -98,7 +98,6 @@ Subject: spoofed (passes DMARC via the carrier)
 # end-of-data variants to try: <LF>.<LF>   <CR>.<CR>   <LF>.<CR><LF>   <CR><LF>.<CR>
 ```
 
-
 ## NEW 2024-2026: H2 downgrade + CONTINUATION flood
 
 - **H2.CL / H2.TE**: H2 front-end downgrades to H1 backend -> content-length

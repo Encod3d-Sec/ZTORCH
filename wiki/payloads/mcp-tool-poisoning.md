@@ -225,7 +225,6 @@ grep -nP '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{206F}\x{E0000}-\x{E007F
   .cursor/rules/* .github/copilot-instructions.md README.md 2>/dev/null
 ```
 
-
 ## NEW 2025-2026: spec-codified attack classes
 
 MCP spec 2025-11-25 security best practices codify: confused deputy on MCP

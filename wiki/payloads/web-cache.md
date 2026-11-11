@@ -52,7 +52,6 @@ Cache Deception Armor bypass: application/octet-stream ; .jpg served as image/we
 ## Real-world
 X-Forwarded-Host -> cached XSS (Kettle's Practical Web Cache Poisoning), and `.css`-suffix deception leaking session/PII, are repeated high-impact reports.
 
-
 ## NEW 2025-2026: delimiter differentials + key normalization
 
 - **Cache deception via delimiter confusion**: `/api/me;x.css` - origin

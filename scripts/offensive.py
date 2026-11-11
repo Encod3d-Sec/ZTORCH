@@ -155,12 +155,10 @@ VECTOR_INDICATOR = {
     "linux": re.compile(r"\b(ssh|22|linux|nfs|rsync)\b"),
 }
 
-
 # --------------------------------------------------------------------------- helpers
 
 def _today():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
 
 def _save_state(eng, state):
     """Atomic .offensive.json write (tmp + os.replace). The driver is the producer that
@@ -172,7 +170,6 @@ def _save_state(eng, state):
     tmp = Path(eng) / (STATE_NAME + ".tmp")
     tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
     os.replace(tmp, p)
-
 
 def _emit_workflow_tree(eng_dir, eng):
     """Phase-1 additive engagement tree: lists/, osint/, ledgers/, .paths.json.
@@ -196,7 +193,6 @@ def _emit_workflow_tree(eng_dir, eng):
     with open(paths_p, "w", encoding="utf-8") as fh:
         json.dump(paths, fh, indent=2)
         fh.write("\n")
-
 
 # --------------------------------------------------------------------------- board (4a matrix)
 
@@ -225,7 +221,6 @@ def _parse_table(path):
         rows.append(dict(zip(header, cells)))
     return rows
 
-
 # Ragged-row surface (pass 10): dict(zip(header, cells)) silently truncates a short
 # row and shifts every later cell of an over-long one (an unescaped | in a cell); an
 # unrecognized status cell ([X] uppercase, [x) typo) makes the row INVISIBLE to
@@ -235,7 +230,6 @@ def _parse_table(path):
 # coerce+warn pattern: one bad member never poisons the file silently.
 BOARD_WARNINGS = []
 _STATUS_CELLS = ("[ ]", "[~]", "[x]", "[-]", "[?]", "[!]")
-
 
 def _warn_ragged(src, lineno, header, cells):
     if len(cells) != len(header):
@@ -247,12 +241,10 @@ def _warn_ragged(src, lineno, header, cells):
             BOARD_WARNINGS.append("%s:%d: status cell %r not recognized - row is "
                                   "invisible to open/closed accounting" % (src, lineno, st))
 
-
 def _drain_board_warnings():
     out = list(BOARD_WARNINGS)
     BOARD_WARNINGS.clear()
     return out
-
 
 def _deadend_pairs(eng):
     """{(asset_lower, class_lower)} from Deadends.md (G4 suppression set). Class cells
@@ -275,7 +267,6 @@ def _deadend_pairs(eng):
                 out.add((a, cc))
     return out
 
-
 def read_board(eng):
     """List of 4a row dicts (lowercased keys) from Approach.md's `### 4a` section.
     Slicing from the heading (like read_board_4b) instead of taking the FIRST table
@@ -288,16 +279,12 @@ def read_board(eng):
     idx = text.find("### 4a")
     return _parse_table_text(text[idx:]) if idx >= 0 else []
 
-
 def _fmt_row(r):
     return "| " + " | ".join(str(r.get(c, "") or "") for c in BOARD_COLS) + " |"
 
-
 _BOARD_RE = re.compile(r"(^\|\s*id\s*\|[^\n]*\n)(\|[-:| ]+\|[^\n]*\n)?((?:\|[^\n]*\n?)*)", re.M)
 
-
 _PROV_RE = re.compile(r"<!-- provenance.*?-->\n*", re.S)
-
 
 def _provenance_block(merged=0):
     """HTML-comment provenance header for Approach.md (cyberstrikeai L8):
@@ -315,7 +302,6 @@ def _provenance_block(merged=0):
             "needs-review: %s\n"
             "-->\n" % (merged, warn, "true" if merged else "false"))
 
-
 def _apply_provenance(text, merged=0):
     """Regenerate the provenance block; a prior needs-review: true carries
     forward (routine merged=0 writes must not silently clear the flag)."""
@@ -324,7 +310,6 @@ def _apply_provenance(text, merged=0):
     if prior and "needs-review: true" in prior.group(0):
         block = block.replace("needs-review: false", "needs-review: true", 1)
     return block + _PROV_RE.sub("", text, count=1).lstrip("\n")
-
 
 def write_board(eng, rows, merged=0):
     """Replace the 4a table body with `rows`, preserving the rest of Approach.md.
@@ -344,7 +329,6 @@ def write_board(eng, rows, merged=0):
         new = base + "### 4a. Coverage matrix\n\n" + header + sep + body
     p.write_text(_apply_provenance(new, merged=merged), encoding="utf-8")
 
-
 def _class_info(index):
     """class -> (skill, arsenal) from the routing index, first routing row per
     class wins (routing dict preserves table order)."""
@@ -354,7 +338,6 @@ def _class_info(index):
         if cls and cls not in info:
             info[cls] = (row.get("skill", ""), row.get("arsenal", ""))
     return info
-
 
 def _emit_row(out, seen, dead, info, asset, cls):
     """Append a 4a row dict for (asset, cls) unless already seen/deadended. Shared by the
@@ -370,7 +353,6 @@ def _emit_row(out, seen, dead, info, asset, cls):
         "status": "[ ]", "poc": "", "poc_kind": "",
     })
 
-
 def _oos_hosts(eng):
     """scope.md frontmatter `out_of_scope_hosts: ["a.lt", "b.lt"]` -> set of hosts.
     derive_rows skips assets matching (== host or subdomain-of host): state.md can
@@ -384,7 +366,6 @@ def _oos_hosts(eng):
     if not m:
         return set()
     return {t.strip().strip("\"'").lower() for t in m.group(1).split(",") if t.strip()}
-
 
 def derive_rows(eng, index, etype):
     """Desired 4a rows (dicts, no id) for the engagement, in this order:
@@ -481,7 +462,6 @@ def derive_rows(eng, index, etype):
             _emit_row(out, seen, dead, info, asset, cls)
     return out
 
-
 def _next_board_id(rows, prefix="4a"):
     """Highest existing <prefix>:N on the board, so appends never collide. Shared by cmd_board
     (4a, the default) and seed_4b (4b) -- previously seed_4b re-implemented this same scan
@@ -494,7 +474,6 @@ def _next_board_id(rows, prefix="4a"):
             mx = max(mx, int(m.group(1)))
     return mx
 
-
 def _vhost_match(asset, vhost):
     """True iff `asset` is the vhost itself or a dot-bounded subdomain of it
     (case-insensitive). Substring containment let an attacker-coined
@@ -504,7 +483,6 @@ def _vhost_match(asset, vhost):
     v = (vhost or "").strip().lower()
     return bool(v) and (a == v or a.endswith("." + v))
 
-
 def _vhost_rows(rows, vhost):
     """Locked-vhost scope filter (workflow rework phase 1): rows whose asset is
     the vhost or a dot-bounded subdomain of it (_vhost_match). Empty vhost ->
@@ -513,7 +491,6 @@ def _vhost_rows(rows, vhost):
     if not (vhost or "").strip():
         return rows
     return [r for r in rows if _vhost_match(r.get("asset"), vhost)]
-
 
 def cmd_board(args):
     eng = _resolve_eng(args.eng)
@@ -596,7 +573,6 @@ def cmd_board(args):
         print("board scoped to %s (%d rows)" % (lock, len(rows)))
     return 0
 
-
 # --------------------------------------------------------------------------- board (4b post-foothold)
 #
 # Once an asset is owned, the 4a vuln-class board is spent; the loop pivots to
@@ -629,7 +605,6 @@ OUTPUT_CLASS = {"sqlmap", "hashcat", "john", "hydra", "medusa", "patator"}
 _WIN_RE = re.compile(r"\bwin(dows)?\b|win10|win201[69]|win2022|server 20")
 _MAC_RE = re.compile(r"\bmac(os)?\b|darwin|osx\b")
 
-
 def _os_hint(eng):
     """asset -> os/tech haystack (lowered) from state.md, for 4b OS picking."""
     out = {}
@@ -639,7 +614,6 @@ def _os_hint(eng):
             out[asset] = " ".join(str(r.get(k, "")) for k in
                                   ("os", "tech", "services", "service", "notes")).lower()
     return out
-
 
 def derive_privesc_rows(eng, index, etype, st):
     """4b post-foothold rows (dicts, no id) for each recorded foothold asset.
@@ -697,7 +671,6 @@ def derive_privesc_rows(eng, index, etype, st):
             })
     return out
 
-
 def _parse_table_text(text):
     """First markdown table in `text` -> list-of-dicts (lowercased headers).
     Text-scoped twin of _parse_table (which reads a whole file); used to parse
@@ -721,7 +694,6 @@ def _parse_table_text(text):
         rows.append(dict(zip(header, cells)))
     return rows
 
-
 def read_board_4b(eng):
     """4b row dicts from the `### 4b` section of Approach.md. [] if absent."""
     p = Path(eng) / "Approach.md"
@@ -730,7 +702,6 @@ def read_board_4b(eng):
     text = p.read_text(encoding="utf-8", errors="ignore")
     idx = text.find("### 4b")
     return _parse_table_text(text[idx:]) if idx >= 0 else []
-
 
 def changelog_pending(eng):
     """(unverified_count, [row summaries]) from targets/<eng>/changelog.md.
@@ -752,7 +723,6 @@ def changelog_pending(eng):
         if not c[7]:
             out.append("#%s %s %s %s" % (c[0], c[2], c[3], c[4]))
     return len(out), out
-
 
 def write_board_4b(eng, rows):
     """Replace (or append) the `### 4b` section with `rows`. Regeneration is
@@ -777,7 +747,6 @@ def write_board_4b(eng, rows):
         end = len(text)
     p.write_text(text[:idx] + block + text[end:].lstrip("\n"), encoding="utf-8")
 
-
 def seed_4b(eng, index, etype, st):
     """Append the derived 4b rows (idempotent + append-only, like cmd_board).
     Returns the count of new rows written."""
@@ -799,7 +768,6 @@ def seed_4b(eng, index, etype, st):
         write_board_4b(eng, rows)
         _save_state(eng, st)
     return added
-
 
 # --------------------------------------------------------------------------- next (cursor + gate walk)
 #
@@ -855,7 +823,6 @@ MODE_DESC = {
             "chained impact escalation, second-order re-tests",
 }
 
-
 def mode_of(eng):
     """scope.md frontmatter `mode:` -> (mode, note). Default deep; unknown values fall
     back to MODE_DEFAULT with a one-line note (the doctor surfaces it)."""
@@ -871,7 +838,6 @@ def mode_of(eng):
     if raw:
         return MODE_DEFAULT, "scope.md mode=%s unknown, assumed %s" % (raw, MODE_DEFAULT)
     return MODE_DEFAULT, "scope.md has no mode: field, assumed %s" % MODE_DEFAULT
-
 
 def autonomy_of(eng):
     """scope.md frontmatter `autonomy:` -> (level, note). Level is always one of
@@ -891,7 +857,6 @@ def autonomy_of(eng):
     if raw:
         return AUTONOMY_DEFAULT, "scope.md autonomy=%s unknown, assumed %s" % (raw, AUTONOMY_DEFAULT)
     return AUTONOMY_DEFAULT, "scope.md has no autonomy: field, assumed %s" % AUTONOMY_DEFAULT
-
 
 def cmd_autonomy(args):
     """Mid-session envelope change (set_permission_mode pattern): rewrite
@@ -929,9 +894,7 @@ def cmd_autonomy(args):
     print("advisory layer only (RoE flags stay hook-enforced); scope.md + .events.jsonl updated")
     return 0
 
-
 _events_cache = None   # ((path, mtime_ns, size, last-line len), rows) - WS4.3 parse
-
 
 def _events(eng):
     """Parsed .events.jsonl rows, or None if the telemetry file is absent (G2
@@ -959,10 +922,8 @@ def _events(eng):
     _events_cache = (key, out)
     return out
 
-
 def _opened_key(asset, cls):
     return "%s|%s" % ((asset or "").strip().lower(), (cls or "").strip().lower())
-
 
 def _stamp_row_opened(state, asset, cls):
     """Record now() as this (asset, class) row's open-time, so G2 can anchor
@@ -976,13 +937,11 @@ def _stamp_row_opened(state, asset, cls):
     state.setdefault("row_opened_at", {})[_opened_key(asset, cls)] = \
         datetime.now(timezone.utc).isoformat()
 
-
 def _row_since(state, asset, cls):
     """G2's 'since' anchor for this row: its own opened_at if stamped, else
     engagement start (fail-safe for rows that predate this tracking)."""
     return (state.get("row_opened_at") or {}).get(_opened_key(asset, cls)) \
         or state.get("started_at")
-
 
 def _skill_fired(eng, skill, since_iso):
     """True iff a `Skill(<skill>)` event dated at/after `since_iso` exists in
@@ -996,10 +955,8 @@ def _skill_fired(eng, skill, since_iso):
                 return True
     return False
 
-
 def _status_of(r):
     return (r.get("status") or "").strip()
-
 
 def _pool_candidates(rows):
     """D21 (advisory): open rows sharing a vuln class across 2+ DISTINCT
@@ -1030,7 +987,6 @@ def _pool_candidates(rows):
                             ",".join(ids).encode("utf-8")).hexdigest()})
     return out
 
-
 def _advisory_dismiss(eng, state, cls, fingerprint):
     """WS3: store a pool advisory dismissal in driver state (rendering only -
     never scope enforcement). Re-dismissing the same shape just refreshes ts."""
@@ -1038,19 +994,16 @@ def _advisory_dismiss(eng, state, cls, fingerprint):
         "ts": int(time.time()), "fingerprint": fingerprint}
     _save_state(eng, state)
 
-
 def _advisory_pool_suppressed(state, pool):
     """True while the stored fingerprint for this class equals the live one;
     a new row id of the class (new fingerprint) re-arms the advisory."""
     st = ((state.get("advisory") or {}).get("pool") or {}).get(pool["class"])
     return bool(st) and st.get("fingerprint") == pool["fingerprint"]
 
-
 def _rid_num(r):
     """Trailing board number of a row id ('4a:3' -> 3), else None."""
     m = re.search(r"(\d+)\s*$", (r.get("id") or "").strip())
     return int(m.group(1)) if m else None
-
 
 def _lane_dirs(eng):
     """Every lane dir under poc/<vhost>/lane-*/, sorted; [] when no poc/ tree."""
@@ -1068,7 +1021,6 @@ def _lane_dirs(eng):
                 out.append(ld)
     return out
 
-
 def _lane_complete(ld):
     """True when the lane's envelope.md carries VERDICT: COMPLETE (lane done)."""
     p = ld / "envelope.md"
@@ -1078,7 +1030,6 @@ def _lane_complete(ld):
         return "VERDICT: COMPLETE" in p.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return False
-
 
 def _open_lane_row_ids(eng):
     """Rows claimed by any OPEN lane's .rows.json sidecar (WS2.2): walk
@@ -1107,7 +1058,6 @@ def _open_lane_row_ids(eng):
                     ids.add(m.group(1))
     return ids, nums
 
-
 def _lanes_open_lines(eng):
     """LANES OPEN header block lines (WS2.3a): one line per open lane dir -
     lane name, minutes since the .started mtime (fallback dir mtime), and
@@ -1129,13 +1079,11 @@ def _lanes_open_lines(eng):
         lines.insert(0, "LANES OPEN:")
     return lines
 
-
 def _row_by_id(rows, rid):
     for r in rows:
         if (r.get("id") or "").strip() == rid:
             return r
     return None
-
 
 def _find_row_any(eng, rid):
     """Locate a row by id across the 4a AND 4b boards. Returns
@@ -1152,12 +1100,10 @@ def _find_row_any(eng, rid):
         return rows, row, write_board_4b
     return None, None, None
 
-
 def _merge_append_run(args, input=None):
     """Single seam around the merge_append subprocess so tests can monkeypatch
     one point; keeps the subprocess fallback (Task WS1.1)."""
     return subprocess.run(args, input=input, capture_output=True, text=True)
-
 
 def _merge_append_inprocess(path, line):
     """In-process merge_append.append (WS4.1); returns (rc, combined_stderr)
@@ -1173,7 +1119,6 @@ def _merge_append_inprocess(path, line):
         # slow-mount read failure inside the helper behaves like a refused write
         return 1, str(e)
     return rc, err.getvalue().strip()
-
 
 def _append_line(path, line):
     """Every EOF append the driver makes to a .md state file goes through
@@ -1195,7 +1140,6 @@ def _append_line(path, line):
         print("MERGE_REFUSED %s: %s" % (path, r[1]))
         sys.exit(1)
 
-
 def _disk_verify(path, contains, tail=3):
     """(rc, output) from disk_verify, in-process (WS4.1) with the CLI run as
     fallback. The driver's two call sites always pass --ascii --tail."""
@@ -1213,7 +1157,6 @@ def _disk_verify(path, contains, tail=3):
     cmd += ["--ascii", "--tail", str(tail)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     return r.returncode, r.stdout
-
 
 def _backlog_open(eng, cls=""):
     """Open surface-backlog rows as dicts, in-process (WS4.1) with the CLI run
@@ -1235,7 +1178,6 @@ def _backlog_open(eng, cls=""):
         sys.stderr.write(r.stderr)
     return [json.loads(l) for l in r.stdout.splitlines() if l.strip()]
 
-
 def _backlog_claim(eng, rid, lane):
     """Claim one backlog row for a lane, in-process (WS4.1) with the CLI run
     as fallback. Output is discarded and a refusal stays non-fatal - the same
@@ -1255,7 +1197,6 @@ def _backlog_claim(eng, rid, lane):
     r = subprocess.run([sys.executable, sb, os.path.abspath(str(eng)), "claim",
                         "--id", str(rid), "--lane", lane], capture_output=True)
     return r.returncode
-
 
 def _append_table_row(path, line):
     """Append a row INSIDE the file's first markdown table, not at EOF: every
@@ -1292,7 +1233,6 @@ def _append_table_row(path, line):
         print("MERGE_REFUSED %s: table row read-back mismatch" % path)
         sys.exit(1)
 
-
 # --------------------------------------------------------------------------- vhost lock model
 
 INSCOPE = "lists/inscope-hosts.md"
@@ -1305,10 +1245,8 @@ _IRRELEVANT_CLOSE_RE = re.compile(r"^(n/a|class-sweep|fingerprintless|placeholde
                                   re.IGNORECASE)
 VHOST_STATUSES = ("QUEUED", "ACTIVE", "COMPLETE")
 
-
 def _inscope_path(eng):
     return os.path.join(eng, INSCOPE)
-
 
 def _set_inscope_status(eng, host, status, passes):
     """Rewrite the host's status/passes cells in lists/inscope-hosts.md. Only the
@@ -1338,7 +1276,6 @@ def _set_inscope_status(eng, host, status, passes):
             fh.write("\n".join(out) + "\n")
     return hit
 
-
 def _rtl_review_present(eng, host):
     """True iff decisions.md holds an RTL-review line naming THIS host: a line
     containing both the RTL marker and the host name (case-insensitive on the
@@ -1352,7 +1289,6 @@ def _rtl_review_present(eng, host):
         return False
     with open(p, encoding="utf-8", errors="replace") as fh:
         return any("RTL" in line and h in line.lower() for line in fh)
-
 
 def _queued_vhosts(eng):
     """Every vhost still QUEUED in lists/inscope-hosts.md (board order)."""
@@ -1369,12 +1305,10 @@ def _queued_vhosts(eng):
                     out.append(cells[0])
     return out
 
-
 def _next_queued(eng):
     """First row still QUEUED in lists/inscope-hosts.md (board order), else None."""
     q = _queued_vhosts(eng)
     return q[0] if q else None
-
 
 def _open_assets(rows):
     """Assets (board order, deduped) that still have a [ ]/[~] row."""
@@ -1385,7 +1319,6 @@ def _open_assets(rows):
             seen.add(a)
             out.append(a)
     return out
-
 
 def _cursor_asset(rows, st):
     """Depth-first (G5), sticky: an in-progress [~] row's asset wins; else the
@@ -1400,7 +1333,6 @@ def _cursor_asset(rows, st):
         return cur
     return open_a[0] if open_a else None
 
-
 def _active_row(rows, asset):
     """The one open row for `asset`: its [~] row if any (one-open-at-a-time),
     else the top [ ] row for that asset. None if the asset has no open row."""
@@ -1411,7 +1343,6 @@ def _active_row(rows, asset):
         if (r.get("asset") or "").strip() == asset and _status_of(r) == "[ ]":
             return r
     return None
-
 
 def _next_json_payload(eng, state, vault):
     """cmd_next's cursor+gate walk as one dict (`next --json`). Consumers:
@@ -1549,7 +1480,6 @@ def _next_json_payload(eng, state, vault):
     out["evidence_cmd"] = "scripts/capture.sh req <request>  (evidence for %s)" % rid
     return out
 
-
 def _open_proof_gaps(eng):
     """Finding cards carrying the closure status `open_proof_gap` (WS7.1): a
     claim nobody has proven or ruled out. Same scan posture as the surface
@@ -1566,7 +1496,6 @@ def _open_proof_gaps(eng):
             if re.search(r"(?im)^status:\s*open_proof_gap\b", head):
                 out.append(c)
     return sorted(set(out))
-
 
 def cmd_next(args):
     vault = Path(args.vault) if args.vault else DEFAULT_VAULT
@@ -1927,7 +1856,6 @@ def cmd_next(args):
     print("  %d. capture.sh req <request>   (evidence for %s)" % (n, rid))
     return 0
 
-
 def cmd_plan(args):
     """Dry-run of next: the ranked candidate moves as numbered steps with the
     gate made explicit (cyberstrikeai L8). Writes NOTHING - no cursor advance,
@@ -1961,7 +1889,6 @@ def cmd_plan(args):
         print(" no candidate moves (empty board or no open rows).")
     return 0
 
-
 # --------------------------------------------------------------------------- note / done / park (record + gates)
 #
 # `next` withholds; these RECORD the outcome and enforce the evidence gates.
@@ -1970,7 +1897,6 @@ def cmd_plan(args):
 # non-zero); status transitions mutate the board in place. `next` recomputes
 # the cursor each run, so parking/killing
 # a row advances the loop with no state write here (G7 no-ask).
-
 
 def _load_state(eng, err=print):
     """Shared .offensive.json load with clean failure. A truncated write (crash
@@ -2000,7 +1926,6 @@ def _load_state(eng, err=print):
         return None
     return state
 
-
 def _eng_state(args, cmd):
     """(eng, state) or (None, None) after printing an error. Shared preamble."""
     eng = _resolve_eng(args.eng)
@@ -2011,7 +1936,6 @@ def _eng_state(args, cmd):
     if state is None:
         return None, None
     return eng, state
-
 
 def _ckpt(eng, msg):
     """Shadow-git checkpoint of the engagement dir: one commit per driver
@@ -2038,7 +1962,6 @@ def _ckpt(eng, msg):
             "commit", "-q", "-m", msg)
     except Exception:
         pass
-
 
 def cmd_note(args):
     """G1 release: set the row's arsenal cell (the consulted wiki-arsenal card
@@ -2086,7 +2009,6 @@ def cmd_note(args):
     _ckpt(eng, "note %s" % args.row)
     return 0
 
-
 def cmd_park(eng, state, rows, row, reason, writer=write_board):
     """G7 no-ask defer: record the judgment call to decisions.md and mark the row
     [?] (parked - revisitable, distinct from [!] dead). Leaves it off the serve
@@ -2108,7 +2030,6 @@ def cmd_park(eng, state, rows, row, reason, writer=write_board):
           % ((row.get("id") or "").strip(), state["dry_streak"]))
     _ckpt(eng, "park %s" % (row.get("id") or "").strip())
     return 0
-
 
 def _set_state_access(eng, asset, win, access="foothold"):
     """Flip the state.md inventory row whose first cell == `asset` to
@@ -2150,7 +2071,6 @@ def _set_state_access(eng, asset, win, access="foothold"):
         return True
     return False
 
-
 def _record_foothold(eng, st, asset, win):
     """Record an asset's foothold: set the global `foothold` flag, store the tmux
     window under st['footholds'][asset], and flip its state.md row to
@@ -2158,7 +2078,6 @@ def _record_foothold(eng, st, asset, win):
     st["foothold"] = True
     st.setdefault("footholds", {})[asset] = win
     return _set_state_access(eng, asset, win)
-
 
 def cmd_foothold(args):
     """Record a foothold on <asset> (tmux --win) and re-run board derivation to
@@ -2179,7 +2098,6 @@ def cmd_foothold(args):
     print("  post-ex for %s routes through: bash scripts/vm-rsh.sh --win %s '<cmd>'"
           % (asset, args.win))
     return 0
-
 
 def cmd_done(args):
     """Close a row. Exactly one disposition (G3): --poc P --kind K | --dead | --park | --na.
@@ -2362,9 +2280,7 @@ def cmd_done(args):
     _ckpt(eng, "done %s poc" % args.row)
     return 0
 
-
 # --------------------------------------------------------------------------- coverage / closeout
-
 
 # ------------------------------------------------------------------ coverage (WS7.3)
 
@@ -2377,14 +2293,12 @@ _LANE_COV_RE = re.compile(r"^-\s*.*class:\s*([A-Za-z0-9_\-]+)", re.I)
 _OUTCOME_RE = re.compile(r"outcome:\s*(\w+)", re.I)
 _POC_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 
-
 def _lane_has_poc_image(ld):
     for r, _, fs in os.walk(str(ld)):
         for f in fs:
             if f.lower().endswith(_POC_IMAGE_EXTS):
                 return True
     return False
-
 
 def _lane_coverage_rows(eng):
     """Lane briefs' `## Close-out coverage` rows: [(lane_dir, vhost, lane,
@@ -2414,7 +2328,6 @@ def _lane_coverage_rows(eng):
                          "tested" in ln and "not-tested" not in ln,
                          om.group(1).lower() if om else ""))
     return rows
-
 
 def cmd_coverage(args):
     """G7 gap report: per IN-SCOPE asset, the coverage-classes.json vuln classes with
@@ -2470,7 +2383,6 @@ def cmd_coverage(args):
             print("lane coverage: no lane brief row is tested with a poc image yet")
     return 0
 
-
 def collect_rulings(log_path):
     """Every `Ruling:` line from the engagement log; a ruling that dies in a
     lane transcript was a decision made in secret."""
@@ -2480,9 +2392,7 @@ def collect_rulings(log_path):
         return []
     return [l.strip() for l in lines if "Ruling:" in l]
 
-
 CHAIN_ATTEMPT_MARKERS = ("chain attempt", "chained", "nothing to chain")
-
 
 def _confirmed_findings(eng):
     """Confirmed finding cards under targets/<eng>/. Card naming is a union:
@@ -2503,7 +2413,6 @@ def _confirmed_findings(eng):
                 n += 1
     return n
 
-
 def _research_due(eng):
     state = os.path.join("targets", eng, "state.md")
     if not os.path.isfile(state):
@@ -2515,7 +2424,6 @@ def _research_due(eng):
     if not os.path.isfile(marker):
         return True
     return time.time() - os.path.getmtime(marker) > 14 * 86400
-
 
 def chaining_ok(eng):
     ok = _confirmed_findings(eng)
@@ -2529,7 +2437,6 @@ def chaining_ok(eng):
         return True, "chaining attempts recorded"
     return False, "REFUSED: %d confirmed findings, Killchain.md shows " \
                   "zero recorded chaining attempts" % ok
-
 
 def _run_summary(eng):
     """WS7.6: close-out summary. Findings split by closure status (card scan,
@@ -2572,10 +2479,8 @@ def _run_summary(eng):
         "ended": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
-
 _THREAT_ASSUMPTION_RE = re.compile(r"^\s*-\s+assumption:\s*(.+)$", re.I)
 _ASSUMPTION_PLACEHOLDERS = ("(none yet)", "none yet")
-
 
 def _threat_assumptions(eng):
     """WS7.5 (minimal): the `- assumption:` lines of state.md's ## Threat model."""
@@ -2599,7 +2504,6 @@ def _threat_assumptions(eng):
         if m and m.group(1).strip().lower() not in _ASSUMPTION_PLACEHOLDERS:
             out.append(m.group(1).strip())
     return out
-
 
 def cmd_closeout(args):
     """Print the per-type close-out chain (Skill names, in order) for the
@@ -2670,7 +2574,6 @@ def cmd_closeout(args):
         return 1
     return 0
 
-
 def cmd_rebase(args):
     """Instance rotated mid-engagement (old IP/asset value -> new): re-point every
     file that hardcodes it, so the board/cursor keep working instead of the next
@@ -2703,7 +2606,6 @@ def cmd_rebase(args):
     print("rebase: %s -> %s across %d file(s). Rows derived from state.md: re-run `board` if the matrix predates this." % (old, new, n))
     return 0
 
-
 # --------------------------------------------------------------------------- vhost subcommands
 
 def _gated_ok(stamp, *refs):
@@ -2721,7 +2623,6 @@ def _gated_ok(stamp, *refs):
         except OSError:
             pass
     return True
-
 
 def _stamp_manifest(lane_dir):
     """{relpath: [mtime_ns, size]} of every non-dot file in the lane dir
@@ -2742,7 +2643,6 @@ def _stamp_manifest(lane_dir):
             out[os.path.relpath(p, lane_dir)] = [st.st_mtime_ns, st.st_size]
     return out
 
-
 def _stamp_valid(stamp, lane_dir):
     """True when the stamp exists and its recorded manifest still matches the
     lane dir file-for-file: an artifact rewritten or added after the sweep
@@ -2757,7 +2657,6 @@ def _stamp_valid(stamp, lane_dir):
     if not isinstance(recorded, dict):
         return False
     return _stamp_manifest(lane_dir) == recorded
-
 
 def _gate_lanes_strict(eng, host):
     """G10: every poc/<host>/lane-*/checklist.md must pass completion-gate --strict.
@@ -2821,7 +2720,6 @@ def _gate_lanes_strict(eng, host):
                     pass
     return fails
 
-
 def _open_rows_for(eng, host):
     """D7 accounting check: 4a rows of the locked vhost still todo/doing.
     A pass closing (advisory) or a vhost unlocking (refusal) with rows in
@@ -2829,7 +2727,6 @@ def _open_rows_for(eng, host):
     return ["%s (%s)" % ((r.get("id") or "?").strip(), _status_of(r))
             for r in _vhost_rows(read_board(eng), host)
             if _status_of(r) in ("[ ]", "[~]")]
-
 
 def cmd_vhost(args):
     """Per-vhost deep-dive lock model: one vhost ACTIVE at a time, passes 1-3
@@ -2972,7 +2869,6 @@ def cmd_vhost(args):
             print("UNLOCKED %s (COMPLETE, %d passes). No QUEUED vhost remains."
                   % (host, passes))
 
-
 # --------------------------------------------------------------------------- lane-init
 
 BRIEF_TEMPLATE = """# Lane brief: {skill} on {vhost} ({lane})
@@ -3027,7 +2923,6 @@ gate still governs, and the operator/driver apply ticks through `note`/`done`):
 - `class: <vuln-class> - tested|not-tested; outcome: <positive|negative|blocked>; needs_follow_up: <one line or none>`
 """
 
-
 def _skill_dir(name):
     """SKILLS_DIR/<name>, else SKILLS_DIR/<category>/<name> (vault skills live in
     category subdirs: skills/workflow/<name>). First candidate holding a
@@ -3052,7 +2947,6 @@ def _skill_dir(name):
         if os.path.isfile(os.path.join(c, "checklist.md")):
             return c
     return None
-
 
 def cmd_lane_init(args):
     eng, state = _eng_state(args, "lane-init")
@@ -3197,7 +3091,6 @@ def cmd_lane_init(args):
     print("  - goal: ... / - result: COMPLETE|PARTIAL|DEAD - ... / "
           "- key finding: ... / - capture: poc/<vhost>/%s/" % lane)
 
-
 # --------------------------------------------------------------------------- cli
 
 def _resolve_eng(eng):
@@ -3210,7 +3103,6 @@ def _resolve_eng(eng):
     cand = DEFAULT_VAULT / "targets" / eng
     return cand
 
-
 def cmd_index(args):
     vault = Path(args.vault) if args.vault else DEFAULT_VAULT
     eng = _resolve_eng(args.eng)
@@ -3222,7 +3114,6 @@ def cmd_index(args):
     print("  routing: %d fingerprints | tools: %d | methods: %d skills"
           % (len(idx["routing"]), len(idx["tools"]), len(idx["methods"])))
     return 0
-
 
 def cmd_init(args):
     vault = Path(args.vault) if args.vault else DEFAULT_VAULT
@@ -3280,7 +3171,6 @@ def cmd_init(args):
         print("init: targets/active.md -> %s (was: %s)" % (args.name, prev or "<none>"))
     print("init: %s type=%s -> %s" % (args.name, args.type, eng))
     return 0
-
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="offensive.py")
@@ -3371,7 +3261,6 @@ def main(argv=None):
 
     a = ap.parse_args(argv)
     return a.fn(a)
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
