@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, crypto, padding-oracle, jwt, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-06-16
+date_updated: 2026-11-11
 ---
 
 # Payloads: Crypto Attacks
@@ -72,3 +72,25 @@ secret = bytes(base64.b64decode(target_ct)[i] ^ ks[i] for i in range(len(target_
 Distinct from keystream **reuse** (two ciphertexts under the same key, crib-drag): here one oracle call under your control yields the key directly.
 
 <!-- promoted-slug: xor-encryption-oracle-known-plaintext -->
+
+## NEW 2025-2026
+
+1. **Authlib trio (CVE-2026-27962 / -28490 / -28498, fixed 1.6.9, affects <=1.6.8)**:
+   - **27962 (CVSS 9.1)**: `key=None` in JWKS-lookup verification patterns -> the
+     library trusts an attacker-embedded key in the token header; sign with your own
+     key, embed the public half, server accepts. Test any OIDC/OAuth server on
+     authlib: `{"alg":"RS256","jwk":{...attacker...}}`.
+   - **28490 (8.3)**: RSA1_5 JWE key-management exception oracle - ValueError raised
+     pre-validation creates a clean padding oracle; Flask/Django/FastAPI all render
+     distinguishable HTTP errors for the two exception classes.
+   - **28498 (8.2)**: OIDC ID-token validation FAILS OPEN on an unrecognized `alg`
+     header (silently returns True) - forge a token with `alg:"x7z"` and it passes.
+   https://securityonline.info/broken-keys-critical-authlib-flaws-jwt-forgery-padding-oracles/
+2. **Exception-oracle pattern generalizes**: padding oracles live in distinguishable
+   error responses across framework defaults - diff status/body/timing across
+   modified ciphertext blocks before declaring an oracle absent.
+3. **CVE-2026-16459 (Oberon PSA)**: padding oracle in embedded PSA crypto - the IoT/
+   firmware variant of the same class; carries into [[privesc-exploit-arsenal]] paths.
+4. **Header-embedded key confusion is now a CVE pattern, not just CTF**: `jwk`/`jku`/
+   `x5u` in token headers reaching a verifier that fetches or trusts them - SSRF +
+   forgery in one primitive (see [[jwt]] NEW section).

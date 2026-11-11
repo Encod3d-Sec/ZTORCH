@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, orm-injection, injection, idor, web]
 sources: [hacktricks-web]
 date_created: 2026-07-14
-date_updated: 2026-07-21
+date_updated: 2026-11-11
 ---
 
 # Payloads: ORM Injection
@@ -46,3 +46,20 @@ GET /odata/Articles?$filter=CreatedBy/TfaSecret ge 'M'&$top=1   // binary-search
 ```
 
 Source: HackTricks (pentesting-web)
+
+## NEW 2025-2026
+
+1. **CVE-2025-64459 - Django ORM query-structure injection**: crafted filter
+   dictionaries reshape query logic into arbitrary SQL; framework-level, hits exposed
+   search/filter/API params. Patched in 5.1.14 / 4.2.26 / 5.2.8. Pattern: the
+   vulnerability is user-controlled query STRUCTURE (keys), not values.
+   https://nvd.nist.gov/vuln/detail/CVE-2025-64459
+2. **Raw-escape sinks remain the 2025-26 leader**: Prisma `$queryRawUnsafe` in template
+   literals, Sequelize `literal()` in `order`, MyBatis `${}` on identifiers - the
+   identifier positions (order by / limit / table) cannot be parameterized, ever.
+3. **OData / RSQL filter oracles**: `startswith` / `ge` per-char collation binary
+   search (ORM leak) exfiltrates hashed tokens one character at a time; `$filter`
+   traversal into related entities (`CreatedBy/TfaSecret`) crosses the authz boundary
+   the ORM enforces elsewhere.
+4. **Hash-key injection**: Rails/Django-style `where(hash)` built from params - operator
+   keys (`role.ne`, `$ne`) change comparison semantics even when values are clean.

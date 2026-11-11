@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, redos, dos, regex, web]
 sources: [hacktricks-web]
 date_created: 2026-07-14
-date_updated: 2026-07-21
+date_updated: 2026-11-11
 ---
 
 # Payloads: ReDoS
@@ -37,3 +37,18 @@ for n in [2**k for k in range(8,15)]:
 Immune engines (pivot away): RE2/RE2J/RE2JS, Rust regex. Tools: regexploit, redos-checker.
 
 Source: HackTricks (pentesting-web)
+
+## NEW 2025-2026
+
+1. **ReDoS the WAF, not just the app**: catastrophic-backtracking input against a
+   WAF/CDN rule regex that times out and FAILS OPEN = a bypass window for the real
+   payload; test regex-bearing rules (custom rules, bot detection) with nested
+   repetitions before the actual injection.
+2. **LLM-generated validators as a ReDoS source** (2025-26 class): AI-assisted code
+   shipping hand-rolled email/password regexes; audit any "clever" regex in
+   server-side validation libs the target discloses (stack fingerprint).
+3. **SoK anchor**: the 2025 Systematization of Knowledge on ReDoS catalogs detection
+   (static analyzers vs runtime) and the engineering gap - defense still =
+   linear-time engines (RE2/Rust regex) or match timeouts, not regex review.
+4. **Impact framing**: auth-endpoint ReDoS = account-lockout-adjacent DoS (one
+   request per worker); report at the endpoint, not the regex.

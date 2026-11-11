@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, ssrf, cloud, credentials]
 sources: []
 date_created: 2026-06-05
-date_updated: 2026-06-05
+date_updated: 2026-11-11
 ---
 
 # Payloads: Cloud Metadata (IMDS)
@@ -45,3 +45,21 @@ gcp: gcloud auth activate / call APIs with bearer token
 azure: az login --identity / call ARM with bearer
 ```
 Record creds in `targets/<eng>/loot.md` (status unconfirmed until validated).
+
+## NEW 2025-2026
+
+1. **IMDSv2-is-default era (AWS)**: new EC2s enforce token+PUT; bypass surface
+   moves to (a) hop-limit=1 escaping container sidecars, (b) proxies that forward
+   PUT/token flows, (c) leaked role creds already outside IMDS. Token request
+   first: `PUT /latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600'`.
+2. **Per-cloud ladders**: GCP requires `Metadata-Flavor: Google` (and rejects
+   `X-Forwarded-For` - but try anyway); Azure IMDS `api-version` + Managed Identity
+   `identity/identity?api-version=2018-02-01`; Alibaba `latest/meta-data/`.
+3. **Metadata analogs beyond 169.254.169.254**: ECS task metadata 169.254.170.2
+   (credentials JSON, no v2), Kubernetes serviceaccount tokens
+   (`/var/run/secrets/.../token`) + kubelet 10250, GitHub Actions OIDC ->
+   cloud role assumption (steal the OIDC token from the runner, exchange for AWS
+   creds: `sts assume-role-with-web-identity`).
+4. **Verification stays RoE-safe**: fetched creds get ONE identity call
+   (`GetCallerIdentity` / Azure managed-identity list) - record scope, stop
+   (see hunt-secrets ladder).

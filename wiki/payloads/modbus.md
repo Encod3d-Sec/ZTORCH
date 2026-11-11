@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, modbus, ics, scada, ot, plc]
 sources: []
 date_created: 2026-06-29
-date_updated: 2026-06-29
+date_updated: 2026-11-11
 ---
 
 # Payloads: Modbus / ICS
@@ -86,3 +86,19 @@ wreg(0,65535)   # over-pressure the process variable (max uint16)
   nothing; the exploit coil is a FLAG the ladder reads (set it and it sticks).
 - 16-bit registers cap at 65535; a "higher" setpoint may be a second register (32-bit) or a coil.
 - Flag in HMI media = VISUAL overlay, not strings/exif -> extract + view frames.
+
+## NEW 2025-2026
+
+1. **No-auth protocol, RoE-first ladder**: enumerate READ-ONLY first - fc 1-4
+   (coils/discrete/input/holding reads) + fc 43/14 device identification; WRITES
+   (fc 5/6/15/16) only under explicit written scope: they change physical state.
+2. **Register-map inference**: poll holding registers across ranges, diff values
+   over time, correlate with observed process (pump on/off) - the map IS the
+   finding for most ICS engagements.
+3. **Tool ladder**: pymodbus scripts (precise unit-id/unit-identifier sweeps),
+   mbtget (quick reads), plcscan-style banner sweeps across unit IDs 1-247 behind
+   one IP (Modbus/TCP gateway multiplexes serial slaves).
+4. **2025-26 context**: research now covers LLM-assisted ICS recon platforms
+   (ICSSPulse-class) and Modbus/TCP defense evaluations; segmentation alone does
+   not contain the blast radius once one path in exists - route findings through
+   hunt-ics and stop at read-only unless scope says otherwise.

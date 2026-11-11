@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, crlf, header-injection, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-06-16
+date_updated: 2026-11-11
 ---
 
 # Payloads: CRLF Injection
@@ -47,3 +47,17 @@ double-encode: %250d%250a
 
 ## Real-world
 CRLF in `Location`/redirect params escalates to reflected XSS, session fixation, and (on cacheable responses) cache poisoning - a long-running bug-bounty class in proxies and frameworks that did not strip CR/LF.
+
+## NEW 2025-2026
+
+1. **Redirect-param CRLF -> ATO chain**: open-redirect param reflected into `Location`
+   + `%0d%0a` -> inject `Set-Cookie`/header; pair with password-reset flows (poison
+   the emailed link path, same impact class as host-header poisoning).
+2. **Log-injection -> stored XSS**: CRLF + fake log lines rendered in an admin
+   dashboard (SIEM-lite panels, kibana-style viewers) = stored XSS in the
+   analyst-facing UI; test every value that lands in a log rendered as HTML.
+3. **Cache poisoning carrier**: injected `Set-Cookie`/`X-Forwarded-Host` via CRLF on
+   a cacheable response converts a per-request header bug into multi-victim poison.
+4. **Encoding ladder**: raw `%0d%0a` in already-decoded contexts, lone `%0a`,
+   overlong UTF-8 (`%E5%98%8A%E5%98%8D` - Jetty class), double-encode (`%250d%250a`)
+   behind a decoding proxy.

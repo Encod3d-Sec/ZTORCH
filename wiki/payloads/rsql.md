@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, rsql, fiql, injection, api, web]
 sources: [hacktricks-web]
 date_created: 2026-07-14
-date_updated: 2026-07-14
+date_updated: 2026-11-11
 ---
 
 # Payloads: RSQL / FIQL Injection
@@ -38,3 +38,18 @@ WAF/blocklist bypass (double-encode reserved chars): `%2528admin%2529` for `(adm
 Elide analytics CVE-2022-24827: field-argument value containing `--` strips the auth WHERE clause.
 
 Source: HackTricks (pentesting-web)
+
+## NEW 2025-2026
+
+1. **Property-traversal oracle**: unknown-property errors vs valid ones map the JPA
+   entity graph (`;junk==1` -> 400 naming the property class); then traverse
+   relationships (`author.password==x`) - RSQL feeds Spring Data's QueryDSL/property
+   path resolver, so related-entity fields are reachable.
+2. **ORM-leak pairing**: `==`/`>=`/`startsWith=` per-character binary search on
+   sensitive columns (hashed tokens, TOTP secrets) - same oracle as
+   [[orm-injection]] NEW section, different front door.
+3. **Boolean-blind without errors**: response size/status differential on `==true`
+   vs `==false` over a to-many relation = row-existence oracle for enumeration.
+4. **Parser differentials**: rsql vs fiql operator aliases (`==` vs `=in=`, `=out=`)
+   may validate differently server-side; fuzz the alias set, not only the operators
+   the docs show.

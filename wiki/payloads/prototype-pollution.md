@@ -4,7 +4,7 @@ type: payloads
 tags: [payloads, prototype-pollution, javascript, client-side, rce, web]
 sources: []
 date_created: 2026-06-16
-date_updated: 2026-07-21
+date_updated: 2026-11-11
 ---
 
 # Payloads: Prototype Pollution
@@ -56,3 +56,20 @@ ppmap / ppfuzz
 
 ## Real-world
 Client-side PP -> DOM XSS via a sanitizer/library gadget is the common bug-bounty win; server-side PP in Node has reached RCE (child_process/NODE_OPTIONS) and auth bypass (polluted `isAdmin`).
+
+## NEW 2025-2026
+
+1. **Server-side PP -> RCE paths that still land**: EJS/Handlebars option pollution
+   (`outputFunctionName`), `child_process` spawn with polluted `NODE_OPTIONS`/env,
+   and `.jshintrc`-style config files read after pollution. Detection first: any
+   deep-merge/lodash-merge endpoint or `qs`-parsed query (`?__proto__[x]=y`).
+2. **`constructor.prototype` when `__proto__` is blocked**: scrubbers keying on the
+   literal string miss the alias; also try nested-array carriers
+   (`?a[__proto__][b]=c` vs JSON body `{"__proto__": {...}}`).
+3. **Client-side gadget hunting (2026 shape)**: script `src` overwrite, fetch-wrapper
+   base-URL pollution, DOMPurify config pollution (`ADD_TAGS`/`ADD_ATTR` via polluted
+   defaults) - the PP itself is low severity, the gadget makes it XSS/CSP bypass
+   (see [[csp-bypass]] NEW section).
+4. **Framework parsers to re-test after upgrades**: express `qs`, hapi qs, Next.js
+   searchParams objects, Node 18+ `__proto__` protections regressing in wrapper
+   libs that JSON.parse with reviver stripping.

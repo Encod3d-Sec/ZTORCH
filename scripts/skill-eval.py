@@ -109,6 +109,17 @@ RECALL = [
     ("sqli second-order", "skills/exploit/hunt/hunt-sqli/references/bypass-arsenal.md", ["second-order", "second order"]),
     ("bizlogic race", "skills/exploit/hunt/hunt-bizlogic/references/bypass-arsenal.md", ["single-packet", "TOCTOU", "idempotency"]),
     ("secrets ladder", "skills/exploit/hunt/hunt-secrets/references/bypass-arsenal.md", ["GetCallerIdentity", "metadata-scope"]),
+    ("ad cisa-17", "skills/exploit/hunt/hunt-ad/references/bypass-arsenal.md", ["CVE-2025-29810", "CISA 17"]),
+    ("ad-acl shadow-admin", "skills/exploit/hunt/hunt-ad-acl/references/bypass-arsenal.md", ["shadow admin", "ESC4"]),
+    ("kerberos golden-cert", "skills/exploit/hunt/hunt-ad-kerberos/references/bypass-arsenal.md", ["PKINIT", "golden CERT"]),
+    ("pwn glibc-heap", "skills/exploit/hunt/hunt-pwn/references/bypass-arsenal.md", ["safe-linking", "tcache"]),
+    ("windows patch-wave", "skills/exploit/hunt/hunt-windows/references/bypass-arsenal.md", ["CVE-2026-50345", "CVE-2025-64669"]),
+    ("macos tcc", "skills/exploit/hunt/hunt-macos/references/bypass-arsenal.md", ["TCC", "CVE-2026-28912"]),
+    ("ics read-first", "skills/exploit/hunt/hunt-ics/references/bypass-arsenal.md", ["fc 43", "unit-ID"]),
+    ("crypto authlib", "wiki/payloads/crypto.md", ["CVE-2026-27962", "fail-open"]),
+    ("webauthn passkey-idor", "wiki/payloads/webauthn-passkey.md", ["CVE-2025-71400", "credential-ID"]),
+    ("cicd ghostaction", "wiki/payloads/cicd.md", ["GhostAction", "pull_request_target"]),
+    ("ldap filter-template", "wiki/payloads/ldap.md", ["CVE-2026-90979", "4515"]),
 ]
 
 
