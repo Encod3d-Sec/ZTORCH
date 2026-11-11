@@ -341,44 +341,6 @@ def promote_one(path, fm, body, inbox, vault):
     return "promoted"
 
 
-DELTA_LOG_HEADER = (
-    "# Wiki delta-yield log\n\n"
-    "Per-harvest count of wiki pages the learn pass promoted (scripts/wiki-promote.py). Generic\n"
-    "only: date, engagement_type, count. No client codename or specifics (tracked file). A\n"
-    "sustained zero means either wiki saturation (good) or a skipped harvest (investigate).\n\n"
-    "<!-- date  engagement_type  count -->\n"
-)
-
-
-def _active_engagement_type():
-    """engagement_type of the active engagement's state.md, or 'unknown'. A type
-    (pentest/bugbounty/ctf), never a client codename - safe for a tracked file."""
-    d = _engagement.active_dir()
-    if not d:
-        return "unknown"
-    sp = os.path.join(d, "state.md")
-    if not os.path.isfile(sp):
-        return "unknown"
-    fm = _engagement._frontmatter(open(sp, encoding="utf-8", errors="ignore").read())
-    return (fm.get("engagement_type") or "unknown").strip() or "unknown"
-
-
-def record_delta_yield(vault, n_prom, etype=None):
-    """Append one generic tally line (date, engagement_type, count) to docs/wiki-delta-log.md.
-    Logs even a zero, so a sustained zero is visible. Returns the line written."""
-    if etype is None:
-        etype = _active_engagement_type()
-    log = os.path.join(vault, "docs", "wiki-delta-log.md")
-    new = not os.path.isfile(log)
-    os.makedirs(os.path.dirname(log), exist_ok=True)
-    line = f"{datetime.date.today().isoformat()}  {etype}  {n_prom}\n"
-    with open(log, "a", encoding="utf-8") as fh:
-        if new:
-            fh.write(DELTA_LOG_HEADER)
-        fh.write(line)
-    return line
-
-
 def cmd_promote(inbox, which, vault):
     rows = candidates(inbox)
     if which != "all":
@@ -394,7 +356,6 @@ def cmd_promote(inbox, which, vault):
         n_ref += res == "refused"
     if n_prom:
         reindex(vault)
-    record_delta_yield(vault, n_prom)
     print("promoted %d, refused %d" % (n_prom, n_ref))
     return 1 if n_ref else 0
 
