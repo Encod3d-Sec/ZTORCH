@@ -10,6 +10,7 @@ filename, and (for HIGH/CRITICAL) a CVSS vector + affected target. Reports gaps.
 
 Exit 1 if any finding is incomplete (usable as a pre-report gate).
 """
+import glob
 import os
 import re
 import sys
@@ -164,9 +165,12 @@ def _evidence_issues(body, base_dir):
     gone = []
     for r in refs:
         # bare-path contract; tolerate prose drift on the captured token
-        # (trailing backtick/slash/period) and accept dir refs, not just files
+        # (trailing backtick/slash/period), anchors (#) and file:line suffixes
+        # (:14630); accept dir refs, not just files
         p = r.rstrip(".,`").split("#")[0].strip().rstrip("/")
-        if p and not os.path.exists(os.path.join(base_dir, p)):
+        p = re.sub(r":\d+$", "", p)
+        if p and not os.path.exists(os.path.join(base_dir, p)) \
+                and not glob.glob(os.path.join(base_dir, p)):
             gone.append(r)
     if gone:
         missing.append("capture files absent (%s)" % ", ".join(gone))

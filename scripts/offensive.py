@@ -894,6 +894,122 @@ def cmd_autonomy(args):
     print("advisory layer only (RoE flags stay hook-enforced); scope.md + .events.jsonl updated")
     return 0
 
+# ---------------------------------------------------------------- chain ledger
+#
+# ARTEX transfer 2026-11-15: the planner's cross-wake todolist, as a driver-owned
+# state.md section. A serial exploit chain is recorded ONCE (one row per real
+# step, `needs` listing prerequisite step ids), then served step-by-step - `next`
+# re-injects the whole plan in every banner (compaction-proof) and only steps
+# whose prerequisites are done count as ready.
+
+_CHAIN_HEADER = "## Chain Plan"
+
+def _chain_rows(eng):
+    """Parsed `## Chain Plan` rows from state.md: [{id, step, needs, status}].
+    needs is a list of step ids ('-' or empty -> [])."""
+    p = Path(eng) / "state.md"
+    if not p.is_file():
+        return []
+    rows = []
+    in_sec = False
+    for ln in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+        s = ln.strip()
+        if s.startswith("## "):
+            in_sec = (s == _CHAIN_HEADER)
+            continue
+        if not in_sec or not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 4 or set(cells[0]) <= set("-: ") \
+                or cells[0].lower() == "id":
+            continue    # header/separator row
+        rows.append({
+            "id": cells[0], "step": cells[1],
+            "needs": [x for x in re.split(r"[,\s]+", cells[2]) if x and x != "-"],
+            "status": cells[3].lower(),
+        })
+    return rows
+
+def _chain_write(eng, rows):
+    """Rewrite the `## Chain Plan` section (appended at EOF when absent)."""
+    p = Path(eng) / "state.md"
+    text = p.read_text(encoding="utf-8") if p.is_file() else ""
+    lines = text.splitlines()
+    out, i, wrote = [], 0, False
+    while i < len(lines):
+        if lines[i].strip() == _CHAIN_HEADER:
+            j = i + 1
+            while j < len(lines) and not lines[j].strip().startswith("## "):
+                j += 1
+            out.append(_CHAIN_HEADER)
+            out.append("")
+            out.append("| id | step | needs | status |")
+            out.append("|----|------|-------|--------|")
+            for r in rows:
+                out.append("| %s | %s | %s | %s |" % (
+                    r["id"], r["step"], ",".join(r["needs"]) or "-",
+                    r["status"]))
+            out.append("")
+            wrote = True
+            i = j
+        else:
+            out.append(lines[i])
+            i += 1
+    if not wrote:
+        if out and out[-1].strip():
+            out.append("")
+        out += [_CHAIN_HEADER, "",
+                "| id | step | needs | status |",
+                "|----|------|-------|--------|"]
+        for r in rows:
+            out.append("| %s | %s | %s | %s |" % (
+                r["id"], r["step"], ",".join(r["needs"]) or "-", r["status"]))
+        out.append("")
+    p.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+def cmd_chain(args):
+    eng, state = _eng_state(args, "chain")
+    if eng is None:
+        return 2
+    rows = _chain_rows(eng)
+    action = args.action
+    if action == "add":
+        nums = [int(m.group(1)) for r in rows
+                for m in [re.match(r"c(\d+)$", r["id"])] if m]
+        rid = "c%d" % (max(nums) + 1 if nums else 1)
+        needs = [x for x in re.split(r"[,\s]+", args.needs or "") if x]
+        for n in needs:
+            if not any(r["id"] == n for r in rows):
+                print("REFUSED: prerequisite %s is not a chain step (add it first)" % n)
+                return 1
+        rows.append({"id": rid, "step": args.step, "needs": needs,
+                     "status": "pending"})
+        _chain_write(eng, rows)
+        print("%s added (needs: %s)" % (rid, ",".join(needs) or "nothing"))
+        return 0
+    if action == "done":
+        sid = (args.step_id or args.step or "").strip()
+        for r in rows:
+            if r["id"] == sid:
+                r["status"] = "done"
+                _chain_write(eng, rows)
+                print("%s stamped done; dependents re-ranked on next `next`" % r["id"])
+                return 0
+        print("REFUSED: no chain step %s" % args.step_id)
+        return 1
+    # list
+    if not rows:
+        print("no chain steps yet - `chain add \"<step>\" --needs c1`")
+        return 0
+    done_ids = {r["id"] for r in rows if r["status"] == "done"}
+    for r in rows:
+        ready = r["status"] == "pending" and all(p in done_ids for p in r["needs"])
+        mark = {"done": "x", "pending": " "}.get(r["status"], "?")
+        print("  [%s] %s %s (needs %s)%s" % (
+            mark, r["id"], r["step"], ",".join(r["needs"]) or "-",
+            "  <- READY" if ready else ""))
+    return 0
+
 _events_cache = None   # ((path, mtime_ns, size, last-line len), rows) - WS4.3 parse
 
 def _events(eng):
@@ -1535,6 +1651,51 @@ def cmd_next(args):
             lock, (state.get("vhost_passes") or {}).get(lock, 0),
             state.get("vhost_stage", 0)))
 
+    # Trigger-diff (ARTEX transfer 2026-11-15): what happened since the previous
+    # `next` contact, so the session acts on the delta instead of re-deriving the
+    # whole board. Events carry either ISO strings or epoch floats depending on
+    # the writer; normalize before comparing.
+    def _ev_iso(e):
+        ts = e.get("ts") or ""
+        try:
+            return datetime.fromtimestamp(
+                float(ts), timezone.utc).isoformat(timespec="seconds")
+        except (TypeError, ValueError):
+            return str(ts)[:19]
+    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    since = (state.get("last_next_ts") or "")
+    if since:
+        evs = [e for e in (_events(eng) or []) if _ev_iso(e) > since]
+        if evs:
+            print("CHANGED since last next (%d event(s)):" % len(evs))
+            for e in evs[-10:]:
+                print("  %s %s %s" % (_ev_iso(e)[11:19], e.get("tool", "?"),
+                                      e.get("skill") or e.get("cmd") or ""))
+            if len(evs) > 10:
+                print("  (+%d older)" % (len(evs) - 10))
+    state["last_next_ts"] = now_iso
+    _save_state(eng, state)
+
+    # Chain-plan ledger (ARTEX transfer 2026-11-15): serial exploit chains live
+    # in state.md `## Chain Plan`, re-injected every banner so compaction cannot
+    # lose them; only steps whose prerequisite steps are done get served.
+    chain = _chain_rows(eng)
+    if chain:
+        done_ids = {r["id"] for r in chain if r["status"] == "done"}
+        ready = [r for r in chain
+                 if r["status"] == "pending"
+                 and all(p in done_ids for p in r["needs"])]
+        blocked = [r for r in chain
+                   if r["status"] == "pending"
+                   and not all(p in done_ids for p in r["needs"])]
+        print("CHAIN PLAN: %d step(s) - %d done, %d ready, %d blocked on "
+              "prerequisites" % (len(chain), len(done_ids), len(ready), len(blocked)))
+        for r in ready[:3]:
+            print("  CHAIN NEXT: %s %s (serve before breadth moves)" % (r["id"], r["step"]))
+        for r in blocked[:3]:
+            missing = [p for p in r["needs"] if p not in done_ids]
+            print("  blocked: %s needs %s" % (r["id"], ",".join(missing)))
+
     # WALL-BREAK (self-correction): a dry streak at/over the type threshold means
     # the agent is grinding a wrong vector. Emit Skill(redteamlead) ONCE for
     # wiki-grounded redirection (reset the streak so the next turn resumes the
@@ -1697,8 +1858,8 @@ def cmd_next(args):
 
     # WS9.4: open backlog rows rank alongside the lane candidates - each row is
     # a discovered surface nobody has hunted yet (claimed via lane-init --skill).
-    for row in _backlog_open(eng):
-        print("BACKLOG candidate: %s" % json.dumps(row))
+    for brow in _backlog_open(eng):
+        print("BACKLOG candidate: %s" % json.dumps(brow))
 
     # WS7.1: open_proof_gap finding cards rank as follow-up moves - a claim on
     # the board nobody has proven or ruled out.
@@ -2913,6 +3074,25 @@ Checklist: {lane_dir}/checklist.md
 - R8: idle means dispatch - an empty running set or a failed dependency queues
   the bypass lane immediately; never park the queue behind one flap.
 
+## Context and close-out contracts (ARTEX transfers, 2026-11-15)
+
+- Settlement: on context-low or budget end, your FINAL turn writes partials to
+  `run-ledger.md` (facts so far, blockers, exact resume point) and runs NO new
+  probes - never end mid-thought with findings only in your head.
+- Cross-lane search: before NEW recon, `zg query --human "<surface keyword>"`
+  over this engagement's lane ledgers (`poc/*/lane-*/run-ledger.md`) - a sibling
+  lane may already hold the observation you are about to re-derive.
+- Fact confidence: every observation line you write carries
+  `confidence: observed` or `confidence: inferred`
+  (raw output seen this run vs reasoned). A negative without `observed`
+  evidence is a recheck candidate, not a verdict; the driver allows ONE
+  recheck before Deadends honors it.
+- Close-out class: your envelope ends with one line
+  `close-out: clean-negative | exhausted | blocked | abandoned`
+  (exhausted = budget/context cut you mid-work -> resume from ledger;
+  blocked = transport/dependency failure -> re-dispatch; clean-negative =
+  evidence-backed negative -> Deadends; abandoned = never started, say why).
+
 ## Close-out coverage
 
 Before returning, append ONE line per vuln class this lane touched, in this
@@ -3258,6 +3438,12 @@ def main(argv=None):
                       help="comma-separated board row numbers this lane claims "
                            "(row 3 -> 4a:3): brief frontmatter + sidecar + [~] flip")
     p_li.set_defaults(fn=cmd_lane_init)
+    p_ch = sub.add_parser("chain", help="persistent attack-chain ledger (state.md ## Chain Plan)")
+    p_ch.add_argument("action", choices=["add", "done", "list"])
+    p_ch.add_argument("step", nargs="?", help="step text (add) or step id (done)")
+    p_ch.add_argument("--needs", default="", help="prerequisite step ids, comma/space separated")
+    p_ch.add_argument("--step-id", dest="step_id", default="", help="step id for `done`")
+    p_ch.set_defaults(fn=cmd_chain)
 
     a = ap.parse_args(argv)
     return a.fn(a)

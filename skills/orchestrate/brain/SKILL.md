@@ -197,6 +197,15 @@ children, and chase any lane that finished without reporting (SendMessage resume
 no short-timeout polling, no one silent open-ended wait. A dead lane is noticed in
 minutes, not at session end.
 
+Steer/kill discipline (ARTEX steer_work/kill_work, 2026-11-15): on every driver
+contact while lanes are live, review them against the board, not just at return.
+A drifting lane (off-brief targets, re-deriving recon the board already covers)
+gets ONE SendMessage course-correction naming the brief line it drifted from; a
+wrong-vector lane (verified the board row was mis-picked, or the tell says
+starved target) gets TaskStop as a stop-loss, its partial findings swept into its
+run-ledger first if it can still write. Never let a lane burn its whole budget
+walking a route you already know is wrong - waiting for return is not a strategy.
+
 ## Offensive integration (brain mode over the driver; absorbs loop-offensive)
 
 The brain runs this loop; it is a posture, not a script. Every iteration:

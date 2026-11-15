@@ -232,8 +232,11 @@ def main():
             flagged = {f for f in flagged
                        if _engagement.resolve_scope(f, sc) == "out"}
             if flagged:
-                deny.append("out-of-scope: command targets " + ", ".join(sorted(flagged))
-                            + " which match an OUT-OF-SCOPE entry in scope.md")
+                deny.append("PLATFORM-GOVERNANCE (not a target defense): out-of-scope: "
+                            "command targets " + ", ".join(sorted(flagged))
+                            + " which match an OUT-OF-SCOPE entry in scope.md. "
+                            "This is a policy decision by your own harness - do NOT "
+                            "rewrite, re-encode, or retry around it; pick an in-scope target.")
             # RoE tooling (same noise-stripped text as the scope match above, so a tool name
             # merely mentioned in a quoted echo/grep string is never flagged)
             scan_cmd = _scan_text(cmd)

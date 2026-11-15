@@ -278,6 +278,10 @@ def _resolve(art, ledger_dir):
 
 
 def cmd_init(args):
+    if os.path.basename(args.dir.rstrip("/")).endswith(".md"):
+        sys.stderr.write("completion-gate: refusing dir ending in .md (%s); "
+                         "pass the LANE dir, not a file path (Obsidian cannot render .md dirs)\n" % args.dir)
+        return False
     os.makedirs(args.dir, exist_ok=True)
     path = os.path.join(args.dir, LEDGER)
     if os.path.exists(path):
