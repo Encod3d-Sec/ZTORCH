@@ -51,6 +51,11 @@ category enum: scope, roe, tool, finding, lane, wiki, oob, cleanup. Hook telemet
 writers use this shape for their human-readable log.md lines; the JSONL telemetry
 (`.events.jsonl`) stays as is (machine shape).
 
+Imported external findings log `finding | import` with the row outcome counts:
+`2026-11-16 | finding | import | ok | run-x: 5 rows, 3 new, 1 dupes, 1 fix | ingest/_imports/ |`
+(the finding-import.py summary prints this line ready to paste; `fix-required` replaces
+`ok` when rows were refused for missing fields).
+
 ## Render-side noise rules (any log tail / status reader)
 
 - Drop heartbeat/diagnostic rows.

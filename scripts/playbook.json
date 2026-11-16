@@ -319,14 +319,16 @@
     "graphql": {
       "prio": 2,
       "skills": [
-        "hunt-injection"
+        "hunt-injection",
+        "hunt-api"
       ],
       "tests": [
         "introspection",
         "batching/aliases",
         "field-suggestion",
         "nested DoS",
-        "NEW 2025-2026: nested-resolver authz walk + node(id:) drift; introspection-block bypass ladder; alias/batch BOLA (N ids per request); hidden-mutation __type diff - hunt-api/references/bypass-arsenal.md"
+        "NEW 2025-2026: nested-resolver authz walk + node(id:) drift; introspection-block bypass ladder; alias/batch BOLA (N ids per request); hidden-mutation __type diff - hunt-api/references/bypass-arsenal.md",
+        "registry sweep: whole-bank unauth matrix over the banked op-to-hash file (apq-bank.md), once per registry generation - hunt-api/references/apq-replay.md"
       ],
       "refs": [
         "api-request-findings",
