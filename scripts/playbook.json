@@ -2669,6 +2669,22 @@
         "interactsh"
       ],
       "refs": []
+    },
+    "wireless": {
+      "skill": "hunt-wireless",
+      "tools": [
+        "aircrack-ng",
+        "hcxdumptool"
+      ],
+      "refs": []
+    },
+    "mobile": {
+      "skill": "hunt-mobile",
+      "tools": [
+        "frida",
+        "jadx"
+      ],
+      "refs": []
     }
   }
 }
