@@ -318,6 +318,10 @@
     },
     "graphql": {
       "prio": 2,
+      "approach": [
+        "bugbounty",
+        "pentest"
+      ],
       "skills": [
         "hunt-injection",
         "hunt-api"
@@ -328,7 +332,8 @@
         "field-suggestion",
         "nested DoS",
         "NEW 2025-2026: nested-resolver authz walk + node(id:) drift; introspection-block bypass ladder; alias/batch BOLA (N ids per request); hidden-mutation __type diff - hunt-api/references/bypass-arsenal.md",
-        "registry sweep: whole-bank unauth matrix over the banked op-to-hash file (apq-bank.md), once per registry generation - hunt-api/references/apq-replay.md"
+        "registry sweep: whole-bank unauth matrix over the banked op-to-hash file (apq-bank.md), once per registry generation - hunt-api/references/apq-replay.md",
+        "Confirm endpoint + introspection state; if introspection disabled run clairvoyance-style blind reconstruction before any probe (see hunt-api references/graphql.md)"
       ],
       "refs": [
         "api-request-findings",
@@ -2467,6 +2472,16 @@
       ],
       "refs": [
         "wiki/payloads/api.md"
+      ]
+    },
+    "graphql": {
+      "skill": "hunt-api",
+      "tools": [
+        "curl",
+        "clairvoyance"
+      ],
+      "refs": [
+        "skills/exploit/hunt/hunt-api/references/graphql.md"
       ]
     },
     "auth": {
