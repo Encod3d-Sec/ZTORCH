@@ -632,6 +632,25 @@
       "skill": "hunt-xss",
       "note": "prototype-pollution merge sink or gadget; server-side = mass-assignment adjacent",
       "message": "prototype-pollution sink ({match}) - trace the merge"
+    },
+    {
+      "re": "location\\.search[^;]{0,80}(setCookie|cookies\\.set|document\\.cookie)[^;]{0,120}Domain=\\.",
+      "class": "injection",
+      "skill": "hunt-xss",
+      "note": "URL param persisted to a parent-domain cookie at hydration (observed shape 2026-11: crafted link -> 90d cookie -> client-built 3rd-party search filter DSL injection)",
+      "message": "URL-param-to-domain-cookie persistence ({match}) - trace the cookie into downstream query/filter string building"
+    },
+    {
+      "re": "eyJ[A-Za-z0-9+/]{40,}={0,2}",
+      "class": "crypto",
+      "skill": "",
+      "note": "base64 JWT-shaped token: check alg none / weak HS256 secret / claim tamper before deeper crypto work"
+    },
+    {
+      "re": "(?i)blocked by (cloudflare|aws waf|imperva|f5|akamai)",
+      "class": "waf",
+      "skill": "",
+      "note": "WAF product identified - read wiki waf-bypass distill, switch payload class before brute repetition"
     }
   ]
 }
