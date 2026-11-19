@@ -2645,6 +2645,30 @@
       "refs": [
         "wiki/techniques/exploit-dev/binary-exploitation.md"
       ]
+    },
+    "tls": {
+      "skill": "hunt-tls",
+      "tools": [
+        "testssl.sh",
+        "openssl"
+      ],
+      "refs": []
+    },
+    "network": {
+      "skill": "hunt-network",
+      "tools": [
+        "responder",
+        "tcpdump"
+      ],
+      "refs": []
+    },
+    "supply-chain": {
+      "skill": "hunt-supply-chain",
+      "tools": [
+        "confused",
+        "interactsh"
+      ],
+      "refs": []
     }
   }
 }
