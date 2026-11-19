@@ -2685,6 +2685,29 @@
         "jadx"
       ],
       "refs": []
+    },
+    "postexp": {
+      "skill": "hunt-postexp",
+      "tools": [
+        "metasploit"
+      ],
+      "refs": []
+    },
+    "social": {
+      "skill": "hunt-social",
+      "tools": [
+        "gophish",
+        "evilginx2"
+      ],
+      "refs": []
+    },
+    "evasion": {
+      "skill": "hunt-evasion",
+      "tools": [
+        "msfvenom",
+        "syswhispers3"
+      ],
+      "refs": []
     }
   }
 }
