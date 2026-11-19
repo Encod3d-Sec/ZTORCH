@@ -34,6 +34,14 @@ organizational only.
 | Check the offensive driver is set up on this machine | `offensive-doctor` (`scripts/offensive-doctor.py`)                              |
 | Board seeding order / vector workflow (why a row is on the board) | `vector-workflow` skill (OSINT pre-pass -> per-asset vector baseline -> base fallback, `derive_rows()`) |
 | About to attack a web endpoint                | `hunt-<type>` skill (see AGENTS.md auto-triggers)                                      |
+| TLS/SSL weakness on a target (cipher/protocol bands, replay, 0-RTT) | `hunt-tls` skill (version-band CVE candidates escalate to `nday`)       |
+| Internal/pivoted L2-L3 segment (ARP spoofing, LLMNR/NBT-NS poisoning, VLAN hopping, mitm6) | `hunt-network` skill (NTLM/AD escalation hands off to `hunt-ad`) |
+| Dependency/build-pipeline abuse (dependency confusion, typosquat, artifact tampering) | `hunt-supply-chain` skill (canary-package Safe-PoC rule; arsenal `wiki/payloads/cicd.md`) |
+| Mobile app surface (Android/iOS static+dynamic, Keystore/Keychain, SSL pinning) | `hunt-mobile` skill (secret validation hands off to `hunt-secrets`) |
+| Wi-Fi/wireless segment (PSK/PMKID, Enterprise evil-twin, WPS) | `hunt-wireless` skill (cracked domain creds hand off to the AD chain) |
+| Post-foothold ops on a shell (cred loot, pivoting, persistence class selection) | `hunt-postexp` skill (pivots ranked by `offensive.py next` via chains.json) |
+| Human-layer attack within RoE (pretext, phishing, vishing) | `hunt-social` skill (post-click chains route to `hunt-upload`/`hunt-rce`) |
+| Defensive-evasion technique selection (EDR/AMSI bypass, unhooking, syscalls) | `hunt-evasion` skill (post-foothold; host-local privilege side owned by `hunt-windows`) |
 | Dispatching a lane / verifying a lane returned | completion gate: `python3 scripts/completion-gate.py init <lane-dir> --title "<run>"` at dispatch, `... check <lane-dir> --capture <dir>` on return (hunt-core "Run completion gate"; UNCHECKED/MISSING/EMPTY = not done, re-dispatch with the printed nudge) |
 | Driving a web target through Burp (proxy-history triage, Repeater/Intruder/Collaborator) | `hunt-burp` skill (Burp MCP; setup [[burp-mcp]])       |
 | Web-audit proxy when Burp/MCP is down, per-engagement isolated proxy project, or Caido-native features (Automate, workflows) | `caido` skill (headless Caido on the VM; caido-mode SDK CLI + `~/caido.sh`; [[wiki/tools/caido]])   |

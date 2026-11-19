@@ -82,8 +82,12 @@ class WiringAudit:
         try:
             with open(os.path.join(self.repo, *rel), encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
-            return {}
+        except Exception as e:
+            # fail CLOSED: an unreadable input must never audit to a
+            # vacuous "0 unwaived gap(s)" rc 0.
+            print("wiring_audit: cannot read %s: %s" % (os.path.join(*rel), e),
+                  file=sys.stderr)
+            raise SystemExit(2)
 
     # -- class -> skill -> wiring
     def _classes(self):

@@ -1,6 +1,6 @@
 ---
 name: bb-workflow
-description: "Use when the operator wants the full pipeline run hands-off on a host: surface mapping -> JS corpus -> signal-based hunt-* class selection -> confirm -> triage -> report, with a hard per-stage budget so the agent never blind-runs every hunt-* skill against every host. This skill owns the concrete stage sequence INSIDE one host's run, including the selector that turns recon signals into a short, ranked dispatch list instead of running all 39 hunt-* skills. offensive.py owns the board and the across-host queue; this skill writes only a per-host lane log (bb-run.md). Assumes hunt-core lane discipline."
+description: "Use when the operator wants the full pipeline run hands-off on a host: surface mapping -> JS corpus -> signal-based hunt-* class selection -> confirm -> triage -> report, with a hard per-stage budget so the agent never blind-runs every hunt-* skill against every host. This skill owns the concrete stage sequence INSIDE one host's run, including the selector that turns recon signals into a short, ranked dispatch list instead of running all 53 hunt-* skills. offensive.py owns the board and the across-host queue; this skill writes only a per-host lane log (bb-run.md). Assumes hunt-core lane discipline."
 metadata:
   hermes:
     tags: [orchestration, pipeline, budget, selector]
@@ -15,7 +15,7 @@ drives `next`. When its lanes call for js-discover / js-parser / a test
 lane on a host, this skill IS that sequence, made concrete - the stage
 order, the budget caps, and most importantly the SELECTOR that decides
 which hunt-* classes are even worth running, so a host doesn't eat a
-full pass of all 39 hunt-* skills when the recon only supports three
+full pass of all 53 hunt-* skills when the recon only supports three
 of them.
 
 This skill writes zero new exploitation logic. Every hunt-*, surface/*,
