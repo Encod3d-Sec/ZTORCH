@@ -1280,12 +1280,27 @@
     "kubernetes|k8s|kubelet": {
       "prio": 2,
       "skills": [
-        "hunt-ssrf"
+        "hunt-ssrf",
+        "hunt-cloud"
       ],
       "tests": [
         "anon API /api/v1",
         "kubelet 10250 exec",
-        "SSRF to API server"
+        "SSRF to API server",
+        "k8s banner -> container breakout + cluster attack reference (hunt-cloud/references/container-k8s.md): position check, RBAC escalation verbs, privileged-pod deploy"
+      ],
+      "refs": [
+        "kubernetes-attacks"
+      ]
+    },
+    "kubelet|:10250": {
+      "prio": 2,
+      "skills": [
+        "hunt-cloud"
+      ],
+      "tests": [
+        "kubelet read-only 10255 vs secure 10250 anonymous access check",
+        "kubelet /runningpods anonymous read; exec via /run/<ns>/<pod>/<container> bypasses API-server RBAC (hunt-cloud/references/container-k8s.md)"
       ],
       "refs": [
         "kubernetes-attacks"
@@ -1294,12 +1309,14 @@
     "docker": {
       "prio": 2,
       "skills": [
-        "hunt-rce"
+        "hunt-rce",
+        "hunt-cloud"
       ],
       "tests": [
         "exposed API :2375",
         "registry pull",
-        "socket mount escape"
+        "socket mount escape",
+        "docker socket: check writability (test -w) + unauthed API version call over the unix socket, then privileged sibling mounting host root (hunt-cloud/references/container-k8s.md)"
       ],
       "refs": [
         "docker-attacks"
