@@ -2436,6 +2436,211 @@
       "approach": [
         "ctf"
       ]
+    },
+    "transfer-encoding|content-length.*transfer-encoding": {
+      "prio": 2,
+      "skills": [
+        "hunt-smuggling"
+      ],
+      "tests": [
+        "Response carries both a Transfer-encoding and a Content-length header (or a raw TE echo) = desync candidate: in Burp Repeater try CL.TE then TE.CL with a smuggled prefix, one probe per framing, read timing + error differential. Never fire blind smuggle loops; hurl cannot carry raw framing (libcurl normalizes), keep this in Burp."
+      ],
+      "refs": [
+        "smuggling"
+      ],
+      "tools": [
+        "burp-suite",
+        "caido"
+      ]
+    },
+    "(?i)csrf|xsrf-token": {
+      "prio": 2,
+      "skills": [
+        "hunt-auth"
+      ],
+      "tests": [
+        "CSRF token present (csrf/xsrf-token field or header): test token-tied-to-session (swap tokens between two accounts), token-not-required (drop it on a state change), and per-request regeneration replay. Audit SameSite on the session cookie alongside."
+      ],
+      "refs": [
+        "csrf"
+      ],
+      "tools": [
+        "curl"
+      ]
+    },
+    "(?i)access-control-allow-origin: \\*": {
+      "prio": 2,
+      "skills": [
+        "hunt-api"
+      ],
+      "tests": [
+        "Wildcard ACAO on an authenticated API = CORS misconfig: enumerate whether Access-Control-Allow-Credentials true + origin reflection co-occur (the wildcard alone blocks credentialed reads); verify cross-origin data access with a canary request, never a bulk pull."
+      ],
+      "refs": [
+        "cors"
+      ],
+      "tools": [
+        "curl"
+      ]
+    },
+    "__proto__|constructor\\.prototype": {
+      "prio": 2,
+      "skills": [
+        "hunt-xss"
+      ],
+      "tests": [
+        "Prototype-pollution shape (__proto__/constructor.prototype reaching a merge/defaults/deep-extend): pollute, then reach for a gadget (fetch/baseHref/csp nonce); client-side sink = XSS, server-side merge = mass-assignment adjacent. Confirm with a harmless own-property canary before escalating."
+      ],
+      "refs": [
+        "prototype-pollution"
+      ],
+      "tools": [
+        "dalfox"
+      ]
+    },
+    "(?i)redirect(=|_url|uri)": {
+      "prio": 2,
+      "skills": [
+        "hunt-bizlogic"
+      ],
+      "tests": [
+        "Open-redirect param (redirect=/redirect_url/redirect_uri): test scheme-relative //evil.tld, backslash-prefixed host, and CRLF into Location; chain into OAuth redirect_uri weaknesses and token carry-over before reporting it standalone."
+      ],
+      "refs": [
+        "open-redirect"
+      ],
+      "tools": [
+        "curl"
+      ]
+    },
+    "x-forwarded-host|host-header": {
+      "prio": 2,
+      "skills": [
+        "hunt-cache"
+      ],
+      "tests": [
+        "x-forwarded-host/Host accepted where an absolute URL is built (reset links, canonical tags, cache keys) = host-header poisoning: request with a controlled Host, read the poisoned body, then verify a second visitor receives the cached variant before claiming cache-level impact."
+      ],
+      "refs": [
+        "host-header",
+        "web-cache"
+      ],
+      "tools": [
+        "curl"
+      ]
+    },
+    "OpenSSL/1\\.0\\.1[a-f]?": {
+      "prio": 3,
+      "skills": [
+        "nday"
+      ],
+      "tests": [
+        "OpenSSL 1.0.1 band (1.0.1 through 1.0.1f, fixed in 1.0.1g) = Heartbleed CVE-2014-0160 candidate. GATE the claim on a read primitive: ONE heartbeat probe (nmap ssl-heartbleed or heartbleed.py), capture must show leaked bytes not present in the request; empty leak or timeout = patched/backported build, stop. Never loop the primitive: one verified read, triage for keys/sessions offline."
+      ],
+      "refs": [
+        "cve-arsenal"
+      ],
+      "tools": [
+        "nmap"
+      ]
+    },
+    "runc v?1\\.[01]\\.": {
+      "prio": 2,
+      "skills": [
+        "hunt-cloud",
+        "nday"
+      ],
+      "tests": [
+        "runc 1.0.x/1.1.x band: check CVE bands - CVE-2019-5736 (runc below 1.0-rc6, /proc/self/exe overwrite via container exec), CVE-2020-15257 (runc <= 1.0.2, abstract unix socket reachable when net=host), CVE-2024-21626 Leaky Vessels (runc <= 1.1.11, /proc/self/cwd fd leak into workdir escape). Verify exact runc version + per-CVE preconditions before any escape attempt; run the post-escape boundary check (container to host)."
+      ],
+      "refs": [
+        "docker-attacks",
+        "kubernetes-attacks",
+        "cve-arsenal"
+      ],
+      "tools": []
+    },
+    "(?i)\\bsslv3\\b|tlsv1\\.[01]\\b|anonymous cipher|weak cipher suite": {
+      "prio": 2,
+      "skills": [
+        "hunt-tls"
+      ],
+      "tests": [
+        "Legacy/weak TLS advertised (SSLv3, TLS 1.0/1.1, anonymous or weak ciphers): run a full cipher/protocol sweep (nmap ssl-enum-ciphers or testssl.sh on the VM), record protocol + cipher evidence, check renegotiation and compression; no downgrade or DoS fires under RoE."
+      ],
+      "refs": [
+        "cve-arsenal"
+      ],
+      "tools": [
+        "nmap",
+        "curl"
+      ]
+    },
+    "(?i)smbv1|signing (is )?(not required|disabled)|ntlm ?v1 enabled": {
+      "prio": 2,
+      "skills": [
+        "hunt-network"
+      ],
+      "tests": [
+        "Weak SMB/NTLM posture (SMBv1 enabled, signing not required, NTLMv1 responses): build the relay candidate list (netexec --gen-relay-list), then Responder + ntlmrelayx against a signing-disabled target; cross-ref password-attacks for the NTLMv1 downgrade/crack path."
+      ],
+      "refs": [
+        "layer2-routing-attacks",
+        "password-attacks"
+      ],
+      "tools": [
+        "responder",
+        "nmap"
+      ]
+    },
+    "(?i)\\b(artifactory|nexus repository|proget|verdaccio|gitlab package registry)\\b": {
+      "prio": 2,
+      "skills": [
+        "hunt-supply-chain"
+      ],
+      "tests": [
+        "Private package registry reachable: enumerate public-namespace collision (dependency confusion: an internal package name resolvable from the public registry wins the restore), anonymous pull of internal packages, and poisoned-restore preconditions. Verify with a harmless canary package claim; never install on client infrastructure."
+      ],
+      "refs": [
+        "default-credentials",
+        "docker-registry-exploitation"
+      ],
+      "tools": [
+        "trivy"
+      ]
+    },
+    "(?i)\\.apk\\b|\\.ipa\\b|androidmanifest": {
+      "prio": 2,
+      "skills": [
+        "hunt-mobile"
+      ],
+      "tests": [
+        "Mobile artifact in scope (.apk/.ipa): static pass first (jadx/apktool: exported components, hardcoded keys, firebase/google-services secrets, weak crypto, TLS pinning config, android:debuggable/allowBackup flags), then frida dynamics on the surfaces static found."
+      ],
+      "refs": [
+        "android-application",
+        "ios-application"
+      ],
+      "tools": [
+        "jadx",
+        "apktool",
+        "frida"
+      ]
+    },
+    "(?i)\\b(windows defender|crowdstrike|falcon|sentinelone|cylance|carbon black|symantec endpoint|mcafee)\\b": {
+      "prio": 2,
+      "skills": [
+        "hunt-evasion"
+      ],
+      "tests": [
+        "EDR/AV product named on the target: read the EDR references before building payloads; pick per-product evasion (unhooking, indirect syscalls, PPID spoof per hunt-evasion), detonate in the lab VM first, and log every blocked build as a reusable indicator."
+      ],
+      "refs": [
+        "endpoint-detection-and-response"
+      ],
+      "tools": [
+        "metasploit"
+      ]
     }
   },
   "classes": {

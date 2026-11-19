@@ -116,7 +116,7 @@ confluence  drupal  joomla  grafana  phpmyadmin  weblogic  iis  struts  jira
 llm  mcp  github actions  grpc  exchange  ivanti  moveit  sharepoint  activemq
 coldfusion  php-cgi  vcenter  screenconnect  papercut  ofbiz
 ```
-(109 fingerprints. Each emits the hunt skill to load, e.g. `jenkins detected -> load Skill(hunt-rce)`. The tech list above is an illustrative subset; regenerate from `playbook.json`.)
+(146 fingerprints. Each emits the hunt skill to load, e.g. `jenkins detected -> load Skill(hunt-rce)`. The tech list above is an illustrative subset; regenerate from `playbook.json`.)
 
 **OOB callback correlation** - flips a waiting `oob.md` row to HIT when its planted token appears in the command + output blob (operator polling OAST/Collaborator), so a confirmed blind-bug callback is surfaced immediately instead of being missed.
 

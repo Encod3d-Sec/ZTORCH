@@ -651,6 +651,72 @@
       "class": "waf",
       "skill": "",
       "note": "WAF product identified - read wiki waf-bypass distill, switch payload class before brute repetition"
+    },
+    {
+      "re": "(?i)(user|account|customer)/?id?=|/api/v[0-9]/users/[0-9]+",
+      "class": "idor",
+      "skill": "hunt-idor",
+      "note": "direct object reference pattern - enumerate neighbor IDs + cross-account control"
+    },
+    {
+      "re": "(?i)(price|qty|quantity|amount|discount|total)=[0-9]",
+      "class": "bizlogic",
+      "skill": "hunt-bizlogic",
+      "note": "client-controlled business value in a request - replay with tampered values + cross-flow controls"
+    },
+    {
+      "re": "(?i)\\b(windows defender|crowdstrike|sentinelone|cylance|carbon black|sysmon)\\b",
+      "class": "evasion",
+      "skill": "hunt-evasion",
+      "note": "EDR/AV product named - read the evasion refs before payload build"
+    },
+    {
+      "re": "(?i)\\b(adfs|okta|shibboleth|ws-federation|saml[s ]?sso)\\b",
+      "class": "federation",
+      "skill": "hunt-federation",
+      "note": "federation stack identified - token signing key + audience/reply-to abuse path"
+    },
+    {
+      "re": "(?i)/graphql\\b|__schema|graphql-playground",
+      "class": "graphql",
+      "skill": "hunt-api",
+      "note": "GraphQL endpoint - introspect, then test per-field authz + mutations"
+    },
+    {
+      "re": "(?i)(login\\.microsoftonline|\\.onmicrosoft\\.com|autodiscover\\.)",
+      "class": "m365",
+      "skill": "hunt-m365",
+      "note": "M365 tenant surface - enumerate via roadtools/microburst refs"
+    },
+    {
+      "re": "(?i)\\.apk\\b|\\.ipa\\b|android:debuggable|android:allowBackup",
+      "class": "mobile",
+      "skill": "hunt-mobile",
+      "note": "mobile artifact in scope - static pass (jadx/apktool) then frida dynamics"
+    },
+    {
+      "re": "(?i)smbv1 enabled|signing: (not required|disabled)|ntlm ?v1 enabled",
+      "class": "network",
+      "skill": "hunt-network",
+      "note": "weak SMB/NTLM posture - build the relay candidate list"
+    },
+    {
+      "re": "(?i)\\b(artifactory|nexus repository|proget|verdaccio)\\b",
+      "class": "supply-chain",
+      "skill": "hunt-supply-chain",
+      "note": "private package registry - dependency-confusion + anonymous pull checks"
+    },
+    {
+      "re": "(?i)\\bsslv3\\b|self-signed certificate|expired certificate|weak cipher",
+      "class": "tls",
+      "skill": "hunt-tls",
+      "note": "weak TLS posture - cipher/protocol sweep + capture the evidence"
+    },
+    {
+      "re": "(?i)(ssl[ -]?vpn|global ?protect|forticlient|pulse ?secure|anyconnect|ikev[12])",
+      "class": "vpn",
+      "skill": "hunt-vpn",
+      "note": "VPN appliance/portal - version-band nday check + auth surface"
     }
   ]
 }
