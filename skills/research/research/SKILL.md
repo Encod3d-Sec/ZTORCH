@@ -87,6 +87,11 @@ setup -> surface-map -> hypothesize -> investigate -> evaluate
 ```
 - Log **every** iteration to `loop.md` as `Iter N (date): <approach> -> <result> -> <next>`. Update `findings.md` / `deadends.md` before you stop. State persists across sessions - a later session resumes the loop from `loop.md`.
 - Stop conditions: a proven novel vuln (success), or all current hypotheses exhausted (record the frontier + suggested new angles).
+- Objection seed (WS1): when the target pattern has a Deadends.md entry with
+  cause `insufficient` carrying an `objection:` line, that objection is the
+  FIRST query of the pass (translated to English search terms; original-language
+  values stay in the finding). A research pass that skips an available
+  objection seed is a miss - lane briefs carry this clause verbatim.
 
 ## Output every iteration
 `Iter N: <approach> -> <result> -> <next move>`, plus which files you updated. Keep the human in the loop on each pivot and each finding.
