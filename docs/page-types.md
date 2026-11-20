@@ -126,9 +126,15 @@ no code enforces this, it is operator discipline.
 
 **`Vulns/` subdirectory** (pentest/bugbounty): each finding is a `FIND-NNN-SEVERITY-title.md`. `find-lint` skips `Skipped*` / `False*` dirs, so group as: confirmed at the root or `Completed/`, `Research/` for in-progress, `False Positive/` for disproven, `Skipped-but-usefull/` for out-of-scope-but-noted.
 
-**Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards); `scope/` (IP/domain/wordlists) and `reports/` (report drafts) are made by hand when needed.
+**Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards); `disclosure/` (maintainer report bundles `*-maintainer-report.md`, gated by find-lint's bundle checks); `scope/` (IP/domain/wordlists) and `reports/` (report drafts) are made by hand when needed.
 
 **Machine-state dotfile:** `.research.json` (engagement: `targets/<eng>/`, research: `raw/research/<project>/`) - the shared research ledger (P2): agent-written, driver-read; entries carry `topic`/`tier`/`verdict`/`sources`/`used_by`/`ts`; schema + rules in the research skill's section 7. Fail-open everywhere.
+
+**Framework data files (P3 trust surface):** `scripts/inject-patterns.json` (the
+shared injection-screen battery: operator-editable regex + rationale rows, read
+fail-open by find-lint and wiki-stage); `scripts/confirm-bench.py` (confirmation
+regression bench: replays recorded gate decisions from
+`tests/bench/confirm-cases/`, exit 1 on a regression).
 
 See `targets/TARGETS.md` for the full engagement playbook: FIND naming, severity definitions, and the wiki integration rule.
 

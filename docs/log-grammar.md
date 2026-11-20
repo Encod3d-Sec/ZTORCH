@@ -26,6 +26,19 @@ what status.py already reads; this page is the vocabulary.
   fix); it re-routes to n-day verification (nday gate) instead of a
   discovery/novelty claim. The reverse route (patch did not cover this
   instance) logs the same token with `n-day -> discovery`.
+- `` `inject-attempt: <verbatim instruction text>` `` - fetched content (advisory,
+  issue, write-up, diff) contained an instruction addressed to the agent; the
+  lane recognized it as data, recorded it verbatim, and continued unaffected
+  (the research skill's data-not-instructions clause). The source is tagged in
+  the ledger entry.
+- `` `memwrite: <target> <- <source kind> [clean|suspect|unchecked]` `` - one
+  memory write (wiki-stage staging, ledger append, demote verdict) with its
+  lineage. `<source kind>` is the P2 source vocabulary
+  (`nvd|ghsa|osv|changelog|web|wiki|diff|eng`, where `eng` = observed live in
+  this engagement/research run); the bracketed value is the inject-screen
+  verdict at the write. Quarantined wiki candidates (`inject-suspect: true`
+  frontmatter) stay in `wiki-candidates/` and are never promoted until the
+  operator clears them.
 
 ## Lane timeline (the readable layer)
 
