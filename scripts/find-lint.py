@@ -7,9 +7,11 @@ filename, and (for HIGH/CRITICAL) a CVSS vector + affected target. Reports gaps.
 
   python3 scripts/find-lint.py        # lint active engagement's findings
   python3 scripts/find-lint.py -v     # show passing files too
+  python3 scripts/find-lint.py --dir raw/research/<project>   # research track
 
 Exit 1 if any finding is incomplete (usable as a pre-report gate).
 """
+import argparse
 import glob
 import os
 import re
@@ -346,8 +348,11 @@ def lint_file(path, base_dir=None, strict_contract=False, patterns=None):
     text = open(path, encoding="utf-8", errors="ignore").read()
     # maintainer bundle (P3 WS3): bundle gates only, plus the inject screen as
     # HARD issues (WS3 refuses unscreened content); the card contract does not
-    # apply to disclosure/*-maintainer-report.md
-    if BUNDLE_RE.search(os.path.basename(path)):
+    # apply to disclosure/*-maintainer-report.md. Bundle-suffixed files OUTSIDE
+    # a disclosure/ component (e.g. a misnamed card in Vulns/) keep the full
+    # card contract.
+    if BUNDLE_RE.search(os.path.basename(path)) and any(
+            part == "disclosure" for part in str(path).replace(os.sep, "/").split("/")):
         issues = _bundle_issues(text, base_dir)
         issues.extend(_screen_messages(text, patterns))
         return issues, []
@@ -427,10 +432,17 @@ def lint_file(path, base_dir=None, strict_contract=False, patterns=None):
     return issues, warnings
 
 
-def main():
-    verbose = "-v" in sys.argv
-    strict = "--strict-contract" in sys.argv
-    d = _engagement.active_dir()
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Finding quality gate.")
+    ap.add_argument("-v", "--verbose", action="store_true")
+    ap.add_argument("--strict-contract", action="store_true")
+    # research tracks (raw/research/<project>/) have no active engagement;
+    # --dir points the walk at that root instead
+    ap.add_argument("--dir", default=None)
+    args = ap.parse_args(argv)
+    verbose = args.verbose
+    strict = args.strict_contract
+    d = args.dir or _engagement.active_dir()
     if not d:
         print("No active engagement.")
         return 0

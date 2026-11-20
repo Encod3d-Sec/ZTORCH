@@ -34,7 +34,8 @@ _spec.loader.exec_module(find_lint)
 
 
 def run_case(case, tmp):
-    d = os.path.join(tmp, case["id"])
+    cid = os.path.basename(case["id"])   # id joins the tmp path: no traversal
+    d = os.path.join(tmp, cid)
     os.makedirs(d, exist_ok=True)
     for rel, content in case.get("files", {}).items():
         p = os.path.join(d, rel)
@@ -42,6 +43,7 @@ def run_case(case, tmp):
         with open(p, "w", encoding="utf-8") as fh:
             fh.write(content)
     card = os.path.join(d, case.get("file", "FIND-001-HIGH-bench.md"))
+    os.makedirs(os.path.dirname(card), exist_ok=True)
     with open(card, "w", encoding="utf-8") as fh:
         fh.write(case["text"])
     issues, _ = find_lint.lint_file(card, d, patterns=[])

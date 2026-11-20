@@ -31,8 +31,13 @@ def load_patterns(path=None):
         data = json.loads(open(path, encoding="utf-8").read())
     except (OSError, ValueError):
         return [], "inject-patterns.json missing/corrupt - screen off (fail-open)"
+    rows = data.get("patterns") if isinstance(data, dict) else None
+    if not isinstance(rows, list):   # wrong-shape battery = corrupt -> fail open
+        rows = []
     out = []
-    for i, row in enumerate(data.get("patterns", []) if isinstance(data, dict) else []):
+    for i, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
         try:
             out.append((re.compile(str(row.get("re", ""))),
                         str(row.get("rationale", ""))))
@@ -61,11 +66,10 @@ def screen(text, patterns=None):
             continue
         if in_fence:
             continue
-        if _HEADING_RE.match(ln):
-            section = ln.lstrip("#").strip() or section
-            continue
         for rx, why in patterns:
             if rx.search(ln):
                 hits.append((n, section, ln.strip(), why))
                 break
+        if _HEADING_RE.match(ln):   # heading is scanned, then opens the next section
+            section = ln.lstrip("#").strip() or section
     return hits
