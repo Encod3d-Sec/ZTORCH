@@ -1519,6 +1519,29 @@ def _falsify_cost(vault, cls):
     except Exception:
         return "active"
 
+def _board_fp(rows):
+    """sha1 of sorted row ids (re-arm key for MEM-CHECK, WS3 pattern from the
+    advisory-dismiss fingerprints)."""
+    ids = sorted((r.get("id") or "").strip() for r in rows)
+    return hashlib.sha1("\n".join(ids).encode()).hexdigest()[:12]
+
+
+def _memory_verdicts(eng):
+    """Latest .memory-demotes.json verdict per rid. Fail-open: missing or
+    corrupt file -> {} (the gate asks, never silently demotes). Agent-written
+    dotfile; the driver only reads it."""
+    try:
+        raw = json.loads((Path(eng) / ".memory-demotes.json").read_text(encoding="utf-8"))
+        out = {}
+        for e in raw if isinstance(raw, list) else []:
+            rid = (e.get("rid") or "").strip()
+            if rid:
+                out[rid] = e
+        return out
+    except Exception:
+        return {}
+
+
 def _next_json_payload(eng, state, vault):
     """cmd_next's cursor+gate walk as one dict (`next --json`). Consumers:
     brain-lane dispatchers + programmatic steering. Gates in walk order:
@@ -1588,6 +1611,21 @@ def _next_json_payload(eng, state, vault):
         1 if ((r.get("asset") or "").strip().lower(),
               (r.get("vuln class") or "").strip().lower()) in insuff else 0,
         _FALSIFY_RANK.get(_falsify_cost(vault, r.get("vuln class")), 1)))
+    # WS3 MEM-CHECK (JSON mirror of the text path): a demote verdict at the
+    # current board fingerprint ranks the row last (same rank as insufficient);
+    # a stale fingerprint re-arms the gate instead.
+    mem = _memory_verdicts(eng)
+    fp_now = _board_fp(rows)
+    demoted = {rid for rid, e in mem.items()
+               if e.get("verdict") == "demote" and e.get("fingerprint") == fp_now}
+    if demoted:
+        for r in rows:
+            if (r.get("id") or "").strip() in demoted:
+                out["warnings"].append(
+                    "DEMOTE: %s - disproven wiki note; demoted (wiki: %s); reopens "
+                    "on new evidence" % (r.get("id") or "?",
+                                         mem[(r.get("id") or "").strip()].get("note") or "?"))
+        rows = sorted(rows, key=lambda r: 1 if (r.get("id") or "").strip() in demoted else 0)
     out["warnings"].extend("board: %s" % w for w in _drain_board_warnings())
     out["board"] = {
         "open_assets": len(_open_assets(rows)),
@@ -1627,6 +1665,19 @@ def _next_json_payload(eng, state, vault):
     tool = (row.get("tool") or "").strip()
     out.update({"asset": asset, "row": rid, "class": cls,
                 "skill": skill or None, "tool": tool or None})
+    # WS3 MEM-CHECK gate (JSON mirror, fail-open like the text path): the ask
+    # fires once per (rid, board fp) and does NOT consume the serve - a
+    # consumer that never writes verdicts keeps getting serves, a later
+    # arsenal/skill gate overwrites gate_action as usual.
+    rid_v = mem.get(rid)
+    asked = state.setdefault("mem_check_asked", {})
+    if (not rid_v or rid_v.get("fingerprint") != fp_now) and asked.get(rid) != fp_now:
+        asked[rid] = fp_now
+        out["gate_action"] = "mem-check"
+        out["warnings"].append(
+            "MEM-CHECK: row %s %s - query wiki for disproven notes on "
+            "(<tech stack>, %s); write verdict to .memory-demotes.json"
+            % (rid, cls or "?", cls or "?"))
     ts = state.setdefault("tool_serves", {})      # JSON twin of the text-path A1 rule
     if not (not (row.get("arsenal") or "").strip()
             or (skill and _events(eng) is not None
@@ -1854,6 +1905,20 @@ def cmd_next(args):
         1 if ((r.get("asset") or "").strip().lower(),
               (r.get("vuln class") or "").strip().lower()) in insuff else 0,
         _FALSIFY_RANK.get(_falsify_cost(vault, r.get("vuln class")), 1)))
+    # WS3 MEM-CHECK: one wiki disproven-note lookup per (rid, board fp). A
+    # demote verdict at the CURRENT fingerprint demotes the row (rank last,
+    # same rank as insufficient); a stale fingerprint re-arms the gate.
+    mem = _memory_verdicts(eng)
+    fp_now = _board_fp(rows)
+    demoted = {rid for rid, e in mem.items()
+               if e.get("verdict") == "demote" and e.get("fingerprint") == fp_now}
+    if demoted:
+        for r in rows:
+            if (r.get("id") or "").strip() in demoted:
+                print("DEMOTE: %s - disproven wiki note; demoted (wiki: %s); reopens "
+                      "on new evidence" % (r.get("id") or "?",
+                                           mem[(r.get("id") or "").strip()].get("note") or "?"))
+        rows = sorted(rows, key=lambda r: 1 if (r.get("id") or "").strip() in demoted else 0)
     # WS2.3: the lane-dir vs log reconciliation renders on the next header too
     # (status carries it; advisory-only, never gates). Reuses lane_validate's
     # mechanical reconcile so both surfaces answer the same question.
@@ -1918,6 +1983,19 @@ def cmd_next(args):
     rid = (row.get("id") or "").strip()
     cls = (row.get("vuln class") or "").strip()
     skill = (row.get("skill") or "").strip()
+    # WS3 MEM-CHECK gate (fail-open, the G2 fail-open precedent): an unchecked
+    # row gets its wiki disproven-note ask ONCE per (rid, board fingerprint) -
+    # the asked-state records the fp, a board change re-arms it, and a verdict
+    # at the current fingerprint releases it outright. The serve PROCEEDS: an
+    # agent/operator that never writes verdicts must not livelock `next`, and
+    # the demote verdicts do the real work in the sort block above.
+    rid_v = mem.get(rid)
+    asked = state.setdefault("mem_check_asked", {})
+    if (not rid_v or rid_v.get("fingerprint") != fp_now) and asked.get(rid) != fp_now:
+        print("MEM-CHECK: row %s %s - query wiki for disproven notes on "
+              "(<tech stack>, %s); write verdict to .memory-demotes.json"
+              % (rid, cls or "?", cls or "?"))
+        asked[rid] = fp_now    # asked at this fp; persists via the _save_state below
     # tool_serves counts only serves that reach the G8 tool step (A1, pass 14): gate
     # serves must not pollute the re-serve signal - a healthy row legitimately spends
     # one serve on G1/G2 first and hit a false RE-SERVE at 3 under serve_count.
