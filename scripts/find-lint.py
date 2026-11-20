@@ -91,6 +91,17 @@ CLOSURE_STATUSES = ("confirmed", "ruled_out", "open_proof_gap")
 # + claim checks). A fresh `status: RESEARCH` scaffold keeps failing.
 CLOSURE_PASS = CLOSURE_STATUSES + ("exploited",)
 
+# Oracle gate (WS2 tiered confirmation): cards scaffolded with the marker
+# below must carry all three expensive-tier sections, non-empty. Legacy cards
+# (no marker) keep the old contract - --strict-contract opts into the closure
+# contract only, never this one.
+ORACLE_MARKER = "oracle_gate: falsify | minimal | rootcause"
+ORACLE_SECTIONS = {
+    "Falsify Attempt": r"^#+\s*(falsify attempt|falsification|refutation attempt)",
+    "Minimal Reproducer": r"^#+\s*(minimal reproducer|minimal poc|reduced poc)",
+    "Root Cause": r"^#+\s*(root cause|why it works)",
+}
+
 
 def find_files(d):
     """Report-bound findings only: skip Skipped*/False* dirs (not deliverables)."""
@@ -298,6 +309,13 @@ def lint_file(path, base_dir=None, strict_contract=False):
     # --strict-contract, must carry counterevidence + a closure status
     if strict_contract or CLOSURE_MARKER in text:
         issues.extend(_closure_issues(fmt))
+    # oracle gate (WS2): marker cards must carry the three expensive-tier
+    # sections, each non-empty (same rule as the REQUIRED checks above)
+    if ORACLE_MARKER in text:
+        for name, pat in ORACLE_SECTIONS.items():
+            if not section_nonempty(text, pat):
+                issues.append("oracle gate: section '%s' required by oracle_gate marker"
+                              % name)
     if status in ("FALSE_POSITIVE", "IGNORED"):
         prefix = "FP:" if status == "FALSE_POSITIVE" else "IGNORED:"
         desc = re.sub(r"\s+", " ", _section_body(body, REQUIRED["Description"]).strip())

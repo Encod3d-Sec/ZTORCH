@@ -38,6 +38,16 @@ sources: []
 
 `<How to fix it. Specific, actionable.>`
 
+## Falsify Attempt
+<!-- only when the oracle_gate marker is kept: what the refuting verifier lane
+tried (model family, control variants, boundary inputs) and its verdict -->
+
+## Minimal Reproducer
+<!-- smallest payload/steps that still triggers; original stays in the capture pair -->
+
+## Root Cause
+<!-- one paragraph: the vulnerable path, the missing check, the trust boundary crossed -->
+
 ## Recommended next
 
 `<one line: next class/skill + the evidence input it needs>`
@@ -55,6 +65,7 @@ find_confirmed_fields: counterevidence | confidence | severity_change_conditions
 find_confirmed_fingerprint: 12-hex, first 12 of sha256("class|affected|primary endpoint")
 find_section: Recommended next
 closure_status_enum: confirmed | ruled_out | open_proof_gap
+oracle_gate: falsify | minimal | rootcause
 closure_contract: counterevidence + closure status required on every card carrying this marker (find-lint --strict-contract opts legacy cards in); status EXPLOITED passes the closure as confirmed-equivalent (its own evidence bar still gates); open_proof_gap cards are served back by `offensive.py next`; open_proof_gap additionally requires proof_gap (the one exact unresolved fact) + validation_plan (local fixture or deployment owner-observed check)
 -->
 
