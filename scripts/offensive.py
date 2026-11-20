@@ -280,6 +280,23 @@ def _insufficient_pairs(eng):
     return _deadend_pairs_by_cause(eng)[1]
 
 
+DEEPEN_CAP = 3
+
+
+def _deepen_count(eng, asset, cls):
+    """Insufficient-cause Deadends entries for one (asset, class) pair (WS1
+    per-hypothesis budget). Counting raw entries (not parsing 'effort') keeps
+    it stateless and hand-edit-proof."""
+    low = lambda a, c: ((a or "").strip().lower(), (c or "").strip().lower())
+    want = low(asset, cls)
+    n = 0
+    for r in _parse_table(Path(eng) / "Deadends.md"):
+        if low(r.get("asset"), r.get("class")) == want \
+                and (r.get("cause") or "").strip().lower() in _CAUSE_INSUFFICIENT:
+            n += 1
+    return n
+
+
 def _deadend_pairs(eng):
     # back-compat alias: the G4 zombie guard's historical name
     return _disproven_pairs(eng)
@@ -1506,7 +1523,7 @@ def _next_json_payload(eng, state, vault):
     rows = read_board(eng)
     if state.get("foothold"):
         rows = rows + read_board_4b(eng)
-    dead = _disproven_pairs(eng)
+    dead, insuff = _deadend_pairs_by_cause(eng)
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())
@@ -1515,6 +1532,31 @@ def _next_json_payload(eng, state, vault):
             out["warnings"].append("G4: %d hand-revived row(s) match a Deadends.md "
                                    "pair - suppressed" % len(zombie))
         rows = [r for r in rows if _low(r) not in dead]
+    # WS1 mirror of the text path: capped pairs drop with the same CAPPED
+    # warning (JSON consumers see it, rows never served); insufficient pairs
+    # only demote - same stable-sort key - so the cursor walks them last.
+    capped = set()
+    for r in rows:
+        if _status_of(r) in ("[ ]", "[~]"):
+            low = ((r.get("asset") or "").strip().lower(),
+                   (r.get("vuln class") or "").strip().lower())
+            if low in insuff and _deepen_count(
+                    eng, r.get("asset"), r.get("vuln class")) >= DEEPEN_CAP:
+                capped.add((r.get("id") or "?", low))
+    if capped:
+        for cid, (a, c) in sorted(capped):
+            out["warnings"].append(
+                "CAPPED: %s %s/%s at %d insufficient cycles - mark [i] "
+                "(inconclusive, not disproven); revisit only on new input"
+                % (cid, a, c, DEEPEN_CAP))
+        rows = [r for r in rows
+                if ((r.get("asset") or "").strip().lower(),
+                    (r.get("vuln class") or "").strip().lower())
+                not in {low for _, low in capped}]
+    if insuff:
+        rows = sorted(rows, key=lambda r: 1 if (
+            (r.get("asset") or "").strip().lower(),
+            (r.get("vuln class") or "").strip().lower()) in insuff else 0)
     out["warnings"].extend("board: %s" % w for w in _drain_board_warnings())
     out["board"] = {
         "open_assets": len(_open_assets(rows)),
@@ -1740,7 +1782,7 @@ def cmd_next(args):
     # dead (asset, class) pair the derivation path would suppress. Drop any open
     # row whose pair sits in Deadends.md, naming it, so the edit is visible instead
     # of silently re-serving a vector that was already exhausted.
-    dead = _disproven_pairs(eng)
+    dead, insuff = _deadend_pairs_by_cause(eng)
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())
@@ -1750,13 +1792,34 @@ def cmd_next(args):
                   "back?) - suppressed: %s" % (len(zombie),
                   ", ".join((r.get("id") or "?") for r in zombie)))
         rows = [r for r in rows if _low(r) not in dead]
+    # WS1: insufficient/capped pairs demote (rank last within the asset), and
+    # a pair at the deepen cap is suppressed for the session with an explicit
+    # mark-[i] instruction - inconclusive, never silently dropped.
+    capped = set()
+    for r in rows:
+        if _status_of(r) in ("[ ]", "[~]"):
+            low = ((r.get("asset") or "").strip().lower(),
+                   (r.get("vuln class") or "").strip().lower())
+            if low in insuff and _deepen_count(
+                    eng, r.get("asset"), r.get("vuln class")) >= DEEPEN_CAP:
+                capped.add((r.get("id") or "?", low))
+    if capped:
+        for cid, (a, c) in sorted(capped):
+            print("CAPPED: %s %s/%s at %d insufficient cycles - mark [i] "
+                  "(inconclusive, not disproven); revisit only on new input"
+                  % (cid, a, c, DEEPEN_CAP))
+        rows = [r for r in rows
+                if ((r.get("asset") or "").strip().lower(),
+                    (r.get("vuln class") or "").strip().lower())
+                not in {low for _, low in capped}]
     # WS2.2: rows claimed by an open lane (sidecar .rows.json) rank after fully
     # unclaimed rows - a stable-sort key bump; board order is otherwise kept.
     claimed_ids, claimed_nums = _open_lane_row_ids(eng)
-    if claimed_ids or claimed_nums:
-        rows = sorted(rows, key=lambda r: 1 if (
-            (r.get("id") or "").strip() in claimed_ids
-            or _rid_num(r) in claimed_nums) else 0)
+    rows = sorted(rows, key=lambda r: 2 if (
+        (r.get("id") or "").strip() in claimed_ids
+        or _rid_num(r) in claimed_nums) else (
+        1 if ((r.get("asset") or "").strip().lower(),
+              (r.get("vuln class") or "").strip().lower()) in insuff else 0))
     # WS2.3: the lane-dir vs log reconciliation renders on the next header too
     # (status carries it; advisory-only, never gates). Reuses lane_validate's
     # mechanical reconcile so both surfaces answer the same question.
