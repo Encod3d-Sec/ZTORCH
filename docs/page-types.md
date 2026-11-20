@@ -111,6 +111,11 @@ One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engag
 | `walkthrough.md` | Full copy-pasteable boot-to-root reproduction (scaffolded upfront for pentest/bugbounty; self-creates at close-out for every type if missing) |
 | `eval.md` | Per-engagement AGENT self-assessment (tokens/time/drift); `close-out.py` auto-writes its Metrics block at SOLVED, `Skill(learn)` fills the rest (scaffolded upfront for pentest/bugbounty; on-demand for ctf) |
 
+**`Deadends.md` columns:** Optional 7th column `cause`: `disproven` (default, suppresses the board row),
+`insufficient` (demotes the row, requeue at lower priority), `capped` (budget
+exhausted at 3 insufficient cycles, demotes). Rows with cause `insufficient`
+may carry an `objection:` line directly under the table row.
+
 **`Vulns/` subdirectory** (pentest/bugbounty): each finding is a `FIND-NNN-SEVERITY-title.md`. `find-lint` skips `Skipped*` / `False*` dirs, so group as: confirmed at the root or `Completed/`, `Research/` for in-progress, `False Positive/` for disproven, `Skipped-but-usefull/` for out-of-scope-but-noted.
 
 **Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards); `scope/` (IP/domain/wordlists) and `reports/` (report drafts) are made by hand when needed.

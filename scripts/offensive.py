@@ -246,26 +246,43 @@ def _drain_board_warnings():
     BOARD_WARNINGS.clear()
     return out
 
-def _deadend_pairs(eng):
-    """{(asset_lower, class_lower)} from Deadends.md (G4 suppression set). Class cells
-    expand through the same _class_equivs the coverage credit uses (audit 2026-09-10):
-    a deadend written `file-upload` must suppress a board row spelled `upload` and vice
-    versa, else G4 keeps serving a vector coverage already cleared -- the suppression
-    side of the D-D2 spelling gap."""
+_CAUSE_INSUFFICIENT = ("insufficient", "capped")
+
+
+def _deadend_pairs_by_cause(eng):
+    """Split Deadends.md (asset, class) pairs by outcome cause (WS1 three-way
+    routing). Class cells expand through _class_equivs exactly like the old
+    G4 set. Empty/legacy/unknown cause cells default disproven so every
+    existing engagement keeps its suppression behavior."""
     try:
         import next_move                      # puts skills/hooks on sys.path
         from _engagement_classes import _class_equivs as equiv
     except Exception:
         def equiv(c):
             return {c}
-    out = set()
+    disproven, insufficient = set(), set()
     for r in _parse_table(Path(eng) / "Deadends.md"):
         a = (r.get("asset") or "").strip().lower()
         c = (r.get("class") or "").strip().lower()
-        if a and c:
-            for cc in equiv(c):
-                out.add((a, cc))
-    return out
+        if not (a and c):
+            continue
+        tgt = insufficient if (r.get("cause") or "").strip().lower() in _CAUSE_INSUFFICIENT else disproven
+        for cc in equiv(c):
+            tgt.add((a, cc))
+    return disproven, insufficient
+
+
+def _disproven_pairs(eng):
+    return _deadend_pairs_by_cause(eng)[0]
+
+
+def _insufficient_pairs(eng):
+    return _deadend_pairs_by_cause(eng)[1]
+
+
+def _deadend_pairs(eng):
+    # back-compat alias: the G4 zombie guard's historical name
+    return _disproven_pairs(eng)
 
 def read_board(eng):
     """List of 4a row dicts (lowercased keys) from Approach.md's `### 4a` section.
@@ -378,7 +395,7 @@ def derive_rows(eng, index, etype):
     index, tool from CLASS_TOOL."""
     routing = index.get("routing") or {}
     info = _class_info(index)
-    dead = _deadend_pairs(eng)
+    dead = _disproven_pairs(eng)
     oos = _oos_hosts(eng)
     out, seen = [], set()
     base = BASE_CLASSES.get(etype, [])
@@ -504,7 +521,7 @@ def cmd_board(args):
     index = load_index(eng)
 
     existing = read_board(eng)
-    dead = _deadend_pairs(eng)
+    dead = _disproven_pairs(eng)
     merged = 0
     # m4 (T7 review): rows stashed by the last locked-vhost board write come
     # back BEFORE `have` is built, so derivation skips their (asset, class)
@@ -635,7 +652,7 @@ def derive_privesc_rows(eng, index, etype, st):
     if not foot:
         return []
     info = _class_info(index)          # class -> (skill, arsenal)
-    dead = _deadend_pairs(eng)
+    dead = _disproven_pairs(eng)
     oshint = _os_hint(eng)
     out, seen = [], set()
     for asset in foot:
@@ -1489,7 +1506,7 @@ def _next_json_payload(eng, state, vault):
     rows = read_board(eng)
     if state.get("foothold"):
         rows = rows + read_board_4b(eng)
-    dead = _deadend_pairs(eng)
+    dead = _disproven_pairs(eng)
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())
@@ -1723,7 +1740,7 @@ def cmd_next(args):
     # dead (asset, class) pair the derivation path would suppress. Drop any open
     # row whose pair sits in Deadends.md, naming it, so the edit is visible instead
     # of silently re-serving a vector that was already exhausted.
-    dead = _deadend_pairs(eng)
+    dead = _disproven_pairs(eng)
     if dead:
         _low = lambda r: ((r.get("asset") or "").strip().lower(),
                           (r.get("vuln class") or "").strip().lower())

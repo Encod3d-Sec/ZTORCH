@@ -16,6 +16,11 @@ what status.py already reads; this page is the vocabulary.
   lives in Skill(delegate))
 - `Ruling: <decision> - <why> - <cost if wrong>` - a mid-run judgment call the operator
   would rubber-stamp; lanes log it and keep going; closeout prints every `Ruling:` line.
+- `fail:insufficient|disproven|capped` - the three outcome causes of a vector that
+  did not confirm. Lane close blocks carry it inside the result line
+  (`result: DEAD (<cause>) - <what happened>`). `insufficient` close blocks add an
+  optional `objection: <why the signal was insufficient>` line - the next research
+  pass on that pattern MUST seed its first query from it.
 
 ## Lane timeline (the readable layer)
 
