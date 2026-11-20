@@ -27,6 +27,8 @@ for f in target surface findings deadends loop; do
   sed -e "s/{{PROJECT}}/$NAME/g" -e "s/{{DATE}}/$TODAY/g" "$TPL/$f.md" > "$DEST/$f.md"
 done
 
+printf '{"entries": []}\n' > "$DEST/.research.json"   # P2 research ledger (dedup + source tags)
+
 printf '%s\n' "$NAME" > "$VAULT/raw/research/active.md"   # set as the active research project
 
 echo "created research project: raw/research/$NAME/ (target, surface, findings, deadends, loop, poc/)"

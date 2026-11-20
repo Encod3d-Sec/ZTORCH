@@ -8,6 +8,7 @@ current phase. The research analog of next_move.py for engagements.
   python3 scripts/research_status.py        # full status + next moves
   python3 scripts/research_status.py -q      # one-line summary (SessionStart hook)
 """
+import json
 import os
 import re
 import sys
@@ -51,6 +52,37 @@ def active_project():
 def _read(d, fn):
     p = os.path.join(d, fn)
     return open(p, encoding="utf-8", errors="ignore").read() if os.path.isfile(p) else ""
+
+
+def load_ledger(d):
+    """Fail-open read of raw/research/<project>/.research.json (P2 WS2):
+    missing/corrupt file -> [], never an error."""
+    p = os.path.join(d, ".research.json")
+    if not os.path.isfile(p):
+        return []
+    try:
+        data = json.loads(open(p, encoding="utf-8", errors="ignore").read())
+        entries = data.get("entries")
+        return [e for e in entries if isinstance(e, dict)] if isinstance(entries, list) else []
+    except (ValueError, OSError):
+        return []
+
+
+def _dedup_warning(ledger, loop):
+    """The repeating-query tell: the LATEST iteration names a topic a ledger
+    entry already settled (component + version tokens both present,
+    case-insensitive substring)."""
+    iters = [l for l in loop.splitlines() if l.strip().startswith("Iter ")]
+    last = iters[-1].lower() if iters else ""
+    for e in ledger:
+        if e.get("verdict") != "settled":
+            continue
+        toks = [t for t in str(e.get("topic") or "").split()[:2] if len(t) >= 3]
+        if toks and all(t in last for t in toks):
+            return ("DEDUP: '%s' already settled (tier %s) - reuse the ledger "
+                    "verdict + sources, do not re-fetch"
+                    % (e.get("topic"), e.get("tier", "?")))
+    return ""
 
 
 def parse_phase(loop):
@@ -118,8 +150,15 @@ def collect(d):
     nm = next_move_line(loop)
     if nm:
         moves.insert(0, nm)
+    ledger = load_ledger(d)
+    led = {"entries": len(ledger),
+           "t1": sum(1 for e in ledger if e.get("tier") == 1),
+           "t2": sum(1 for e in ledger if e.get("tier") == 2),
+           "t3": sum(1 for e in ledger if e.get("tier") == 3),
+           "warn": _dedup_warning(ledger, loop)}
     return {"name": os.path.basename(d), "phase": phase, "hyps": hyps,
-            "cand": cand, "conf": conf, "dead": dead, "moves": moves}
+            "cand": cand, "conf": conf, "dead": dead, "moves": moves,
+            "ledger": led}
 
 
 def main():
@@ -136,6 +175,12 @@ def main():
         return 0
     print(f"=== Research: {s['name']} ===")
     print(f"phase: {s['phase']} | findings: {s['cand']} candidate / {s['conf']} confirmed | dead-ends: {s['dead']}")
+    led = s.get("ledger") or {}
+    if led.get("entries"):
+        print("research ledger: %d topics (t1 %d, t2 %d, t3 %d)"
+              % (led["entries"], led["t1"], led["t2"], led["t3"]))
+    if led.get("warn"):
+        print(led["warn"])
     if s["hyps"]:
         print("open hypotheses:")
         for h in s["hyps"][:5]:
