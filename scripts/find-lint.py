@@ -19,6 +19,8 @@ from pathlib import Path
 VAULT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(VAULT, "skills", "hooks"))
 import _engagement  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import _inject  # noqa: E402
 
 SEVERITIES = ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO")
 
@@ -102,6 +104,16 @@ ORACLE_SECTIONS = {
     "Root Cause": r"^#+\s*(root cause|why it works)",
 }
 
+# Maintainer report bundle (P3 WS3): disclosure/*-maintainer-report.md gets its
+# own section gates, and the inject screen HARD-fails there (unscreened content
+# never reaches a maintainer; on finding cards the same hits are advisory).
+BUNDLE_RE = re.compile(r"-maintainer-report\.md$", re.I)
+BUNDLE_FRAMING = ("nday", "novel")
+BUNDLE_SECTIONS = {
+    "Reproduction Evidence": r"^#+\s*(reproduction evidence|reproduction|repro)",
+    "Patch or Mitigation": r"^#+\s*(patch|mitigation|fix|remediation)",
+}
+
 
 def find_files(d):
     """Report-bound findings only: skip Skipped*/False* dirs (not deliverables)."""
@@ -114,6 +126,12 @@ def find_files(d):
         for f in fs:
             if f.startswith("FIND-") and f.endswith(".md"):
                 out.append(os.path.join(r, f))
+    # maintainer bundles (P3 WS3) live in disclosure/ beside the findings
+    disc = os.path.join(d, "disclosure")
+    if os.path.isdir(disc):
+        for f in os.listdir(disc):
+            if BUNDLE_RE.search(f) and f.endswith(".md"):
+                out.append(os.path.join(disc, f))
     return sorted(out)
 
 
@@ -269,12 +287,67 @@ def _closure_issues(fmt):
     return issues
 
 
-def lint_file(path, base_dir=None, strict_contract=False):
+def _bundle_issues(text, base_dir):
+    """Maintainer bundle gates (P3 WS3): reproduction evidence naming its
+    negative control, patch-or-mitigation with local verification or the
+    untested-upstream ceiling marker, affected versions, and the framing
+    split (nday carries the CVE id, novel carries none)."""
+    issues = []
+    for name, pat in BUNDLE_SECTIONS.items():
+        if not section_nonempty(text, pat):
+            issues.append("bundle: section '%s' required" % name)
+    fm = re.search(r"^---\r?\n(.*?)\r?\n---", text, re.S)
+    fmt = fm.group(1) if fm else ""
+    if not re.search(r"negative control", text, re.I):
+        issues.append("bundle: reproduction must name its negative control "
+                      "(the same request minus the payload)")
+    if not re.search(r"^affected:\s*\S", fmt, re.M):
+        issues.append("bundle: frontmatter needs non-empty affected versions")
+    fv = re.search(r"^framing:\s*(\S+)", fmt, re.M | re.I)
+    framing = fv.group(1).strip().lower() if fv else ""
+    if framing not in BUNDLE_FRAMING:
+        issues.append("bundle: framing must be one of %s (got '%s')"
+                      % (" | ".join(BUNDLE_FRAMING), framing or "(empty)"))
+    cve = re.search(r"^cve:\s*(\S+)", fmt, re.M | re.I)
+    cve_val = cve.group(1).strip() if cve else ""
+    if framing == "nday" and not cve_val:
+        issues.append("bundle: n-day framing needs the CVE id (cve:)")
+    if framing == "novel" and cve_val:
+        issues.append("bundle: novel framing must not carry an assigned CVE id "
+                      "(candidate-CVE framing only)")
+    patch = _section_body(text, BUNDLE_SECTIONS["Patch or Mitigation"])
+    if patch and "untested-upstream" not in patch and "```" not in patch:
+        issues.append("bundle: patch/mitigation needs the local verification "
+                      "(fenced repro of the fixed build rejecting the input) or "
+                      "the untested-upstream marker")
+    return issues
+
+
+def _screen_messages(text, patterns):
+    """P3 WS1: inject-suspect messages for prose hits. patterns=None loads the
+    battery here (fail-open note to stderr when disabled); patterns=[] disables
+    silently (bench replay - the caller already printed the note)."""
+    if patterns is None:
+        patterns, off = _inject.load_patterns()
+        if off:
+            print(off, file=sys.stderr)
+    return ["inject-suspect: %s line %d: %s (%s)" % (section, n, txt[:80], why)
+            for n, section, txt, why in _inject.screen(text, patterns or [])]
+
+
+def lint_file(path, base_dir=None, strict_contract=False, patterns=None):
     # base_dir defaults to the card's dir (tests co-locate cards+captures); the
     # main loop passes the engagement root so `poc/...` refs in Vulns/ resolve.
     if base_dir is None:
         base_dir = os.path.dirname(path)
     text = open(path, encoding="utf-8", errors="ignore").read()
+    # maintainer bundle (P3 WS3): bundle gates only, plus the inject screen as
+    # HARD issues (WS3 refuses unscreened content); the card contract does not
+    # apply to disclosure/*-maintainer-report.md
+    if BUNDLE_RE.search(os.path.basename(path)):
+        issues = _bundle_issues(text, base_dir)
+        issues.extend(_screen_messages(text, patterns))
+        return issues, []
     issues = []
     draft = DRAFT_RE.search(os.path.basename(path))
     m = None if draft else FNAME_RE.search(os.path.basename(path))
@@ -347,6 +420,7 @@ def lint_file(path, base_dir=None, strict_contract=False):
         if ev:
             issues.append(ev)
         issues.extend(_claim_issues(body, Path(base_dir)))
+    warnings.extend(_screen_messages(text, patterns))
     return issues, warnings
 
 
@@ -372,9 +446,12 @@ def main():
         if mv and re.fullmatch(r"[0-9a-f]{12}", mv.group(1)):
             seen.setdefault(mv.group(1), []).append(os.path.relpath(f, d))
     dups = {fp: rels for fp, rels in seen.items() if len(rels) > 1}
+    pats, off = _inject.load_patterns()
+    if off:
+        print(off, file=sys.stderr)
     bad = 0
     for f in files:
-        issues, warnings = lint_file(f, d, strict_contract=strict)
+        issues, warnings = lint_file(f, d, strict_contract=strict, patterns=pats)
         rel = os.path.relpath(f, d)
         for fp, rels in dups.items():
             if rel in rels:
