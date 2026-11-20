@@ -155,6 +155,9 @@ def collect(d):
            "t1": sum(1 for e in ledger if e.get("tier") == 1),
            "t2": sum(1 for e in ledger if e.get("tier") == 2),
            "t3": sum(1 for e in ledger if e.get("tier") == 3),
+           "last": max((str(e.get("ts")) for e in ledger
+                        if isinstance(e.get("ts"), str) and e.get("ts")),
+                       default=""),
            "warn": _dedup_warning(ledger, loop)}
     return {"name": os.path.basename(d), "phase": phase, "hyps": hyps,
             "cand": cand, "conf": conf, "dead": dead, "moves": moves,
@@ -177,8 +180,11 @@ def main():
     print(f"phase: {s['phase']} | findings: {s['cand']} candidate / {s['conf']} confirmed | dead-ends: {s['dead']}")
     led = s.get("ledger") or {}
     if led.get("entries"):
-        print("research ledger: %d topics (t1 %d, t2 %d, t3 %d)"
-              % (led["entries"], led["t1"], led["t2"], led["t3"]))
+        line = ("research ledger: %d topics (t1 %d, t2 %d, t3 %d)"
+                % (led["entries"], led["t1"], led["t2"], led["t3"]))
+        if led.get("last"):
+            line += ", last %s" % led["last"]
+        print(line)
     if led.get("warn"):
         print(led["warn"])
     if s["hyps"]:
