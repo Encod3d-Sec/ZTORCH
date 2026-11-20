@@ -29,7 +29,7 @@ This skill is the research analog of the engagement framework: `raw/research/<pr
 5. Fill `target.md`: what it is, version, language, build/run commands, trust boundaries.
 
 ## 1. State-first (EVERY iteration, MANDATORY)
-Read `raw/research/<project>/{loop.md, deadends.md, findings.md}` before acting. Never re-run a logged dead-end without new input. Resume from the last iteration. This is the anti-loop rule - the same discipline engagements use. Run `python3 scripts/research_status.py` for the current phase + ranked next move (also auto-surfaced at SessionStart from `raw/research/active.md`).
+Read `raw/research/<project>/{loop.md, deadends.md, findings.md}` before acting. Never re-run a logged dead-end without new input. Resume from the last iteration. This is the anti-loop rule - the same discipline engagements use. Run `python3 scripts/research_status.py` for the current phase + ranked next move (also auto-surfaced at SessionStart from `raw/research/active.md`). Also read the research ledger `raw/research/<project>/.research.json` (agent-written, driver-read): a `settled` topic is REUSED, never re-fetched; `research_status.py` prints ledger stats + DEDUP warnings.
 
 ## 2. Attack-surface map (`surface.md`)
 `mcp__wiki-search__query` the target's tech/language/framework first, then map by type:
@@ -67,10 +67,26 @@ A finding spawns its own mini-loop - each question is an iteration, and a dead-e
 4. **Impact** - RCE / memory corruption / info leak / DoS / privesc / auth bypass.
 5. **Variants** - is the same bug pattern present elsewhere (zg or grep the codebase)?
 
-## 7. Prove + novelty-check
+## 7. Prove + tiered novelty-check (the research ladder)
 - Minimal reproducible **PoC / trigger** in `poc/`.
 - **Severity + CVSS**; **affected versions** (`git blame` / changelog for when introduced).
-- **Novelty (decides CVE vs known):** search NVD, GitHub Security Advisories, the project changelog/issues, and `mcp__wiki-search__query` the wiki. Already fixed/reported -> mark `known` in `findings.md` and pivot. Genuinely new + reachable -> **candidate CVE.**
+- **Novelty = the research ladder.** EVERY research pass (surface mapping, hypothesis investigation, novelty check, objection-seeded requeues) runs it, Tier 1 first, ALWAYS:
+  - **Tier 1 (exact, cheap):** does a CVE/CWE/advisory exist for THIS component + version? `mcp__wiki-search__query` the wiki first, then NVD/GHSA/OSV, the project changelog, vendor advisories. Budget: at most 3 distinct queries. A hit ENDS the pass.
+  - **Tier 2 (widen):** runs only if Tier 1 exhausted its budget without settling. Sibling functions, related CVEs in the library family, forked/vendored copies carrying the pattern, same bug class in the framework/runtime. Budget: at most 5 distinct queries or one 15-minute sweep. Escalate only on pattern-present-but-unresolved.
+  - **Tier 3 (deep):** only on Tier 2's pattern-present-but-unresolved verdict. Diff every tagged release for silent (un-CVE'd) fixes (the nday skill's methodology), conference talks / CTF write-ups for the technique class, academic literature for the pattern's general form. Budget: one declared deep pass per hypothesis; a second needs new input (same rule as deadend re-opens).
+- **Route the result:**
+  - Tier 1 finds the finding ALREADY PUBLIC (existing CVE, vendor advisory, upstream fix commit covers it) -> reclassify `n-day (CVE-<id> or upstream-fix)`, log `` `reclass: <id> discovery -> n-day (<source>)` `` in `loop.md`, hand off to `Skill(nday)` entry path 3. A failed n-day trigger (the patch does not cover this instance) routes the finding BACK to the discovery path with a log line.
+  - Nothing settles it -> genuinely new + reachable -> **candidate CVE** (section 8 unchanged).
+- **Source-tag every fact:** ``(source: <kind> <ref>, fetched <date>)`` on one line, recorded in the ledger entry and in `findings.md`/`surface.md` prose where the fact is used.
+- **Research ledger (dedup, MANDATORY):** before ANY fetch, check `raw/research/<project>/.research.json`. A `settled` entry on the topic ENDS the question: reuse its verdict + sources, never re-fetch. A `pattern-open`/`nothing` entry allows ONE re-query per higher tier. The objection-seed queries are exempt (they always run). After the pass, append the entry (topic = component + version + question class, lowercase english):
+```json
+{"topic": "<component> <version> <question class>", "tier": 1,
+ "verdict": "settled|pattern-open|nothing",
+ "sources": [{"kind": "nvd|ghsa|osv|changelog|web|wiki|diff",
+              "ref": "<url or page or commit>", "fetched": "<iso date>"}],
+ "used_by": ["<hypothesis or row id>"], "ts": "<iso datetime>"}
+```
+Missing/corrupt ledger = write the first entry, never an error.
 
 ## 8. Write up (CVE-grade)
 Promote the proven finding in `findings.md` (or a dedicated FIND file): title, affected versions, root cause, PoC, primitive/impact, CVSS, remediation, disclosure note. Then **feed the reusable technique/pattern back to the wiki** (`wiki/techniques/` or `wiki/payloads/`) via the `research-ingest` skill - so the next project starts ahead.
@@ -92,6 +108,7 @@ setup -> surface-map -> hypothesize -> investigate -> evaluate
   FIRST query of the pass (translated to English search terms; original-language
   values stay in the finding). A research pass that skips an available
   objection seed is a miss - lane briefs carry this clause verbatim.
+- Research ladder in every brief (P2): lane briefs carry the tier ladder + ledger rule verbatim, the same contract as the objection-seed clause. A research pass that skips Tier 1 or re-fetches a `settled` ledger topic is a miss.
 
 ## Output every iteration
 `Iter N: <approach> -> <result> -> <next move>`, plus which files you updated. Keep the human in the loop on each pivot and each finding.
