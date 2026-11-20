@@ -58,6 +58,12 @@ Turn a proven, novel vulnerability into a coordinated disclosure and a published
      sweep is clean and every TODO is either closed or consciously accepted.
    - Verdict tables over prose wherever a table fits; every claim carries its artifact
      name. No 'consider', no 'might', no restating the summary in new words.
+
+   **Maintainer-ready minimal report (P3, before any contact):** modern maintainers (curl ended its bounty program over slop; the kernel refuses speculative reports) reject anything without reproduction evidence plus a tested patch - a speculative report actively burns triage goodwill. Before step 2, write `disclosure/<id>-maintainer-report.md` beside the finding (`targets/<eng>/` for engagements, `raw/research/<project>/` for research, per the client-data boundary) and make it pass find-lint clean (`python3 scripts/find-lint.py` picks up `disclosure/*-maintainer-report.md`):
+   - Frontmatter: `framing: n-day | novel`, non-empty `affected:` versions, `cve:` when n-day. n-day reports (reclassified by the research ladder) carry the CVE id, credit/timeline, and NO novelty claims; novel findings carry the candidate-CVE framing and no assigned id.
+   - `## Reproduction Evidence`: the minimal reproducer, the exact trigger with concrete values, affected versions, and the negative control (same request minus the payload) that shows it is not a false positive.
+   - `## Patch or Mitigation`: n-day = the upstream fix reference plus the local verification that the patched build rejects the same input; novel = a minimal patch proposal or a config-level mitigation, marked `untested-upstream` when the fixed version could not be built. Actionable beats perfect; the marker states the ceiling honestly.
+   - Screened content only: the bundle hard-fails find-lint's inject screen (`inject-suspect:` hits are issues there, not warnings), so unscreened content never reaches a maintainer.
 2. **Find the contact** (in order): `/.well-known/security.txt`, `SECURITY.md`, `security@<vendor>`, vendor PSIRT, a bug-bounty platform if they run one, GitHub private vulnerability reporting for OSS, else CERT/CC.
 3. **Report privately** over that channel; PGP-encrypt if a key is published. Professional, specific, non-extortive. Offer to validate the fix.
 4. **Coordinate a timeline** - propose ~90 days; track it; escalate to CERT/CC if the vendor goes dark past the deadline.
@@ -66,6 +72,7 @@ Turn a proven, novel vulnerability into a coordinated disclosure and a published
 
 ## Output
 - A ready-to-send **disclosure report** (draft) and a **public advisory** (draft) saved under the project: `raw/research/<project>/advisory.md` (and the contact + timeline tracked in `findings.md`).
+- The maintainer bundle `disclosure/<id>-maintainer-report.md`, written before first contact and find-lint clean.
 - Update the finding status: candidate -> reported -> `CVE-<id>` -> published.
 
 ## Wiki feedback
