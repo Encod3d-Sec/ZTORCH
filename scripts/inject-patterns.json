@@ -1,0 +1,14 @@
+{
+  "_doc": "Injection-screen battery (P3 WS1): regex patterns that look like instructions addressed to the agent, screened at the findings boundary (find-lint, advisory) and the memory boundary (wiki-stage, quarantine). Fenced code blocks are exempt - payloads are the product. HIGH-PRECISION on purpose: a noisy pattern trains the eye to ignore the battery. Each row carries a one-line rationale so a hit is reviewable in seconds. Add a row when a real attempt is observed. Fail-open: missing/corrupt file or a bad regex disables the screen with one stderr note.",
+  "patterns": [
+    {"re": "(?i)ignore (all|any|the|your|previous|prior|above) (instructions|directions|prompts|rules|context)", "rationale": "classic instruction-override phrasing addressed at an agent"},
+    {"re": "(?i)disregard (all|any|the|your|previous|prior|above) (instructions|directions|prompts|rules|context)", "rationale": "instruction-override variant"},
+    {"re": "(?i)forget (all|any|the|your|previous|prior|above) (instructions|directions|prompts|rules|context)", "rationale": "instruction-override variant"},
+    {"re": "(?i)\\byou (must|should|are to|are now|are required|will) now? (ignore|disregard|obey|follow|report|send|reveal|print|output|execute)", "rationale": "imperative addressed to 'you' (the agent)"},
+    {"re": "(?i)(report|mark|rate|classify|score|upgrade) (this|the above|the finding|this finding|it) as (critical|high|urgent|confirmed|valid|exploited)", "rationale": "severity/verdict steering of a finding"},
+    {"re": "(?i)send (this|the|all|your) (report|findings?|data|output|results?|credentials?|tokens?|keys?|secrets?|everything) .{0,40} to (https?://|\\S+@|an? (attacker|external|untrusted|third.party)|pastebin|telegram|discord|webhook)", "rationale": "exfiltration-style instruction with a concrete destination (data objects only, so 'send the request to http://t/' prose does not trip it)"},
+    {"re": "(?i)(do not|don'?t|never) (report|disclose|mention|include|flag) (this|the above|this finding)", "rationale": "suppression instruction on a finding"},
+    {"re": "(?i)system (prompt|message|instruction)s? (above|follows?|applies?|overrides?|takes precedence)", "rationale": "fake system-prompt precedence claim"},
+    {"re": "(?i)<(IMPORTANT|INSTRUCTION|INSTRUCTIONS|SYSTEM|OVERRIDE|RULES)>", "rationale": "canonical injection wrapper tags (Invariant/AgentDojo shapes)"}
+  ]
+}
