@@ -304,7 +304,10 @@ def _bundle_issues(text, base_dir):
     if not re.search(r"^affected:\s*\S", fmt, re.M):
         issues.append("bundle: frontmatter needs non-empty affected versions")
     fv = re.search(r"^framing:\s*(\S+)", fmt, re.M | re.I)
-    framing = fv.group(1).strip().lower() if fv else ""
+    # hyphen alias: the disclosure skill's example says "n-day"; normalize
+    # (lowercase, hyphens dropped) so the enum check and the framing-split
+    # logic below both see "nday"; garbage values stay garbage and fail
+    framing = fv.group(1).strip().lower().replace("-", "") if fv else ""
     if framing not in BUNDLE_FRAMING:
         issues.append("bundle: framing must be one of %s (got '%s')"
                       % (" | ".join(BUNDLE_FRAMING), framing or "(empty)"))
