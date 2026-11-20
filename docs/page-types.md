@@ -116,6 +116,14 @@ One directory per engagement, `targets/<eng>/`, created by `bash setup/new-engag
 exhausted at 3 insufficient cycles, demotes). Rows with cause `insufficient`
 may carry an `objection:` line directly under the table row.
 
+**`Approach.md` 4a status cells:** `[ ]` fresh, `[~]` in progress (one per asset),
+`[x]` closed (counts toward closeout), `[-]` out of scope, `[?]` parked on a
+decision, `[!]` dead (disproven), `[i]` inconclusive (capped, not disproven:
+counted as neither open nor closed; `board` renders it under `INCONCLUSIVE`).
+Reopen rule: `[i]` moves back to `[~]` only on new input (new payload class,
+new pivot, new credential), and the reopen is logged in `targets/<eng>/log.md`;
+no code enforces this, it is operator discipline.
+
 **`Vulns/` subdirectory** (pentest/bugbounty): each finding is a `FIND-NNN-SEVERITY-title.md`. `find-lint` skips `Skipped*` / `False*` dirs, so group as: confirmed at the root or `Completed/`, `Research/` for in-progress, `False Positive/` for disproven, `Skipped-but-usefull/` for out-of-scope-but-noted.
 
 **Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards); `scope/` (IP/domain/wordlists) and `reports/` (report drafts) are made by hand when needed.

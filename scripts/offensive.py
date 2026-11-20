@@ -229,7 +229,7 @@ def _parse_table(path):
 # and cmd_board/cmd_next drain it. The clone's filterInvalidPermissionRules
 # coerce+warn pattern: one bad member never poisons the file silently.
 BOARD_WARNINGS = []
-_STATUS_CELLS = ("[ ]", "[~]", "[x]", "[-]", "[?]", "[!]")
+_STATUS_CELLS = ("[ ]", "[~]", "[x]", "[-]", "[?]", "[!]", "[i]")
 
 def _warn_ragged(src, lineno, header, cells):
     if len(cells) != len(header):
@@ -605,6 +605,12 @@ def cmd_board(args):
     print("board: %d rows (%d new) -> %s" % (len(rows), added, eng / "Approach.md"))
     if lock:
         print("board scoped to %s (%d rows)" % (lock, len(rows)))
+    inc = [r for r in rows if _status_of(r) == "[i]"]
+    if inc:
+        print("INCONCLUSIVE (%d) - capped, not disproven; reopen only on new input:" % len(inc))
+        for r in inc:
+            print("  %s %s/%s" % (r.get("id") or "?", r.get("asset") or "?",
+                                  r.get("vuln class") or "?"))
     return 0
 
 # --------------------------------------------------------------------------- board (4b post-foothold)
