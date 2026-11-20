@@ -1563,6 +1563,30 @@ def _memory_verdicts(eng):
         return {}
 
 
+def _research_cache(eng, cls, asset, limit=3):
+    """P2 RESEARCH-CACHE: read-only ledger lookup (fail-open, WS2). A topic
+    matches when it contains the row's class or asset (case-insensitive,
+    >= 3 chars). Advisory only: never gates, ranks, or counts."""
+    try:
+        data = json.loads((Path(eng) / ".research.json").read_text(
+            encoding="utf-8", errors="ignore"))
+        entries = data.get("entries")
+    except (OSError, ValueError, AttributeError):
+        return []
+    if not isinstance(entries, list):
+        return []
+    keys = [k.lower() for k in (cls, asset) if k and len(k) >= 3]
+    out = []
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        topic = str(e.get("topic") or "").lower()
+        if topic and any(k in topic for k in keys):
+            out.append("tier %s %s: %s" % (e.get("tier", "?"),
+                                            e.get("verdict", "?"), topic))
+    return out[:limit]
+
+
 def _next_json_payload(eng, state, vault):
     """cmd_next's cursor+gate walk as one dict (`next --json`). Consumers:
     brain-lane dispatchers + programmatic steering. Gates in walk order:
@@ -1574,7 +1598,7 @@ def _next_json_payload(eng, state, vault):
            "gate_action": None, "runner": None, "cmd": None, "read_cmd": None,
            "evidence_cmd": None, "posture": None, "chain": None,
            "autonomy": autonomy_of(eng)[0], "warnings": [], "terminal": None,
-           "pool": []}
+           "pool": [], "research_cache": []}
     if index_stale(eng, vault):
         out["terminal"] = "stale-index"
         out["warnings"].append("run: offensive.py --eng %s index" % eng.name)
@@ -1699,6 +1723,8 @@ def _next_json_payload(eng, state, vault):
             "MEM-CHECK: row %s %s - query wiki for disproven notes on "
             "(<tech stack>, %s); write verdict to .memory-demotes.json"
             % (rid, cls or "?", cls or "?"))
+    # P2 mirror of the text-path RESEARCH-CACHE advisory (read-only, fail-open).
+    out["research_cache"] = _research_cache(eng, cls, asset)
     ts = state.setdefault("tool_serves", {})      # JSON twin of the text-path A1 rule
     if not (not (row.get("arsenal") or "").strip()
             or (skill and _events(eng) is not None
@@ -2132,6 +2158,14 @@ def cmd_next(args):
         print("promotion). cve-arsenal candidates stage in wiki-candidates/,")
         print("never direct into wiki/cheatsheets/cve-arsenal.md.")
         print("On completion: touch targets/<ENG>/.research-last")
+
+    # P2 RESEARCH-CACHE (read-only, fail-open): ledgered research topics matching
+    # the served row - reuse verdicts + sources, never re-fetch an advisory.
+    rcache = _research_cache(eng, cls, asset)
+    if rcache:
+        print("RESEARCH-CACHE: %d ledgered topic(s) match %s/%s - reuse verdicts, "
+              "do not re-fetch (%s)" % (len(rcache), cls or "?", asset,
+                                        "; ".join(rcache)))
 
     # Default posture (2026-09-08): 2+ open assets -> run the loop under Skill(brain)
     # (main = strategy/board/triage, execution in 2-3 concurrent disjoint lanes).
