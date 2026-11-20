@@ -2653,7 +2653,8 @@
       ],
       "refs": [
         "wiki/payloads/xss.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "sqli": {
       "skill": "hunt-sqli",
@@ -2663,7 +2664,8 @@
       ],
       "refs": [
         "wiki/payloads/sqli.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "ssrf": {
       "skill": "hunt-ssrf",
@@ -2673,7 +2675,8 @@
       ],
       "refs": [
         "wiki/payloads/ssrf.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "idor": {
       "skill": "hunt-idor",
@@ -2683,7 +2686,8 @@
       ],
       "refs": [
         "wiki/payloads/api.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "api": {
       "skill": "hunt-api",
@@ -2694,7 +2698,8 @@
       ],
       "refs": [
         "wiki/payloads/api.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "graphql": {
       "skill": "hunt-api",
@@ -2704,7 +2709,8 @@
       ],
       "refs": [
         "skills/exploit/hunt/hunt-api/references/graphql.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "auth": {
       "skill": "hunt-auth",
@@ -2714,7 +2720,8 @@
       ],
       "refs": [
         "wiki/payloads/jwt.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "injection": {
       "skill": "hunt-injection",
@@ -2724,7 +2731,8 @@
       ],
       "refs": [
         "wiki/payloads/ssti.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "rce": {
       "skill": "hunt-rce",
@@ -2734,7 +2742,8 @@
       ],
       "refs": [
         "wiki/payloads/command-injection.md"
-      ]
+      ],
+      "falsify_cost": "intrusive"
     },
     "deser": {
       "skill": "hunt-deserialization",
@@ -2744,7 +2753,8 @@
       ],
       "refs": [
         "wiki/payloads/deserialization.md"
-      ]
+      ],
+      "falsify_cost": "intrusive"
     },
     "upload": {
       "skill": "hunt-upload",
@@ -2753,7 +2763,8 @@
       ],
       "refs": [
         "wiki/payloads/file-upload.md"
-      ]
+      ],
+      "falsify_cost": "intrusive"
     },
     "smuggling": {
       "skill": "hunt-smuggling",
@@ -2763,7 +2774,8 @@
       ],
       "refs": [
         "wiki/payloads/smuggling.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "secrets": {
       "skill": "hunt-secrets",
@@ -2774,7 +2786,8 @@
       ],
       "refs": [
         "wiki/cheatsheets/default-credentials.md"
-      ]
+      ],
+      "falsify_cost": "passive"
     },
     "cloud": {
       "skill": "hunt-cloud",
@@ -2785,7 +2798,8 @@
       ],
       "refs": [
         "wiki/techniques/cloud/aws-attacks.md"
-      ]
+      ],
+      "falsify_cost": "intrusive"
     },
     "m365": {
       "skill": "hunt-m365",
@@ -2795,7 +2809,8 @@
       ],
       "refs": [
         "wiki/techniques/cloud/azure-services-office-365.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "cicd": {
       "skill": "hunt-cicd",
@@ -2805,7 +2820,8 @@
       ],
       "refs": [
         "wiki/techniques/cloud/cicd-attacks.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "vpn": {
       "skill": "hunt-vpn",
@@ -2815,7 +2831,8 @@
       ],
       "refs": [
         "wiki/cheatsheets/cve-arsenal.md"
-      ]
+      ],
+      "falsify_cost": "active"
     },
     "windows": {
       "skill": "hunt-windows",
@@ -2825,21 +2842,24 @@
       ],
       "refs": [
         "wiki/cheatsheets/windows-privesc.md"
-      ]
+      ],
+      "falsify_cost": "intrusive"
     },
     "bizlogic": {
       "skill": "hunt-bizlogic",
       "tools": [
         "manual + proxy (caido/burp), no dedicated tool"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "active"
     },
     "federation": {
       "skill": "hunt-federation",
       "tools": [
         "manual + proxy (caido/burp), no dedicated tool"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "active"
     },
     "pwn": {
       "skill": "hunt-pwn",
@@ -2849,7 +2869,8 @@
       ],
       "refs": [
         "wiki/techniques/exploit-dev/binary-exploitation.md"
-      ]
+      ],
+      "falsify_cost": "intrusive"
     },
     "tls": {
       "skill": "hunt-tls",
@@ -2857,7 +2878,8 @@
         "testssl.sh",
         "openssl"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "passive"
     },
     "network": {
       "skill": "hunt-network",
@@ -2865,7 +2887,8 @@
         "responder",
         "tcpdump"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "intrusive"
     },
     "supply-chain": {
       "skill": "hunt-supply-chain",
@@ -2873,7 +2896,8 @@
         "confused",
         "interactsh"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "intrusive"
     },
     "wireless": {
       "skill": "hunt-wireless",
@@ -2881,7 +2905,8 @@
         "aircrack-ng",
         "hcxdumptool"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "intrusive"
     },
     "mobile": {
       "skill": "hunt-mobile",
@@ -2889,14 +2914,16 @@
         "frida",
         "jadx"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "active"
     },
     "postexp": {
       "skill": "hunt-postexp",
       "tools": [
         "metasploit"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "intrusive"
     },
     "social": {
       "skill": "hunt-social",
@@ -2904,7 +2931,8 @@
         "gophish",
         "evilginx2"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "intrusive"
     },
     "evasion": {
       "skill": "hunt-evasion",
@@ -2912,7 +2940,8 @@
         "msfvenom",
         "syswhispers3"
       ],
-      "refs": []
+      "refs": [],
+      "falsify_cost": "active"
     }
   }
 }

@@ -1500,6 +1500,25 @@ def _active_row(rows, asset):
             return r
     return None
 
+_FALSIFY_RANK = {"passive": 0, "active": 1, "intrusive": 2}
+_PB_CACHE = {}
+
+
+def _falsify_cost(vault, cls):
+    """playbook.json classes[cls].falsify_cost (WS3 cheapest-to-falsify
+    tie-break). Default active; missing file is fail-open."""
+    try:
+        key = str(vault or "")
+        if key not in _PB_CACHE:
+            v = Path(vault) if vault else Path(DEFAULT_VAULT)
+            pb = v / "scripts" / "playbook.json"
+            _PB_CACHE[key] = json.loads(pb.read_text(encoding="utf-8")).get(
+                "classes", {}) if pb.is_file() else {}
+        return _PB_CACHE[key].get((cls or "").strip().lower(), {}).get(
+            "falsify_cost", "active")
+    except Exception:
+        return "active"
+
 def _next_json_payload(eng, state, vault):
     """cmd_next's cursor+gate walk as one dict (`next --json`). Consumers:
     brain-lane dispatchers + programmatic steering. Gates in walk order:
@@ -1559,10 +1578,16 @@ def _next_json_payload(eng, state, vault):
                 if ((r.get("asset") or "").strip().lower(),
                     (r.get("vuln class") or "").strip().lower())
                 not in {low for _, low in capped}]
-    if insuff:
-        rows = sorted(rows, key=lambda r: 1 if (
-            (r.get("asset") or "").strip().lower(),
-            (r.get("vuln class") or "").strip().lower()) in insuff else 0)
+    # WS3 mirror of the text-path sort: claimed=2 / insufficient=1 / fresh=0,
+    # falsify cost (passive < active < intrusive) as the final in-asset
+    # tie-break - same key as cmd_next so JSON consumers see the same order.
+    claimed_ids, claimed_nums = _open_lane_row_ids(eng)
+    rows = sorted(rows, key=lambda r: (
+        2 if ((r.get("id") or "").strip() in claimed_ids
+              or _rid_num(r) in claimed_nums) else 0,
+        1 if ((r.get("asset") or "").strip().lower(),
+              (r.get("vuln class") or "").strip().lower()) in insuff else 0,
+        _FALSIFY_RANK.get(_falsify_cost(vault, r.get("vuln class")), 1)))
     out["warnings"].extend("board: %s" % w for w in _drain_board_warnings())
     out["board"] = {
         "open_assets": len(_open_assets(rows)),
@@ -1818,14 +1843,17 @@ def cmd_next(args):
                 if ((r.get("asset") or "").strip().lower(),
                     (r.get("vuln class") or "").strip().lower())
                 not in {low for _, low in capped}]
-    # WS2.2: rows claimed by an open lane (sidecar .rows.json) rank after fully
-    # unclaimed rows - a stable-sort key bump; board order is otherwise kept.
+    # WS2.2 + WS3: rows claimed by an open lane (sidecar .rows.json) rank
+    # after fully unclaimed rows; insufficient pairs demote within the asset;
+    # falsify cost (passive < active < intrusive) is the final in-asset
+    # tie-break. Stable-sort keys; board order is otherwise kept.
     claimed_ids, claimed_nums = _open_lane_row_ids(eng)
-    rows = sorted(rows, key=lambda r: 2 if (
-        (r.get("id") or "").strip() in claimed_ids
-        or _rid_num(r) in claimed_nums) else (
+    rows = sorted(rows, key=lambda r: (
+        2 if ((r.get("id") or "").strip() in claimed_ids
+              or _rid_num(r) in claimed_nums) else 0,
         1 if ((r.get("asset") or "").strip().lower(),
-              (r.get("vuln class") or "").strip().lower()) in insuff else 0))
+              (r.get("vuln class") or "").strip().lower()) in insuff else 0,
+        _FALSIFY_RANK.get(_falsify_cost(vault, r.get("vuln class")), 1)))
     # WS2.3: the lane-dir vs log reconciliation renders on the next header too
     # (status carries it; advisory-only, never gates). Reuses lane_validate's
     # mechanical reconcile so both surfaces answer the same question.
