@@ -78,6 +78,14 @@ All four must pass; each is falsifiable:
                 https://github.com/joxeankortesi/Diaphora.git /tmp/diaphora; } \
          || echo "N/A: diaphora absent on VM (install failed) - BinDiff/seat-side Ghidra VT only"
 
+Reclassified-finding handoff (P2): a finding reclassified `n-day` by the
+research skill's Tier 1 freshness check (an existing CVE/advisory/upstream fix
+covers it) enters here directly; the handoff row satisfies items 2-3 (the
+source advisory names the fix and both builds). Items 1 and 4 still apply. A
+failed confirmation gate (the patch does not cover this instance)
+routes the finding back to the discovery path with a `reclass:`
+back-line in loop.md.
+
 ## Checklist (mandatory)
 
 Copy run-protocol.md (this skill's dir) to

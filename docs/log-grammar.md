@@ -21,6 +21,11 @@ what status.py already reads; this page is the vocabulary.
   (`result: DEAD (<cause>) - <what happened>`). `insufficient` close blocks add an
   optional `objection: <why the signal was insufficient>` line - the next research
   pass on that pattern MUST seed its first query from it.
+- `` `reclass: <id> discovery -> n-day (<source ref>)` `` - a freshness check
+  found the finding already public (existing CVE, vendor advisory, upstream
+  fix); it re-routes to n-day verification (nday gate) instead of a
+  discovery/novelty claim. The reverse route (patch did not cover this
+  instance) logs the same token with `n-day -> discovery`.
 
 ## Lane timeline (the readable layer)
 

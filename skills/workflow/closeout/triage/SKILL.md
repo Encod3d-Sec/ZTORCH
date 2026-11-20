@@ -169,6 +169,14 @@ the next research pass.
 Cards promoted past this walk carry the `oracle_gate` marker; find-lint fails
 them without all three sections.
 
+**Reclassification step (before promotion):** if the card's root-cause section
+or evidence names an existing CVE/advisory covering the same bug, route the
+card `n-day (CVE-<id> or upstream-fix)` instead of a discovery claim: the
+confirmation requirement shifts to the nday gate (trigger on the shipped
+vulnerable build; the fixed build rejects the same input) and the writeup
+carries the CVE id with n-day framing, no novelty claims. Log
+`` `reclass: <id> discovery -> n-day (<source ref>)` `` in log.md.
+
 ## Cross-tool correlation pass (G9)
 
 Run ONE explicit pass before lane close whenever the run recorded 2+ findings,

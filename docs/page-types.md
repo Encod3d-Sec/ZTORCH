@@ -128,6 +128,8 @@ no code enforces this, it is operator discipline.
 
 **Other subdirectories:** `ingest/` (raw tool output for the ingest skill), `poc/` (PoC scripts + screenshot cards); `scope/` (IP/domain/wordlists) and `reports/` (report drafts) are made by hand when needed.
 
+**Machine-state dotfile:** `.research.json` (engagement: `targets/<eng>/`, research: `raw/research/<project>/`) - the shared research ledger (P2): agent-written, driver-read; entries carry `topic`/`tier`/`verdict`/`sources`/`used_by`/`ts`; schema + rules in the research skill's section 7. Fail-open everywhere.
+
 See `targets/TARGETS.md` for the full engagement playbook: FIND naming, severity definitions, and the wiki integration rule.
 
 ---
