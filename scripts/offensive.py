@@ -249,25 +249,40 @@ def _drain_board_warnings():
 _CAUSE_INSUFFICIENT = ("insufficient", "capped")
 
 
+def _class_equivs_or_self(c):
+    """A class cell's equivalence set (itself + equivalent spellings), shared by
+    the pair-set builder and _deepen_count so whatever identity demotes a pair
+    is exactly the identity that accumulates toward the deepen cap."""
+    try:
+        import next_move                      # puts skills/hooks on sys.path
+        from _engagement_classes import _class_equivs
+        return _class_equivs(c)
+    except Exception:
+        return {c}
+
+
 def _deadend_pairs_by_cause(eng):
     """Split Deadends.md (asset, class) pairs by outcome cause (WS1 three-way
     routing). Class cells expand through _class_equivs exactly like the old
     G4 set. Empty/legacy/unknown cause cells default disproven so every
-    existing engagement keeps its suppression behavior."""
-    try:
-        import next_move                      # puts skills/hooks on sys.path
-        from _engagement_classes import _class_equivs as equiv
-    except Exception:
-        def equiv(c):
-            return {c}
+    existing engagement keeps its suppression behavior; an unrecognized
+    non-empty cause still announces itself (routed-to-disproven is the
+    strongest action, so a typo must be visible, not silent)."""
     disproven, insufficient = set(), set()
     for r in _parse_table(Path(eng) / "Deadends.md"):
         a = (r.get("asset") or "").strip().lower()
         c = (r.get("class") or "").strip().lower()
         if not (a and c):
             continue
-        tgt = insufficient if (r.get("cause") or "").strip().lower() in _CAUSE_INSUFFICIENT else disproven
-        for cc in equiv(c):
+        cause = (r.get("cause") or "").strip().lower()
+        if cause in _CAUSE_INSUFFICIENT:
+            tgt = insufficient
+        else:
+            if cause and cause != "disproven":
+                BOARD_WARNINGS.append("Deadends.md: %s/%s cause %r not recognized "
+                                      "- routed to disproven" % (a, c, cause))
+            tgt = disproven
+        for cc in _class_equivs_or_self(c):
             tgt.add((a, cc))
     return disproven, insufficient
 
@@ -286,12 +301,18 @@ DEEPEN_CAP = 3
 def _deepen_count(eng, asset, cls):
     """Insufficient-cause Deadends entries for one (asset, class) pair (WS1
     per-hypothesis budget). Counting raw entries (not parsing 'effort') keeps
-    it stateless and hand-edit-proof."""
+    it stateless and hand-edit-proof. Class match goes through the same
+    _class_equivs expansion the pair-set builder uses, so an entry spelled
+    `file-upload` against a board row spelled `upload` both demotes AND
+    counts toward DEEPEN_CAP - without this, equivalently-spelled pairs
+    demote forever and the CAPPED transition can never fire."""
     low = lambda a, c: ((a or "").strip().lower(), (c or "").strip().lower())
-    want = low(asset, cls)
+    want_a, want_c = low(asset, cls)
+    classes = _class_equivs_or_self(want_c)
     n = 0
     for r in _parse_table(Path(eng) / "Deadends.md"):
-        if low(r.get("asset"), r.get("class")) == want \
+        ra, rc = low(r.get("asset"), r.get("class"))
+        if ra == want_a and rc in classes \
                 and (r.get("cause") or "").strip().lower() in _CAUSE_INSUFFICIENT:
             n += 1
     return n
