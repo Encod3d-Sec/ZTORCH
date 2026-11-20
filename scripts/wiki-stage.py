@@ -26,6 +26,8 @@ from datetime import date
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "skills", "hooks"))
 import _engagement  # noqa: E402
+sys.path.insert(0, HERE)
+import _inject  # noqa: E402
 
 KIND_PAGE = {
     "default-cred": "cheatsheets/default-credentials.md",
@@ -43,7 +45,7 @@ SCAFFOLD = {
 }
 
 
-def build(kind, slug, target_page, source_eng, body, on_date):
+def build(kind, slug, target_page, source_eng, body, on_date, suspect=False):
     fm = (
         "---\n"
         "target_page: %s\n"
@@ -54,6 +56,8 @@ def build(kind, slug, target_page, source_eng, body, on_date):
         "status: pending\n"
         "---\n\n"
     ) % (target_page, kind, slug, source_eng, on_date)
+    if suspect:
+        fm = fm.replace("status: pending\n", "status: pending\ninject-suspect: true\n")
     inner = body if body else SCAFFOLD[kind]
     return fm + inner.rstrip() + "\n"
 
@@ -66,7 +70,12 @@ def main(argv=None):
     ap.add_argument("--body", default="")
     ap.add_argument("--eng", default="")
     ap.add_argument("--date", default="")
-    args = ap.parse_args(argv)
+    ap.add_argument("--source", default="eng",
+                    choices=["nvd", "ghsa", "osv", "changelog", "web", "wiki", "diff", "eng"])
+    try:
+        args = ap.parse_args(argv)
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 2
 
     if not SLUG_RE.match(args.slug):
         print("bad slug %r: use kebab-case [a-z0-9-]" % args.slug, file=sys.stderr)
@@ -91,8 +100,29 @@ def main(argv=None):
 
     source_eng = args.eng or os.path.basename(os.path.normpath(d))
     on_date = args.date or date.today().isoformat()
+    inner = args.body if args.body else SCAFFOLD[args.kind]
+    pats, off = _inject.load_patterns()
+    if off:
+        print(off, file=sys.stderr)
+    hits = _inject.screen(inner, pats) if pats else []
+    verdict = "unchecked" if not pats else ("suspect" if hits else "clean")
+    suspect = verdict == "suspect"
+    if suspect:
+        for n, section, txt, why in hits:
+            print("inject-suspect: %s line %d: %s (%s)" % (section, n, txt[:80], why),
+                  file=sys.stderr)
+        print("candidate quarantined (inject-suspect: true) - review before promote",
+              file=sys.stderr)
     with open(dest, "w", encoding="utf-8") as fh:
-        fh.write(build(args.kind, args.slug, target_page, source_eng, args.body, on_date))
+        fh.write(build(args.kind, args.slug, target_page, source_eng, args.body, on_date,
+                       suspect=suspect))
+    audit = "memwrite: wiki-candidates/%s.md <- %s [%s]" % (args.slug, args.source, verdict)
+    print(audit)
+    logp = os.path.join(d, "log.md")
+    if os.path.exists(logp):
+        with open(logp, "a", encoding="utf-8") as fh:
+            fh.write("%s | wiki | stage | %s | `%s`\n"
+                     % (on_date, "quarantine" if suspect else "ok", audit))
     print(dest)
     return 0
 
