@@ -135,6 +135,40 @@ forbids inference-only findings and this table must not undercut it. This gate
 EXTENDS Q6 and the verifier lane; it does not replace them - Q6 asks "did you
 prove impact", this gate fixes the closed vocabulary of what counts as proof.
 
+## Two-tier confirmation walk (oracle)
+
+A candidate is confirmed through two tiers; the cheap tier is deterministic and
+fires on every candidate, the expensive tier only on candidates the cheap tier
+passes. Most candidates must die at the cheap tier without model spend.
+
+**Cheap gate (all three checked, in order):**
+1. State-diff signal - the expected state actually changed (row appears, object
+   reads cross-account, the callback host fetched the URL it was handed). A
+   status code or error string is a proxy, not a signal.
+2. Negative control - the same request minus the payload produces the negative
+   result.
+3. OOB callback - for blind classes (already OOB-gated by the hunt skill).
+
+Failing all three routes the vector to `fail:insufficient` with the failed gate
+named in the `objection:` line (see docs/log-grammar.md) - the objection seeds
+the next research pass.
+
+**Expensive gate (only past the cheap gate), all three recorded on the card:**
+1. Falsify attempt - an independent verifier lane actively tries to REFUTE the
+   finding: alternative explanations for the signal, control variants, boundary
+   inputs. Dispatch on a different model family than the confirming lane where
+   the tier map allows; if only one family is practical, a fresh independent
+   lane still runs and the card notes `same-family`. A successful refutation
+   closes the card `ruled_out`; it is never deleted.
+2. Minimal reproducer - reduce to the smallest payload/steps that still
+   triggers; the reduced form becomes the PoC of record, the original capture
+   pair stays on disk verbatim.
+3. Root cause - one paragraph on WHY it works (vulnerable path, missing check,
+   trust boundary crossed). "It returned 200" is not a root cause.
+
+Cards promoted past this walk carry the `oracle_gate` marker; find-lint fails
+them without all three sections.
+
 ## Cross-tool correlation pass (G9)
 
 Run ONE explicit pass before lane close whenever the run recorded 2+ findings,
