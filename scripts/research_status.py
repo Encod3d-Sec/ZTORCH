@@ -62,10 +62,10 @@ def load_ledger(d):
         return []
     try:
         data = json.loads(open(p, encoding="utf-8", errors="ignore").read())
-        entries = data.get("entries")
-        return [e for e in entries if isinstance(e, dict)] if isinstance(entries, list) else []
-    except (ValueError, OSError):
+    except (ValueError, OSError, AttributeError):
         return []
+    entries = data.get("entries") if isinstance(data, dict) else None
+    return [e for e in entries if isinstance(e, dict)] if isinstance(entries, list) else []
 
 
 def _dedup_warning(ledger, loop):
@@ -77,8 +77,8 @@ def _dedup_warning(ledger, loop):
     for e in ledger:
         if e.get("verdict") != "settled":
             continue
-        toks = [t for t in str(e.get("topic") or "").split()[:2] if len(t) >= 3]
-        if toks and all(t in last for t in toks):
+        toks = [t for t in str(e.get("topic") or "").split()[:2] if len(t) >= 3 and t]
+        if toks and all(t.lower() in last for t in toks):
             return ("DEDUP: '%s' already settled (tier %s) - reuse the ledger "
                     "verdict + sources, do not re-fetch"
                     % (e.get("topic"), e.get("tier", "?")))
